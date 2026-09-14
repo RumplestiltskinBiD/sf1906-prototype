@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.5</title>
+<title>San Francisco 1906 — Prototype v0.6</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.5</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.6</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -335,17 +335,20 @@ function renderActions(){
     el.appendChild(actionButton('Привлечь капитал','1 действие · +4 капитала',raiseCapital,state.actionsLeft<=0));
   } else {
     const b=state.blocks[selectedBlock];
-    const firePower=b.water==='ok'?state.fireDept:1;
-    const rescuePower=state.engDept+(activeClinicNearby(selectedBlock)?1:0);
+    const firePower=b.water==='ok'?Math.ceil(state.fireDept/2):1;
+    const clinic=activeClinicNearby(selectedBlock);
+    const baseRescue=Math.max(1,state.engDept-1)+(clinic?1:0);
+    const rescuePower=b.fire===2?Math.max(1,baseRescue-1):baseRescue;
+    const rescueBlocked=b.fire>=3;
     el.appendChild(actionButton('Тушить пожар',`до ${firePower} ур. огня`,fightFire,state.actionsLeft<=0||b.fire<=0));
-    el.appendChild(actionButton('Спасать из завалов',`до ${rescuePower} жителей`,rescue,state.actionsLeft<=0||!b.buildings.some(x=>x&&x.trapped>0)));
+    el.appendChild(actionButton('Спасать из завалов',rescueBlocked?'пожар 3 — сначала снизьте огонь':`до ${rescuePower} жителей${b.fire===2?' · штраф за сильный пожар':''}`,rescue,state.actionsLeft<=0||rescueBlocked||!b.buildings.some(x=>x&&x.trapped>0)));
     el.appendChild(actionButton('Чинить водопровод','восстановить воду в квартале',repairWater,state.actionsLeft<=0||b.water==='ok'));
     el.appendChild(actionButton('Перекрыть газ','остановить утечку и повторное возгорание',shutOffGas,state.actionsLeft<=0||b.gas!=='leak'));
     el.appendChild(actionButton('Эвакуировать','до 2 жителей из опасной зоны',evacuate,state.actionsLeft<=0||!canEvacuate(selectedBlock)));
   }
 }
 function renderMarket(){const el=document.getElementById('market');el.innerHTML='';state.market.forEach(id=>{const p=proj(id),d=document.createElement('div');d.className='market-card';d.innerHTML=`<div class="top"><div class="title">${p.name}</div><b>${p.base}</b></div><div class="attrs">Престиж ${p.prestige} · Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}</div><button class="btn">Выбрать для строительства</button>`;d.querySelector('button').onclick=()=>openBuild(id);el.appendChild(d)})}
-function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.slice(-80).forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';const txt=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');if(txt.startsWith('Синий '))cls='player-blue';else if(txt.startsWith('Красный '))cls='player-red';else if(txt.startsWith('Зелёный '))cls='player-green';d.className=cls;d.textContent=txt;el.appendChild(d)});el.scrollTop=el.scrollHeight}
+function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';const txt=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');if(txt.startsWith('Синий '))cls='player-blue';else if(txt.startsWith('Красный '))cls='player-red';else if(txt.startsWith('Зелёный '))cls='player-green';d.className=cls;d.textContent=txt;el.appendChild(d)});el.scrollTop=el.scrollHeight}
 
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModals(){document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'))}
@@ -434,8 +437,8 @@ function earthquake(){
 }
 document.getElementById('earthquakeBtn').onclick=earthquake;
 
-function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0)return;snapshot();const power=bl.water==='ok'?state.fireDept:1;const removed=Math.min(bl.fire,power);bl.fire-=removed;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня (пожарная служба ур. ${state.fireDept}${bl.water==='ok'?'':' без воды'}), +${removed} очк.`,'GOOD');render()}
-function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction())return;const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const clinic=activeClinicNearby(selectedBlock);const cap=state.engDept+(clinic?1:0);const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock} (спасатели ур. ${state.engDept}${clinic?' + клиника':''}). +${n} очк.`,'GOOD');render()}
+function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0)return;snapshot();const power=bl.water==='ok'?Math.ceil(state.fireDept/2):1;const removed=Math.min(bl.fire,power);bl.fire-=removed;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня (пожарная служба ур. ${state.fireDept}${bl.water==='ok'?'':' без воды'}), +${removed} очк.`,'GOOD');render()}
+function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction())return;if(bl.fire>=3){alert('При пожаре уровня 3 спасатели не могут войти в квартал. Сначала снизьте огонь.');return}const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const clinic=activeClinicNearby(selectedBlock);let cap=Math.max(1,state.engDept-1)+(clinic?1:0);if(bl.fire===2)cap=Math.max(1,cap-1);const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock} (спасатели ур. ${state.engDept}${clinic?' + клиника':''}${bl.fire===2?' · сильный пожар':''}). +${n} очк.`,'GOOD');render()}
 function repairWater(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.water==='ok')return;snapshot();bl.water='ok';spendAction();if(bl.fire>0){current().score++;current().merit++;log(`${current().name} восстановил воду в горящем квартале ${selectedBlock}. +1 очк.`,'GOOD')}else log(`${current().name} восстановил воду в квартале ${selectedBlock}.`);render()}
 function shutOffGas(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.gas!=='leak')return;snapshot();bl.gas='shutoff';spendAction();current().score++;current().merit++;log(`${current().name} перекрыл утечку газа в квартале ${selectedBlock}. +1 очк.`,'GOOD');render()}
 function canEvacuate(id){const bl=state.blocks[id];const threat=bl.fire>0||neighbors(id).some(n=>state.blocks[n].fire>=2);const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);return threat&&has}
@@ -504,12 +507,12 @@ function finishGame(){
 
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.5\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v05_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.6\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v06_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v05',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v05');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v06',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v06');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
