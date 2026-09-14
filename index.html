@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>San Francisco 1906 — Prototype v0.1</title>
+<style>
+:root{
+  --bg:#efe7d7;
+  --paper:#f8f2e7;
+  --ink:#2f2b25;
+  --muted:#7b7469;
+  --line:#c9bca7;
+  --accent:#8d3a2f;
+  --accent2:#335b63;
+  --safe:#4e7756;
+  --warn:#b97a2d;
+  --danger:#9c342d;
+  --panel:#fffaf1;
+  --shadow:0 8px 24px rgba(49,39,24,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh;background-image:radial-gradient(rgba(90,70,40,.05) 1px,transparent 1px);background-size:10px 10px}
+button,select,input{font:inherit}
+button{cursor:pointer}
+.app{max-width:1400px;margin:0 auto;padding:16px}
+.header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}.brand h1{font-family:Georgia,serif;font-size:28px;margin:0}.badge{background:var(--accent);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:9px 12px;box-shadow:0 2px 5px rgba(0,0,0,.04)}
+.btn:hover{filter:brightness(.98)}.btn.primary{background:var(--accent);border-color:var(--accent);color:white}.btn.secondary{background:var(--accent2);border-color:var(--accent2);color:white}.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}.btn.ghost{background:transparent}.btn:disabled{opacity:.45;cursor:not-allowed}
+.statusbar{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:rgba(255,250,241,.86);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.stat .v{font-weight:800;font-size:18px;margin-top:3px}
+.player-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.player-card{border:2px solid transparent;background:var(--panel);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow)}
+.player-card.active{border-color:var(--accent2)}.player-card .row{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.player-card .name{font-weight:800}.dots{letter-spacing:2px}
+.main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,.9fr);gap:12px;align-items:start}
+.panel{background:rgba(255,250,241,.92);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.board-wrap{padding:14px}.board-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.board-title h2{font-family:Georgia,serif;margin:0;font-size:20px}.legend{font-size:12px;color:var(--muted)}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.block{position:relative;min-height:210px;border:2px solid #998b78;border-radius:12px;padding:10px;background:linear-gradient(#f3ebdb,#eadfcd);overflow:hidden;transition:.2s transform,.2s box-shadow}
+.block:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}.block.selected{outline:4px solid rgba(51,91,99,.22)}
+.block.fire1{box-shadow:inset 0 0 0 4px rgba(185,122,45,.25)}.block.fire2{box-shadow:inset 0 0 0 5px rgba(180,80,36,.33)}.block.fire3{box-shadow:inset 0 0 0 6px rgba(156,52,45,.42)}
+.block-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.block-name{font-family:Georgia,serif;font-weight:800;font-size:19px}.fire{font-weight:800;color:var(--danger)}
+.systems{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chip{font-size:11px;padding:4px 6px;border-radius:999px;border:1px solid var(--line);background:#fff9ee}.chip.ok{color:var(--safe);border-color:#aac2af}.chip.bad{color:var(--danger);border-color:#d8a7a2}.chip.unknown{color:var(--muted)}
+.buildings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.building{min-height:118px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:700;color:var(--accent2)}
+.side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}
+.market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px}.market-card button{margin-top:8px;width:100%}
+.log{max-height:260px;overflow:auto;background:#25211d;color:#f1e7d7;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45}.log div+div{margin-top:5px}.log .accent{color:#ffd49a}.log .bad{color:#ff9f94}.log .good{color:#a8e0b3}
+.footer-note{font-size:11px;color:var(--muted);text-align:center;margin:14px 0 4px}
+.modal{position:fixed;inset:0;background:rgba(32,28,24,.55);display:none;align-items:flex-end;justify-content:center;z-index:20;padding:12px}.modal.open{display:flex}.sheet{width:min(720px,100%);max-height:88vh;overflow:auto;background:var(--paper);border-radius:18px 18px 10px 10px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3);padding:16px}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.sheet h3{font-family:Georgia,serif;margin:0}.close{border:none;background:transparent;font-size:24px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}.field select,.field input{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}.stack{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.dev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.dev-grid button{font-size:12px}.notice{border-left:4px solid var(--accent2);background:#edf3f3;padding:10px;border-radius:8px;font-size:12px;line-height:1.4;margin-bottom:10px}
+@media(max-width:980px){.statusbar{grid-template-columns:repeat(3,1fr)}.main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .panel:last-child{grid-column:1/-1}}
+@media(max-width:720px){.app{padding:10px}.brand h1{font-size:22px}.statusbar{grid-template-columns:repeat(2,1fr)}.player-strip{grid-template-columns:1fr}.main{display:block}.board-wrap{padding:10px}.board{grid-template-columns:1fr 1fr;gap:8px}.block{min-height:190px;padding:8px}.side{display:flex;margin-top:10px}.action-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.sheet{padding:14px}.header-actions .btn{padding:8px 9px;font-size:12px}}
+@media(max-width:430px){.board{grid-template-columns:1fr}.block{min-height:175px}.buildings{grid-template-columns:1fr 1fr}.action-grid{grid-template-columns:1fr}.statusbar{grid-template-columns:1fr 1fr}.stat .v{font-size:16px}.player-card{padding:8px 10px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.1</span></div>
+    <div class="header-actions">
+      <button class="btn" id="undoBtn">↶ Отменить</button>
+      <button class="btn" id="saveBtn">Сохранить</button>
+      <button class="btn" id="loadBtn">Загрузить</button>
+      <button class="btn" id="exportBtn">Экспорт</button>
+      <button class="btn" id="devBtn">⚙ Тест</button>
+      <button class="btn danger" id="newBtn">Новая партия</button>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="stat"><div class="k">Фаза</div><div class="v" id="phaseStat">—</div></div>
+    <div class="stat"><div class="k">Раунд</div><div class="v" id="roundStat">—</div></div>
+    <div class="stat"><div class="k">Ходит</div><div class="v" id="playerStat">—</div></div>
+    <div class="stat"><div class="k">Пожарная служба</div><div class="v" id="fireDeptStat">1</div></div>
+    <div class="stat"><div class="k">Спасатели</div><div class="v" id="engDeptStat">1</div></div>
+    <div class="stat"><div class="k">Потери</div><div class="v" id="casualtyStat">0</div></div>
+  </div>
+
+  <div class="player-strip" id="playerStrip"></div>
+
+  <div class="main">
+    <div class="panel board-wrap">
+      <div class="board-title">
+        <h2>South of Market — тестовый район</h2>
+        <div class="legend">Нажмите на квартал, затем выберите действие справа</div>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="side">
+      <div class="panel section">
+        <h3 id="selectedTitle">Квартал A</h3>
+        <div id="selectedInfo" class="small"></div>
+        <h4>Действия</h4>
+        <div class="action-grid" id="actions"></div>
+        <div class="stack">
+          <button class="btn secondary" id="endTurnBtn">Завершить ход</button>
+          <button class="btn primary" id="earthquakeBtn" style="display:none">18 апреля 1906 — 5:12</button>
+          <button class="btn primary" id="endEmergencyRoundBtn" style="display:none">Завершить раунд ЧС</button>
+        </div>
+      </div>
+
+      <div class="panel section" id="marketPanel">
+        <h3>Рынок проектов</h3>
+        <div class="market" id="market"></div>
+      </div>
+
+      <div class="panel section">
+        <h3>Журнал партии</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-note">Работает в Chrome на компьютере и телефоне. Данные сохраняются локально в браузере.</div>
+</div>
+
+<div class="modal" id="buildModal">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Построить проект</h3><button class="close" data-close>×</button></div>
+    <div class="notice">Выберите проект с рынка, свободное место и тип конструкции. Цена = цена проекта + стоимость конструкции.</div>
+    <div class="form-grid">
+      <div class="field"><label>Проект</label><select id="buildProject"></select></div>
+      <div class="field"><label>Место</label><select id="buildSlot"></select></div>
+      <div class="field"><label>Конструкция</label><select id="buildConstruction"></select></div>
+      <div class="field"><label>Итого</label><input id="buildTotal" disabled /></div>
+    </div>
+    <div class="stack"><button class="btn primary" id="confirmBuild">Построить</button></div>
+  </div>
+</div>
+
+<div class="modal" id="retrofitModal">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Укрепить здание</h3><button class="close" data-close>×</button></div>
+    <div class="form-grid">
+      <div class="field"><label>Здание</label><select id="retrofitSlot"></select></div>
+      <div class="field"><label>Улучшение</label><select id="retrofitType"><option value="quake">Сейсмическое укрепление (+2 к устойчивости), 3 капитала</option><option value="fire">Противопожарное улучшение (+1 к огнестойкости), 2 капитала</option></select></div>
+    </div>
+    <div class="stack"><button class="btn primary" id="confirmRetrofit">Укрепить</button></div>
+  </div>
+</div>
+
+<div class="modal" id="infraModal">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Укрепить инфраструктуру</h3><button class="close" data-close>×</button></div>
+    <div class="field"><label>Система</label><select id="infraType"><option value="water">Водопровод — 2 капитала</option><option value="gas">Газовая сеть — 2 капитала</option></select></div>
+    <div class="stack"><button class="btn primary" id="confirmInfra">Укрепить</button></div>
+  </div>
+</div>
+
+<div class="modal" id="fundModal">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Финансировать службу</h3><button class="close" data-close>×</button></div>
+    <div class="field"><label>Служба</label><select id="fundType"><option value="fire">Пожарная служба — 3 капитала</option><option value="eng">Инженеры и спасатели — 3 капитала</option></select></div>
+    <div class="stack"><button class="btn primary" id="confirmFund">Финансировать</button></div>
+  </div>
+</div>
+
+<div class="modal" id="devModal">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Панель тестирования</h3><button class="close" data-close>×</button></div>
+    <div class="notice">Эта панель нужна только для быстрых проверок баланса. Она позволяет ломать состояние игры вручную.</div>
+    <div class="dev-grid">
+      <button class="btn" id="devMoney">+10 капитала текущему</button>
+      <button class="btn" id="devAction">+1 действие текущему</button>
+      <button class="btn" id="devFire">+1 пожар в выбранном квартале</button>
+      <button class="btn" id="devWater">Переключить воду</button>
+      <button class="btn" id="devGas">Переключить газ</button>
+      <button class="btn" id="devReveal">Открыть грунт</button>
+      <button class="btn" id="devSkipEq">Сразу к землетрясению</button>
+      <button class="btn" id="devEmergency">Сразу во вторую фазу</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECTS = [
+  {id:'tenement', name:'Доходный дом', base:3, prestige:2, income:1, pop:4, fireLoad:2, kind:'housing'},
+  {id:'shops', name:'Магазины', base:4, prestige:2, income:2, pop:1, fireLoad:2, kind:'commerce'},
+  {id:'warehouse', name:'Склад', base:4, prestige:2, income:2, pop:1, fireLoad:3, kind:'commerce'},
+  {id:'factory', name:'Фабрика', base:5, prestige:3, income:3, pop:2, fireLoad:3, kind:'commerce'},
+  {id:'clinic', name:'Клиника', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'},
+  {id:'firehouse', name:'Пожарная часть', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'},
+  {id:'publicworks', name:'Склад городских работ', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'}
+];
+const CONSTRUCTIONS = {
+  wood:{name:'Деревянный каркас', cost:0, quake:2, fire:0},
+  brick:{name:'Обычная кирпичная кладка', cost:1, quake:1, fire:1},
+  anchored:{name:'Усиленная кирпичная кладка', cost:3, quake:3, fire:1},
+  steel:{name:'Стальной каркас', cost:5, quake:4, fire:2}
+};
+const GROUNDS = [
+  {id:'firm', name:'Устойчивый грунт', stress:0},
+  {id:'firm', name:'Устойчивый грунт', stress:0},
+  {id:'soft', name:'Мягкий грунт', stress:1},
+  {id:'soft', name:'Мягкий грунт', stress:1},
+  {id:'fill', name:'Насыпной грунт / разжижение', stress:2},
+  {id:'fill', name:'Насыпной грунт / разжижение', stress:2}
+];
+const PLAYER_COLORS=['Синий','Красный','Зелёный'];
+let state;
+let undoStack=[];
+let selectedBlock='A';
+
+function proj(id){return PROJECTS.find(p=>p.id===id)}
+function deepClone(x){return JSON.parse(JSON.stringify(x))}
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function makeBuilding(projectId, construction, owner=null){
+  const p=proj(projectId), c=CONSTRUCTIONS[construction];
+  return {projectId,construction,owner,status:'intact',quakeRetrofit:false,fireRetrofit:false,investors:{quake:null,fire:null},quakeSaved:false,fireSaved:false,pop:p.pop,trapped:0,evacuated:0,burned:false};
+}
+function initialState(){
+  const gs=shuffle(GROUNDS);
+  const blocks={
+    A:{id:'A',ground:gs[0],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),makeBuilding('shops','wood')]},
+    B:{id:'B',ground:gs[1],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('warehouse','brick'),null]},
+    C:{id:'C',ground:gs[2],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('factory','brick'),makeBuilding('tenement','wood')]},
+    D:{id:'D',ground:gs[3],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','wood'),null]},
+    E:{id:'E',ground:gs[4],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('clinic','brick'),makeBuilding('warehouse','brick')]},
+    F:{id:'F',ground:gs[5],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),null]}
+  };
+  blocks.E.buildings[0].pop=1;
+  return {
+    phase:'build', buildRound:1, emergencyRound:0, currentPlayer:0, actionsLeft:2,
+    fireDept:1, engDept:1, fireOpsLeft:0, engOpsLeft:0,
+    players:PLAYER_COLORS.map((name,i)=>({id:i,name,capital:8,score:0,prestige:0,merit:0,incomeBonus:0})),
+    blocks, casualties:0, safe:0,
+    market:shuffle(PROJECTS.map(p=>p.id)).slice(0,3),
+    log:['Началась партия. Фаза I: развитие района.'], finished:false
+  };
+}
+function snapshot(){undoStack.push(deepClone(state)); if(undoStack.length>25)undoStack.shift()}
+function log(msg,cls=''){state.log.push((cls?`[${cls}] `:'')+msg)}
+function current(){return state.players[state.currentPlayer]}
+function neighbors(id){return {A:['B','D'],B:['A','C','E'],C:['B','F'],D:['A','E'],E:['B','D','F'],F:['C','E']}[id]}
+function buildingStats(b){
+  const c=CONSTRUCTIONS[b.construction];
+  return {quake:c.quake+(b.quakeRetrofit?2:0), fire:c.fire+(b.fireRetrofit?1:0)};
+}
+function spendAction(){state.actionsLeft--; if(state.actionsLeft<0)state.actionsLeft=0}
+function ensureAction(){if(state.actionsLeft<=0){alert('У текущего игрока больше нет действий. Завершите ход.');return false}return true}
+function ensureCapital(n){if(current().capital<n){alert('Недостаточно капитала.');return false}return true}
+function addScore(playerId,n,reason=''){const p=state.players[playerId];p.score+=n;if(reason)log(`${p.name}: ${n>=0?'+':''}${n} очк. — ${reason}`,n>=0?'GOOD':'BAD')}
+function blockFireLoad(b){return b.buildings.reduce((s,x)=>s+(x&&x.status!=='collapsed'&&!x.burned?proj(x.projectId).fireLoad:0),0)}
+function activeClinicNearby(blockId){
+  const ids=[blockId,...neighbors(blockId)];
+  return ids.some(id=>state.blocks[id].buildings.some(b=>b && b.projectId==='clinic' && b.status==='intact' && !b.burned));
+}
+function playerIncome(pid){
+  let inc=4;
+  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{
+    if(b&&b.owner===pid&&b.status==='intact'&&!b.burned)inc+=proj(b.projectId).income;
+  }));
+  return inc;
+}
+function refillMarket(projectId){
+  const choices=PROJECTS.map(p=>p.id);
+  const idx=state.market.indexOf(projectId);
+  if(idx>=0) state.market[idx]=choices[Math.floor(Math.random()*choices.length)];
+}
+
+function render(){
+  document.getElementById('phaseStat').textContent=state.phase==='build'?'I — До землетрясения':state.phase==='emergency'?'II — Чрезвычайная ситуация':'Игра завершена';
+  document.getElementById('roundStat').textContent=state.phase==='build'?`${state.buildRound} / 3`:state.phase==='emergency'?`${state.emergencyRound} / 4`:'—';
+  document.getElementById('playerStat').textContent=state.finished?'—':current().name;
+  document.getElementById('fireDeptStat').textContent=state.phase==='emergency'?`${state.fireDept} (${state.fireOpsLeft} оп.)`:state.fireDept;
+  document.getElementById('engDeptStat').textContent=state.phase==='emergency'?`${state.engDept} (${state.engOpsLeft} оп.)`:state.engDept;
+  document.getElementById('casualtyStat').textContent=state.casualties;
+  renderPlayers();renderBoard();renderSelected();renderActions();renderMarket();renderLog();
+  document.getElementById('earthquakeBtn').style.display=(state.phase==='build'&&state.buildRound>=3&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
+  document.getElementById('endEmergencyRoundBtn').style.display=(state.phase==='emergency'&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
+  document.getElementById('endTurnBtn').style.display=state.finished?'none':'inline-block';
+  document.getElementById('marketPanel').style.display=state.phase==='build'?'block':'none';
+}
+function renderPlayers(){
+  const el=document.getElementById('playerStrip');el.innerHTML='';
+  state.players.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='player-card '+(!state.finished&&i===state.currentPlayer?'active':'');
+    d.innerHTML=`<div class="row"><div class="name">${p.name}</div><div><b>${p.score}</b> очк.</div></div><div class="row small"><span>Капитал: <b>${p.capital}</b></span><span>Действия: <b>${i===state.currentPlayer?state.actionsLeft:'—'}</b></span></div>`;
+    el.appendChild(d);
+  });
+}
+function renderBoard(){
+  const board=document.getElementById('board');board.innerHTML='';
+  ['A','B','C','D','E','F'].forEach(id=>{
+    const b=state.blocks[id], div=document.createElement('div');
+    div.className=`block fire${b.fire} ${selectedBlock===id?'selected':''}`;div.onclick=()=>{selectedBlock=id;render()};
+    const ground=(b.groundRevealed||state.phase!=='build')?b.ground.name:'???';
+    div.innerHTML=`<div class="block-head"><div class="block-name">Квартал ${id}</div><div class="fire">${b.fire?`🔥 ${b.fire}`:''}</div></div>
+      <div class="systems">
+        <span class="chip ${b.water==='ok'?'ok':'bad'}">💧 ${b.water==='ok'?'вода':'нет воды'}${b.waterFortified?' 🛡':''}</span>
+        <span class="chip ${b.gas==='ok'?'ok':'bad'}">◉ ${b.gas==='ok'?'газ':'утечка'}${b.gasFortified?' 🛡':''}</span>
+        <span class="chip ${ground==='???'?'unknown':''}">грунт: ${ground}</span>
+      </div><div class="buildings"></div>`;
+    const bs=div.querySelector('.buildings');
+    b.buildings.forEach((x,idx)=>{
+      const bd=document.createElement('div');
+      if(!x){bd.className='building empty';bd.textContent='Свободное место';}
+      else{
+        const p=proj(x.projectId), s=buildingStats(x);
+        bd.className=`building ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
+        const owner=x.owner!=null?`<div class="owner">Проект: ${state.players[x.owner].name}</div>`:'';
+        bd.innerHTML=`<div><div class="bn">${x.status==='collapsed'?'РУИНЫ — ':x.burned?'СГОРЕЛО — ':''}${p.name}</div><div class="meta">${CONSTRUCTIONS[x.construction].name}<br>Земл. ${s.quake} · Огонь ${s.fire} · Горючесть ${p.fireLoad}</div></div><div>${owner}<div class="pop">👥 ${x.pop}${x.trapped?` · 🧱 под завалами ${x.trapped}`:''}</div></div>`;
+      }
+      bs.appendChild(bd);
+    });
+    board.appendChild(div);
+  });
+}
+function renderSelected(){
+  const b=state.blocks[selectedBlock];
+  document.getElementById('selectedTitle').textContent=`Квартал ${selectedBlock}`;
+  const g=(b.groundRevealed||state.phase!=='build')?`${b.ground.name} (+${b.ground.stress})`:'не исследован';
+  document.getElementById('selectedInfo').innerHTML=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':'утечка'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
+}
+function actionButton(title,sub,handler,disabled=false){const b=document.createElement('button');b.className='action-btn';b.disabled=disabled;b.innerHTML=`<strong>${title}</strong><span>${sub}</span>`;b.onclick=handler;return b}
+function renderActions(){
+  const el=document.getElementById('actions');el.innerHTML='';
+  if(state.finished){el.innerHTML='<div class="small">Партия завершена.</div>';return}
+  if(state.phase==='build'){
+    el.appendChild(actionButton('Построить','проект с рынка',()=>openBuild(),state.actionsLeft<=0));
+    el.appendChild(actionButton('Укрепить здание','сейсмика или пожар',()=>openModal('retrofitModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Инфраструктура','укрепить воду или газ',()=>openModal('infraModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Службы','финансировать городские службы',()=>openModal('fundModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Исследовать грунт','1 действие',surveyGround,state.actionsLeft<=0||state.blocks[selectedBlock].groundRevealed));
+    el.appendChild(actionButton('Получить капитал','+4 капитала',raiseCapital,state.actionsLeft<=0));
+  } else {
+    const b=state.blocks[selectedBlock];
+    el.appendChild(actionButton('Тушить пожар','1 пожарная операция',fightFire,state.actionsLeft<=0||b.fire<=0||state.fireOpsLeft<=0));
+    el.appendChild(actionButton('Спасать из завалов','1 операция спасателей',rescue,state.actionsLeft<=0||state.engOpsLeft<=0||!b.buildings.some(x=>x&&x.trapped>0)));
+    el.appendChild(actionButton('Чинить водопровод','1 операция спасателей',repairWater,state.actionsLeft<=0||state.engOpsLeft<=0||b.water==='ok'));
+    el.appendChild(actionButton('Эвакуировать','до 2 жителей из опасной зоны',evacuate,state.actionsLeft<=0||!canEvacuate(selectedBlock)));
+  }
+}
+function renderMarket(){const el=document.getElementById('market');el.innerHTML='';state.market.forEach(id=>{const p=proj(id),d=document.createElement('div');d.className='market-card';d.innerHTML=`<div class="top"><div class="title">${p.name}</div><b>${p.base}</b></div><div class="attrs">Престиж ${p.prestige} · Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}</div><button class="btn">Выбрать для строительства</button>`;d.querySelector('button').onclick=()=>openBuild(id);el.appendChild(d)})}
+function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.slice(-80).forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';d.className=cls;d.textContent=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');el.appendChild(d)});el.scrollTop=el.scrollHeight}
+
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModals(){document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'))}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModals)
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals()}))
+
+function openBuild(preselect){
+  const b=state.blocks[selectedBlock];
+  const empty=b.buildings.map((x,i)=>x?null:i).filter(x=>x!=null);
+  if(!empty.length){alert('В этом квартале нет свободного места.');return}
+  const psel=document.getElementById('buildProject');psel.innerHTML='';state.market.forEach(id=>{const p=proj(id),o=document.createElement('option');o.value=id;o.textContent=`${p.name} — ${p.base}`;psel.appendChild(o)});if(preselect&&state.market.includes(preselect))psel.value=preselect;
+  const ssel=document.getElementById('buildSlot');ssel.innerHTML='';empty.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=`Место ${i+1}`;ssel.appendChild(o)});
+  const csel=document.getElementById('buildConstruction');csel.innerHTML='';Object.entries(CONSTRUCTIONS).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=`${c.name} (+${c.cost})`;csel.appendChild(o)});
+  const upd=()=>{document.getElementById('buildTotal').value=proj(psel.value).base+CONSTRUCTIONS[csel.value].cost+' капитала'};psel.onchange=upd;csel.onchange=upd;upd();openModal('buildModal');
+}
+
+document.getElementById('confirmBuild').onclick=()=>{
+  if(!ensureAction())return; const pid=document.getElementById('buildProject').value,slot=+document.getElementById('buildSlot').value,cid=document.getElementById('buildConstruction').value;const p=proj(pid),cost=p.base+CONSTRUCTIONS[cid].cost;if(!ensureCapital(cost))return;snapshot();
+  current().capital-=cost;current().score+=p.prestige;current().prestige+=p.prestige;state.blocks[selectedBlock].buildings[slot]=makeBuilding(pid,cid,state.currentPlayer);refillMarket(pid);spendAction();log(`${current().name} построил «${p.name}» в квартале ${selectedBlock} (${CONSTRUCTIONS[cid].name}), стоимость ${cost}.`);closeModals();render();
+};
+
+document.getElementById('confirmRetrofit').onclick=()=>{
+  if(!ensureAction())return;const slot=+document.getElementById('retrofitSlot').value,type=document.getElementById('retrofitType').value,b=state.blocks[selectedBlock].buildings[slot];if(!b){alert('Выберите существующее здание.');return}const cost=type==='quake'?3:2;if(!ensureCapital(cost))return;if(type==='quake'&&b.quakeRetrofit){alert('Сейсмическое укрепление уже есть.');return}if(type==='fire'&&b.fireRetrofit){alert('Противопожарное улучшение уже есть.');return}snapshot();current().capital-=cost;if(type==='quake'){b.quakeRetrofit=true;b.investors.quake=state.currentPlayer}else{b.fireRetrofit=true;b.investors.fire=state.currentPlayer}spendAction();log(`${current().name} укрепил ${proj(b.projectId).name} в квартале ${selectedBlock}.`);closeModals();render();
+};
+
+document.getElementById('confirmInfra').onclick=()=>{
+  if(!ensureAction()||!ensureCapital(2))return;const type=document.getElementById('infraType').value,b=state.blocks[selectedBlock];if(type==='water'&&b.waterFortified){alert('Водопровод уже укреплён.');return}if(type==='gas'&&b.gasFortified){alert('Газовая сеть уже укреплена.');return}snapshot();current().capital-=2;if(type==='water'){b.waterFortified=true;b.waterInvestor=state.currentPlayer}else{b.gasFortified=true;b.gasInvestor=state.currentPlayer}spendAction();log(`${current().name} укрепил ${type==='water'?'водопровод':'газовую сеть'} в квартале ${selectedBlock}.`);closeModals();render();
+};
+
+document.getElementById('confirmFund').onclick=()=>{
+  if(!ensureAction()||!ensureCapital(3))return;const type=document.getElementById('fundType').value;if(type==='fire'&&state.fireDept>=3){alert('Пожарная служба уже максимального уровня.');return}if(type==='eng'&&state.engDept>=3){alert('Служба спасателей уже максимального уровня.');return}snapshot();current().capital-=3;if(type==='fire')state.fireDept++;else state.engDept++;spendAction();log(`${current().name} профинансировал ${type==='fire'?'пожарную службу':'инженеров и спасателей'}.`);closeModals();render();
+};
+
+function prepareRetrofitSelect(){const s=document.getElementById('retrofitSlot');s.innerHTML='';state.blocks[selectedBlock].buildings.forEach((b,i)=>{if(b){const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${proj(b.projectId).name}`;s.appendChild(o)}})}
+document.getElementById('retrofitModal').addEventListener('click',()=>{});
+const oldOpenModal=openModal;openModal=function(id){if(id==='retrofitModal')prepareRetrofitSelect();document.getElementById(id).classList.add('open')}
+
+function surveyGround(){if(!ensureAction())return;const b=state.blocks[selectedBlock];if(b.groundRevealed)return;snapshot();b.groundRevealed=true;spendAction();log(`${current().name} исследовал грунт квартала ${selectedBlock}: ${b.ground.name}.`);render()}
+function raiseCapital(){if(!ensureAction())return;snapshot();current().capital+=4;spendAction();log(`${current().name} привлёк дополнительный капитал: +4.`);render()}
+
+function endTurn(){
+  if(state.finished)return;
+  snapshot();
+  if(state.currentPlayer<2){state.currentPlayer++;state.actionsLeft=2;log(`Ход: ${current().name}.`);render();return}
+  if(state.phase==='build'){
+    if(state.buildRound<3){
+      state.buildRound++;state.currentPlayer=0;state.actionsLeft=2;state.players.forEach((p,i)=>{const inc=playerIncome(i);p.capital+=inc;log(`${p.name} получает ${inc} капитала в начале раунда ${state.buildRound}.`)});log(`Начался раунд ${state.buildRound} первой фазы.`,'ACCENT');
+    } else {state.actionsLeft=0;log('Все игроки завершили подготовку. Можно запускать землетрясение.','ACCENT')}
+  } else if(state.phase==='emergency') {
+    state.actionsLeft=0;log('Все игроки завершили действия. Завершите раунд чрезвычайной ситуации.','ACCENT');
+  }
+  render();
+}
+
+document.getElementById('endTurnBtn').onclick=endTurn;
+
+function earthquake(){
+  if(state.phase!=='build')return;snapshot();log('18 апреля 1906 года, 5:12. Началось землетрясение.','ACCENT');
+  Object.values(state.blocks).forEach(bl=>{
+    bl.groundRevealed=true;const load=2+bl.ground.stress;log(`Квартал ${bl.id}: ${bl.ground.name}, сила удара ${load}.`);
+    bl.buildings.forEach(b=>{
+      if(!b)return;const s=buildingStats(b);const baseQ=CONSTRUCTIONS[b.construction].quake;
+      const result=(q)=>q>=load?'intact':q===load-1?'damaged':'collapsed';
+      const finalResult=result(s.quake), baseResult=result(baseQ);
+      if(b.quakeRetrofit && finalResult!==baseResult) b.quakeSaved=true;
+      if(finalResult==='intact'){b.status='intact';log(`${proj(b.projectId).name}: устояло.`,'GOOD')}
+      else if(finalResult==='damaged'){b.status='damaged';log(`${proj(b.projectId).name}: повреждено.`)}
+      else {b.status='collapsed';b.trapped=b.pop;b.pop=0;log(`${proj(b.projectId).name}: ОБРУШИЛОСЬ, под завалами ${b.trapped}.`,'BAD')}
+    });
+    if(bl.ground.id==='soft' || bl.ground.id==='fill'){
+      if(!bl.gasFortified){bl.gas='leak';log(`Квартал ${bl.id}: утечка газа.`,'BAD')} else {if(bl.gasInvestor!=null)addScore(bl.gasInvestor,1,'укрепление газовой сети сработало')}
+    }
+    if(bl.ground.id==='fill'){
+      if(!bl.waterFortified){bl.water='broken';log(`Квартал ${bl.id}: водопровод разрушен.`,'BAD')} else {if(bl.waterInvestor!=null)addScore(bl.waterInvestor,1,'укрепление водопровода сработало')}
+    }
+    if(bl.gas==='leak')bl.fire=Math.max(bl.fire,blockFireLoad(bl)>=4?2:1);
+  });
+  state.phase='emergency';state.emergencyRound=1;state.currentPlayer=0;state.actionsLeft=2;state.fireOpsLeft=state.fireDept;state.engOpsLeft=state.engDept;log('Началась вторая фаза: чрезвычайная ситуация.','ACCENT');render();
+}
+document.getElementById('earthquakeBtn').onclick=earthquake;
+
+function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0||state.fireOpsLeft<=0)return;snapshot();const removed=Math.min(bl.fire,bl.water==='ok'?2:1);bl.fire-=removed;state.fireOpsLeft--;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня, +${removed} очк.`,'GOOD');render()}
+function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction()||state.engOpsLeft<=0)return;const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const cap=activeClinicNearby(selectedBlock)?3:2;const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;state.engOpsLeft--;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock}. +${n} очк.`,'GOOD');render()}
+function repairWater(){const bl=state.blocks[selectedBlock];if(!ensureAction()||state.engOpsLeft<=0||bl.water==='ok')return;snapshot();bl.water='ok';state.engOpsLeft--;spendAction();if(bl.fire>0){current().score++;current().merit++;log(`${current().name} восстановил воду в горящем квартале ${selectedBlock}. +1 очк.`,'GOOD')}else log(`${current().name} восстановил воду в квартале ${selectedBlock}.`);render()}
+function canEvacuate(id){const bl=state.blocks[id];const threat=bl.fire>0||neighbors(id).some(n=>state.blocks[n].fire>=2);const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);return threat&&has}
+function evacuate(){if(!ensureAction()||!canEvacuate(selectedBlock))return;snapshot();let need=2,n=0;const bl=state.blocks[selectedBlock];for(const b of bl.buildings){if(!b||b.status==='collapsed'||b.burned)continue;const take=Math.min(need,b.pop);b.pop-=take;b.evacuated+=take;need-=take;n+=take;if(!need)break}state.safe+=n;current().score+=n;current().merit+=n;spendAction();log(`${current().name} эвакуировал ${n} жителей из квартала ${selectedBlock}. +${n} очк.`,'GOOD');render()}
+
+function endEmergencyRound(){
+  if(state.phase!=='emergency')return;snapshot();log(`Разрешение последствий раунда ${state.emergencyRound}.`,'ACCENT');
+  Object.values(state.blocks).forEach(bl=>{if(bl.fire>0)bl.fire=Math.min(3,bl.fire+1)});
+  Object.values(state.blocks).forEach(bl=>{
+    bl.buildings.forEach(b=>{
+      if(!b||b.burned||b.status==='collapsed')return;const f=buildingStats(b).fire;const baseF=CONSTRUCTIONS[b.construction].fire;
+      if(b.fireRetrofit && bl.fire>=baseF+2 && bl.fire<f+2) b.fireSaved=true;
+      if(bl.fire>=f+2){b.burned=true;const deaths=b.pop+b.trapped;b.pop=0;b.trapped=0;if(deaths>0){state.casualties+=deaths;log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело. Погибло ${deaths}.`,'BAD')}else log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело.`,'BAD')}
+    })
+  });
+  const order={A:['B','D'],B:['C','E','A'],C:['F','B'],D:['E','A'],E:['F','B','D'],F:['C','E']};
+  const spread=[];Object.values(state.blocks).forEach(bl=>{if(bl.fire===3){const t=order[bl.id].find(id=>state.blocks[id].fire===0);if(t)spread.push(t)}});spread.forEach(id=>{state.blocks[id].fire=1;log(`Пожар перекинулся в квартал ${id}.`,'BAD')});
+  if(state.emergencyRound>=4){finishGame();return}
+  state.emergencyRound++;state.currentPlayer=0;state.actionsLeft=2;state.fireOpsLeft=state.fireDept;state.engOpsLeft=state.engDept;log(`Начался раунд ${state.emergencyRound} чрезвычайной ситуации.`,'ACCENT');render();
+}
+document.getElementById('endEmergencyRoundBtn').onclick=endEmergencyRound;
+
+function finishGame(){
+  state.players.forEach(p=>{if(state.casualties){p.score-=state.casualties;log(`${p.name}: −${state.casualties} очк. за общие потери.`,'BAD')}});
+  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{
+    if(!b)return; if(b.owner!=null && b.status==='intact' && !b.burned){const pts=proj(b.projectId).prestige;addScore(b.owner,pts,`проект «${proj(b.projectId).name}» пережил катастрофу`)}
+    if(b.quakeSaved&&b.investors.quake!=null)addScore(b.investors.quake,1,'сейсмическое укрепление реально изменило исход');if(b.fireSaved&&b.investors.fire!=null)addScore(b.investors.fire,1,'противопожарное укрепление реально спасло здание')
+  }));
+  state.phase='finished';state.finished=true;log('Партия завершена.','ACCENT');const ranking=[...state.players].sort((a,b)=>b.score-a.score);log(`Победитель: ${ranking[0].name} — ${ranking[0].score} очк.`,'GOOD');render();
+}
+
+function exportGame(){
+  const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function save(){localStorage.setItem('sf1906_v01',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v01');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
+function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
+document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
+
+// Dev panel
+function devMut(fn,msg){snapshot();fn();if(msg)log(msg,'ACCENT');render()}
+document.getElementById('devBtn').onclick=()=>openModal('devModal');
+document.getElementById('devMoney').onclick=()=>devMut(()=>current().capital+=10,'ТЕСТ: +10 капитала текущему игроку.');
+document.getElementById('devAction').onclick=()=>devMut(()=>state.actionsLeft++,'ТЕСТ: +1 действие текущему игроку.');
+document.getElementById('devFire').onclick=()=>devMut(()=>state.blocks[selectedBlock].fire=Math.min(3,state.blocks[selectedBlock].fire+1),`ТЕСТ: пожар +1 в квартале ${selectedBlock}.`);
+document.getElementById('devWater').onclick=()=>devMut(()=>state.blocks[selectedBlock].water=state.blocks[selectedBlock].water==='ok'?'broken':'ok',`ТЕСТ: переключено состояние воды в ${selectedBlock}.`);
+document.getElementById('devGas').onclick=()=>devMut(()=>state.blocks[selectedBlock].gas=state.blocks[selectedBlock].gas==='ok'?'leak':'ok',`ТЕСТ: переключено состояние газа в ${selectedBlock}.`);
+document.getElementById('devReveal').onclick=()=>devMut(()=>state.blocks[selectedBlock].groundRevealed=true,`ТЕСТ: открыт грунт в ${selectedBlock}.`);
+document.getElementById('devSkipEq').onclick=()=>{state.buildRound=3;state.currentPlayer=2;state.actionsLeft=0;closeModals();render()};
+document.getElementById('devEmergency').onclick=()=>{if(state.phase==='build'){closeModals();earthquake()}};
+
+// Build modal total listeners
+
+document.getElementById('buildProject').addEventListener('change',()=>{});
+
+state=initialState();render();
+</script>
+</body>
+</html>
