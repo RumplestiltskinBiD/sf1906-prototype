@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.3</title>
+<title>San Francisco 1906 — Prototype v0.4</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -46,7 +46,7 @@ button{cursor:pointer}
 .block-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.block-name{font-family:Georgia,serif;font-weight:800;font-size:19px}.fire{font-weight:800;color:var(--danger)}
 .systems{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chip{font-size:11px;padding:4px 6px;border-radius:999px;border:1px solid var(--line);background:#fff9ee}.chip.ok{color:var(--safe);border-color:#aac2af}.chip.bad{color:var(--danger);border-color:#d8a7a2}.chip.unknown{color:var(--muted)}
 .buildings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.building{min-height:118px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:700;color:var(--accent2)}
+.building{min-height:118px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building.owner-blue{border-top:5px solid #3f9be5}.building.owner-red{border-top:5px solid #d9554d}.building.owner-green{border-top:5px solid #4f9f66}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:800;margin-top:4px}.owner-blue-text{color:#2f83c4}.owner-red-text{color:#bd4039}.owner-green-text{color:#397d4e}.building.burned .owner{color:#fff}.legacy{font-size:10px;font-weight:800;margin-top:3px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.72);color:#4b4439;display:inline-block}.building.burned .legacy{background:rgba(255,255,255,.14);color:#fff}
 .side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}
 .market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px}.market-card button{margin-top:8px;width:100%}
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.3</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.4</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -303,8 +303,10 @@ function renderBoard(){
       if(!x){bd.className='building empty';bd.textContent='Свободное место';}
       else{
         const p=proj(x.projectId), s=buildingStats(x);
-        bd.className=`building ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
-        const owner=x.owner!=null?`<div class="owner">Проект: ${state.players[x.owner].name}</div>`:'';
+        const ownerClass=x.owner===0?'owner-blue':x.owner===1?'owner-red':x.owner===2?'owner-green':'';
+        const ownerTextClass=x.owner===0?'owner-blue-text':x.owner===1?'owner-red-text':x.owner===2?'owner-green-text':'';
+        bd.className=`building ${ownerClass} ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
+        const owner=x.owner!=null?`<div class="owner ${ownerTextClass}">● ${state.players[x.owner].name}</div><div class="legacy">Если останется целым: +${p.prestige} очк.</div>`:'';
         bd.innerHTML=`<div><div class="bn">${x.status==='collapsed'?'РУИНЫ — ':x.burned?'СГОРЕЛО — ':''}${p.name}</div><div class="meta">${CONSTRUCTIONS[x.construction].name}<br>Земл. ${s.quake} · Огонь ${s.fire} · Горючесть ${p.fireLoad}</div></div><div>${owner}<div class="pop">👥 ${x.pop}${x.trapped?` · 🧱 под завалами ${x.trapped}`:''}</div></div>`;
       }
       bs.appendChild(bd);
@@ -502,12 +504,12 @@ function finishGame(){
 
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.3\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v03_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.4\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v04_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v03',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v03');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v04',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v04');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
