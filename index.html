@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.1</title>
+<title>San Francisco 1906 — Prototype v0.2</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.1</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.2</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -226,7 +226,7 @@ function initialState(){
   blocks.E.buildings[0].pop=1;
   return {
     phase:'build', buildRound:1, emergencyRound:0, currentPlayer:0, actionsLeft:2,
-    fireDept:1, engDept:1, fireOpsLeft:0, engOpsLeft:0,
+    fireDept:1, engDept:1,
     players:PLAYER_COLORS.map((name,i)=>({id:i,name,capital:8,score:0,prestige:0,merit:0,incomeBonus:0})),
     blocks, casualties:0, safe:0,
     market:shuffle(PROJECTS.map(p=>p.id)).slice(0,3),
@@ -267,8 +267,8 @@ function render(){
   document.getElementById('phaseStat').textContent=state.phase==='build'?'I — До землетрясения':state.phase==='emergency'?'II — Чрезвычайная ситуация':'Игра завершена';
   document.getElementById('roundStat').textContent=state.phase==='build'?`${state.buildRound} / 3`:state.phase==='emergency'?`${state.emergencyRound} / 4`:'—';
   document.getElementById('playerStat').textContent=state.finished?'—':current().name;
-  document.getElementById('fireDeptStat').textContent=state.phase==='emergency'?`${state.fireDept} (${state.fireOpsLeft} оп.)`:state.fireDept;
-  document.getElementById('engDeptStat').textContent=state.phase==='emergency'?`${state.engDept} (${state.engOpsLeft} оп.)`:state.engDept;
+  document.getElementById('fireDeptStat').textContent=`ур. ${state.fireDept}`;
+  document.getElementById('engDeptStat').textContent=`ур. ${state.engDept}`;
   document.getElementById('casualtyStat').textContent=state.casualties;
   renderPlayers();renderBoard();renderSelected();renderActions();renderMarket();renderLog();
   document.getElementById('earthquakeBtn').style.display=(state.phase==='build'&&state.buildRound>=3&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
@@ -293,7 +293,7 @@ function renderBoard(){
     div.innerHTML=`<div class="block-head"><div class="block-name">Квартал ${id}</div><div class="fire">${b.fire?`🔥 ${b.fire}`:''}</div></div>
       <div class="systems">
         <span class="chip ${b.water==='ok'?'ok':'bad'}">💧 ${b.water==='ok'?'вода':'нет воды'}${b.waterFortified?' 🛡':''}</span>
-        <span class="chip ${b.gas==='ok'?'ok':'bad'}">◉ ${b.gas==='ok'?'газ':'утечка'}${b.gasFortified?' 🛡':''}</span>
+        <span class="chip ${b.gas==='leak'?'bad':'ok'}">◉ ${b.gas==='ok'?'газ':b.gas==='leak'?'утечка':'газ перекрыт'}${b.gasFortified?' 🛡':''}</span>
         <span class="chip ${ground==='???'?'unknown':''}">грунт: ${ground}</span>
       </div><div class="buildings"></div>`;
     const bs=div.querySelector('.buildings');
@@ -315,7 +315,7 @@ function renderSelected(){
   const b=state.blocks[selectedBlock];
   document.getElementById('selectedTitle').textContent=`Квартал ${selectedBlock}`;
   const g=(b.groundRevealed||state.phase!=='build')?`${b.ground.name} (+${b.ground.stress})`:'не исследован';
-  document.getElementById('selectedInfo').innerHTML=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':'утечка'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
+  document.getElementById('selectedInfo').innerHTML=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':b.gas==='leak'?'утечка':'перекрыт'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
 }
 function actionButton(title,sub,handler,disabled=false){const b=document.createElement('button');b.className='action-btn';b.disabled=disabled;b.innerHTML=`<strong>${title}</strong><span>${sub}</span>`;b.onclick=handler;return b}
 function renderActions(){
@@ -330,9 +330,12 @@ function renderActions(){
     el.appendChild(actionButton('Получить капитал','+4 капитала',raiseCapital,state.actionsLeft<=0));
   } else {
     const b=state.blocks[selectedBlock];
-    el.appendChild(actionButton('Тушить пожар','1 пожарная операция',fightFire,state.actionsLeft<=0||b.fire<=0||state.fireOpsLeft<=0));
-    el.appendChild(actionButton('Спасать из завалов','1 операция спасателей',rescue,state.actionsLeft<=0||state.engOpsLeft<=0||!b.buildings.some(x=>x&&x.trapped>0)));
-    el.appendChild(actionButton('Чинить водопровод','1 операция спасателей',repairWater,state.actionsLeft<=0||state.engOpsLeft<=0||b.water==='ok'));
+    const firePower=b.water==='ok'?state.fireDept:1;
+    const rescuePower=state.engDept+(activeClinicNearby(selectedBlock)?1:0);
+    el.appendChild(actionButton('Тушить пожар',`до ${firePower} ур. огня`,fightFire,state.actionsLeft<=0||b.fire<=0));
+    el.appendChild(actionButton('Спасать из завалов',`до ${rescuePower} жителей`,rescue,state.actionsLeft<=0||!b.buildings.some(x=>x&&x.trapped>0)));
+    el.appendChild(actionButton('Чинить водопровод','восстановить воду в квартале',repairWater,state.actionsLeft<=0||b.water==='ok'));
+    el.appendChild(actionButton('Перекрыть газ','остановить утечку и повторное возгорание',shutOffGas,state.actionsLeft<=0||b.gas!=='leak'));
     el.appendChild(actionButton('Эвакуировать','до 2 жителей из опасной зоны',evacuate,state.actionsLeft<=0||!canEvacuate(selectedBlock)));
   }
 }
@@ -415,30 +418,66 @@ function earthquake(){
     }
     if(bl.gas==='leak')bl.fire=Math.max(bl.fire,blockFireLoad(bl)>=4?2:1);
   });
-  state.phase='emergency';state.emergencyRound=1;state.currentPlayer=0;state.actionsLeft=2;state.fireOpsLeft=state.fireDept;state.engOpsLeft=state.engDept;log('Началась вторая фаза: чрезвычайная ситуация.','ACCENT');render();
+  state.phase='emergency';state.emergencyRound=1;state.currentPlayer=0;state.actionsLeft=2;log('Началась вторая фаза: чрезвычайная ситуация. Уровень служб теперь определяет эффективность действий и не расходуется.','ACCENT');render();
 }
 document.getElementById('earthquakeBtn').onclick=earthquake;
 
-function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0||state.fireOpsLeft<=0)return;snapshot();const removed=Math.min(bl.fire,bl.water==='ok'?2:1);bl.fire-=removed;state.fireOpsLeft--;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня, +${removed} очк.`,'GOOD');render()}
-function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction()||state.engOpsLeft<=0)return;const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const cap=activeClinicNearby(selectedBlock)?3:2;const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;state.engOpsLeft--;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock}. +${n} очк.`,'GOOD');render()}
-function repairWater(){const bl=state.blocks[selectedBlock];if(!ensureAction()||state.engOpsLeft<=0||bl.water==='ok')return;snapshot();bl.water='ok';state.engOpsLeft--;spendAction();if(bl.fire>0){current().score++;current().merit++;log(`${current().name} восстановил воду в горящем квартале ${selectedBlock}. +1 очк.`,'GOOD')}else log(`${current().name} восстановил воду в квартале ${selectedBlock}.`);render()}
+function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0)return;snapshot();const power=bl.water==='ok'?state.fireDept:1;const removed=Math.min(bl.fire,power);bl.fire-=removed;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня (пожарная служба ур. ${state.fireDept}${bl.water==='ok'?'':' без воды'}), +${removed} очк.`,'GOOD');render()}
+function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction())return;const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const clinic=activeClinicNearby(selectedBlock);const cap=state.engDept+(clinic?1:0);const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock} (спасатели ур. ${state.engDept}${clinic?' + клиника':''}). +${n} очк.`,'GOOD');render()}
+function repairWater(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.water==='ok')return;snapshot();bl.water='ok';spendAction();if(bl.fire>0){current().score++;current().merit++;log(`${current().name} восстановил воду в горящем квартале ${selectedBlock}. +1 очк.`,'GOOD')}else log(`${current().name} восстановил воду в квартале ${selectedBlock}.`);render()}
+function shutOffGas(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.gas!=='leak')return;snapshot();bl.gas='shutoff';spendAction();current().score++;current().merit++;log(`${current().name} перекрыл утечку газа в квартале ${selectedBlock}. +1 очк.`,'GOOD');render()}
 function canEvacuate(id){const bl=state.blocks[id];const threat=bl.fire>0||neighbors(id).some(n=>state.blocks[n].fire>=2);const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);return threat&&has}
 function evacuate(){if(!ensureAction()||!canEvacuate(selectedBlock))return;snapshot();let need=2,n=0;const bl=state.blocks[selectedBlock];for(const b of bl.buildings){if(!b||b.status==='collapsed'||b.burned)continue;const take=Math.min(need,b.pop);b.pop-=take;b.evacuated+=take;need-=take;n+=take;if(!need)break}state.safe+=n;current().score+=n;current().merit+=n;spendAction();log(`${current().name} эвакуировал ${n} жителей из квартала ${selectedBlock}. +${n} очк.`,'GOOD');render()}
 
 function endEmergencyRound(){
   if(state.phase!=='emergency')return;snapshot();log(`Разрешение последствий раунда ${state.emergencyRound}.`,'ACCENT');
+
+  // 1. Неостановленный пожар усиливается.
   Object.values(state.blocks).forEach(bl=>{if(bl.fire>0)bl.fire=Math.min(3,bl.fire+1)});
+
+  // 2. Огонь уничтожает стоящие здания.
   Object.values(state.blocks).forEach(bl=>{
     bl.buildings.forEach(b=>{
       if(!b||b.burned||b.status==='collapsed')return;const f=buildingStats(b).fire;const baseF=CONSTRUCTIONS[b.construction].fire;
       if(b.fireRetrofit && bl.fire>=baseF+2 && bl.fire<f+2) b.fireSaved=true;
-      if(bl.fire>=f+2){b.burned=true;const deaths=b.pop+b.trapped;b.pop=0;b.trapped=0;if(deaths>0){state.casualties+=deaths;log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело. Погибло ${deaths}.`,'BAD')}else log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело.`,'BAD')}
+      if(bl.fire>=f+2){b.burned=true;const deaths=b.pop;b.pop=0;if(deaths>0){state.casualties+=deaths;log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело. Погибло ${deaths}.`,'BAD')}else log(`${proj(b.projectId).name} в квартале ${bl.id} сгорело.`,'BAD')}
     })
   });
+
+  // 3. Люди под завалами начинают погибать, если до них дошёл сильный пожар.
+  Object.values(state.blocks).forEach(bl=>{
+    let danger=bl.fire>=3?2:bl.fire===2?1:0;
+    let trapped=bl.buildings.reduce((s,b)=>s+(b?b.trapped:0),0);
+    let deaths=Math.min(danger,trapped);
+    let left=deaths;
+    if(left>0){
+      for(const b of bl.buildings){
+        if(!b||b.trapped<=0)continue;
+        const take=Math.min(left,b.trapped);b.trapped-=take;left-=take;if(left===0)break;
+      }
+      state.casualties+=deaths;
+      log(`Квартал ${bl.id}: огонь добрался до руин. Погибло под завалами: ${deaths}.`,'BAD');
+    }
+  });
+
+  // 4. Неперекрытая утечка газа снова зажигает уже потушенный квартал.
+  Object.values(state.blocks).forEach(bl=>{
+    if(bl.gas==='leak'&&bl.fire===0){bl.fire=1;log(`Квартал ${bl.id}: из-за утечки газа пожар вспыхнул снова.`,'BAD')}
+  });
+
+  // 5. Пожар максимальной силы распространяется дальше.
   const order={A:['B','D'],B:['C','E','A'],C:['F','B'],D:['E','A'],E:['F','B','D'],F:['C','E']};
-  const spread=[];Object.values(state.blocks).forEach(bl=>{if(bl.fire===3){const t=order[bl.id].find(id=>state.blocks[id].fire===0);if(t)spread.push(t)}});spread.forEach(id=>{state.blocks[id].fire=1;log(`Пожар перекинулся в квартал ${id}.`,'BAD')});
+  const spread=[];Object.values(state.blocks).forEach(bl=>{if(bl.fire===3){const t=order[bl.id].find(id=>state.blocks[id].fire===0);if(t)spread.push(t)}});
+  [...new Set(spread)].forEach(id=>{state.blocks[id].fire=1;log(`Пожар перекинулся в квартал ${id}.`,'BAD')});
+
+  // 6. Если угроз больше нет, чрезвычайная фаза заканчивается сразу.
+  const stable=Object.values(state.blocks).every(bl=>
+    bl.fire===0&&bl.gas!=='leak'&&bl.water==='ok'&&!bl.buildings.some(b=>b&&b.trapped>0)
+  );
+  if(stable){log('Город стабилизирован: пожаров, утечек, разрушенного водопровода и людей под завалами больше нет.','GOOD');finishGame();return}
+
   if(state.emergencyRound>=4){finishGame();return}
-  state.emergencyRound++;state.currentPlayer=0;state.actionsLeft=2;state.fireOpsLeft=state.fireDept;state.engOpsLeft=state.engDept;log(`Начался раунд ${state.emergencyRound} чрезвычайной ситуации.`,'ACCENT');render();
+  state.emergencyRound++;state.currentPlayer=0;state.actionsLeft=2;log(`Начался раунд ${state.emergencyRound} чрезвычайной ситуации.`,'ACCENT');render();
 }
 document.getElementById('endEmergencyRoundBtn').onclick=endEmergencyRound;
 
@@ -453,12 +492,12 @@ function finishGame(){
 
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.2\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v02_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v01',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v01');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v02',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v02');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
