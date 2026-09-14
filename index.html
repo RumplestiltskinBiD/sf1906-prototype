@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.8</title>
+<title>San Francisco 1906 — Prototype v0.9</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -40,13 +40,13 @@ button{cursor:pointer}
 .panel{background:rgba(255,250,241,.92);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
 .board-wrap{padding:14px}.board-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.board-title h2{font-family:Georgia,serif;margin:0;font-size:20px}.legend{font-size:12px;color:var(--muted)}
 .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.block{position:relative;min-height:210px;border:2px solid #998b78;border-radius:12px;padding:10px;background:linear-gradient(#f3ebdb,#eadfcd);overflow:hidden;transition:.2s transform,.2s box-shadow}
+.block{position:relative;min-height:330px;border:2px solid #998b78;border-radius:12px;padding:10px;background:linear-gradient(#f3ebdb,#eadfcd);overflow:hidden;transition:.2s transform,.2s box-shadow}
 .block:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}.block.selected{outline:4px solid rgba(51,91,99,.22)}
 .block.fire1{box-shadow:inset 0 0 0 4px rgba(185,122,45,.25)}.block.fire2{box-shadow:inset 0 0 0 5px rgba(180,80,36,.33)}.block.fire3{box-shadow:inset 0 0 0 6px rgba(156,52,45,.42)}
 .block-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.block-name{font-family:Georgia,serif;font-weight:800;font-size:19px}.fire{font-weight:800;color:var(--danger)}
 .systems{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chip{font-size:11px;padding:4px 6px;border-radius:999px;border:1px solid var(--line);background:#fff9ee}.chip.ok{color:var(--safe);border-color:#aac2af}.chip.bad{color:var(--danger);border-color:#d8a7a2}.chip.unknown{color:var(--muted)}
 .buildings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.building{min-height:118px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building.owner-blue:not(.ruins):not(.burned){background:#dceeff;border:2px solid #3f9be5}.building.owner-red:not(.ruins):not(.burned){background:#ffe1df;border:2px solid #d9554d}.building.owner-green:not(.ruins):not(.burned){background:#e0f3e5;border:2px solid #4f9f66}.building.owner-blue.damaged,.building.owner-red.damaged,.building.owner-green.damaged{border-color:var(--warn);box-shadow:inset 0 0 0 2px rgba(185,122,45,.2)}.building.ruins.owner-blue{background:repeating-linear-gradient(135deg,#d8eaf8,#d8eaf8 8px,#b8d6ee 8px,#b8d6ee 16px);border:2px solid #3f9be5}.building.ruins.owner-red{background:repeating-linear-gradient(135deg,#f5dcda,#f5dcda 8px,#eabdb9 8px,#eabdb9 16px);border:2px solid #d9554d}.building.ruins.owner-green{background:repeating-linear-gradient(135deg,#dcefe1,#dcefe1 8px,#bddfc6 8px,#bddfc6 16px);border:2px solid #4f9f66}.building.burned.owner-blue{box-shadow:inset 0 0 0 3px #3f9be5}.building.burned.owner-red{box-shadow:inset 0 0 0 3px #d9554d}.building.burned.owner-green{box-shadow:inset 0 0 0 3px #4f9f66}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:800;margin-top:4px}.owner-blue-text{color:#2f83c4}.owner-red-text{color:#bd4039}.owner-green-text{color:#397d4e}.building.burned .owner{color:#fff}.legacy{font-size:10px;font-weight:800;margin-top:3px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.72);color:#4b4439;display:inline-block}.building.burned .legacy{background:rgba(255,255,255,.14);color:#fff}
+.building{min-height:136px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between;position:relative}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building.owner-blue:not(.ruins):not(.burned){background:#dceeff;border:2px solid #3f9be5}.building.owner-red:not(.ruins):not(.burned){background:#ffe1df;border:2px solid #d9554d}.building.owner-green:not(.ruins):not(.burned){background:#e0f3e5;border:2px solid #4f9f66}.building.owner-blue.damaged,.building.owner-red.damaged,.building.owner-green.damaged{border-color:var(--warn);box-shadow:inset 0 0 0 2px rgba(185,122,45,.2)}.building.ruins.owner-blue{background:repeating-linear-gradient(135deg,#d8eaf8,#d8eaf8 8px,#b8d6ee 8px,#b8d6ee 16px);border:2px solid #3f9be5}.building.ruins.owner-red{background:repeating-linear-gradient(135deg,#f5dcda,#f5dcda 8px,#eabdb9 8px,#eabdb9 16px);border:2px solid #d9554d}.building.ruins.owner-green{background:repeating-linear-gradient(135deg,#dcefe1,#dcefe1 8px,#bddfc6 8px,#bddfc6 16px);border:2px solid #4f9f66}.building.burned.owner-blue{box-shadow:inset 0 0 0 3px #3f9be5}.building.burned.owner-red{box-shadow:inset 0 0 0 3px #d9554d}.building.burned.owner-green{box-shadow:inset 0 0 0 3px #4f9f66}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:800;margin-top:4px}.owner-blue-text{color:#2f83c4}.owner-red-text{color:#bd4039}.owner-green-text{color:#397d4e}.building.burned .owner{color:#fff}.legacy{font-size:10px;font-weight:800;margin-top:3px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.72);color:#4b4439;display:inline-block}.building.burned .legacy{background:rgba(255,255,255,.14);color:#fff}.material{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 6px;border-radius:6px;font-size:10px;font-weight:800;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.76)}.material.wood{background:#f1dfbd;border-color:#b58b52}.material.brick{background:#ead0c7;border-color:#a95d4f}.material.anchored{background:#e1d5cc;border-color:#7c6a5d}.material.steel{background:#dce3e8;border-color:#71808b}.retrofits{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.retrofit{font-size:9px;font-weight:800;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.13)}.retrofit.quake{border-color:#7563a8}.retrofit.fireproof{border-color:#b45f36}.building.burned .material,.building.burned .retrofit{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35)}
 .side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}
 .market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px}.market-card button{margin-top:8px;width:100%}
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.8</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.9</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -218,12 +218,12 @@ function makeBuilding(projectId, construction, owner=null){
 function initialState(){
   const gs=shuffle(GROUNDS);
   const blocks={
-    A:{id:'A',ground:gs[0],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),makeBuilding('shops','wood')]},
-    B:{id:'B',ground:gs[1],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('warehouse','brick'),null]},
-    C:{id:'C',ground:gs[2],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('factory','brick'),makeBuilding('tenement','wood')]},
-    D:{id:'D',ground:gs[3],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','wood'),null]},
-    E:{id:'E',ground:gs[4],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('clinic','brick'),makeBuilding('warehouse','brick')]},
-    F:{id:'F',ground:gs[5],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),null]}
+    A:{id:'A',ground:gs[0],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),makeBuilding('shops','wood'),null,null]},
+    B:{id:'B',ground:gs[1],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('warehouse','brick'),null,null,null]},
+    C:{id:'C',ground:gs[2],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('factory','brick'),makeBuilding('tenement','wood'),null,null]},
+    D:{id:'D',ground:gs[3],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','wood'),null,null,null]},
+    E:{id:'E',ground:gs[4],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('clinic','brick'),makeBuilding('warehouse','brick'),null,null]},
+    F:{id:'F',ground:gs[5],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),null,null,null]}
   };
   blocks.E.buildings[0].pop=3;
   return {
@@ -306,9 +306,19 @@ function renderBoard(){
         const p=proj(x.projectId), s=buildingStats(x);
         const ownerClass=x.owner===0?'owner-blue':x.owner===1?'owner-red':x.owner===2?'owner-green':'';
         const ownerTextClass=x.owner===0?'owner-blue-text':x.owner===1?'owner-red-text':x.owner===2?'owner-green-text':'';
-        bd.className=`building ${ownerClass} ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
+        const materialInfo={
+          wood:{icon:'🪵',short:'Дерево'},
+          brick:{icon:'🧱',short:'Кирпич'},
+          anchored:{icon:'⚓',short:'Усил. кладка'},
+          steel:{icon:'▦',short:'Сталь'}
+        }[x.construction];
+        const retrofitBadges=[
+          x.quakeRetrofit?'<span class="retrofit quake">↔ Сейсмо +2</span>':'',
+          x.fireRetrofit?'<span class="retrofit fireproof">🔥 Огнезащита +1</span>':''
+        ].filter(Boolean).join('');
+        bd.className=`building ${ownerClass} construction-${x.construction} ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
         const owner=x.owner!=null?`<div class="owner ${ownerTextClass}">● ${state.players[x.owner].name}</div><div class="legacy">Если останется целым: +${p.prestige} очк.</div>`:'';
-        bd.innerHTML=`<div><div class="bn">${x.status==='collapsed'?'РУИНЫ — ':x.burned?'СГОРЕЛО — ':''}${p.name}</div><div class="meta">${CONSTRUCTIONS[x.construction].name}<br>Земл. ${s.quake} · Огонь ${s.fire} · Горючесть ${p.fireLoad}</div></div><div>${owner}<div class="pop">👥 ${x.pop}${x.trapped?` · 🧱 под завалами ${x.trapped}`:''}</div></div>`;
+        bd.innerHTML=`<div><div class="bn">${x.status==='collapsed'?'РУИНЫ — ':x.burned?'СГОРЕЛО — ':''}${p.name}</div><div class="material ${x.construction}">${materialInfo.icon} ${materialInfo.short}</div><div class="meta">Земл. ${s.quake} · Огонь ${s.fire} · Горючесть ${p.fireLoad}</div>${retrofitBadges?`<div class="retrofits">${retrofitBadges}</div>`:''}</div><div>${owner}<div class="pop">👥 ${x.pop}${x.trapped?` · 🧱 под завалами ${x.trapped}`:''}</div></div>`;
       }
       bs.appendChild(bd);
     });
@@ -370,7 +380,7 @@ document.getElementById('confirmBuild').onclick=()=>{
 };
 
 document.getElementById('confirmRetrofit').onclick=()=>{
-  if(!ensureAction())return;const slot=+document.getElementById('retrofitSlot').value,type=document.getElementById('retrofitType').value,b=state.blocks[selectedBlock].buildings[slot];if(!b){alert('Выберите существующее здание.');return}const cost=type==='quake'?3:2;if(!ensureCapital(cost))return;if(type==='quake'&&b.quakeRetrofit){alert('Сейсмическое укрепление уже есть.');return}if(type==='fire'&&b.fireRetrofit){alert('Противопожарное улучшение уже есть.');return}snapshot();current().capital-=cost;if(type==='quake'){b.quakeRetrofit=true;b.investors.quake=state.currentPlayer}else{b.fireRetrofit=true;b.investors.fire=state.currentPlayer}spendAction();log(`${current().name} укрепил ${proj(b.projectId).name} в квартале ${selectedBlock}.`);closeModals();render();
+  if(!ensureAction())return;const slot=+document.getElementById('retrofitSlot').value,type=document.getElementById('retrofitType').value,b=state.blocks[selectedBlock].buildings[slot];if(!b){alert('Выберите существующее здание.');return}const cost=type==='quake'?3:2;if(!ensureCapital(cost))return;if(type==='quake'&&b.quakeRetrofit){alert('Сейсмическое укрепление уже есть.');return}if(type==='fire'&&b.fireRetrofit){alert('Противопожарное улучшение уже есть.');return}snapshot();current().capital-=cost;if(type==='quake'){b.quakeRetrofit=true;b.investors.quake=state.currentPlayer}else{b.fireRetrofit=true;b.investors.fire=state.currentPlayer}spendAction();log(`${current().name} укрепил ${proj(b.projectId).name} в квартале ${selectedBlock}: ${type==='quake'?'сейсмическое усиление (+2)':'противопожарная защита (+1)'}.`);closeModals();render();
 };
 
 document.getElementById('confirmInfra').onclick=()=>{
@@ -505,12 +515,12 @@ function finishGame(){
 
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.8\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v08_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.9\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v09_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v08',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v08');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v09',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v09');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
