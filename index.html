@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.2</title>
+<title>San Francisco 1906 — Prototype v0.3</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -50,7 +50,7 @@ button{cursor:pointer}
 .side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}
 .market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px}.market-card button{margin-top:8px;width:100%}
-.log{max-height:260px;overflow:auto;background:#25211d;color:#f1e7d7;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45}.log div+div{margin-top:5px}.log .accent{color:#ffd49a}.log .bad{color:#ff9f94}.log .good{color:#a8e0b3}
+.log{max-height:260px;overflow:auto;background:#25211d;color:#f1e7d7;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45}.log div+div{margin-top:5px}.log .accent{color:#ffd49a}.log .bad{color:#ff9f94}.log .good{color:#a8e0b3}.log .player-blue{color:#78c7ff;font-weight:700}.log .player-red{color:#ff8f86;font-weight:700}.log .player-green{color:#8fe0a4;font-weight:700}.action-wallet{margin:8px 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff7e8;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.action-wallet b{font-size:14px}
 .footer-note{font-size:11px;color:var(--muted);text-align:center;margin:14px 0 4px}
 .modal{position:fixed;inset:0;background:rgba(32,28,24,.55);display:none;align-items:flex-end;justify-content:center;z-index:20;padding:12px}.modal.open{display:flex}.sheet{width:min(720px,100%);max-height:88vh;overflow:auto;background:var(--paper);border-radius:18px 18px 10px 10px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3);padding:16px}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.sheet h3{font-family:Georgia,serif;margin:0}.close{border:none;background:transparent;font-size:24px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}.field select,.field input{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}.stack{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.dev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.dev-grid button{font-size:12px}.notice{border-left:4px solid var(--accent2);background:#edf3f3;padding:10px;border-radius:8px;font-size:12px;line-height:1.4;margin-bottom:10px}
 @media(max-width:980px){.statusbar{grid-template-columns:repeat(3,1fr)}.main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .panel:last-child{grid-column:1/-1}}
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.2</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.3</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -97,6 +97,7 @@ button{cursor:pointer}
         <h3 id="selectedTitle">Квартал A</h3>
         <div id="selectedInfo" class="small"></div>
         <h4>Действия</h4>
+        <div class="action-wallet" id="actionWallet"></div>
         <div class="action-grid" id="actions"></div>
         <div class="stack">
           <button class="btn secondary" id="endTurnBtn">Завершить ход</button>
@@ -320,14 +321,16 @@ function renderSelected(){
 function actionButton(title,sub,handler,disabled=false){const b=document.createElement('button');b.className='action-btn';b.disabled=disabled;b.innerHTML=`<strong>${title}</strong><span>${sub}</span>`;b.onclick=handler;return b}
 function renderActions(){
   const el=document.getElementById('actions');el.innerHTML='';
-  if(state.finished){el.innerHTML='<div class="small">Партия завершена.</div>';return}
+  const wallet=document.getElementById('actionWallet');
+  if(state.finished){wallet.innerHTML='<span>Партия завершена</span>';el.innerHTML='<div class="small">Партия завершена.</div>';return}
+  wallet.innerHTML=`<span>Текущий игрок: <b>${current().name}</b></span><span>Капитал: <b>${current().capital}</b> · Действия: <b>${state.actionsLeft}</b></span>`;
   if(state.phase==='build'){
-    el.appendChild(actionButton('Построить','проект с рынка',()=>openBuild(),state.actionsLeft<=0));
-    el.appendChild(actionButton('Укрепить здание','сейсмика или пожар',()=>openModal('retrofitModal'),state.actionsLeft<=0));
-    el.appendChild(actionButton('Инфраструктура','укрепить воду или газ',()=>openModal('infraModal'),state.actionsLeft<=0));
-    el.appendChild(actionButton('Службы','финансировать городские службы',()=>openModal('fundModal'),state.actionsLeft<=0));
-    el.appendChild(actionButton('Исследовать грунт','1 действие',surveyGround,state.actionsLeft<=0||state.blocks[selectedBlock].groundRevealed));
-    el.appendChild(actionButton('Получить капитал','+4 капитала',raiseCapital,state.actionsLeft<=0));
+    el.appendChild(actionButton('Построить','1 действие · цена проекта + конструкция',()=>openBuild(),state.actionsLeft<=0));
+    el.appendChild(actionButton('Укрепить здание','1 действие · 3 / 2 капитала',()=>openModal('retrofitModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Инфраструктура','1 действие · 2 капитала',()=>openModal('infraModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Службы','1 действие · 3 капитала',()=>openModal('fundModal'),state.actionsLeft<=0));
+    el.appendChild(actionButton('Исследовать грунт','1 действие · 1 капитал',surveyGround,state.actionsLeft<=0||current().capital<1||state.blocks[selectedBlock].groundRevealed));
+    el.appendChild(actionButton('Привлечь капитал','1 действие · +4 капитала',raiseCapital,state.actionsLeft<=0));
   } else {
     const b=state.blocks[selectedBlock];
     const firePower=b.water==='ok'?state.fireDept:1;
@@ -340,7 +343,7 @@ function renderActions(){
   }
 }
 function renderMarket(){const el=document.getElementById('market');el.innerHTML='';state.market.forEach(id=>{const p=proj(id),d=document.createElement('div');d.className='market-card';d.innerHTML=`<div class="top"><div class="title">${p.name}</div><b>${p.base}</b></div><div class="attrs">Престиж ${p.prestige} · Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}</div><button class="btn">Выбрать для строительства</button>`;d.querySelector('button').onclick=()=>openBuild(id);el.appendChild(d)})}
-function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.slice(-80).forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';d.className=cls;d.textContent=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');el.appendChild(d)});el.scrollTop=el.scrollHeight}
+function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.slice(-80).forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';const txt=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');if(txt.startsWith('Синий '))cls='player-blue';else if(txt.startsWith('Красный '))cls='player-red';else if(txt.startsWith('Зелёный '))cls='player-green';d.className=cls;d.textContent=txt;el.appendChild(d)});el.scrollTop=el.scrollHeight}
 
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModals(){document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'))}
@@ -349,6 +352,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if
 
 function openBuild(preselect){
   const b=state.blocks[selectedBlock];
+  document.querySelector('#buildModal .notice').textContent=`Капитал текущего игрока: ${current().capital}. Выберите проект, свободное место и тип конструкции. Цена = цена проекта + стоимость конструкции.`;
   const empty=b.buildings.map((x,i)=>x?null:i).filter(x=>x!=null);
   if(!empty.length){alert('В этом квартале нет свободного места.');return}
   const psel=document.getElementById('buildProject');psel.innerHTML='';state.market.forEach(id=>{const p=proj(id),o=document.createElement('option');o.value=id;o.textContent=`${p.name} — ${p.base}`;psel.appendChild(o)});if(preselect&&state.market.includes(preselect))psel.value=preselect;
@@ -376,9 +380,15 @@ document.getElementById('confirmFund').onclick=()=>{
 
 function prepareRetrofitSelect(){const s=document.getElementById('retrofitSlot');s.innerHTML='';state.blocks[selectedBlock].buildings.forEach((b,i)=>{if(b){const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${proj(b.projectId).name}`;s.appendChild(o)}})}
 document.getElementById('retrofitModal').addEventListener('click',()=>{});
-const oldOpenModal=openModal;openModal=function(id){if(id==='retrofitModal')prepareRetrofitSelect();document.getElementById(id).classList.add('open')}
+const oldOpenModal=openModal;openModal=function(id){
+  if(id==='retrofitModal')prepareRetrofitSelect();
+  if(id==='retrofitModal')document.querySelector('#retrofitModal h3').textContent=`Укрепить здание · капитал ${current().capital}`;
+  if(id==='infraModal')document.querySelector('#infraModal h3').textContent=`Укрепить инфраструктуру · капитал ${current().capital}`;
+  if(id==='fundModal')document.querySelector('#fundModal h3').textContent=`Финансировать службу · капитал ${current().capital}`;
+  document.getElementById(id).classList.add('open')
+}
 
-function surveyGround(){if(!ensureAction())return;const b=state.blocks[selectedBlock];if(b.groundRevealed)return;snapshot();b.groundRevealed=true;spendAction();log(`${current().name} исследовал грунт квартала ${selectedBlock}: ${b.ground.name}.`);render()}
+function surveyGround(){if(!ensureAction()||!ensureCapital(1))return;const b=state.blocks[selectedBlock];if(b.groundRevealed)return;snapshot();current().capital-=1;b.groundRevealed=true;spendAction();log(`${current().name} исследовал грунт квартала ${selectedBlock}: ${b.ground.name}. Стоимость: 1 капитал.`);render()}
 function raiseCapital(){if(!ensureAction())return;snapshot();current().capital+=4;spendAction();log(`${current().name} привлёк дополнительный капитал: +4.`);render()}
 
 function endTurn(){
@@ -492,12 +502,12 @@ function finishGame(){
 
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.2\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v02_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.3\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарная служба: ${state.fireDept}\nСпасатели: ${state.engDept}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v03_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v02',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v02');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v03',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v03');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
