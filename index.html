@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.12</title>
+<title>San Francisco 1906 — Prototype v0.13</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.12</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.13</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -111,7 +111,7 @@ button{cursor:pointer}
         <div class="small">Базовые здания доступны всегда. Построить можно не более одного здания за раунд.</div>
         <div class="market" id="catalog"></div>
         <div class="market-sep">Спецпроекты</div>
-        <div class="small">Чтобы забрать карту, потратьте 1 действие. Максимум 2 нереализованных проекта.</div>
+        <div class="small">Чтобы забрать карту, потратьте 1 действие. Максимум 2 нереализованных проекта. В конце каждого раунда левая карта уходит, остальные сдвигаются, справа приходит новая.</div>
         <div class="market" id="specialMarket"></div>
         <div class="market-sep">Портфель текущего игрока</div>
         <div class="market" id="portfolio"></div>
@@ -317,6 +317,17 @@ function playerIncome(pid){
 }
 function refillSpecialMarketAt(index){
   if(state.specialDeck.length)state.specialMarket.splice(index,0,state.specialDeck.shift());
+}
+function rotateSpecialMarket(){
+  if(!state.specialMarket.length)return;
+  const expired=state.specialMarket.shift();
+  state.specialDiscard.push(expired);
+  let incoming=null;
+  if(state.specialDeck.length){
+    incoming=state.specialDeck.shift();
+    state.specialMarket.push(incoming);
+  }
+  log(`Рынок спецпроектов обновлён: «${special(expired).name}» ушёл${incoming?`, открыта «${special(incoming).name}»`:', новых карт в колоде больше нет'}.`,'ACCENT');
 }
 function takeSpecialProject(id){
   if(!ensureAction())return;
@@ -568,6 +579,7 @@ function endTurn(){
   if(state.currentPlayer<2){state.currentPlayer++;state.actionsLeft=2;log(`Ход: ${current().name}.`);render();return}
   if(state.phase==='build'){
     if(state.buildRound<3){
+      rotateSpecialMarket();
       state.buildRound++;state.currentPlayer=0;state.actionsLeft=2;state.players.forEach((p,i)=>{const inc=playerIncome(i);p.capital+=inc;log(`${p.name} получает ${inc} капитала в начале раунда ${state.buildRound}.`)});log(`Начался раунд ${state.buildRound} первой фазы.`,'ACCENT');
     } else {state.actionsLeft=0;log('Все игроки завершили подготовку. Можно запускать землетрясение.','ACCENT')}
   } else if(state.phase==='emergency') {
@@ -681,12 +693,12 @@ function exportGame(){
   const fireSummary=serviceBuildings('firehouse').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const engSummary=serviceBuildings('publicworks').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const portfolios=state.players.map(p=>`${p.name}: ${p.projects.length?p.projects.map(id=>special(id).name).join(', '):'пусто'}`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.12\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v012_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.13\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v013_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v012',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v012');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v013',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v013');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
