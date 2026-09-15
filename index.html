@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.10</title>
+<title>San Francisco 1906 — Prototype v0.11</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.10</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.11</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -205,6 +205,8 @@ const GROUNDS = [
   {id:'fill', name:'Насыпной грунт / разжижение', stress:2}
 ];
 const PLAYER_COLORS=['Синий','Красный','Зелёный'];
+const MARKET_PROJECTS=['tenement','shops','warehouse','factory'];
+const MUNICIPAL_PROJECTS=['firehouse','clinic','publicworks'];
 let state;
 let undoStack=[];
 let selectedBlock='A';
@@ -231,7 +233,7 @@ function initialState(){
     phase:'build', buildRound:1, emergencyRound:0, currentPlayer:0, actionsLeft:2,
     players:PLAYER_COLORS.map((name,i)=>({id:i,name,capital:8,score:0,prestige:0,merit:0,incomeBonus:0})),
     blocks, casualties:0, safe:0,
-    market:shuffle(PROJECTS.map(p=>p.id)).slice(0,3),
+    market:shuffle(MARKET_PROJECTS).slice(0,3),
     log:['Началась партия. Фаза I: развитие района.'], finished:false
   };
 }
@@ -262,7 +264,7 @@ function serviceBuildings(projectId){
 function homeNeedsService(blockId,type){
   const bl=state.blocks[blockId];
   if(type==='fire')return bl.fire>0;
-  return bl.buildings.some(b=>b&&b.trapped>0);
+  return bl.buildings.some(b=>b&&b.trapped>0)||bl.water==='broken'||bl.gas==='leak';
 }
 function serviceSource(targetId,type){
   const projectId=type==='fire'?'firehouse':'publicworks';
@@ -283,9 +285,8 @@ function playerIncome(pid){
   return inc;
 }
 function refillMarket(projectId){
-  const choices=PROJECTS.map(p=>p.id);
   const idx=state.market.indexOf(projectId);
-  if(idx>=0) state.market[idx]=choices[Math.floor(Math.random()*choices.length)];
+  if(idx>=0) state.market[idx]=MARKET_PROJECTS[Math.floor(Math.random()*MARKET_PROJECTS.length)];
 }
 
 function render(){
@@ -386,7 +387,20 @@ function renderActions(){
     el.appendChild(actionButton('Эвакуировать',`до ${evacPower} жителей · склады +${warehouseEvacBonus(selectedBlock)}`,evacuate,state.actionsLeft<=0||!canEvacuate(selectedBlock)));
   }
 }
-function renderMarket(){const el=document.getElementById('market');el.innerHTML='';state.market.forEach(id=>{const p=proj(id),d=document.createElement('div');d.className='market-card';const extra=p.id==='warehouse'?' · Эвакуация +1':'';d.innerHTML=`<div class="top"><div class="title">${p.name}</div><b>${p.base}</b></div><div class="attrs">Строительство +1 очк. · В конце, если целое +${p.prestige}<br>Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}${extra}</div><button class="btn">Выбрать для строительства</button>`;d.querySelector('button').onclick=()=>openBuild(id);el.appendChild(d)})}
+function renderMarket(){
+  const el=document.getElementById('market');el.innerHTML='';
+  const heading=(text)=>{const h=document.createElement('div');h.className='small';h.style.fontWeight='800';h.style.margin='4px 0';h.textContent=text;el.appendChild(h)};
+  const card=(id,municipal=false)=>{
+    const p=proj(id),d=document.createElement('div');d.className='market-card';
+    const extra=p.id==='warehouse'?' · Эвакуация +1':p.id==='firehouse'?' · Локальное тушение':p.id==='publicworks'?' · Локальные инженеры':p.id==='clinic'?' · Бонус к спасению':'';
+    d.innerHTML=`<div class="top"><div class="title">${p.name}${municipal?' · всегда доступно':''}</div><b>${p.base}</b></div><div class="attrs">Строительство +1 очк. · В конце, если целое +${p.prestige}<br>Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}${extra}</div><button class="btn">Выбрать для строительства</button>`;
+    d.querySelector('button').onclick=()=>openBuild(id);el.appendChild(d);
+  };
+  heading('Обычный рынок');
+  state.market.forEach(id=>card(id,false));
+  heading('Муниципальные проекты');
+  MUNICIPAL_PROJECTS.forEach(id=>card(id,true));
+}
 function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';const txt=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');if(txt.startsWith('Синий '))cls='player-blue';else if(txt.startsWith('Красный '))cls='player-red';else if(txt.startsWith('Зелёный '))cls='player-green';d.className=cls;d.textContent=txt;el.appendChild(d)});el.scrollTop=el.scrollHeight}
 
 function openModal(id){document.getElementById(id).classList.add('open')}
@@ -399,7 +413,7 @@ function openBuild(preselect){
   document.querySelector('#buildModal .notice').textContent=`Капитал текущего игрока: ${current().capital}. Выберите проект, свободное место и тип конструкции. Цена = цена проекта + стоимость конструкции.`;
   const empty=b.buildings.map((x,i)=>x?null:i).filter(x=>x!=null);
   if(!empty.length){alert('В этом квартале нет свободного места.');return}
-  const psel=document.getElementById('buildProject');psel.innerHTML='';state.market.forEach(id=>{const p=proj(id),o=document.createElement('option');o.value=id;o.textContent=`${p.name} — цена ${p.base} · +1 сейчас / +${p.prestige} в конце`;psel.appendChild(o)});if(preselect&&state.market.includes(preselect))psel.value=preselect;
+  const psel=document.getElementById('buildProject');psel.innerHTML='';const available=[...state.market,...MUNICIPAL_PROJECTS];available.forEach(id=>{const p=proj(id),o=document.createElement('option');o.value=id;o.textContent=`${p.name} — цена ${p.base} · +1 сейчас / +${p.prestige} в конце${MUNICIPAL_PROJECTS.includes(id)?' · муниципальный':''}`;psel.appendChild(o)});if(preselect&&available.includes(preselect))psel.value=preselect;
   const ssel=document.getElementById('buildSlot');ssel.innerHTML='';empty.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=`Место ${i+1}`;ssel.appendChild(o)});
   const csel=document.getElementById('buildConstruction');csel.innerHTML='';Object.entries(CONSTRUCTIONS).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=`${c.name} (+${c.cost})`;csel.appendChild(o)});
   const upd=()=>{const p=proj(psel.value);document.getElementById('buildTotal').value=p.base+CONSTRUCTIONS[csel.value].cost+' капитала';document.getElementById('buildPoints').value=`+1 сразу · +${p.prestige} в конце, если останется целым`};psel.onchange=upd;csel.onchange=upd;upd();openModal('buildModal');
@@ -564,12 +578,12 @@ function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
   const fireSummary=serviceBuildings('firehouse').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const engSummary=serviceBuildings('publicworks').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.10\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v010_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.11\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v011_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v010',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v010');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v011',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v011');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
