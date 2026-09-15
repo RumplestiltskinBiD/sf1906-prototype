@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.13</title>
+<title>San Francisco 1906 — Prototype v0.14</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.13</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.14</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -120,6 +120,7 @@ button{cursor:pointer}
       <div class="panel section">
         <h3>Журнал партии</h3>
         <div class="log" id="log"></div>
+        <div class="stack"><button class="btn secondary" id="copyLogBtn">Копировать весь лог</button></div>
       </div>
     </div>
   </div>
@@ -688,20 +689,36 @@ function finishGame(){
   state.phase='finished';state.finished=true;log('Партия завершена.','ACCENT');const ranking=[...state.players].sort((a,b)=>b.score-a.score);log(`Победитель: ${ranking[0].name} — ${ranking[0].score} очк.`,'GOOD');render();
 }
 
+async function copyFullLog(){
+  const text=state.log.join('\n');
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta=document.createElement('textarea');
+      ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+    }
+    const btn=document.getElementById('copyLogBtn'),old=btn.textContent;
+    btn.textContent='Скопировано ✓';setTimeout(()=>btn.textContent=old,1400);
+  }catch(e){
+    alert('Не удалось скопировать лог автоматически. Используйте «Экспорт».');
+  }
+}
+
 function exportGame(){
   const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
   const fireSummary=serviceBuildings('firehouse').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const engSummary=serviceBuildings('publicworks').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const portfolios=state.players.map(p=>`${p.name}: ${p.projects.length?p.projects.map(id=>special(id).name).join(', '):'пусто'}`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.13\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v013_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.14\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v014_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v013',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v013');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v014',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v014');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
-document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
+document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('copyLogBtn').onclick=copyFullLog;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
 
 // Dev panel
 function devMut(fn,msg){snapshot();fn();if(msg)log(msg,'ACCENT');render()}
