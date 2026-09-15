@@ -258,7 +258,7 @@ function snapshot(){undoStack.push(deepClone(state)); if(undoStack.length>25)und
 function log(msg,cls=''){state.log.push((cls?`[${cls}] `:'')+msg)}
 function current(){return state.players[state.currentPlayer]}
 function special(id){return SPECIAL_PROJECTS.find(x=>x.id===id)}
-function buildingName(b){return b.specialId?special(b.specialId).name:buildingName(b)}
+function buildingName(b){return b.specialId?special(b.specialId).name:proj(b.projectId).name}
 function buildingIncome(b){return b.incomeOverride!=null?b.incomeOverride:proj(b.projectId).income}
 function buildingFireLoad(b){return b.fireLoadOverride!=null?b.fireLoadOverride:proj(b.projectId).fireLoad}
 function buildingEvac(b){return b.evacOverride!=null?b.evacOverride:(proj(b.projectId).evac||0)}
