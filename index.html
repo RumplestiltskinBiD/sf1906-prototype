@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.14</title>
+<title>San Francisco 1906 — Prototype v0.15</title>
 <style>
 :root{
   --bg:#efe7d7;
@@ -48,7 +48,7 @@ button{cursor:pointer}
 .buildings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .building{min-height:136px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between;position:relative}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building.owner-blue:not(.ruins):not(.burned){background:#dceeff;border:2px solid #3f9be5}.building.owner-red:not(.ruins):not(.burned){background:#ffe1df;border:2px solid #d9554d}.building.owner-green:not(.ruins):not(.burned){background:#e0f3e5;border:2px solid #4f9f66}.building.owner-blue.damaged,.building.owner-red.damaged,.building.owner-green.damaged{border-color:var(--warn);box-shadow:inset 0 0 0 2px rgba(185,122,45,.2)}.building.ruins.owner-blue{background:repeating-linear-gradient(135deg,#d8eaf8,#d8eaf8 8px,#b8d6ee 8px,#b8d6ee 16px);border:2px solid #3f9be5}.building.ruins.owner-red{background:repeating-linear-gradient(135deg,#f5dcda,#f5dcda 8px,#eabdb9 8px,#eabdb9 16px);border:2px solid #d9554d}.building.ruins.owner-green{background:repeating-linear-gradient(135deg,#dcefe1,#dcefe1 8px,#bddfc6 8px,#bddfc6 16px);border:2px solid #4f9f66}.building.burned.owner-blue{box-shadow:inset 0 0 0 3px #3f9be5}.building.burned.owner-red{box-shadow:inset 0 0 0 3px #d9554d}.building.burned.owner-green{box-shadow:inset 0 0 0 3px #4f9f66}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:800;margin-top:4px}.owner-blue-text{color:#2f83c4}.owner-red-text{color:#bd4039}.owner-green-text{color:#397d4e}.building.burned .owner{color:#fff}.legacy{font-size:10px;font-weight:800;margin-top:3px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.72);color:#4b4439;display:inline-block}.building.burned .legacy{background:rgba(255,255,255,.14);color:#fff}.material{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 6px;border-radius:6px;font-size:10px;font-weight:800;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.76)}.material.wood{background:#f1dfbd;border-color:#b58b52}.material.brick{background:#ead0c7;border-color:#a95d4f}.material.anchored{background:#e1d5cc;border-color:#7c6a5d}.material.steel{background:#dce3e8;border-color:#71808b}.retrofits{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.retrofit{font-size:9px;font-weight:800;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.13)}.retrofit.quake{border-color:#7563a8}.retrofit.fireproof{border-color:#b45f36}.building.burned .material,.building.burned .retrofit{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35)}
 .side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
-.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}.service-info{margin:9px 0 2px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#f4efe4;font-size:11px;line-height:1.55}.service-info .okline{color:var(--safe)}.service-info .badline{color:var(--danger)}.service-info b{color:var(--ink)}
 .market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card.special{border-left:4px solid var(--accent2)}.market-card.portfolio{background:#fff7e8}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}.market-card button{margin-top:8px;width:100%}.type-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:999px;background:#e9eeee;color:var(--accent2);margin-bottom:4px}.market-sep{margin:14px 0 7px;font-family:Georgia,serif;font-weight:800;font-size:15px}.portfolio-empty{font-size:11px;color:var(--muted);padding:7px 0}
 .log{max-height:260px;overflow:auto;background:#25211d;color:#f1e7d7;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45}.log div+div{margin-top:5px}.log .accent{color:#ffd49a}.log .bad{color:#ff9f94}.log .good{color:#a8e0b3}.log .player-blue{color:#78c7ff;font-weight:700}.log .player-red{color:#ff8f86;font-weight:700}.log .player-green{color:#8fe0a4;font-weight:700}.action-wallet{margin:8px 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff7e8;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.action-wallet b{font-size:14px}
 .footer-note{font-size:11px;color:var(--muted);text-align:center;margin:14px 0 4px}
@@ -61,7 +61,7 @@ button{cursor:pointer}
 <body>
 <div class="app">
   <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.14</span></div>
+    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.15</span></div>
     <div class="header-actions">
       <button class="btn" id="undoBtn">↶ Отменить</button>
       <button class="btn" id="saveBtn">Сохранить</button>
@@ -282,14 +282,16 @@ function ensureCapital(n){if(current().capital<n){alert('Недостаточн�
 function addScore(playerId,n,reason=''){const p=state.players[playerId];p.score+=n;if(reason)log(`${p.name}: ${n>=0?'+':''}${n} очк. — ${reason}`,n>=0?'GOOD':'BAD')}
 function blockFireLoad(b){return b.buildings.reduce((s,x)=>s+(x&&x.status!=='collapsed'&&!x.burned?buildingFireLoad(x):0),0)}
 function clinicRescueBonus(blockId){
-  const vals=state.blocks[blockId].buildings.filter(b=>b&&b.projectId==='clinic'&&b.status==='intact'&&!b.burned).map(b=>b.clinicBonus||1);
+  const vals=state.blocks[blockId].buildings.filter(b=>b&&b.projectId==='clinic'&&!b.burned&&b.status!=='collapsed').map(b=>b.status==='damaged'?1:(b.clinicBonus||1));
   return vals.length?Math.max(...vals):0;
 }
 function functioningBuilding(b){return b && b.status==='intact' && !b.burned}
+function serviceOperational(b){return !!(b&&!b.burned&&b.status!=='collapsed')}
+function effectiveServiceLevel(b){return serviceOperational(b)?(b.status==='damaged'?1:(b.serviceLevel||1)):0}
 function serviceBuildings(projectId){
   const out=[];
   Object.values(state.blocks).forEach(bl=>bl.buildings.forEach((b,slot)=>{
-    if(functioningBuilding(b)&&b.projectId===projectId)out.push({blockId:bl.id,slot,b,level:b.serviceLevel||1});
+    if(serviceOperational(b)&&b.projectId===projectId)out.push({blockId:bl.id,slot,b,level:effectiveServiceLevel(b),damaged:b.status==='damaged'});
   }));
   return out;
 }
@@ -305,6 +307,40 @@ function serviceSource(targetId,type){
   if(local)return {...local,remote:false};
   const remote=all.filter(x=>x.blockId!==targetId&&!homeNeedsService(x.blockId,type)).sort((a,b)=>b.level-a.level)[0];
   return remote?{...remote,remote:true}:null;
+}
+function serviceUnavailableReason(targetId,type){
+  const projectId=type==='fire'?'firehouse':'publicworks';
+  const all=serviceBuildings(projectId);
+  if(!all.length)return type==='fire'?'нет действующей пожарной части':'нет действующего склада городских работ';
+  const busy=all.filter(x=>x.blockId!==targetId&&homeNeedsService(x.blockId,type));
+  if(busy.length){
+    const places=busy.map(x=>x.blockId).join(', ');
+    return type==='fire'?`пожарные заняты в своём квартале (${places})`:`инженеры заняты авариями в своём квартале (${places})`;
+  }
+  return type==='fire'?'нет доступной пожарной части':'нет доступных инженеров';
+}
+function serviceSourceText(targetId,type){
+  const s=serviceSource(targetId,type);
+  if(!s)return serviceUnavailableReason(targetId,type);
+  const label=type==='fire'?'пожарная часть':'Public Works';
+  return `${label} ${s.blockId} · ур.${s.level}${s.damaged?' · повреждена → работает как ур.1':''}${s.remote?' · помощь из другого квартала':' · местная'}`;
+}
+function clinicStatusText(blockId){
+  const clinics=state.blocks[blockId].buildings.filter(b=>b&&b.projectId==='clinic');
+  if(!clinics.length)return 'клиники нет';
+  const best=clinics.find(b=>!b.burned&&b.status!=='collapsed');
+  if(!best)return 'клиника разрушена / сгорела';
+  if(best.status==='damaged')return 'клиника повреждена · бонус +1';
+  return `клиника работает · бонус +${best.clinicBonus||1}`;
+}
+function trappedInBlock(blockId){return state.blocks[blockId].buildings.reduce((n,b)=>n+(b?b.trapped:0),0)}
+function evacUnavailableReason(blockId){
+  const bl=state.blocks[blockId];
+  const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);
+  if(!has)return 'нет жителей, которых можно эвакуировать';
+  const threat=bl.fire>0||neighbors(blockId).some(n=>state.blocks[n].fire>=2);
+  if(!threat)return 'нет непосредственной угрозы пожара';
+  return 'эвакуация недоступна';
 }
 function warehouseEvacBonus(blockId){
   return state.blocks[blockId].buildings.reduce((n,b)=>n+(functioningBuilding(b)&&b.projectId==='warehouse'?buildingEvac(b):0),0);
@@ -343,8 +379,8 @@ function render(){
   document.getElementById('roundStat').textContent=state.phase==='build'?`${state.buildRound} / 3`:state.phase==='emergency'?`${state.emergencyRound} / 4`:'—';
   document.getElementById('playerStat').textContent=state.finished?'—':current().name;
   const fireServices=serviceBuildings('firehouse'), engServices=serviceBuildings('publicworks');
-  document.getElementById('fireDeptStat').textContent=fireServices.length?fireServices.map(x=>`${x.blockId}:ур.${x.level}`).join(' · '):'нет';
-  document.getElementById('engDeptStat').textContent=engServices.length?engServices.map(x=>`${x.blockId}:ур.${x.level}`).join(' · '):'нет';
+  document.getElementById('fireDeptStat').textContent=fireServices.length?fireServices.map(x=>`${x.blockId}:ур.${x.level}${x.damaged?'⚠':''}`).join(' · '):'нет';
+  document.getElementById('engDeptStat').textContent=engServices.length?engServices.map(x=>`${x.blockId}:ур.${x.level}${x.damaged?'⚠':''}`).join(' · '):'нет';
   document.getElementById('casualtyStat').textContent=state.casualties;
   renderPlayers();renderBoard();renderSelected();renderActions();renderMarket();renderLog();
   document.getElementById('earthquakeBtn').style.display=(state.phase==='build'&&state.buildRound>=3&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
@@ -390,10 +426,10 @@ function renderBoard(){
         const retrofitBadges=[
           x.quakeRetrofit?'<span class="retrofit quake">↔ Сейсмо +2</span>':'',
           x.fireRetrofit?'<span class="retrofit fireproof">🔥 Огнезащита +1</span>':'',
-          x.projectId==='firehouse'? `<span class="retrofit">🚒 Часть ур.${x.serviceLevel||1}</span>`:'',
-          x.projectId==='publicworks'? `<span class="retrofit">🛠 Инженеры ур.${x.serviceLevel||1}</span>`:'',
+          x.projectId==='firehouse'? `<span class="retrofit">🚒 ${serviceOperational(x)?`Часть ур.${effectiveServiceLevel(x)}${x.status==='damaged'?' ⚠':''}`:'Часть не работает'}</span>`:'',
+          x.projectId==='publicworks'? `<span class="retrofit">🛠 ${serviceOperational(x)?`Инженеры ур.${effectiveServiceLevel(x)}${x.status==='damaged'?' ⚠':''}`:'Инженеры не работают'}</span>`:'',
           x.projectId==='warehouse'? `<span class="retrofit">🚚 Эвакуация +${buildingEvac(x)}</span>`:'',
-          x.projectId==='clinic'? `<span class="retrofit">🏥 Спасение +${x.clinicBonus||1}</span>`:'',
+          x.projectId==='clinic'? `<span class="retrofit">🏥 ${serviceOperational(x)?`Спасение +${x.status==='damaged'?1:(x.clinicBonus||1)}${x.status==='damaged'?' ⚠':''}`:'Клиника не работает'}</span>`:'',
           x.programId? `<span class="retrofit">★ ${special(x.programId).name}</span>`:'',
           x.specialId? `<span class="retrofit">★ Спецпроект</span>`:''
         ].filter(Boolean).join('');
@@ -410,7 +446,14 @@ function renderSelected(){
   const b=state.blocks[selectedBlock];
   document.getElementById('selectedTitle').textContent=`Квартал ${selectedBlock}`;
   const g=(b.groundRevealed||state.phase!=='build')?`${b.ground.name} (+${b.ground.stress})`:'не исследован';
-  document.getElementById('selectedInfo').innerHTML=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':b.gas==='leak'?'утечка':'перекрыт'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
+  let html=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':b.gas==='leak'?'утечка':'перекрыт'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
+  if(state.phase==='emergency'){
+    const fire=serviceSource(selectedBlock,'fire'),eng=serviceSource(selectedBlock,'eng');
+    const fireText=fire?serviceSourceText(selectedBlock,'fire'):serviceUnavailableReason(selectedBlock,'fire');
+    const engText=eng?serviceSourceText(selectedBlock,'eng'):serviceUnavailableReason(selectedBlock,'eng');
+    html+=`<div class='service-info'><b>Доступные службы для квартала ${selectedBlock}</b><br><span class='${fire?'okline':'badline'}'>🚒 ${fireText}</span><br><span class='${eng?'okline':'badline'}'>🛠 ${engText}</span><br><span>🏥 ${clinicStatusText(selectedBlock)}</span><br><span>🧱 Под завалами: ${trappedInBlock(selectedBlock)}</span></div>`;
+  }
+  document.getElementById('selectedInfo').innerHTML=html;
 }
 function actionButton(title,sub,handler,disabled=false){const b=document.createElement('button');b.className='action-btn';b.disabled=disabled;b.innerHTML=`<strong>${title}</strong><span>${sub}</span>`;b.onclick=handler;return b}
 function renderActions(){
@@ -434,11 +477,18 @@ function renderActions(){
     const clinicBonus=clinicRescueBonus(selectedBlock);
     const rescuePower=engSvc?engSvc.level+clinicBonus:0;
     const evacPower=2+warehouseEvacBonus(selectedBlock);
-    el.appendChild(actionButton('Тушить пожар',fireSvc?`до ${firePower} ур. · часть ${fireSvc.blockId} ур.${fireSvc.level}${fireSvc.remote?' (помощь)':''}`:'нет доступной пожарной части',fightFire,state.actionsLeft<=0||b.fire<=0||!fireSvc));
-    el.appendChild(actionButton('Спасать из завалов',engSvc?`до ${rescuePower} жителей · инженеры ${engSvc.blockId} ур.${engSvc.level}${clinicBonus?` + клиника ${clinicBonus}`:''}${engSvc.remote?' (помощь)':''}`:'нет доступных инженеров',rescue,state.actionsLeft<=0||!engSvc||!b.buildings.some(x=>x&&x.trapped>0)));
-    el.appendChild(actionButton('Чинить водопровод',engSvc?`инженеры ${engSvc.blockId}${engSvc.remote?' (помощь)':''}`:'нет доступных инженеров',repairWater,state.actionsLeft<=0||!engSvc||b.water==='ok'));
-    el.appendChild(actionButton('Перекрыть газ',engSvc?`инженеры ${engSvc.blockId}${engSvc.remote?' (помощь)':''}`:'нет доступных инженеров',shutOffGas,state.actionsLeft<=0||!engSvc||b.gas!=='leak'));
-    el.appendChild(actionButton('Эвакуировать',`до ${evacPower} жителей · склады +${warehouseEvacBonus(selectedBlock)}`,evacuate,state.actionsLeft<=0||!canEvacuate(selectedBlock)));
+    const hasTrapped=trappedInBlock(selectedBlock)>0;
+    const fireSub=b.fire<=0?'недоступно: в квартале нет пожара':!fireSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'fire')}`:`до ${firePower} ур. · часть ${fireSvc.blockId} ур.${fireSvc.level}${fireSvc.damaged?' ⚠ повреждена':''}${fireSvc.remote?' · помощь':''}`;
+    const rescueSub=!hasTrapped?'недоступно: нет людей под завалами':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`до ${rescuePower} жителей · инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠ повреждены':''}${clinicBonus?` + клиника ${clinicBonus}`:''}${engSvc.remote?' · помощь':''}`;
+    const waterSub=b.water==='ok'?'недоступно: водопровод работает':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠':''}${engSvc.remote?' · помощь':''}`;
+    const gasSub=b.gas!=='leak'?'недоступно: нет утечки газа':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠':''}${engSvc.remote?' · помощь':''}`;
+    const canEvac=canEvacuate(selectedBlock);
+    const evacSub=canEvac?`до ${evacPower} жителей · склады +${warehouseEvacBonus(selectedBlock)}`:`недоступно: ${evacUnavailableReason(selectedBlock)}`;
+    el.appendChild(actionButton('Тушить пожар',fireSub,fightFire,state.actionsLeft<=0||b.fire<=0||!fireSvc));
+    el.appendChild(actionButton('Спасать из завалов',rescueSub,rescue,state.actionsLeft<=0||!engSvc||!hasTrapped));
+    el.appendChild(actionButton('Чинить водопровод',waterSub,repairWater,state.actionsLeft<=0||!engSvc||b.water==='ok'));
+    el.appendChild(actionButton('Перекрыть газ',gasSub,shutOffGas,state.actionsLeft<=0||!engSvc||b.gas!=='leak'));
+    el.appendChild(actionButton('Эвакуировать',evacSub,evacuate,state.actionsLeft<=0||!canEvac));
   }
 }
 function renderMarket(){
@@ -679,7 +729,7 @@ function finishGame(){
   let unresolved=0;
   Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{if(b&&b.trapped>0){unresolved+=b.trapped;b.trapped=0}}));
   if(unresolved>0){state.casualties+=unresolved;log(`После окончания чрезвычайной фазы под завалами осталось ${unresolved}. Они считаются погибшими.`,'BAD')}
-  state.players.forEach(p=>{if(state.casualties){p.score-=state.casualties;log(`${p.name}: −${state.casualties} очк. за общие потери.`,'BAD')}});
+  if(state.casualties)log(`Общие потери: ${state.casualties}. В текущей версии погибшие не отнимают победные очки.`,'ACCENT');
   Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{
     if(!b)return;
     if(b.owner!=null && b.status==='intact' && !b.burned){const pts=buildingFinalPoints(b);addScore(b.owner,pts,`проект «${buildingName(b)}» остался целым`)}
@@ -710,12 +760,12 @@ function exportGame(){
   const fireSummary=serviceBuildings('firehouse').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const engSummary=serviceBuildings('publicworks').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
   const portfolios=state.players.map(p=>`${p.name}: ${p.projects.length?p.projects.map(id=>special(id).name).join(', '):'пусто'}`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.14\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v014_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.15\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
+  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v015_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-function save(){localStorage.setItem('sf1906_v014',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v014');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
+function save(){localStorage.setItem('sf1906_v015',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
+function load(){const x=localStorage.getItem('sf1906_v015');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
 function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
 function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
 document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('copyLogBtn').onclick=copyFullLog;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
