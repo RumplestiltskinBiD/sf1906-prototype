@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.17</title>
+  <title>San Francisco 1906 — Prototype v0.18</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.17</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.18</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -62,10 +62,11 @@
           <div>
             <div class="eyebrow">DEVELOPMENT PHASE</div>
             <h2>Город</h2>
-            <p>Выигранные проекты можно запустить в строительство: выберите проект в Офисе, затем район. В v0.17 реально учитываются Land Value, свободные площадки, капитал и 1 представитель.</p>
+            <p>После покупки земли стройке нужны Lumber, Masonry и Steel. Поставка материалов не тратит представителя; крупным проектам может понадобиться временное хранение или завершённый Warehouse.</p>
           </div>
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
+        <div class="resource-supply" id="resourceSupply" aria-label="Цены ресурсов"></div>
         <div class="construction-mode" id="constructionMode"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
@@ -94,7 +95,7 @@
             <g class="district" data-district="sunset"><polygon points="105,270 205,250 285,390 270,535 135,500 85,350"/><text x="182" y="404">Western</text><text x="182" y="427">Expansion</text></g>
             <g id="districtMetaLayer"></g>
             <g id="constructionLayer"></g>
-            <g class="park-shape"><rect x="120" y="255" width="265" height="78" rx="28"/><text x="252" y="300">Golden Gate Park</text></g>
+            <g class="park-shape"><rect x="132" y="548" width="250" height="36" rx="16"/><text x="257" y="572">Golden Gate Park</text></g>
             <g class="bay-label"><text x="855" y="210">BAY</text></g>
           </svg>
         </div>
