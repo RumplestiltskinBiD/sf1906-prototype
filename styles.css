@@ -243,3 +243,9 @@ button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allow
   .office-summary.three{grid-template-columns:repeat(3,1fr);gap:5px}
   .office-stat{padding:8px 6px}.office-stat strong{font-size:16px}
 }
+
+@media(max-width:640px){
+  .district text{font-size:24px}
+  .district-meta{font-size:20px}
+  .construction-token text{font-size:13px}
+}
