@@ -1,11 +1,11 @@
 import {
-  PROJECTS,DISTRICTS,MAX_ROUNDS,projectById,turnOrder,currentDeclarer,openingPrice,
+  PROJECTS,DISTRICTS,MAX_ROUNDS,projectById,districtById,turnOrder,currentDeclarer,openingPrice,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
-  resolveTenders,cleanupMarket
+  resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v0166';
-const LEGACY_STORAGE_KEY='sf1906_phase1_ui_v0165';
+const STORAGE_KEY='sf1906_phase1_ui_v017';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -16,16 +16,32 @@ const $$=s=>[...document.querySelectorAll(s)];
 
 function loadState(){
   try{
-    const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem(LEGACY_STORAGE_KEY);
+    let raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      for(const key of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(key);if(raw)break;}
+    }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(parsed?.version==='0.16.5'||parsed?.version==='0.16.6'){
-        parsed.version='0.16.6';
-        return parsed;
-      }
+      if(['0.16.5','0.16.6','0.17'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
+}
+function migrateState(parsed){
+  parsed.version='0.17';
+  parsed.players=(parsed.players||[]).map(p=>({...p,workersLeft:p.workersLeft??3,portfolio:p.portfolio||[]}));
+  parsed.constructions=parsed.constructions||[];
+  parsed.nextConstructionId=parsed.nextConstructionId||(
+    parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1
+  );
+  parsed.districts=parsed.districts||Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}]));
+  DISTRICTS.forEach(d=>{
+    parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites};
+    if(parsed.districts[d.id].landValue==null)parsed.districts[d.id].landValue=d.landValue;
+    if(parsed.districts[d.id].sites==null)parsed.districts[d.id].sites=d.sites;
+  });
+  parsed.pendingConstruction=null;
+  return parsed;
 }
 function isMobile(){return window.matchMedia('(max-width:640px)').matches;}
 function closeMobileContext(){mobileContextOpen=false;syncMobileContext();}
@@ -42,7 +58,7 @@ function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('s
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();
+  renderTop();renderPlayers();renderViews();renderMarket();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -56,7 +72,7 @@ function renderPlayers(){
   const el=$('#playersBar');el.innerHTML='';const cd=currentDeclarer(state);
   state.players.forEach((p,i)=>{
     const pill=document.createElement('button');pill.className=`player-pill ${cd===i&&state.phase==='declare'?'active':''} ${state.firstPlayer===i?'first':''}`;pill.dataset.office=i;
-    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>Influence ${p.influence}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">$${p.capital}</span>`;
+    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · Inf ${p.influence}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">${p.capital}</span>`;
     pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};el.appendChild(pill);
   });
 }
@@ -119,6 +135,89 @@ function openBidCurtain(){
 }
 function closePrivacy(){ $('#privacyModal').classList.remove('open');$('#modalBackdrop').classList.remove('open'); }
 
+const DISTRICT_POS={
+  pacific:[275,198],financial:[708,250],civic:[510,322],western:[308,340],
+  soma:[535,452],mission:[365,502],missionbay:[742,444],sunset:[182,462]
+};
+const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
+
+function renderCity(){
+  const pending=state.pendingConstruction;
+  const mode=$('#constructionMode');
+  if(state.phase!=='development'){
+    mode.innerHTML='<div><strong>Строительство пока закрыто</strong><span>Сначала завершите City Hall Session.</span></div>';
+    mode.className='construction-mode muted';
+  }else if(pending){
+    const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
+    mode.className='construction-mode active';
+    mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите подсвеченный район. Старт = Land Value + 1 представитель.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
+    $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
+  }else{
+    const total=state.players.reduce((n,p)=>n+(p.workersLeft||0),0);
+    mode.className='construction-mode';
+    mode.innerHTML=`<div><strong>Development Phase</strong><span>Откройте Офис и выберите выигранный проект. Свободных представителей у игроков: ${total}.</span></div><button class="secondary-btn" id="openOfficeFromCity">Офис</button>`;
+    $('#openOfficeFromCity').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
+  }
+
+  $('[data-district]').forEach(g=>{
+    const id=g.dataset.district;
+    const selected=state.selectedDistrictId===id;
+    g.classList.toggle('selected',selected);
+    g.classList.remove('build-ok','build-blocked');
+    if(pending){
+      const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
+      g.classList.add(check.ok?'build-ok':'build-blocked');
+    }
+  });
+
+  const meta=$('#districtMetaLayer');
+  if(meta){
+    meta.innerHTML=DISTRICTS.map(d=>{
+      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id];
+      const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
+      const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
+      return `<text class="${klass}" x="${x}" y="${y}">LAND ${ds.landValue} · ${used}/${ds.sites}</text>`;
+    }).join('');
+  }
+
+  const layer=$('#constructionLayer');
+  if(layer){
+    const byDistrict={};
+    (state.constructions||[]).forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
+    let html='';
+    Object.entries(byDistrict).forEach(([districtId,list])=>{
+      const [cx,cy]=DISTRICT_POS[districtId]||[0,0];
+      list.forEach((con,i)=>{
+        const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
+        const pl=state.players[con.playerId],pr=projectById(con.projectId);
+        html+=`<g class="construction-token token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><circle r="11"/><text y="3">${i+1}</text><title>${pl.name}: ${pr.name} — Under Construction</title></g>`;
+      });
+    });
+    layer.innerHTML=html;
+  }
+}
+
+function startConstructionFlow(playerId,projectId){
+  const pl=state.players[playerId],pr=projectById(projectId);
+  if(state.phase!=='development'){showToast('Сначала завершите тендеры');return;}
+  if(!pl.portfolio.includes(projectId)){showToast('Проект уже недоступен');return;}
+  if((pl.workersLeft??0)<=0){showToast('У игрока нет свободных представителей');return;}
+  state.pendingConstruction={playerId,projectId};
+  state.view='city';state.selectedDistrictId=state.selectedDistrictId||'civic';
+  mobileContextOpen=false;closeDrawers();render();
+  showToast(`Выберите район для «${pr.name}»`);
+}
+
+function confirmConstructionInDistrict(){
+  const pending=state.pendingConstruction;
+  if(!pending)return;
+  const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId);
+  if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
+  mobileContextOpen=false;
+  showToast(`Стройка начата · земля ${r.cost}`);
+  render();
+}
+
 function renderContext(){
   const panel=$('#contextPanel');
   const close=isMobile()?'<button class="context-close" id="contextClose" aria-label="Закрыть подробности">×</button>':'';
@@ -127,8 +226,17 @@ function renderContext(){
     const p=projectById(m.id);const claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
     panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="material-tags">${p.materials.map(x=>`<span class="material-tag">${materialLabel(x)}</span>`).join('')}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
-    const d=DISTRICTS.find(x=>x.id===state.selectedDistrictId)||DISTRICTS[0];
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="detail-section"><div class="detail-label">Сейчас</div><div class="detail-text">${d.hint}</div></div><div class="detail-section"><div class="detail-label">Следующий модуль v0.17</div><div class="detail-text">Здесь появятся Land Value, строительные места, рабочие и действие Begin Construction.</div></div><div class="district-placeholder"><b>Почему панель справа:</b><br>карта остаётся чистой, а подробности показываются только для выбранного объекта. Так мы не будем забивать поле текстом по мере роста игры.</div>`;
+    const d=districtById(state.selectedDistrictId)||DISTRICTS[0];
+    const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
+    const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
+    let constructionHtml='';
+    if(state.pendingConstruction){
+      const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId);
+      const check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
+      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Begin Construction</div><strong>${pl.name} · ${pr.name}</strong><div class="construction-cost"><span>Земля <b>${check.cost}</b></span><span>Представитель <b>1</b></span></div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
+    }
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Стройки в районе</div><div class="detail-text">${builtHere.length?builtHere.map(x=>`<div class="mini-construction"><span class="player-dot ${state.players[x.playerId].key}"></span><b>${projectById(x.projectId).name}</b> · ${state.players[x.playerId].name}</div>`).join(''):'Пока нет.'}</div></div><div class="district-placeholder"><b>v0.17:</b> сейчас реально проверяются Land Value, свободные площадки, капитал и представитель. Road / Fire Protection / Clinic / Rail / Port пока показаны на карте проекта, но не блокируют строительство.</div>`;
+    const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
   }
   wireContextClose();
 }
@@ -136,34 +244,46 @@ function wireContextClose(){const b=$('#contextClose');if(b)b.onclick=closeMobil
 
 function renderOffice(){
   const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div></div><div class="detail-label">Полученные проекты</div><div style="margin-top:7px">${p.portfolio.length?p.portfolio.map(id=>{const pr=projectById(id);return `<div class="portfolio-card"><strong>${pr.name}</strong><span>${pr.type} · ${pr.materials.length} ресурсов · ${pr.requires}</span></div>`}).join(''):'<div class="empty-state">Проектов пока нет. Они появятся здесь после победы на тендере.</div>'}</div><div class="district-placeholder"><b>Позже:</b> активные стройки, 3 слота ресурсов, способность персонажа и Right Hand.</div>`;
-  $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
+  const active=(state.constructions||[]).filter(x=>x.playerId===p.id);
+  const available=p.portfolio.map(id=>{
+    const pr=projectById(id);
+    const disabled=state.phase!=='development'||(p.workersLeft??0)<=0;
+    return `<div class="portfolio-card available-project"><strong>${pr.name}</strong><span>${pr.type} · ${pr.materials.length} ресурсов</span><span>${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${disabled?'disabled':''}>${state.phase!=='development'?'После тендеров':(p.workersLeft??0)<=0?'Нет представителей':'Начать строительство'}</button></div>`;
+  }).join('');
+  const activeHtml=active.map(x=>{const pr=projectById(x.projectId),d=districtById(x.districtId);return `<div class="portfolio-card construction-card"><strong>${pr.name}</strong><span>${d.name} · UNDER CONSTRUCTION</span></div>`;}).join('');
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Representatives</span><strong>${p.workersLeft??0} / 3</strong></div></div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Under Construction</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Активных строек пока нет.</div>'}</div><div class="district-placeholder"><b>Следующий слой:</b> в v0.18 на этих стройках появятся 3 слота ресурсов и завершение здания.</div>`;
+  $('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
+  $('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
 }
 
 function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
 function renderDebug(){
-  $('#debugPlayers').innerHTML=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>$${p.capital} · Inf ${p.influence}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-inf="${i}" data-delta="-1">Inf −1</button></div></div>`).join('');
-  $$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
-  $$('[data-inf]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.inf];p.influence=Math.max(0,p.influence+(+b.dataset.delta));render();});
+  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
+  const lands=DISTRICTS.map(d=>`<div class="debug-land"><span>${d.name}</span><div><button class="mini-btn" data-land="${d.id}" data-delta="-1">−</button><b>${state.districts[d.id].landValue}</b><button class="mini-btn" data-land="${d.id}" data-delta="1">+</button></div></div>`).join('');
+  $('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Value</div>${lands}`;
+  $('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
+  $('[data-inf]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.inf];p.influence=Math.max(0,p.influence+(+b.dataset.delta));render();});
+  $('[data-workers]').forEach(b=>b.onclick=()=>{state.players[+b.dataset.workers].workersLeft=3;render();});
+  $('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
 }
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);closeDrawers();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('Мэрия → закрытые ставки → город → конец раунда');};
+$('#helpBtn').onclick=()=>{showToast('Мэрия → проект в Офис → Begin Construction → район → земля + 1 представитель');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
-$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;$$('[data-district]').forEach(x=>x.classList.toggle('selected',x===g));renderContext();syncMobileContext();saveState();});
+$('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
+$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;render();});
 window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();});
 
 render();
