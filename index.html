@@ -1,792 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>San Francisco 1906 — Prototype v0.15</title>
-<style>
-:root{
-  --bg:#efe7d7;
-  --paper:#f8f2e7;
-  --ink:#2f2b25;
-  --muted:#7b7469;
-  --line:#c9bca7;
-  --accent:#8d3a2f;
-  --accent2:#335b63;
-  --safe:#4e7756;
-  --warn:#b97a2d;
-  --danger:#9c342d;
-  --panel:#fffaf1;
-  --shadow:0 8px 24px rgba(49,39,24,.12);
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{min-height:100vh;background-image:radial-gradient(rgba(90,70,40,.05) 1px,transparent 1px);background-size:10px 10px}
-button,select,input{font:inherit}
-button{cursor:pointer}
-.app{max-width:1400px;margin:0 auto;padding:16px}
-.header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
-.brand{display:flex;align-items:baseline;gap:10px}.brand h1{font-family:Georgia,serif;font-size:28px;margin:0}.badge{background:var(--accent);color:#fff;padding:4px 8px;border-radius:999px;font-size:12px}
-.header-actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:9px 12px;box-shadow:0 2px 5px rgba(0,0,0,.04)}
-.btn:hover{filter:brightness(.98)}.btn.primary{background:var(--accent);border-color:var(--accent);color:white}.btn.secondary{background:var(--accent2);border-color:var(--accent2);color:white}.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}.btn.ghost{background:transparent}.btn:disabled{opacity:.45;cursor:not-allowed}
-.statusbar{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:8px;margin-bottom:12px}
-.stat{background:rgba(255,250,241,.86);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)}
-.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.stat .v{font-weight:800;font-size:18px;margin-top:3px}
-.player-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.player-card{border:2px solid transparent;background:var(--panel);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow)}
-.player-card.active{border-color:var(--accent2)}.player-card .row{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.player-card .name{font-weight:800}.dots{letter-spacing:2px}
-.main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,.9fr);gap:12px;align-items:start}
-.panel{background:rgba(255,250,241,.92);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
-.board-wrap{padding:14px}.board-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.board-title h2{font-family:Georgia,serif;margin:0;font-size:20px}.legend{font-size:12px;color:var(--muted)}
-.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.block{position:relative;min-height:330px;border:2px solid #998b78;border-radius:12px;padding:10px;background:linear-gradient(#f3ebdb,#eadfcd);overflow:hidden;transition:.2s transform,.2s box-shadow}
-.block:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.08)}.block.selected{outline:4px solid rgba(51,91,99,.22)}
-.block.fire1{box-shadow:inset 0 0 0 4px rgba(185,122,45,.25)}.block.fire2{box-shadow:inset 0 0 0 5px rgba(180,80,36,.33)}.block.fire3{box-shadow:inset 0 0 0 6px rgba(156,52,45,.42)}
-.block-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.block-name{font-family:Georgia,serif;font-weight:800;font-size:19px}.fire{font-weight:800;color:var(--danger)}
-.systems{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.chip{font-size:11px;padding:4px 6px;border-radius:999px;border:1px solid var(--line);background:#fff9ee}.chip.ok{color:var(--safe);border-color:#aac2af}.chip.bad{color:var(--danger);border-color:#d8a7a2}.chip.unknown{color:var(--muted)}
-.buildings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.building{min-height:136px;border:1px dashed #aa9c88;border-radius:10px;padding:7px;background:rgba(255,255,255,.55);display:flex;flex-direction:column;justify-content:space-between;position:relative}.building.empty{align-items:center;justify-content:center;color:var(--muted);font-size:12px}.building.ruins{background:repeating-linear-gradient(135deg,#d9d0c2,#d9d0c2 8px,#c7bbab 8px,#c7bbab 16px)}.building.damaged{border-style:solid;border-color:var(--warn)}.building.burned{background:#4d4540;color:#fff;border-color:#2d2926}.building.owner-blue:not(.ruins):not(.burned){background:#dceeff;border:2px solid #3f9be5}.building.owner-red:not(.ruins):not(.burned){background:#ffe1df;border:2px solid #d9554d}.building.owner-green:not(.ruins):not(.burned){background:#e0f3e5;border:2px solid #4f9f66}.building.owner-blue.damaged,.building.owner-red.damaged,.building.owner-green.damaged{border-color:var(--warn);box-shadow:inset 0 0 0 2px rgba(185,122,45,.2)}.building.ruins.owner-blue{background:repeating-linear-gradient(135deg,#d8eaf8,#d8eaf8 8px,#b8d6ee 8px,#b8d6ee 16px);border:2px solid #3f9be5}.building.ruins.owner-red{background:repeating-linear-gradient(135deg,#f5dcda,#f5dcda 8px,#eabdb9 8px,#eabdb9 16px);border:2px solid #d9554d}.building.ruins.owner-green{background:repeating-linear-gradient(135deg,#dcefe1,#dcefe1 8px,#bddfc6 8px,#bddfc6 16px);border:2px solid #4f9f66}.building.burned.owner-blue{box-shadow:inset 0 0 0 3px #3f9be5}.building.burned.owner-red{box-shadow:inset 0 0 0 3px #d9554d}.building.burned.owner-green{box-shadow:inset 0 0 0 3px #4f9f66}.building .bn{font-size:12px;font-weight:800;line-height:1.15}.building .meta{font-size:10px;color:var(--muted);line-height:1.35}.building.burned .meta{color:#eee}.pop{font-size:12px;margin-top:4px}.owner{font-size:10px;font-weight:800;margin-top:4px}.owner-blue-text{color:#2f83c4}.owner-red-text{color:#bd4039}.owner-green-text{color:#397d4e}.building.burned .owner{color:#fff}.legacy{font-size:10px;font-weight:800;margin-top:3px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.72);color:#4b4439;display:inline-block}.building.burned .legacy{background:rgba(255,255,255,.14);color:#fff}.material{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 6px;border-radius:6px;font-size:10px;font-weight:800;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.76)}.material.wood{background:#f1dfbd;border-color:#b58b52}.material.brick{background:#ead0c7;border-color:#a95d4f}.material.anchored{background:#e1d5cc;border-color:#7c6a5d}.material.steel{background:#dce3e8;border-color:#71808b}.retrofits{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.retrofit{font-size:9px;font-weight:800;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.8);border:1px solid rgba(0,0,0,.13)}.retrofit.quake{border-color:#7563a8}.retrofit.fireproof{border-color:#b45f36}.building.burned .material,.building.burned .retrofit{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35)}
-.side{display:flex;flex-direction:column;gap:12px}.section{padding:13px}.section h3{font-family:Georgia,serif;margin:0 0 9px;font-size:18px}.section h4{margin:12px 0 6px;font-size:14px}.small{font-size:12px;color:var(--muted);line-height:1.4}
-.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.action-btn{min-height:52px;text-align:left;padding:9px;border-radius:10px;border:1px solid var(--line);background:#fffaf3}.action-btn strong{display:block;font-size:13px}.action-btn span{font-size:11px;color:var(--muted)}.service-info{margin:9px 0 2px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#f4efe4;font-size:11px;line-height:1.55}.service-info .okline{color:var(--safe)}.service-info .badline{color:var(--danger)}.service-info b{color:var(--ink)}
-.market{display:grid;grid-template-columns:1fr;gap:8px}.market-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px}.market-card.special{border-left:4px solid var(--accent2)}.market-card.portfolio{background:#fff7e8}.market-card .top{display:flex;justify-content:space-between;gap:8px}.market-card .title{font-weight:800;font-size:13px}.market-card .attrs{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}.market-card button{margin-top:8px;width:100%}.type-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:999px;background:#e9eeee;color:var(--accent2);margin-bottom:4px}.market-sep{margin:14px 0 7px;font-family:Georgia,serif;font-weight:800;font-size:15px}.portfolio-empty{font-size:11px;color:var(--muted);padding:7px 0}
-.log{max-height:260px;overflow:auto;background:#25211d;color:#f1e7d7;border-radius:10px;padding:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45}.log div+div{margin-top:5px}.log .accent{color:#ffd49a}.log .bad{color:#ff9f94}.log .good{color:#a8e0b3}.log .player-blue{color:#78c7ff;font-weight:700}.log .player-red{color:#ff8f86;font-weight:700}.log .player-green{color:#8fe0a4;font-weight:700}.action-wallet{margin:8px 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff7e8;font-size:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.action-wallet b{font-size:14px}
-.footer-note{font-size:11px;color:var(--muted);text-align:center;margin:14px 0 4px}
-.modal{position:fixed;inset:0;background:rgba(32,28,24,.55);display:none;align-items:flex-end;justify-content:center;z-index:20;padding:12px}.modal.open{display:flex}.sheet{width:min(720px,100%);max-height:88vh;overflow:auto;background:var(--paper);border-radius:18px 18px 10px 10px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.3);padding:16px}.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.sheet h3{font-family:Georgia,serif;margin:0}.close{border:none;background:transparent;font-size:24px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}.field select,.field input{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}.stack{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.dev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.dev-grid button{font-size:12px}.notice{border-left:4px solid var(--accent2);background:#edf3f3;padding:10px;border-radius:8px;font-size:12px;line-height:1.4;margin-bottom:10px}
-@media(max-width:980px){.statusbar{grid-template-columns:repeat(3,1fr)}.main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .panel:last-child{grid-column:1/-1}}
-@media(max-width:720px){.app{padding:10px}.brand h1{font-size:22px}.statusbar{grid-template-columns:repeat(2,1fr)}.player-strip{grid-template-columns:1fr}.main{display:block}.board-wrap{padding:10px}.board{grid-template-columns:1fr 1fr;gap:8px}.block{min-height:190px;padding:8px}.side{display:flex;margin-top:10px}.action-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}.sheet{padding:14px}.header-actions .btn{padding:8px 9px;font-size:12px}}
-@media(max-width:430px){.board{grid-template-columns:1fr}.block{min-height:175px}.buildings{grid-template-columns:1fr 1fr}.action-grid{grid-template-columns:1fr}.statusbar{grid-template-columns:1fr 1fr}.stat .v{font-size:16px}.player-card{padding:8px 10px}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171b1d" />
+  <title>San Francisco 1906 — Prototype v0.16.5</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<div class="app">
-  <div class="header">
-    <div class="brand"><h1>San Francisco 1906</h1><span class="badge">Прототип v0.15</span></div>
-    <div class="header-actions">
-      <button class="btn" id="undoBtn">↶ Отменить</button>
-      <button class="btn" id="saveBtn">Сохранить</button>
-      <button class="btn" id="loadBtn">Загрузить</button>
-      <button class="btn" id="exportBtn">Экспорт</button>
-      <button class="btn" id="devBtn">⚙ Тест</button>
-      <button class="btn danger" id="newBtn">Новая партия</button>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.16.5</span></div>
     </div>
-  </div>
-
-  <div class="statusbar">
-    <div class="stat"><div class="k">Фаза</div><div class="v" id="phaseStat">—</div></div>
-    <div class="stat"><div class="k">Раунд</div><div class="v" id="roundStat">—</div></div>
-    <div class="stat"><div class="k">Ходит</div><div class="v" id="playerStat">—</div></div>
-    <div class="stat"><div class="k">Пожарные части</div><div class="v" id="fireDeptStat">0</div></div>
-    <div class="stat"><div class="k">Склады гор. работ</div><div class="v" id="engDeptStat">0</div></div>
-    <div class="stat"><div class="k">Потери</div><div class="v" id="casualtyStat">0</div></div>
-  </div>
-
-  <div class="player-strip" id="playerStrip"></div>
-
-  <div class="main">
-    <div class="panel board-wrap">
-      <div class="board-title">
-        <h2>South of Market — тестовый район</h2>
-        <div class="legend">Нажмите на квартал, затем выберите действие справа</div>
-      </div>
-      <div class="board" id="board"></div>
+    <div class="round-hud" aria-label="Статус раунда">
+      <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
+      <div class="hud-item phase"><span>Фаза</span><strong id="phaseStat">City Hall</strong></div>
+      <div class="hud-item"><span>Первый</span><strong id="firstStat">Синий</strong></div>
     </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="helpBtn" title="Краткие правила">?</button>
+      <button class="icon-btn" id="settingsBtn" title="Настройки теста">⚙</button>
+    </div>
+  </header>
 
-    <div class="side">
-      <div class="panel section">
-        <h3 id="selectedTitle">Квартал A</h3>
-        <div id="selectedInfo" class="small"></div>
-        <h4>Действия</h4>
-        <div class="action-wallet" id="actionWallet"></div>
-        <div class="action-grid" id="actions"></div>
-        <div class="stack">
-          <button class="btn secondary" id="endTurnBtn">Завершить ход</button>
-          <button class="btn primary" id="earthquakeBtn" style="display:none">18 апреля 1906 — 5:12</button>
-          <button class="btn primary" id="endEmergencyRoundBtn" style="display:none">Завершить раунд ЧС</button>
+  <section class="players-bar" id="playersBar" aria-label="Игроки"></section>
+
+  <div class="workspace">
+    <nav class="nav-rail" aria-label="Основная навигация">
+      <button class="nav-btn active" data-view="hall"><span class="nav-icon">⌂</span><span>Мэрия</span></button>
+      <button class="nav-btn" data-view="city"><span class="nav-icon">◫</span><span>Город</span></button>
+      <div class="nav-spacer"></div>
+      <button class="nav-btn" id="officeBtn"><span class="nav-icon">▣</span><span>Офис</span></button>
+      <button class="nav-btn" id="logBtn"><span class="nav-icon">≡</span><span>Лог</span></button>
+    </nav>
+
+    <main class="main-stage">
+      <section class="view active" id="hallView">
+        <div class="view-head">
+          <div>
+            <div class="eyebrow">CITY HALL SESSION</div>
+            <h2>Городские проекты</h2>
+            <p id="hallInstruction">Игроки по очереди заявляются на один проект или пасуют. Поздний игрок видит предыдущие заявки.</p>
+          </div>
+          <div class="tender-steps" id="tenderSteps" aria-label="Этап тендера"></div>
         </div>
-      </div>
 
-      <div class="panel section" id="marketPanel">
-        <h3>Каталог зданий</h3>
-        <div class="small">Базовые здания доступны всегда. Построить можно не более одного здания за раунд.</div>
-        <div class="market" id="catalog"></div>
-        <div class="market-sep">Спецпроекты</div>
-        <div class="small">Чтобы забрать карту, потратьте 1 действие. Максимум 2 нереализованных проекта. В конце каждого раунда левая карта уходит, остальные сдвигаются, справа приходит новая.</div>
-        <div class="market" id="specialMarket"></div>
-        <div class="market-sep">Портфель текущего игрока</div>
-        <div class="market" id="portfolio"></div>
-      </div>
+        <div class="market-track-head">
+          <span>Новые проекты входят слева</span>
+          <div class="track-arrow">NEW&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;LAST CHANCE</div>
+          <span>Правый край сгорает</span>
+        </div>
+        <div class="project-market" id="projectMarket"></div>
 
-      <div class="panel section">
-        <h3>Журнал партии</h3>
-        <div class="log" id="log"></div>
-        <div class="stack"><button class="btn secondary" id="copyLogBtn">Копировать весь лог</button></div>
-      </div>
+        <div class="sticky-action" id="hallActionBar"></div>
+      </section>
+
+      <section class="view" id="cityView">
+        <div class="view-head compact">
+          <div>
+            <div class="eyebrow">DEVELOPMENT PHASE</div>
+            <h2>Город</h2>
+            <p>Техническая схема интерфейса. Финальная SVG-карта Сан-Франциско будет подключена после фиксации механик Phase I.</p>
+          </div>
+          <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
+        </div>
+        <div class="city-board-wrap">
+          <div class="city-board-toolbar">
+            <span class="soft-chip">Схема, не финальная география</span>
+            <span class="soft-chip">Клик по району → контекст справа</span>
+          </div>
+          <svg class="city-board" viewBox="0 0 1000 640" role="img" aria-label="Временная схема районов Сан-Франциско">
+            <defs>
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-opacity=".16"/></filter>
+            </defs>
+            <path class="water-shape" d="M0 0H1000V640H0Z"/>
+            <path class="land-shape" d="M110 80 L650 60 L845 145 L900 310 L825 565 L340 600 L120 520 L65 305 Z" filter="url(#softShadow)"/>
+            <g class="roads-schematic">
+              <path d="M230 240 L735 360"/>
+              <path d="M310 100 L330 535"/>
+              <path d="M520 95 L555 555"/>
+              <path d="M180 390 L805 395"/>
+            </g>
+            <g class="district" data-district="pacific"><polygon points="170,115 365,100 395,225 210,240"/><text x="275" y="170">Pacific Heights</text></g>
+            <g class="district" data-district="financial"><polygon points="600,130 805,170 830,315 630,305"/><text x="708" y="222">Financial / Ferry</text></g>
+            <g class="district" data-district="civic"><polygon points="400,225 595,215 620,350 430,355"/><text x="510" y="290">Civic Center</text></g>
+            <g class="district" data-district="western"><polygon points="205,245 395,230 425,360 220,380"/><text x="308" y="307">Western Addition</text></g>
+            <g class="district" data-district="soma"><polygon points="430,365 625,355 650,470 455,485"/><text x="535" y="420">SoMa</text></g>
+            <g class="district" data-district="mission"><polygon points="285,390 425,370 450,520 300,540"/><text x="365" y="462">Mission</text></g>
+            <g class="district" data-district="missionbay"><polygon points="655,320 830,325 815,500 660,475"/><text x="742" y="405">Mission Bay</text></g>
+            <g class="district" data-district="sunset"><polygon points="105,270 205,250 285,390 270,535 135,500 85,350"/><text x="182" y="404">Western</text><text x="182" y="427">Expansion</text></g>
+            <g class="park-shape"><rect x="120" y="255" width="265" height="78" rx="28"/><text x="252" y="300">Golden Gate Park</text></g>
+            <g class="bay-label"><text x="855" y="210">BAY</text></g>
+          </svg>
+        </div>
+      </section>
+
+      <aside class="context-panel" id="contextPanel" aria-live="polite"></aside>
+    </main>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="officeDrawer" aria-label="Офис игрока">
+  <div class="drawer-head"><div><div class="eyebrow">PLAYER OFFICE</div><h3 id="officeTitle">Офис</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-body" id="officeContent"></div>
+</aside>
+<aside class="drawer" id="logDrawer" aria-label="Журнал партии">
+  <div class="drawer-head"><div><div class="eyebrow">ACTION LOG</div><h3>Журнал партии</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-body"><div class="game-log" id="gameLog"></div><button class="secondary-btn full" id="copyLogBtn">Копировать весь лог</button></div>
+</aside>
+<aside class="drawer" id="settingsDrawer" aria-label="Настройки теста">
+  <div class="drawer-head"><div><div class="eyebrow">TEST TOOLS</div><h3>Настройки теста</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-body">
+    <div class="test-note">Эти кнопки нужны только для быстрых проверок баланса. В обычной игре их не будет.</div>
+    <div id="debugPlayers"></div>
+    <div class="drawer-actions">
+      <button class="danger-btn full" id="newGameBtn">Новая тестовая партия</button>
+      <a class="secondary-btn full link-btn" href="./cityhall-v016.html">Старая страница City Hall v0.16</a>
     </div>
   </div>
-  <div class="footer-note">Работает в Chrome на компьютере и телефоне. Данные сохраняются локально в браузере.</div>
+</aside>
+
+<div class="modal-backdrop" id="modalBackdrop"></div>
+<div class="privacy-modal" id="privacyModal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+  <div class="privacy-card" id="privacyCard"></div>
 </div>
 
-<div class="modal" id="buildModal">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Построить проект</h3><button class="close" data-close>×</button></div>
-    <div class="notice">Выберите проект с рынка, свободное место и тип конструкции. Цена = цена проекта + стоимость конструкции.</div>
-    <div class="form-grid">
-      <div class="field"><label>Проект</label><select id="buildProject"></select></div>
-      <div class="field"><label>Место</label><select id="buildSlot"></select></div>
-      <div class="field"><label>Конструкция</label><select id="buildConstruction"></select></div>
-      <div class="field"><label>Итого</label><input id="buildTotal" disabled /></div>
-      <div class="field"><label>Очки проекта</label><input id="buildPoints" disabled /></div>
-      <div class="field"><label>Программа</label><select id="buildProgram"><option value="">Без программы</option></select></div>
-    </div>
-    <div class="stack"><button class="btn primary" id="confirmBuild">Построить</button></div>
-  </div>
-</div>
-
-<div class="modal" id="retrofitModal">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Укрепить здание</h3><button class="close" data-close>×</button></div>
-    <div class="form-grid">
-      <div class="field"><label>Здание</label><select id="retrofitSlot"></select></div>
-      <div class="field"><label>Улучшение</label><select id="retrofitType"><option value="quake">Сейсмическое укрепление (+2 к устойчивости), 3 капитала</option><option value="fire">Противопожарное улучшение (+1 к огнестойкости), 2 капитала</option></select></div>
-    </div>
-    <div class="stack"><button class="btn primary" id="confirmRetrofit">Укрепить</button></div>
-  </div>
-</div>
-
-<div class="modal" id="infraModal">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Укрепить инфраструктуру</h3><button class="close" data-close>×</button></div>
-    <div class="field"><label>Система</label><select id="infraType"><option value="water">Водопровод — 2 капитала</option><option value="gas">Газовая сеть — 2 капитала</option></select></div>
-    <div class="stack"><button class="btn primary" id="confirmInfra">Укрепить</button></div>
-  </div>
-</div>
-
-<div class="modal" id="fundModal">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Оснастить местную службу</h3><button class="close" data-close>×</button></div>
-    <div class="notice">Улучшение относится только к выбранной пожарной части или складу городских работ. Стоимость: 3 капитала.</div>
-    <div class="field"><label>Здание службы</label><select id="fundBuilding"></select></div>
-    <div class="stack"><button class="btn primary" id="confirmFund">Улучшить службу</button></div>
-  </div>
-</div>
-
-<div class="modal" id="devModal">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Панель тестирования</h3><button class="close" data-close>×</button></div>
-    <div class="notice">Эта панель нужна только для быстрых проверок баланса. Она позволяет ломать состояние игры вручную.</div>
-    <div class="dev-grid">
-      <button class="btn" id="devMoney">+10 капитала текущему</button>
-      <button class="btn" id="devAction">+1 действие текущему</button>
-      <button class="btn" id="devFire">+1 пожар в выбранном квартале</button>
-      <button class="btn" id="devWater">Переключить воду</button>
-      <button class="btn" id="devGas">Переключить газ</button>
-      <button class="btn" id="devReveal">Открыть грунт</button>
-      <button class="btn" id="devSkipEq">Сразу к землетрясению</button>
-      <button class="btn" id="devEmergency">Сразу во вторую фазу</button>
-    </div>
-  </div>
-</div>
-
-<script>
-const PROJECTS = [
-  {id:'tenement', name:'Доходный дом', base:3, prestige:2, income:1, pop:12, fireLoad:2, kind:'housing'},
-  {id:'shops', name:'Магазины', base:4, prestige:2, income:2, pop:3, fireLoad:2, kind:'commerce'},
-  {id:'warehouse', name:'Склад', base:4, prestige:2, income:2, pop:3, fireLoad:3, evac:1, kind:'commerce'},
-  {id:'factory', name:'Фабрика', base:5, prestige:3, income:3, pop:6, fireLoad:3, kind:'commerce'},
-  {id:'clinic', name:'Клиника', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'},
-  {id:'firehouse', name:'Пожарная часть', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'},
-  {id:'publicworks', name:'Склад городских работ', base:5, prestige:1, income:0, pop:0, fireLoad:1, kind:'civic'}
-];
-const CONSTRUCTIONS = {
-  wood:{name:'Деревянный каркас', cost:0, quake:2, fire:0},
-  brick:{name:'Обычная кирпичная кладка', cost:1, quake:1, fire:1},
-  anchored:{name:'Усиленная кирпичная кладка', cost:3, quake:3, fire:1},
-  steel:{name:'Стальной каркас', cost:5, quake:4, fire:2}
-};
-const GROUNDS = [
-  {id:'firm', name:'Устойчивый грунт', stress:0},
-  {id:'firm', name:'Устойчивый грунт', stress:0},
-  {id:'soft', name:'Мягкий грунт', stress:1},
-  {id:'soft', name:'Мягкий грунт', stress:1},
-  {id:'fill', name:'Насыпной грунт / разжижение', stress:2},
-  {id:'fill', name:'Насыпной грунт / разжижение', stress:2}
-];
-const PLAYER_COLORS=['Синий','Красный','Зелёный'];
-const CATALOG_PROJECTS=['tenement','shops','warehouse','factory','clinic','firehouse','publicworks'];
-const SPECIAL_PROJECTS=[
-  {id:'sp_speculative',name:'Спекулятивный жилой комплекс',type:'BUILDING',baseProject:'tenement',allowedConstructions:['wood'],description:'Только дерево. 18 жителей, доход 2, горючесть 3.',overrides:{pop:18,income:2,fireLoad:3}},
-  {id:'sp_distribution',name:'Крупный распределительный склад',type:'BUILDING',baseProject:'warehouse',description:'Доход 3, эвакуация +2, горючесть 4.',overrides:{income:3,evac:2,fireLoad:4}},
-  {id:'sp_industrial',name:'Промышленное расширение',type:'BUILDING',baseProject:'factory',description:'9 работников, доход 4, горючесть 4.',overrides:{pop:9,income:4,fireLoad:4}},
-  {id:'sp_fireproof_shops',name:'Огнестойкий торговый квартал',type:'BUILDING',baseProject:'shops',allowedConstructions:['anchored','steel'],description:'Только усиленная кладка или сталь. Бесплатная огнезащита +1.',freeFireRetrofit:true},
-  {id:'sp_fire_station',name:'Муниципальная пожарная станция',type:'BUILDING',baseProject:'firehouse',allowedConstructions:['anchored','steel'],description:'Только усиленная кладка или сталь. Пожарная часть сразу уровня 2.',serviceLevel:2},
-  {id:'sp_medical',name:'Центр экстренной медицины',type:'BUILDING',baseProject:'clinic',allowedConstructions:['anchored','steel'],description:'Только усиленная кладка или сталь. Местная клиника даёт +2 к спасению.',clinicBonus:2},
-  {id:'sp_publicworks',name:'Усиленное депо городских работ',type:'BUILDING',baseProject:'publicworks',allowedConstructions:['anchored','steel'],description:'Только усиленная кладка или сталь. Инженеры сразу уровня 2.',serviceLevel:2},
-  {id:'sp_safe_program',name:'Программа безопасной застройки',type:'PROGRAM',description:'Только исследованный мягкий/насыпной грунт. −2 к стоимости конструкции и +1 финальное очко, если здание цело.',allowedKinds:['housing','commerce'],grounds:['soft','fill'],constructionDiscount:2,finalBonus:1}
-];
-let state;
-let undoStack=[];
-let selectedBlock='A';
-
-function proj(id){return PROJECTS.find(p=>p.id===id)}
-function deepClone(x){return JSON.parse(JSON.stringify(x))}
-function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function makeBuilding(projectId, construction, owner=null){
-  const p=proj(projectId), c=CONSTRUCTIONS[construction];
-  return {projectId,construction,owner,status:'intact',quakeRetrofit:false,fireRetrofit:false,investors:{quake:null,fire:null},quakeSaved:false,fireSaved:false,pop:p.pop,trapped:0,evacuated:0,burned:false,serviceLevel:(projectId==='firehouse'||projectId==='publicworks')?1:null,specialId:null,programId:null,incomeOverride:null,fireLoadOverride:null,evacOverride:null,clinicBonus:null,finalBonus:0};
-}
-function initialState(){
-  const gs=shuffle(GROUNDS);
-  const blocks={
-    A:{id:'A',ground:gs[0],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),makeBuilding('shops','wood'),null,null]},
-    B:{id:'B',ground:gs[1],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('warehouse','brick'),makeBuilding('firehouse','anchored'),null,null]},
-    C:{id:'C',ground:gs[2],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('factory','brick'),makeBuilding('tenement','wood'),null,null]},
-    D:{id:'D',ground:gs[3],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','wood'),makeBuilding('publicworks','anchored'),null,null]},
-    E:{id:'E',ground:gs[4],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('clinic','brick'),makeBuilding('warehouse','brick'),null,null]},
-    F:{id:'F',ground:gs[5],groundRevealed:false,water:'ok',gas:'ok',waterFortified:false,gasFortified:false,waterInvestor:null,gasInvestor:null,fire:0,buildings:[makeBuilding('tenement','brick'),null,null,null]}
-  };
-  blocks.E.buildings[0].pop=3;
-  const specialDeck=shuffle(SPECIAL_PROJECTS.map(x=>x.id));
-  return {
-    phase:'build', buildRound:1, emergencyRound:0, currentPlayer:0, actionsLeft:2,
-    players:PLAYER_COLORS.map((name,i)=>({id:i,name,capital:8,score:0,prestige:0,merit:0,incomeBonus:0,projects:[],buildUsedRound:0})),
-    blocks, casualties:0, safe:0,
-    specialMarket:specialDeck.slice(0,3),specialDeck:specialDeck.slice(3),specialDiscard:[],
-    log:['Началась партия. Фаза I: развитие района.'], finished:false
-  };
-}
-function snapshot(){undoStack.push(deepClone(state)); if(undoStack.length>25)undoStack.shift()}
-function log(msg,cls=''){state.log.push((cls?`[${cls}] `:'')+msg)}
-function current(){return state.players[state.currentPlayer]}
-function special(id){return SPECIAL_PROJECTS.find(x=>x.id===id)}
-function buildingName(b){return b.specialId?special(b.specialId).name:proj(b.projectId).name}
-function buildingIncome(b){return b.incomeOverride!=null?b.incomeOverride:proj(b.projectId).income}
-function buildingFireLoad(b){return b.fireLoadOverride!=null?b.fireLoadOverride:proj(b.projectId).fireLoad}
-function buildingEvac(b){return b.evacOverride!=null?b.evacOverride:(proj(b.projectId).evac||0)}
-function buildingFinalPoints(b){return proj(b.projectId).prestige+(b.finalBonus||0)}
-function buildAlreadyUsed(){return state.phase==='build'&&current().buildUsedRound===state.buildRound}
-function projectTypeLabel(type){return type==='BUILDING'?'ЗДАНИЕ':type==='PROGRAM'?'ПРОГРАММА':type}
-function removePlayerProject(id){const i=current().projects.indexOf(id);if(i>=0)current().projects.splice(i,1)}
-function programEligible(cardId,projectId,blockId){
-  const s=special(cardId),p=proj(projectId),bl=state.blocks[blockId];
-  return !!(s&&s.type==='PROGRAM'&&bl.groundRevealed&&s.grounds.includes(bl.ground.id)&&s.allowedKinds.includes(p.kind));
-}
-function neighbors(id){return {A:['B','D'],B:['A','C','E'],C:['B','F'],D:['A','E'],E:['B','D','F'],F:['C','E']}[id]}
-function buildingStats(b){
-  const c=CONSTRUCTIONS[b.construction];
-  return {quake:c.quake+(b.quakeRetrofit?2:0), fire:c.fire+(b.fireRetrofit?1:0)};
-}
-function spendAction(){state.actionsLeft--; if(state.actionsLeft<0)state.actionsLeft=0}
-function ensureAction(){if(state.actionsLeft<=0){alert('У текущего игрока больше нет действий. Завершите ход.');return false}return true}
-function ensureCapital(n){if(current().capital<n){alert('Недостаточно капитала.');return false}return true}
-function addScore(playerId,n,reason=''){const p=state.players[playerId];p.score+=n;if(reason)log(`${p.name}: ${n>=0?'+':''}${n} очк. — ${reason}`,n>=0?'GOOD':'BAD')}
-function blockFireLoad(b){return b.buildings.reduce((s,x)=>s+(x&&x.status!=='collapsed'&&!x.burned?buildingFireLoad(x):0),0)}
-function clinicRescueBonus(blockId){
-  const vals=state.blocks[blockId].buildings.filter(b=>b&&b.projectId==='clinic'&&!b.burned&&b.status!=='collapsed').map(b=>b.status==='damaged'?1:(b.clinicBonus||1));
-  return vals.length?Math.max(...vals):0;
-}
-function functioningBuilding(b){return b && b.status==='intact' && !b.burned}
-function serviceOperational(b){return !!(b&&!b.burned&&b.status!=='collapsed')}
-function effectiveServiceLevel(b){return serviceOperational(b)?(b.status==='damaged'?1:(b.serviceLevel||1)):0}
-function serviceBuildings(projectId){
-  const out=[];
-  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach((b,slot)=>{
-    if(serviceOperational(b)&&b.projectId===projectId)out.push({blockId:bl.id,slot,b,level:effectiveServiceLevel(b),damaged:b.status==='damaged'});
-  }));
-  return out;
-}
-function homeNeedsService(blockId,type){
-  const bl=state.blocks[blockId];
-  if(type==='fire')return bl.fire>0;
-  return bl.buildings.some(b=>b&&b.trapped>0)||bl.water==='broken'||bl.gas==='leak';
-}
-function serviceSource(targetId,type){
-  const projectId=type==='fire'?'firehouse':'publicworks';
-  const all=serviceBuildings(projectId);
-  const local=all.filter(x=>x.blockId===targetId).sort((a,b)=>b.level-a.level)[0];
-  if(local)return {...local,remote:false};
-  const remote=all.filter(x=>x.blockId!==targetId&&!homeNeedsService(x.blockId,type)).sort((a,b)=>b.level-a.level)[0];
-  return remote?{...remote,remote:true}:null;
-}
-function serviceUnavailableReason(targetId,type){
-  const projectId=type==='fire'?'firehouse':'publicworks';
-  const all=serviceBuildings(projectId);
-  if(!all.length)return type==='fire'?'нет действующей пожарной части':'нет действующего склада городских работ';
-  const busy=all.filter(x=>x.blockId!==targetId&&homeNeedsService(x.blockId,type));
-  if(busy.length){
-    const places=busy.map(x=>x.blockId).join(', ');
-    return type==='fire'?`пожарные заняты в своём квартале (${places})`:`инженеры заняты авариями в своём квартале (${places})`;
-  }
-  return type==='fire'?'нет доступной пожарной части':'нет доступных инженеров';
-}
-function serviceSourceText(targetId,type){
-  const s=serviceSource(targetId,type);
-  if(!s)return serviceUnavailableReason(targetId,type);
-  const label=type==='fire'?'пожарная часть':'Public Works';
-  return `${label} ${s.blockId} · ур.${s.level}${s.damaged?' · повреждена → работает как ур.1':''}${s.remote?' · помощь из другого квартала':' · местная'}`;
-}
-function clinicStatusText(blockId){
-  const clinics=state.blocks[blockId].buildings.filter(b=>b&&b.projectId==='clinic');
-  if(!clinics.length)return 'клиники нет';
-  const best=clinics.find(b=>!b.burned&&b.status!=='collapsed');
-  if(!best)return 'клиника разрушена / сгорела';
-  if(best.status==='damaged')return 'клиника повреждена · бонус +1';
-  return `клиника работает · бонус +${best.clinicBonus||1}`;
-}
-function trappedInBlock(blockId){return state.blocks[blockId].buildings.reduce((n,b)=>n+(b?b.trapped:0),0)}
-function evacUnavailableReason(blockId){
-  const bl=state.blocks[blockId];
-  const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);
-  if(!has)return 'нет жителей, которых можно эвакуировать';
-  const threat=bl.fire>0||neighbors(blockId).some(n=>state.blocks[n].fire>=2);
-  if(!threat)return 'нет непосредственной угрозы пожара';
-  return 'эвакуация недоступна';
-}
-function warehouseEvacBonus(blockId){
-  return state.blocks[blockId].buildings.reduce((n,b)=>n+(functioningBuilding(b)&&b.projectId==='warehouse'?buildingEvac(b):0),0);
-}
-function playerIncome(pid){
-  let inc=3;
-  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{
-    if(b&&b.owner===pid&&b.status==='intact'&&!b.burned)inc+=buildingIncome(b);
-  }));
-  return inc;
-}
-function refillSpecialMarketAt(index){
-  if(state.specialDeck.length)state.specialMarket.splice(index,0,state.specialDeck.shift());
-}
-function rotateSpecialMarket(){
-  if(!state.specialMarket.length)return;
-  const expired=state.specialMarket.shift();
-  state.specialDiscard.push(expired);
-  let incoming=null;
-  if(state.specialDeck.length){
-    incoming=state.specialDeck.shift();
-    state.specialMarket.push(incoming);
-  }
-  log(`Рынок спецпроектов обновлён: «${special(expired).name}» ушёл${incoming?`, открыта «${special(incoming).name}»`:', новых карт в колоде больше нет'}.`,'ACCENT');
-}
-function takeSpecialProject(id){
-  if(!ensureAction())return;
-  if(current().projects.length>=2){alert('В портфеле уже 2 нереализованных спецпроекта.');return}
-  const idx=state.specialMarket.indexOf(id);if(idx<0)return;
-  snapshot();current().projects.push(id);state.specialMarket.splice(idx,1);refillSpecialMarketAt(idx);spendAction();
-  log(`${current().name} взял спецпроект «${special(id).name}». Потрачено 1 действие.`);render();
-}
-
-function render(){
-  document.getElementById('phaseStat').textContent=state.phase==='build'?'I — До землетрясения':state.phase==='emergency'?'II — Чрезвычайная ситуация':'Игра завершена';
-  document.getElementById('roundStat').textContent=state.phase==='build'?`${state.buildRound} / 3`:state.phase==='emergency'?`${state.emergencyRound} / 4`:'—';
-  document.getElementById('playerStat').textContent=state.finished?'—':current().name;
-  const fireServices=serviceBuildings('firehouse'), engServices=serviceBuildings('publicworks');
-  document.getElementById('fireDeptStat').textContent=fireServices.length?fireServices.map(x=>`${x.blockId}:ур.${x.level}${x.damaged?'⚠':''}`).join(' · '):'нет';
-  document.getElementById('engDeptStat').textContent=engServices.length?engServices.map(x=>`${x.blockId}:ур.${x.level}${x.damaged?'⚠':''}`).join(' · '):'нет';
-  document.getElementById('casualtyStat').textContent=state.casualties;
-  renderPlayers();renderBoard();renderSelected();renderActions();renderMarket();renderLog();
-  document.getElementById('earthquakeBtn').style.display=(state.phase==='build'&&state.buildRound>=3&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
-  document.getElementById('endEmergencyRoundBtn').style.display=(state.phase==='emergency'&&state.currentPlayer===2&&state.actionsLeft===0)?'inline-block':'none';
-  document.getElementById('endTurnBtn').style.display=state.finished?'none':'inline-block';
-  document.getElementById('marketPanel').style.display=state.phase==='build'?'block':'none';
-}
-function renderPlayers(){
-  const el=document.getElementById('playerStrip');el.innerHTML='';
-  state.players.forEach((p,i)=>{
-    const d=document.createElement('div');d.className='player-card '+(!state.finished&&i===state.currentPlayer?'active':'');
-    const built=(state.phase==='build'&&p.buildUsedRound===state.buildRound)?'использована':'свободна';
-    d.innerHTML=`<div class="row"><div class="name">${p.name}</div><div><b>${p.score}</b> очк.</div></div><div class="row small"><span>Капитал: <b>${p.capital}</b></span><span>Действия: <b>${i===state.currentPlayer?state.actionsLeft:'—'}</b></span></div><div class="row small"><span>Спецпроекты: <b>${p.projects.length}/2</b></span><span>Стройка раунда: <b>${built}</b></span></div>`;
-    el.appendChild(d);
-  });
-}
-function renderBoard(){
-  const board=document.getElementById('board');board.innerHTML='';
-  ['A','B','C','D','E','F'].forEach(id=>{
-    const b=state.blocks[id], div=document.createElement('div');
-    div.className=`block fire${b.fire} ${selectedBlock===id?'selected':''}`;div.onclick=()=>{selectedBlock=id;render()};
-    const ground=(b.groundRevealed||state.phase!=='build')?b.ground.name:'???';
-    div.innerHTML=`<div class="block-head"><div class="block-name">Квартал ${id}</div><div class="fire">${b.fire?`🔥 ${b.fire}`:''}</div></div>
-      <div class="systems">
-        <span class="chip ${b.water==='ok'?'ok':'bad'}">💧 ${b.water==='ok'?'вода':'нет воды'}${b.waterFortified?' 🛡':''}</span>
-        <span class="chip ${b.gas==='leak'?'bad':'ok'}">◉ ${b.gas==='ok'?'газ':b.gas==='leak'?'утечка':'газ перекрыт'}${b.gasFortified?' 🛡':''}</span>
-        <span class="chip ${ground==='???'?'unknown':''}">грунт: ${ground}</span>
-      </div><div class="buildings"></div>`;
-    const bs=div.querySelector('.buildings');
-    b.buildings.forEach((x,idx)=>{
-      const bd=document.createElement('div');
-      if(!x){bd.className='building empty';bd.textContent='Свободное место';}
-      else{
-        const p=proj(x.projectId), s=buildingStats(x), displayName=buildingName(x), finalPts=buildingFinalPoints(x);
-        const ownerClass=x.owner===0?'owner-blue':x.owner===1?'owner-red':x.owner===2?'owner-green':'';
-        const ownerTextClass=x.owner===0?'owner-blue-text':x.owner===1?'owner-red-text':x.owner===2?'owner-green-text':'';
-        const materialInfo={
-          wood:{icon:'🪵',short:'Дерево'},
-          brick:{icon:'🧱',short:'Кирпич'},
-          anchored:{icon:'⚓',short:'Усил. кладка'},
-          steel:{icon:'▦',short:'Сталь'}
-        }[x.construction];
-        const retrofitBadges=[
-          x.quakeRetrofit?'<span class="retrofit quake">↔ Сейсмо +2</span>':'',
-          x.fireRetrofit?'<span class="retrofit fireproof">🔥 Огнезащита +1</span>':'',
-          x.projectId==='firehouse'? `<span class="retrofit">🚒 ${serviceOperational(x)?`Часть ур.${effectiveServiceLevel(x)}${x.status==='damaged'?' ⚠':''}`:'Часть не работает'}</span>`:'',
-          x.projectId==='publicworks'? `<span class="retrofit">🛠 ${serviceOperational(x)?`Инженеры ур.${effectiveServiceLevel(x)}${x.status==='damaged'?' ⚠':''}`:'Инженеры не работают'}</span>`:'',
-          x.projectId==='warehouse'? `<span class="retrofit">🚚 Эвакуация +${buildingEvac(x)}</span>`:'',
-          x.projectId==='clinic'? `<span class="retrofit">🏥 ${serviceOperational(x)?`Спасение +${x.status==='damaged'?1:(x.clinicBonus||1)}${x.status==='damaged'?' ⚠':''}`:'Клиника не работает'}</span>`:'',
-          x.programId? `<span class="retrofit">★ ${special(x.programId).name}</span>`:'',
-          x.specialId? `<span class="retrofit">★ Спецпроект</span>`:''
-        ].filter(Boolean).join('');
-        bd.className=`building ${ownerClass} construction-${x.construction} ${x.status==='damaged'?'damaged':''} ${x.status==='collapsed'?'ruins':''} ${x.burned?'burned':''}`;
-        const owner=x.owner!=null?`<div class="owner ${ownerTextClass}">● ${state.players[x.owner].name}</div><div class="legacy">В конце, если целое: +${finalPts} очк.</div>`:'';
-        bd.innerHTML=`<div><div class="bn">${x.status==='collapsed'?'РУИНЫ — ':x.burned?'СГОРЕЛО — ':''}${displayName}</div><div class="material ${x.construction}">${materialInfo.icon} ${materialInfo.short}</div><div class="meta">Земл. ${s.quake} · Огонь ${s.fire} · Горючесть ${buildingFireLoad(x)} · Доход ${buildingIncome(x)}</div>${retrofitBadges?`<div class="retrofits">${retrofitBadges}</div>`:''}</div><div>${owner}<div class="pop">👥 ${x.pop}${x.trapped?` · 🧱 под завалами ${x.trapped}`:''}</div></div>`;
-      }
-      bs.appendChild(bd);
-    });
-    board.appendChild(div);
-  });
-}
-function renderSelected(){
-  const b=state.blocks[selectedBlock];
-  document.getElementById('selectedTitle').textContent=`Квартал ${selectedBlock}`;
-  const g=(b.groundRevealed||state.phase!=='build')?`${b.ground.name} (+${b.ground.stress})`:'не исследован';
-  let html=`Грунт: <b>${g}</b><br>Водопровод: <b>${b.water==='ok'?'работает':'разрушен'}</b>${b.waterFortified?' — укреплён':''}<br>Газ: <b>${b.gas==='ok'?'работает':b.gas==='leak'?'утечка':'перекрыт'}</b>${b.gasFortified?' — укреплён':''}<br>Пожар: <b>${b.fire}</b>`;
-  if(state.phase==='emergency'){
-    const fire=serviceSource(selectedBlock,'fire'),eng=serviceSource(selectedBlock,'eng');
-    const fireText=fire?serviceSourceText(selectedBlock,'fire'):serviceUnavailableReason(selectedBlock,'fire');
-    const engText=eng?serviceSourceText(selectedBlock,'eng'):serviceUnavailableReason(selectedBlock,'eng');
-    html+=`<div class='service-info'><b>Доступные службы для квартала ${selectedBlock}</b><br><span class='${fire?'okline':'badline'}'>🚒 ${fireText}</span><br><span class='${eng?'okline':'badline'}'>🛠 ${engText}</span><br><span>🏥 ${clinicStatusText(selectedBlock)}</span><br><span>🧱 Под завалами: ${trappedInBlock(selectedBlock)}</span></div>`;
-  }
-  document.getElementById('selectedInfo').innerHTML=html;
-}
-function actionButton(title,sub,handler,disabled=false){const b=document.createElement('button');b.className='action-btn';b.disabled=disabled;b.innerHTML=`<strong>${title}</strong><span>${sub}</span>`;b.onclick=handler;return b}
-function renderActions(){
-  const el=document.getElementById('actions');el.innerHTML='';
-  const wallet=document.getElementById('actionWallet');
-  if(state.finished){wallet.innerHTML='<span>Партия завершена</span>';el.innerHTML='<div class="small">Партия завершена.</div>';return}
-  wallet.innerHTML=`<span>Текущий игрок: <b>${current().name}</b></span><span>Капитал: <b>${current().capital}</b> · Действия: <b>${state.actionsLeft}</b></span>`;
-  if(state.phase==='build'){
-    el.appendChild(actionButton('Построить из каталога',buildAlreadyUsed()?'стройка в этом раунде уже использована':'1 действие · максимум 1 строительство за раунд',()=>openBuild(),state.actionsLeft<=0||buildAlreadyUsed()));
-    el.appendChild(actionButton('Укрепить здание','1 действие · 3 / 2 капитала',()=>openModal('retrofitModal'),state.actionsLeft<=0));
-    el.appendChild(actionButton('Инфраструктура','1 действие · 2 капитала',()=>openModal('infraModal'),state.actionsLeft<=0));
-    const localServices=state.blocks[selectedBlock].buildings.filter(b=>b&&(b.projectId==='firehouse'||b.projectId==='publicworks')&&(b.serviceLevel||1)<3);
-    el.appendChild(actionButton('Оснастить службу',localServices.length?'1 действие · 3 капитала · выбранное здание':'сначала постройте пожарную часть или склад гор. работ',()=>openModal('fundModal'),state.actionsLeft<=0||current().capital<3||!localServices.length));
-    el.appendChild(actionButton('Исследовать грунт','1 действие · 1 капитал',surveyGround,state.actionsLeft<=0||current().capital<1||state.blocks[selectedBlock].groundRevealed));
-    el.appendChild(actionButton('Привлечь капитал','1 действие · +4 капитала',raiseCapital,state.actionsLeft<=0));
-  } else {
-    const b=state.blocks[selectedBlock];
-    const fireSvc=serviceSource(selectedBlock,'fire');
-    const engSvc=serviceSource(selectedBlock,'eng');
-    const firePower=fireSvc?(b.water==='ok'?fireSvc.level:1):0;
-    const clinicBonus=clinicRescueBonus(selectedBlock);
-    const rescuePower=engSvc?engSvc.level+clinicBonus:0;
-    const evacPower=2+warehouseEvacBonus(selectedBlock);
-    const hasTrapped=trappedInBlock(selectedBlock)>0;
-    const fireSub=b.fire<=0?'недоступно: в квартале нет пожара':!fireSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'fire')}`:`до ${firePower} ур. · часть ${fireSvc.blockId} ур.${fireSvc.level}${fireSvc.damaged?' ⚠ повреждена':''}${fireSvc.remote?' · помощь':''}`;
-    const rescueSub=!hasTrapped?'недоступно: нет людей под завалами':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`до ${rescuePower} жителей · инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠ повреждены':''}${clinicBonus?` + клиника ${clinicBonus}`:''}${engSvc.remote?' · помощь':''}`;
-    const waterSub=b.water==='ok'?'недоступно: водопровод работает':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠':''}${engSvc.remote?' · помощь':''}`;
-    const gasSub=b.gas!=='leak'?'недоступно: нет утечки газа':!engSvc?`недоступно: ${serviceUnavailableReason(selectedBlock,'eng')}`:`инженеры ${engSvc.blockId} ур.${engSvc.level}${engSvc.damaged?' ⚠':''}${engSvc.remote?' · помощь':''}`;
-    const canEvac=canEvacuate(selectedBlock);
-    const evacSub=canEvac?`до ${evacPower} жителей · склады +${warehouseEvacBonus(selectedBlock)}`:`недоступно: ${evacUnavailableReason(selectedBlock)}`;
-    el.appendChild(actionButton('Тушить пожар',fireSub,fightFire,state.actionsLeft<=0||b.fire<=0||!fireSvc));
-    el.appendChild(actionButton('Спасать из завалов',rescueSub,rescue,state.actionsLeft<=0||!engSvc||!hasTrapped));
-    el.appendChild(actionButton('Чинить водопровод',waterSub,repairWater,state.actionsLeft<=0||!engSvc||b.water==='ok'));
-    el.appendChild(actionButton('Перекрыть газ',gasSub,shutOffGas,state.actionsLeft<=0||!engSvc||b.gas!=='leak'));
-    el.appendChild(actionButton('Эвакуировать',evacSub,evacuate,state.actionsLeft<=0||!canEvac));
-  }
-}
-function renderMarket(){
-  const catalog=document.getElementById('catalog'),market=document.getElementById('specialMarket'),portfolio=document.getElementById('portfolio');
-  catalog.innerHTML='';market.innerHTML='';portfolio.innerHTML='';
-  CATALOG_PROJECTS.forEach(id=>{
-    const p=proj(id),d=document.createElement('div');d.className='market-card';
-    const extra=id==='warehouse'?' · Эвакуация +1':id==='firehouse'?' · Пожарная часть ур.1':id==='publicworks'?' · Инженеры ур.1':id==='clinic'?' · Спасение +1':'';
-    d.innerHTML=`<div class="top"><div class="title">${p.name}</div><b>${p.base}</b></div><div class="attrs">+1 очко за строительство · в конце, если целое +${p.prestige}<br>Доход ${p.income} · Жители ${p.pop} · Горючесть ${p.fireLoad}${extra}</div><button class="btn">Построить</button>`;
-    const btn=d.querySelector('button');btn.disabled=state.actionsLeft<=0||buildAlreadyUsed();btn.onclick=()=>openBuild(id);catalog.appendChild(d);
-  });
-  state.specialMarket.forEach(id=>{
-    const s=special(id),d=document.createElement('div');d.className='market-card special';
-    d.innerHTML=`<span class="type-tag">${projectTypeLabel(s.type)}</span><div class="top"><div class="title">${s.name}</div></div><div class="attrs">${s.description}</div><button class="btn secondary">Взять проект · 1 действие</button>`;
-    const btn=d.querySelector('button');btn.disabled=state.actionsLeft<=0||current().projects.length>=2;btn.onclick=()=>takeSpecialProject(id);market.appendChild(d);
-  });
-  if(!state.specialMarket.length){market.innerHTML='<div class="portfolio-empty">Колода спецпроектов исчерпана.</div>'}
-  if(!current().projects.length){portfolio.innerHTML='<div class="portfolio-empty">Нет нереализованных спецпроектов.</div>'}
-  current().projects.forEach(id=>{
-    const s=special(id),d=document.createElement('div');d.className='market-card portfolio';
-    d.innerHTML=`<span class="type-tag">${projectTypeLabel(s.type)}</span><div class="title">${s.name}</div><div class="attrs">${s.description}</div>`;
-    const btn=document.createElement('button');btn.className='btn';
-    if(s.type==='BUILDING'){btn.textContent='Реализовать · построить';btn.disabled=state.actionsLeft<=0||buildAlreadyUsed();btn.onclick=()=>openBuild(s.baseProject,id)}
-    else {btn.textContent='Применяется при обычном строительстве';btn.disabled=true}
-    d.appendChild(btn);portfolio.appendChild(d);
-  });
-}
-function renderLog(){const el=document.getElementById('log');el.innerHTML='';state.log.forEach(x=>{const d=document.createElement('div');let cls='';if(x.startsWith('[BAD]'))cls='bad';if(x.startsWith('[GOOD]'))cls='good';if(x.startsWith('[ACCENT]'))cls='accent';const txt=x.replace(/^\[(BAD|GOOD|ACCENT)\] /,'');if(txt.startsWith('Синий '))cls='player-blue';else if(txt.startsWith('Красный '))cls='player-red';else if(txt.startsWith('Зелёный '))cls='player-green';d.className=cls;d.textContent=txt;el.appendChild(d)});el.scrollTop=el.scrollHeight}
-
-function openModal(id){document.getElementById(id).classList.add('open')}
-function closeModals(){document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'))}
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModals)
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModals()}))
-
-let activeSpecialBuildId=null;
-function openBuild(preselect=null,specialId=null){
-  if(buildAlreadyUsed()){alert('Этот игрок уже строил в текущем раунде.');return}
-  const bl=state.blocks[selectedBlock],empty=bl.buildings.map((x,i)=>x?null:i).filter(x=>x!=null);
-  if(!empty.length){alert('В этом квартале нет свободного места.');return}
-  activeSpecialBuildId=specialId;
-  const sp=specialId?special(specialId):null;
-  document.querySelector('#buildModal .notice').textContent=sp?`Реализация спецпроекта «${sp.name}». Это использует единственное строительство игрока в этом раунде.`:`Капитал: ${current().capital}. Базовые здания доступны всегда. Это использует единственное строительство игрока в этом раунде.`;
-  const psel=document.getElementById('buildProject');psel.innerHTML='';
-  const available=sp?[sp.baseProject]:CATALOG_PROJECTS;
-  available.forEach(id=>{const p=proj(id),o=document.createElement('option');o.value=id;o.textContent=`${p.name} — цена ${p.base} · +1 сейчас / +${p.prestige} в конце`;psel.appendChild(o)});
-  if(preselect&&available.includes(preselect))psel.value=preselect;psel.disabled=!!sp;
-  const ssel=document.getElementById('buildSlot');ssel.innerHTML='';empty.forEach(i=>{const o=document.createElement('option');o.value=i;o.textContent=`Место ${i+1}`;ssel.appendChild(o)});
-  const csel=document.getElementById('buildConstruction'),progSel=document.getElementById('buildProgram');
-  const refillConstructions=()=>{
-    csel.innerHTML='';const allowed=sp&&sp.allowedConstructions?sp.allowedConstructions:Object.keys(CONSTRUCTIONS);
-    allowed.forEach(id=>{const x=CONSTRUCTIONS[id],o=document.createElement('option');o.value=id;o.textContent=`${x.name} (+${x.cost})`;csel.appendChild(o)});
-  };
-  const refillPrograms=()=>{
-    const prev=progSel.value;progSel.innerHTML='<option value="">Без программы</option>';
-    if(sp){progSel.disabled=true;return}
-    current().projects.filter(id=>special(id).type==='PROGRAM').forEach(id=>{
-      if(programEligible(id,psel.value,selectedBlock)){const o=document.createElement('option');o.value=id;o.textContent=special(id).name;progSel.appendChild(o)}
-    });
-    progSel.disabled=progSel.options.length<=1;
-    if([...progSel.options].some(o=>o.value===prev))progSel.value=prev;
-  };
-  const upd=()=>{
-    refillPrograms();
-    const p=proj(psel.value),programId=progSel.value,program=programId?special(programId):null;
-    const discount=program?program.constructionDiscount||0:0;
-    const constructionCost=Math.max(0,CONSTRUCTIONS[csel.value].cost-discount);
-    document.getElementById('buildTotal').value=(p.base+constructionCost)+' капитала';
-    document.getElementById('buildPoints').value=`+1 сразу · +${p.prestige+(program?program.finalBonus||0:0)} в конце, если целое`;
-  };
-  refillConstructions();refillPrograms();psel.onchange=()=>{refillConstructions();upd()};csel.onchange=upd;progSel.onchange=upd;upd();openModal('buildModal');
-}
-
-document.getElementById('confirmBuild').onclick=()=>{
-  if(!ensureAction()||buildAlreadyUsed())return;
-  const pid=document.getElementById('buildProject').value,slot=+document.getElementById('buildSlot').value,cid=document.getElementById('buildConstruction').value,programId=document.getElementById('buildProgram').value;
-  const p=proj(pid),sp=activeSpecialBuildId?special(activeSpecialBuildId):null,program=programId?special(programId):null,bl=state.blocks[selectedBlock];
-  if(sp&&!current().projects.includes(sp.id)){alert('Этого спецпроекта больше нет в портфеле.');return}
-  if(sp&&sp.allowedConstructions&&!sp.allowedConstructions.includes(cid)){alert('Для этого спецпроекта выбран недопустимый тип конструкции.');return}
-  if(program&&!current().projects.includes(program.id)){alert('Этой программы больше нет в портфеле.');return}
-  if(program&&!programEligible(program.id,pid,selectedBlock)){alert('Условия программы сейчас не выполнены.');return}
-  if(sp&&program){alert('Нельзя применить две спецкарты к одному зданию.');return}
-  if((pid==='firehouse'||pid==='clinic')&&bl.buildings.some(b=>b&&b.projectId===pid)){alert(pid==='firehouse'?'В одном квартале может быть только одна пожарная часть.':'В одном квартале может быть только одна клиника.');return}
-  const discount=program?program.constructionDiscount||0:0,cost=p.base+Math.max(0,CONSTRUCTIONS[cid].cost-discount);
-  if(!ensureCapital(cost))return;snapshot();
-  const b=makeBuilding(pid,cid,state.currentPlayer);
-  if(sp){
-    b.specialId=sp.id;
-    if(sp.overrides){if(sp.overrides.pop!=null)b.pop=sp.overrides.pop;if(sp.overrides.income!=null)b.incomeOverride=sp.overrides.income;if(sp.overrides.fireLoad!=null)b.fireLoadOverride=sp.overrides.fireLoad;if(sp.overrides.evac!=null)b.evacOverride=sp.overrides.evac}
-    if(sp.freeFireRetrofit){b.fireRetrofit=true;b.investors.fire=state.currentPlayer}
-    if(sp.serviceLevel)b.serviceLevel=sp.serviceLevel;
-    if(sp.clinicBonus)b.clinicBonus=sp.clinicBonus;
-  }
-  if(program){b.programId=program.id;b.finalBonus=program.finalBonus||0}
-  current().capital-=cost;current().score+=1;current().prestige+=1;current().buildUsedRound=state.buildRound;bl.buildings[slot]=b;
-  if(sp){removePlayerProject(sp.id);state.specialDiscard.push(sp.id)}
-  if(program){removePlayerProject(program.id);state.specialDiscard.push(program.id)}
-  spendAction();
-  const used=sp?` по спецпроекту «${sp.name}»`:program?` с программой «${program.name}»`:'';
-  log(`${current().name} построил «${buildingName(b)}» в квартале ${selectedBlock} (${CONSTRUCTIONS[cid].name})${used}, стоимость ${cost}. +1 очко за строительство; если объект останется целым — +${buildingFinalPoints(b)} в конце.`);
-  activeSpecialBuildId=null;closeModals();render();
-};
-
-document.getElementById('confirmRetrofit').onclick=()=>{
-  if(!ensureAction())return;const slot=+document.getElementById('retrofitSlot').value,type=document.getElementById('retrofitType').value,b=state.blocks[selectedBlock].buildings[slot];if(!b){alert('Выберите существующее здание.');return}const cost=type==='quake'?3:2;if(!ensureCapital(cost))return;if(type==='quake'&&b.quakeRetrofit){alert('Сейсмическое укрепление уже есть.');return}if(type==='fire'&&b.fireRetrofit){alert('Противопожарное улучшение уже есть.');return}snapshot();current().capital-=cost;if(type==='quake'){b.quakeRetrofit=true;b.investors.quake=state.currentPlayer}else{b.fireRetrofit=true;b.investors.fire=state.currentPlayer}spendAction();log(`${current().name} укрепил ${buildingName(b)} в квартале ${selectedBlock}: ${type==='quake'?'сейсмическое усиление (+2)':'противопожарная защита (+1)'}.`);closeModals();render();
-};
-
-document.getElementById('confirmInfra').onclick=()=>{
-  if(!ensureAction()||!ensureCapital(2))return;const type=document.getElementById('infraType').value,b=state.blocks[selectedBlock];if(type==='water'&&b.waterFortified){alert('Водопровод уже укреплён.');return}if(type==='gas'&&b.gasFortified){alert('Газовая сеть уже укреплена.');return}snapshot();current().capital-=2;if(type==='water'){b.waterFortified=true;b.waterInvestor=state.currentPlayer}else{b.gasFortified=true;b.gasInvestor=state.currentPlayer}spendAction();log(`${current().name} укрепил ${type==='water'?'водопровод':'газовую сеть'} в квартале ${selectedBlock}.`);closeModals();render();
-};
-
-document.getElementById('confirmFund').onclick=()=>{
-  if(!ensureAction()||!ensureCapital(3))return;
-  const slot=+document.getElementById('fundBuilding').value,b=state.blocks[selectedBlock].buildings[slot];
-  if(!b||(b.projectId!=='firehouse'&&b.projectId!=='publicworks')){alert('Выберите здание службы.');return}
-  if((b.serviceLevel||1)>=3){alert('Эта служба уже максимального уровня.');return}
-  snapshot();current().capital-=3;b.serviceLevel=(b.serviceLevel||1)+1;spendAction();
-  log(`${current().name} оснастил ${buildingName(b)} в квартале ${selectedBlock}: теперь уровень ${b.serviceLevel}.`);
-  closeModals();render();
-};
-
-function prepareRetrofitSelect(){const s=document.getElementById('retrofitSlot');s.innerHTML='';state.blocks[selectedBlock].buildings.forEach((b,i)=>{if(b){const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${buildingName(b)}`;s.appendChild(o)}})}
-function prepareFundSelect(){const s=document.getElementById('fundBuilding');s.innerHTML='';state.blocks[selectedBlock].buildings.forEach((b,i)=>{if(b&&(b.projectId==='firehouse'||b.projectId==='publicworks')&&(b.serviceLevel||1)<3){const o=document.createElement('option');o.value=i;o.textContent=`${i+1}. ${buildingName(b)} — уровень ${b.serviceLevel||1} → ${(b.serviceLevel||1)+1}`;s.appendChild(o)}})}
-document.getElementById('retrofitModal').addEventListener('click',()=>{});
-const oldOpenModal=openModal;openModal=function(id){
-  if(id==='retrofitModal')prepareRetrofitSelect();
-  if(id==='fundModal')prepareFundSelect();
-  if(id==='retrofitModal')document.querySelector('#retrofitModal h3').textContent=`Укрепить здание · капитал ${current().capital}`;
-  if(id==='infraModal')document.querySelector('#infraModal h3').textContent=`Укрепить инфраструктуру · капитал ${current().capital}`;
-  if(id==='fundModal')document.querySelector('#fundModal h3').textContent=`Оснастить службу квартала ${selectedBlock} · капитал ${current().capital}`;
-  document.getElementById(id).classList.add('open')
-}
-
-function surveyGround(){if(!ensureAction()||!ensureCapital(1))return;const b=state.blocks[selectedBlock];if(b.groundRevealed)return;snapshot();current().capital-=1;b.groundRevealed=true;spendAction();log(`${current().name} исследовал грунт квартала ${selectedBlock}: ${b.ground.name}. Стоимость: 1 капитал.`);render()}
-function raiseCapital(){if(!ensureAction())return;snapshot();current().capital+=4;spendAction();log(`${current().name} привлёк дополнительный капитал: +4.`);render()}
-
-function endTurn(){
-  if(state.finished)return;
-  snapshot();
-  if(state.currentPlayer<2){state.currentPlayer++;state.actionsLeft=2;log(`Ход: ${current().name}.`);render();return}
-  if(state.phase==='build'){
-    if(state.buildRound<3){
-      rotateSpecialMarket();
-      state.buildRound++;state.currentPlayer=0;state.actionsLeft=2;state.players.forEach((p,i)=>{const inc=playerIncome(i);p.capital+=inc;log(`${p.name} получает ${inc} капитала в начале раунда ${state.buildRound}.`)});log(`Начался раунд ${state.buildRound} первой фазы.`,'ACCENT');
-    } else {state.actionsLeft=0;log('Все игроки завершили подготовку. Можно запускать землетрясение.','ACCENT')}
-  } else if(state.phase==='emergency') {
-    state.actionsLeft=0;log('Все игроки завершили действия. Завершите раунд чрезвычайной ситуации.','ACCENT');
-  }
-  render();
-}
-
-document.getElementById('endTurnBtn').onclick=endTurn;
-
-function earthquake(){
-  if(state.phase!=='build')return;snapshot();log('18 апреля 1906 года, 5:12. Началось землетрясение.','ACCENT');
-  Object.values(state.blocks).forEach(bl=>{
-    bl.groundRevealed=true;const load=2+bl.ground.stress;log(`Квартал ${bl.id}: ${bl.ground.name}, сила удара ${load}.`);
-    bl.buildings.forEach(b=>{
-      if(!b)return;const s=buildingStats(b);const baseQ=CONSTRUCTIONS[b.construction].quake;
-      const result=(q)=>q>=load?'intact':q===load-1?'damaged':'collapsed';
-      const finalResult=result(s.quake), baseResult=result(baseQ);
-      if(b.quakeRetrofit && finalResult!==baseResult) b.quakeSaved=true;
-      if(finalResult==='intact'){b.status='intact';log(`${buildingName(b)}: устояло.`,'GOOD')}
-      else if(finalResult==='damaged'){b.status='damaged';log(`${buildingName(b)}: повреждено.`)}
-      else {b.status='collapsed';b.trapped=b.pop;b.pop=0;log(`${buildingName(b)}: ОБРУШИЛОСЬ, под завалами ${b.trapped}.`,'BAD')}
-    });
-    if(bl.ground.id==='soft' || bl.ground.id==='fill'){
-      if(!bl.gasFortified){bl.gas='leak';log(`Квартал ${bl.id}: утечка газа.`,'BAD')} else {if(bl.gasInvestor!=null)addScore(bl.gasInvestor,1,'укрепление газовой сети сработало')}
-    }
-    if(bl.ground.id==='fill'){
-      if(!bl.waterFortified){bl.water='broken';log(`Квартал ${bl.id}: водопровод разрушен.`,'BAD')} else {if(bl.waterInvestor!=null)addScore(bl.waterInvestor,1,'укрепление водопровода сработало')}
-    }
-    if(bl.gas==='leak')bl.fire=Math.max(bl.fire,blockFireLoad(bl)>=4?2:1);
-  });
-  state.phase='emergency';state.emergencyRound=1;state.currentPlayer=0;state.actionsLeft=2;log('Началась вторая фаза: чрезвычайная ситуация. Службы привязаны к своим кварталам; освободившиеся части могут помогать другим.','ACCENT');render();
-}
-document.getElementById('earthquakeBtn').onclick=earthquake;
-
-function fightFire(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.fire<=0)return;const svc=serviceSource(selectedBlock,'fire');if(!svc){alert('Нет доступной пожарной части. Сначала пожарная часть должна освободиться в своём квартале.');return}snapshot();const power=bl.water==='ok'?svc.level:1;const removed=Math.min(bl.fire,power);bl.fire-=removed;spendAction();current().merit+=removed;current().score+=removed;log(`${current().name} тушит пожар в ${selectedBlock}: −${removed} уровня, пожарная часть ${svc.blockId} ур.${svc.level}${svc.remote?' прибыла на помощь':''}${bl.water==='ok'?'':' без воды'}. +${removed} очк.`,'GOOD');render()}
-function rescue(){const bl=state.blocks[selectedBlock];if(!ensureAction())return;const svc=serviceSource(selectedBlock,'eng');if(!svc){alert('Нет доступных инженеров. Сначала они должны завершить спасение в своём квартале.');return}const target=bl.buildings.find(b=>b&&b.trapped>0);if(!target)return;snapshot();const clinic=clinicRescueBonus(selectedBlock);const cap=svc.level+clinic;const n=Math.min(cap,target.trapped);target.trapped-=n;state.safe+=n;spendAction();current().score+=n;current().merit+=n;log(`${current().name} спас ${n} из-под завалов в квартале ${selectedBlock} (инженеры ${svc.blockId} ур.${svc.level}${clinic?` + местная клиника ${clinic}`:''}${svc.remote?' прибыли на помощь':''}). +${n} очк.`,'GOOD');render()}
-function repairWater(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.water==='ok')return;const svc=serviceSource(selectedBlock,'eng');if(!svc){alert('Нет доступных инженеров для ремонта.');return}snapshot();bl.water='ok';spendAction();if(bl.fire>0){current().score++;current().merit++;log(`${current().name} восстановил воду в горящем квартале ${selectedBlock} силами инженеров из ${svc.blockId}. +1 очк.`,'GOOD')}else log(`${current().name} восстановил воду в квартале ${selectedBlock} силами инженеров из ${svc.blockId}.`);render()}
-function shutOffGas(){const bl=state.blocks[selectedBlock];if(!ensureAction()||bl.gas!=='leak')return;const svc=serviceSource(selectedBlock,'eng');if(!svc){alert('Нет доступных инженеров для перекрытия газа.');return}snapshot();bl.gas='shutoff';spendAction();current().score++;current().merit++;log(`${current().name} перекрыл утечку газа в квартале ${selectedBlock} силами инженеров из ${svc.blockId}. +1 очк.`,'GOOD');render()}
-function canEvacuate(id){const bl=state.blocks[id];const threat=bl.fire>0||neighbors(id).some(n=>state.blocks[n].fire>=2);const has=bl.buildings.some(b=>b&&b.status!=='collapsed'&&!b.burned&&b.pop>0);return threat&&has}
-function evacuate(){if(!ensureAction()||!canEvacuate(selectedBlock))return;snapshot();let need=2+warehouseEvacBonus(selectedBlock),n=0;const bl=state.blocks[selectedBlock];for(const b of bl.buildings){if(!b||b.status==='collapsed'||b.burned)continue;const take=Math.min(need,b.pop);b.pop-=take;b.evacuated+=take;need-=take;n+=take;if(!need)break}state.safe+=n;current().score+=n;current().merit+=n;spendAction();log(`${current().name} эвакуировал ${n} жителей из квартала ${selectedBlock} (склады дали +${warehouseEvacBonus(selectedBlock)} к вместимости). +${n} очк.`,'GOOD');render()}
-
-function endEmergencyRound(){
-  if(state.phase!=='emergency')return;snapshot();log(`Разрешение последствий раунда ${state.emergencyRound}.`,'ACCENT');
-
-  // 1. Неостановленный пожар усиливается.
-  Object.values(state.blocks).forEach(bl=>{if(bl.fire>0)bl.fire=Math.min(3,bl.fire+1)});
-
-  // 2. Огонь уничтожает стоящие здания.
-  Object.values(state.blocks).forEach(bl=>{
-    bl.buildings.forEach(b=>{
-      if(!b||b.burned||b.status==='collapsed')return;const f=buildingStats(b).fire;const baseF=CONSTRUCTIONS[b.construction].fire;
-      if(b.fireRetrofit && bl.fire>=baseF+2 && bl.fire<f+2) b.fireSaved=true;
-      if(bl.fire>=f+2){b.burned=true;const deaths=b.pop;b.pop=0;if(deaths>0){state.casualties+=deaths;log(`${buildingName(b)} в квартале ${bl.id} сгорело. Погибло ${deaths}.`,'BAD')}else log(`${buildingName(b)} в квартале ${bl.id} сгорело.`,'BAD')}
-    })
-  });
-
-  // 3. Люди под завалами начинают погибать, если до них дошёл сильный пожар.
-  Object.values(state.blocks).forEach(bl=>{
-    let danger=bl.fire>=3?2:bl.fire===2?1:0;
-    let trapped=bl.buildings.reduce((s,b)=>s+(b?b.trapped:0),0);
-    let deaths=Math.min(danger,trapped);
-    let left=deaths;
-    if(left>0){
-      for(const b of bl.buildings){
-        if(!b||b.trapped<=0)continue;
-        const take=Math.min(left,b.trapped);b.trapped-=take;left-=take;if(left===0)break;
-      }
-      state.casualties+=deaths;
-      log(`Квартал ${bl.id}: огонь добрался до руин. Погибло под завалами: ${deaths}.`,'BAD');
-    }
-  });
-
-  // 4. Неперекрытая утечка газа снова зажигает уже потушенный квартал.
-  Object.values(state.blocks).forEach(bl=>{
-    if(bl.gas==='leak'&&bl.fire===0){bl.fire=1;log(`Квартал ${bl.id}: из-за утечки газа пожар вспыхнул снова.`,'BAD')}
-  });
-
-  // 5. Пожар максимальной силы распространяется дальше.
-  const order={A:['B','D'],B:['C','E','A'],C:['F','B'],D:['E','A'],E:['F','B','D'],F:['C','E']};
-  const spread=[];Object.values(state.blocks).forEach(bl=>{if(bl.fire===3){const t=order[bl.id].find(id=>state.blocks[id].fire===0);if(t)spread.push(t)}});
-  [...new Set(spread)].forEach(id=>{state.blocks[id].fire=1;log(`Пожар перекинулся в квартал ${id}.`,'BAD')});
-
-  // 6. Если угроз больше нет, чрезвычайная фаза заканчивается сразу.
-  const stable=Object.values(state.blocks).every(bl=>
-    bl.fire===0&&bl.gas!=='leak'&&bl.water==='ok'&&!bl.buildings.some(b=>b&&b.trapped>0)
-  );
-  if(stable){log('Город стабилизирован: пожаров, утечек, разрушенного водопровода и людей под завалами больше нет.','GOOD');finishGame();return}
-
-  if(state.emergencyRound>=4){finishGame();return}
-  state.emergencyRound++;state.currentPlayer=0;state.actionsLeft=2;log(`Начался раунд ${state.emergencyRound} чрезвычайной ситуации.`,'ACCENT');render();
-}
-document.getElementById('endEmergencyRoundBtn').onclick=endEmergencyRound;
-
-function finishGame(){
-  let unresolved=0;
-  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{if(b&&b.trapped>0){unresolved+=b.trapped;b.trapped=0}}));
-  if(unresolved>0){state.casualties+=unresolved;log(`После окончания чрезвычайной фазы под завалами осталось ${unresolved}. Они считаются погибшими.`,'BAD')}
-  if(state.casualties)log(`Общие потери: ${state.casualties}. В текущей версии погибшие не отнимают победные очки.`,'ACCENT');
-  Object.values(state.blocks).forEach(bl=>bl.buildings.forEach(b=>{
-    if(!b)return;
-    if(b.owner!=null && b.status==='intact' && !b.burned){const pts=buildingFinalPoints(b);addScore(b.owner,pts,`проект «${buildingName(b)}» остался целым`)}
-    if(b.owner!=null && (b.status==='collapsed'||b.burned))addScore(b.owner,-1,`проект «${buildingName(b)}» разрушен — потеря очка за строительство`);
-    if(b.quakeSaved&&b.investors.quake!=null)addScore(b.investors.quake,1,'сейсмическое укрепление реально изменило исход');if(b.fireSaved&&b.investors.fire!=null)addScore(b.investors.fire,1,'противопожарное укрепление реально спасло здание')
-  }));
-  state.phase='finished';state.finished=true;log('Партия завершена.','ACCENT');const ranking=[...state.players].sort((a,b)=>b.score-a.score);log(`Победитель: ${ranking[0].name} — ${ranking[0].score} очк.`,'GOOD');render();
-}
-
-async function copyFullLog(){
-  const text=state.log.join('\n');
-  try{
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(text);
-    } else {
-      const ta=document.createElement('textarea');
-      ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-    }
-    const btn=document.getElementById('copyLogBtn'),old=btn.textContent;
-    btn.textContent='Скопировано ✓';setTimeout(()=>btn.textContent=old,1400);
-  }catch(e){
-    alert('Не удалось скопировать лог автоматически. Используйте «Экспорт».');
-  }
-}
-
-function exportGame(){
-  const ranking=[...state.players].sort((a,b)=>b.score-a.score).map((p,i)=>`${i+1}. ${p.name}: ${p.score} очк.`).join('\n');
-  const fireSummary=serviceBuildings('firehouse').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
-  const engSummary=serviceBuildings('publicworks').map(x=>`${x.blockId}:ур.${x.level}`).join(', ')||'нет';
-  const portfolios=state.players.map(p=>`${p.name}: ${p.projects.length?p.projects.map(id=>special(id).name).join(', '):'пусто'}`).join('\n');
-  const summary=`SAN FRANCISCO 1906 — ПРОТОКОЛ ТЕСТА v0.15\n\nФаза: ${state.phase}\nРаунд I: ${state.buildRound}\nРаунд II: ${state.emergencyRound}\nСпасено: ${state.safe}\nПогибло: ${state.casualties}\nПожарные части: ${fireSummary}\nСклады городских работ: ${engSummary}\n\nПОРТФЕЛИ\n${portfolios}\n\nСЧЁТ\n${ranking}\n\nЖУРНАЛ\n${state.log.join('\n')}`;
-  const blob=new Blob([summary],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sf1906_v015_test_result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-
-function save(){localStorage.setItem('sf1906_v015',JSON.stringify(state));alert('Партия сохранена в Chrome на этом устройстве.')}
-function load(){const x=localStorage.getItem('sf1906_v015');if(!x){alert('Сохранённой партии пока нет.');return}snapshot();state=JSON.parse(x);log('Партия загружена из локального сохранения.');render()}
-function newGame(){if(!confirm('Начать новую партию? Текущее несохранённое состояние будет потеряно.'))return;state=initialState();undoStack=[];selectedBlock='A';render()}
-function undo(){if(!undoStack.length){alert('Нечего отменять.');return}state=undoStack.pop();render()}
-document.getElementById('saveBtn').onclick=save;document.getElementById('loadBtn').onclick=load;document.getElementById('exportBtn').onclick=exportGame;document.getElementById('copyLogBtn').onclick=copyFullLog;document.getElementById('newBtn').onclick=newGame;document.getElementById('undoBtn').onclick=undo;
-
-// Dev panel
-function devMut(fn,msg){snapshot();fn();if(msg)log(msg,'ACCENT');render()}
-document.getElementById('devBtn').onclick=()=>openModal('devModal');
-document.getElementById('devMoney').onclick=()=>devMut(()=>current().capital+=10,'ТЕСТ: +10 капитала текущему игроку.');
-document.getElementById('devAction').onclick=()=>devMut(()=>state.actionsLeft++,'ТЕСТ: +1 действие текущему игроку.');
-document.getElementById('devFire').onclick=()=>devMut(()=>state.blocks[selectedBlock].fire=Math.min(3,state.blocks[selectedBlock].fire+1),`ТЕСТ: пожар +1 в квартале ${selectedBlock}.`);
-document.getElementById('devWater').onclick=()=>devMut(()=>state.blocks[selectedBlock].water=state.blocks[selectedBlock].water==='ok'?'broken':'ok',`ТЕСТ: переключено состояние воды в ${selectedBlock}.`);
-document.getElementById('devGas').onclick=()=>devMut(()=>state.blocks[selectedBlock].gas=state.blocks[selectedBlock].gas==='ok'?'leak':'ok',`ТЕСТ: переключено состояние газа в ${selectedBlock}.`);
-document.getElementById('devReveal').onclick=()=>devMut(()=>state.blocks[selectedBlock].groundRevealed=true,`ТЕСТ: открыт грунт в ${selectedBlock}.`);
-document.getElementById('devSkipEq').onclick=()=>{state.buildRound=3;state.currentPlayer=2;state.actionsLeft=0;closeModals();render()};
-document.getElementById('devEmergency').onclick=()=>{if(state.phase==='build'){closeModals();earthquake()}};
-
-// Build modal total listeners
-
-document.getElementById('buildProject').addEventListener('change',()=>{});
-
-state=initialState();render();
-</script>
+<div class="toast" id="toast"></div>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
