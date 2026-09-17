@@ -4,19 +4,35 @@ import {
   resolveTenders,cleanupMarket
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v0165';
+const STORAGE_KEY='sf1906_phase1_ui_v0166';
+const LEGACY_STORAGE_KEY='sf1906_phase1_ui_v0165';
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
+let mobileContextOpen=false;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 
 function loadState(){
   try{
-    const raw=localStorage.getItem(STORAGE_KEY);if(raw){const parsed=JSON.parse(raw);if(parsed?.version==='0.16.5')return parsed;}
+    const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem(LEGACY_STORAGE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed?.version==='0.16.5'||parsed?.version==='0.16.6'){
+        parsed.version='0.16.6';
+        return parsed;
+      }
+    }
   }catch(e){}
   return createInitialState();
+}
+function isMobile(){return window.matchMedia('(max-width:640px)').matches;}
+function closeMobileContext(){mobileContextOpen=false;syncMobileContext();}
+function syncMobileContext(){
+  const open=isMobile()&&mobileContextOpen;
+  $('#contextPanel')?.classList.toggle('mobile-open',open);
+  document.body.classList.toggle('context-open',open);
 }
 function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
 function playerColor(pid){return state.players[pid].key;}
@@ -26,7 +42,7 @@ function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('s
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();
+  renderTop();renderPlayers();renderViews();renderMarket();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -62,7 +78,7 @@ function renderMarket(){
     const m=state.market[slot];
     if(!m){const d=document.createElement('div');d.className='project-card empty';d.innerHTML=`<span>Пустое место рынка</span>`;el.appendChild(d);continue;}
     const p=projectById(m.id),price=openingPrice(m),selected=state.selectedProjectId===m.id;
-    const card=document.createElement('article');card.className=`project-card ${typeClass(p.type)} ${m.age===1?'old':''} ${m.sold?'sold':''} ${selected?'selected':''}`;card.onclick=e=>{if(!e.target.closest('button')){state.selectedProjectId=m.id;render();}};
+    const card=document.createElement('article');card.className=`project-card ${typeClass(p.type)} ${m.age===1?'old':''} ${m.sold?'sold':''} ${selected?'selected':''}`;card.onclick=e=>{if(!e.target.closest('button')){state.selectedProjectId=m.id;if(isMobile())mobileContextOpen=true;render();}};
     const claims=m.claims.map(c=>`<span class="claim-chip"><span class="claim-dot ${playerColor(c.player)}"></span>${state.players[c.player].name}</span>`).join('');
     const canClaim=state.phase==='declare'&&cd!=null&&!already&&!m.sold&&state.players[cd].capital>=price;
     const result=m.result?`<div class="result-box">${state.players[m.result.player].name} · $${m.result.price}<br>${m.result.reason}</div>`:'';
@@ -105,15 +121,18 @@ function closePrivacy(){ $('#privacyModal').classList.remove('open');$('#modalBa
 
 function renderContext(){
   const panel=$('#contextPanel');
+  const close=isMobile()?'<button class="context-close" id="contextClose" aria-label="Закрыть подробности">×</button>':'';
   if(state.view==='hall'){
-    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);if(!m){panel.innerHTML='<div class="empty-state">На рынке нет проекта.</div>';return;}
+    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
     const p=projectById(m.id);const claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="material-tags">${p.materials.map(x=>`<span class="material-tag">${materialLabel(x)}</span>`).join('')}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="material-tags">${p.materials.map(x=>`<span class="material-tag">${materialLabel(x)}</span>`).join('')}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
     const d=DISTRICTS.find(x=>x.id===state.selectedDistrictId)||DISTRICTS[0];
-    panel.innerHTML=`<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="detail-section"><div class="detail-label">Сейчас</div><div class="detail-text">${d.hint}</div></div><div class="detail-section"><div class="detail-label">Следующий модуль v0.17</div><div class="detail-text">Здесь появятся Land Value, строительные места, рабочие и действие Begin Construction.</div></div><div class="district-placeholder"><b>Почему панель справа:</b><br>карта остаётся чистой, а подробности показываются только для выбранного объекта. Так мы не будем забивать поле текстом по мере роста игры.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="detail-section"><div class="detail-label">Сейчас</div><div class="detail-text">${d.hint}</div></div><div class="detail-section"><div class="detail-label">Следующий модуль v0.17</div><div class="detail-text">Здесь появятся Land Value, строительные места, рабочие и действие Begin Construction.</div></div><div class="district-placeholder"><b>Почему панель справа:</b><br>карта остаётся чистой, а подробности показываются только для выбранного объекта. Так мы не будем забивать поле текстом по мере роста игры.</div>`;
   }
+  wireContextClose();
 }
+function wireContextClose(){const b=$('#contextClose');if(b)b.onclick=closeMobileContext;}
 
 function renderOffice(){
   const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
@@ -128,21 +147,23 @@ function renderDebug(){
   $$('[data-inf]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.inf];p.influence=Math.max(0,p.influence+(+b.dataset.delta));render();});
 }
 
-function openDrawer(id){closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
+function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
 function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);closeDrawers();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-$$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;render();});
+$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
 $('#helpBtn').onclick=()=>{showToast('Мэрия → закрытые ставки → город → конец раунда');};
-$('#drawerBackdrop').onclick=closeDrawers;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
+$('#drawerBackdrop').onclick=closeDrawers;
+$('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
 $('#endRoundBtn').onclick=()=>{const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
-$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;$$('[data-district]').forEach(x=>x.classList.toggle('selected',x===g));renderContext();saveState();});
+$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;$('[data-district]').forEach(x=>x.classList.toggle('selected',x===g));renderContext();syncMobileContext();saveState();});
+window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();});
 
 render();
