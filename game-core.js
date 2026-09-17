@@ -47,7 +47,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.16.5',
+    version:'0.16.6',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -61,7 +61,7 @@ export function createInitialState({rng=Math.random}={}){
     bidCursor:0,
     selectedProjectId:market[0]?.id||null,
     selectedDistrictId:'civic',
-    log:[{msg:'Началась тестовая партия Phase I UX v0.16.5.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.16.6.','cls':'accent'}],
     finished:false
   };
 }
