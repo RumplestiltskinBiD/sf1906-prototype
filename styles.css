@@ -176,3 +176,70 @@ button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allow
 
   .toast{bottom:calc(70px + env(safe-area-inset-bottom));max-width:88vw;text-align:center}
 }
+
+
+/* v0.17 — Land Value + Begin Construction */
+.construction-mode{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 0 10px;padding:10px 12px;border:1px solid #bba98e;border-radius:12px;
+  background:#f6eddd;color:#4e463c
+}
+.construction-mode strong{display:block;font-size:13px}
+.construction-mode span{display:block;margin-top:2px;font-size:11px;line-height:1.4;color:#756b5e}
+.construction-mode.active{border-color:#4e7772;background:#e7efe9}
+.construction-mode.muted{opacity:.68}
+.district-meta{
+  pointer-events:none;text-anchor:middle;font:800 13px/1 Inter,system-ui,sans-serif;
+  fill:#564c40;paint-order:stroke;stroke:#f4ead9;stroke-width:4px;stroke-linejoin:round
+}
+.district-meta.eligible{fill:#234d39;stroke:#e8f3e8}
+.district-meta.blocked{fill:#7d6f63;opacity:.52}
+.district.build-ok polygon{stroke:#2f754f!important;stroke-width:9!important;filter:brightness(1.08)}
+.district.build-blocked polygon{opacity:.42;filter:saturate(.35)}
+.construction-token circle{stroke:#fff4e4;stroke-width:3}
+.construction-token text{
+  text-anchor:middle;pointer-events:none;font:900 9px/1 Inter,system-ui,sans-serif;fill:white
+}
+.construction-token.token-blue circle{fill:var(--blue)}
+.construction-token.token-red circle{fill:var(--red)}
+.construction-token.token-green circle{fill:var(--green)}
+.district-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 12px}
+.district-stats>div{padding:8px;border:1px solid #c9baa1;border-radius:9px;background:#fff8eb}
+.district-stats span{display:block;font-size:8px;font-weight:900;letter-spacing:.08em;color:#82776a}
+.district-stats strong{display:block;font-size:18px;margin-top:2px}
+.construction-confirm{
+  margin:8px 0 13px;padding:11px;border-radius:10px;border:1px solid #c1b199;background:#fff7e8
+}
+.construction-confirm.ok{border-color:#89aa8e;background:#edf5e9}
+.construction-confirm.blocked{border-color:#c59b91;background:#f7e7e2}
+.construction-confirm>strong{display:block;font-family:Georgia,serif;font-size:16px;margin-bottom:7px}
+.construction-cost{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px}
+.construction-cost span{padding:7px;border-radius:8px;background:rgba(255,255,255,.66);font-size:11px}
+.eligibility-errors{font-size:11px;line-height:1.5;color:#7e3f38}
+.mini-construction{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #d7cbb9}
+.mini-construction:last-child{border-bottom:none}
+.office-summary.three{grid-template-columns:repeat(3,1fr)}
+.office-subhead{margin-top:15px}
+.portfolio-card.available-project .secondary-btn{margin-top:8px;min-height:38px}
+.portfolio-card span+span{margin-top:2px}
+.portfolio-card.construction-card{border-left:4px solid #b98242;background:#fff4df}
+.empty-state.compact{padding:12px}
+.debug-section-title{
+  margin:16px 0 7px;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#776c5f
+}
+.debug-land{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #d5c8b4;font-size:11px}
+.debug-land>div{display:flex;align-items:center;gap:7px}.debug-land b{min-width:28px;text-align:center}
+.debug-land .mini-btn{min-width:34px}
+@media(max-width:640px){
+  .construction-mode{margin:0 0 8px;padding:8px 9px;gap:8px}
+  .construction-mode span{font-size:10px}
+  .construction-mode .secondary-btn,.construction-mode .ghost-btn{flex:0 0 auto;min-height:40px;padding:7px 10px}
+  .district-meta{font-size:12px;stroke-width:5px}
+  .district.build-ok polygon{stroke-width:12!important}
+  .district-stats{gap:5px}
+  .district-stats>div{padding:7px 6px}
+  .district-stats span{font-size:7px}
+  .district-stats strong{font-size:16px}
+  .office-summary.three{grid-template-columns:repeat(3,1fr);gap:5px}
+  .office-stat{padding:8px 6px}.office-stat strong{font-size:16px}
+}
