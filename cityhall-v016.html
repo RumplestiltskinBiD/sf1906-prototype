@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>San Francisco 1906 — City Hall v0.16</title>
+<style>
+:root{
+  --bg:#ece3d2; --paper:#fbf6eb; --ink:#2f2a23; --muted:#776f63; --line:#c9baa4;
+  --accent:#8b3e31; --accent2:#355f67; --good:#497655; --warn:#b8782d; --danger:#9d382f;
+  --blue:#3f91d6; --red:#cf564f; --green:#4e9962; --shadow:0 7px 22px rgba(55,40,25,.12);
+}
+*{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{min-height:100vh;background-image:radial-gradient(rgba(90,70,40,.05) 1px,transparent 1px);background-size:10px 10px}
+button,input,select{font:inherit} button{cursor:pointer}
+.app{max-width:1500px;margin:0 auto;padding:16px}.panel{background:rgba(251,246,235,.95);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}.brand h1{font-family:Georgia,serif;margin:0;font-size:30px}.brand .sub{font-size:13px;color:var(--muted);margin-top:4px}.badge{display:inline-block;background:var(--accent);color:#fff;border-radius:999px;padding:4px 9px;font-size:12px;margin-left:8px;vertical-align:middle}
+.btn{border:1px solid var(--line);background:#fffaf0;color:var(--ink);padding:9px 12px;border-radius:10px}.btn:hover{filter:brightness(.98)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.secondary{background:var(--accent2);border-color:var(--accent2);color:#fff}.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}.btn:disabled{opacity:.43;cursor:not-allowed}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap}.top-grid{display:grid;grid-template-columns:1.4fr .9fr;gap:12px;margin-bottom:12px}.section{padding:14px}.section h2,.section h3{font-family:Georgia,serif;margin:0 0 9px}.small{font-size:12px;color:var(--muted);line-height:1.45}.notice{border-left:4px solid var(--accent2);background:#edf3f1;padding:10px;border-radius:9px;font-size:12px;line-height:1.45}
+.status{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#fffaf0;border:1px solid var(--line);border-radius:10px;padding:9px}.stat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.stat .v{font-size:17px;font-weight:800;margin-top:3px}
+.players{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.player{border:2px solid transparent;background:#fffaf0;border-radius:12px;padding:10px}.player.active{border-color:var(--accent2)}.player .head{display:flex;justify-content:space-between;gap:8px;align-items:center}.player .name{font-weight:800}.player .meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:6px}.player .portfolio{font-size:11px;color:var(--muted);margin-top:7px;min-height:32px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.dot.blue{background:var(--blue)}.dot.red{background:var(--red)}.dot.green{background:var(--green)}
+.adjust{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}.mini{border:1px solid var(--line);background:white;border-radius:7px;padding:4px 7px;font-size:11px}
+.cityhall{padding:14px}.hall-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:10px}.phasebox{font-size:13px;background:#f0eadf;border:1px solid var(--line);border-radius:9px;padding:8px 10px}.market{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.card{position:relative;min-height:250px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:7px}.card.lastchance{background:#fff5e2;border-color:#b88b45}.card.sold{opacity:.46}.slot{position:absolute;top:7px;right:8px;font-size:10px;color:var(--muted);font-weight:800}.age{font-size:9px;letter-spacing:.08em;font-weight:900;color:var(--accent2);text-transform:uppercase}.age.last{color:var(--warn)}.title{font-family:Georgia,serif;font-weight:800;font-size:17px;line-height:1.1;padding-right:22px}.price{font-weight:900;font-size:21px;color:var(--accent)}.attrs{font-size:11px;line-height:1.4;color:var(--muted)}.effect{font-size:11px;line-height:1.4;background:#f5f0e7;border-radius:8px;padding:7px}.claims{display:flex;gap:5px;flex-wrap:wrap;min-height:22px;margin-top:auto}.claim{font-size:10px;font-weight:800;border-radius:999px;padding:4px 7px;color:white}.claim.blue{background:var(--blue)}.claim.red{background:var(--red)}.claim.green{background:var(--green)}.card .btn{width:100%;margin-top:3px;padding:7px 8px;font-size:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bid-result{font-size:11px;border-top:1px dashed var(--line);padding-top:6px}.log{max-height:340px;overflow:auto;background:#29241f;color:#f0e5d4;border-radius:10px;padding:10px;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.log div+div{margin-top:5px}.log .good{color:#a7dfb3}.log .bad{color:#ff9d93}.log .accent{color:#ffd29b}
+.modal{position:fixed;inset:0;background:rgba(32,27,23,.58);display:none;align-items:center;justify-content:center;padding:14px;z-index:20}.modal.open{display:flex}.sheet{width:min(520px,100%);background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 65px rgba(0,0,0,.3);padding:16px}.sheet h3{font-family:Georgia,serif;margin:0 0 8px}.field{margin-top:10px}.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}.field input,.field select{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;background:white}.sheet-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:13px}.big-pass{width:100%;margin-top:8px}
+@media(max-width:1100px){.market{grid-template-columns:repeat(3,1fr)}.top-grid{grid-template-columns:1fr}.status{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.app{padding:10px}.players{grid-template-columns:1fr}.market{grid-template-columns:1fr 1fr}.brand h1{font-size:24px}}
+@media(max-width:460px){.market{grid-template-columns:1fr}.status{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="brand"><h1>San Francisco 1906 <span class="badge">City Hall v0.16</span></h1><div class="sub">Изолированный тест тендеров. Основной прототип v0.15 не изменён.</div></div>
+    <div class="header-actions"><button class="btn" id="copyLog">Копировать лог</button><button class="btn danger" id="newGame">Новая тестовая партия</button></div>
+  </div>
+
+  <div class="top-grid">
+    <div class="panel section">
+      <h2>Игроки</h2>
+      <div class="players" id="players"></div>
+      <div class="small" style="margin-top:9px">Influence не тратится: при одинаковой денежной ставке проект получает игрок с большим Influence. Если равны и деньги, и Influence — выигрывает тот, кто раньше заявил этот проект.</div>
+    </div>
+    <div class="panel section">
+      <h2>Состояние теста</h2>
+      <div class="status">
+        <div class="stat"><div class="k">Раунд</div><div class="v" id="roundStat">1</div></div>
+        <div class="stat"><div class="k">Первый игрок</div><div class="v" id="firstStat">—</div></div>
+        <div class="stat"><div class="k">Сейчас</div><div class="v" id="turnStat">—</div></div>
+        <div class="stat"><div class="k">Колода</div><div class="v" id="deckStat">—</div></div>
+      </div>
+      <div class="notice" style="margin-top:10px">Тестовое правило: первый игрок автоматически меняется по кругу каждый раунд. Это только для равномерного теста и не фиксирует финальную механику инициативы.</div>
+    </div>
+  </div>
+
+  <div class="panel cityhall">
+    <div class="hall-head"><div><h2 style="margin:0;font-family:Georgia,serif">City Hall — Development Rights</h2><div class="small">5 открытых проектов. Заявки делаются открыто по очереди. Денежные ставки при конкуренции — закрытые.</div></div><div class="phasebox" id="phaseBox">Заявки</div></div>
+    <div class="market" id="market"></div>
+    <div class="controls">
+      <button class="btn secondary" id="passBtn">Пасовать</button>
+      <button class="btn primary" id="toBidsBtn" style="display:none">Перейти к закрытым ставкам</button>
+      <button class="btn primary" id="resolveBtn" style="display:none">Разрешить тендеры</button>
+      <button class="btn secondary" id="nextRoundBtn" style="display:none">Очистка рынка → следующий раунд</button>
+    </div>
+  </div>
+
+  <div class="panel section" style="margin-top:12px"><h3>Журнал City Hall</h3><div class="log" id="log"></div></div>
+</div>
+
+<div class="modal" id="bidModal"><div class="sheet"><h3 id="bidTitle">Закрытая ставка</h3><div class="notice" id="bidNotice"></div><div class="field"><label>Ваша полная ставка</label><input id="bidInput" type="number" min="1" step="1" /></div><div class="small" style="margin-top:7px">Ставка скрывается после подтверждения. Победитель платит свою ставку. Если претендент один, он платит только текущую opening price.</div><div class="sheet-actions"><button class="btn primary" id="confirmBid">Подтвердить и скрыть</button></div></div></div>
+
+<script>
+const PLAYER_COLORS=['blue','red','green'];
+const PLAYER_NAMES=['Синий','Красный','Зелёный'];
+const PROJECTS=[
+ {id:'tenement',name:'Working-Class Tenement',open:2,materials:'2 Lumber + 1 Masonry',requires:'Road access',effect:'Income +2 · много жителей · базовый дешёвый проект'},
+ {id:'spec_housing',name:'Speculative Housing Complex',open:3,materials:'3 Lumber',requires:'Land Value ≤ 2',effect:'Income +3 · очень много жителей · низкая устойчивость'},
+ {id:'luxury',name:'Luxury Apartments',open:5,materials:'1 Lumber + 2 Masonry + 1 Steel',requires:'Land Value 3+ · Fire Protection',effect:'Income +3 · Influence +1'},
+ {id:'shops',name:'Neighborhood Shopping Row',open:3,materials:'1 Lumber + 2 Masonry',requires:'Road access · Land Value 1+',effect:'Income +2 · коммерческое action space'},
+ {id:'hotel',name:'Grand Hotel',open:6,materials:'1 Lumber + 2 Masonry + 1 Steel',requires:'Land Value 3+ · Fire Protection · Clinic access',effect:'Income +4 · Influence +2'},
+ {id:'bank',name:'Private Bank',open:6,materials:'2 Masonry + 2 Steel',requires:'Land Value 2+ · Road access',effect:'Income +2 · Influence +1 · Banking/Credit action'},
+ {id:'club',name:'Restaurant & Social Club',open:4,materials:'1 Lumber + 2 Masonry',requires:'Land Value 2+',effect:'Income +2 · action для политических связей'},
+ {id:'warehouse',name:'Distribution Warehouse',open:4,materials:'2 Lumber + 1 Masonry + 1 Steel',requires:'Port / Rail / road logistics',effect:'Income +2 · Storage +3'},
+ {id:'factory',name:'Major Factory',open:5,materials:'1 Lumber + 2 Masonry + 2 Steel',requires:'Rail or Port access',effect:'Income +5 · большой промышленный проект'},
+ {id:'bureau',name:'Construction Bureau',open:4,materials:'1 Lumber + 1 Masonry + 1 Steel',requires:'Road access',effect:'Скидки владельцу · action space для строительства'},
+ {id:'insurance',name:'Insurance Company',open:5,materials:'2 Masonry + 1 Steel',requires:'Land Value 2+',effect:'Income +3 · Influence +1 · страховые действия'},
+ {id:'firehouse',name:'Municipal Fire House',open:3,materials:'1 Lumber + 1 Masonry + 1 Steel',requires:'Road access · municipal site',effect:'Fire Protection · Land Value +1 · civic influence'},
+ {id:'clinic',name:'Neighborhood Clinic',open:3,materials:'1 Lumber + 2 Masonry',requires:'Road access',effect:'Clinic access · Land Value +1 · civic influence'},
+ {id:'publicworks',name:'Public Works Depot',open:4,materials:'1 Lumber + 2 Masonry + 1 Steel',requires:'Road access',effect:'Water/Gas/repair infrastructure · civic influence'},
+ {id:'streetcar',name:'Streetcar Extension & Depot',open:4,materials:'1 Lumber + 1 Masonry + 1 Steel',requires:'Между связанными районами',effect:'Улучшает перемещение · повышает привлекательность района'}
+];
+let state;
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function project(id){return PROJECTS.find(p=>p.id===id)}
+function log(msg,cls=''){state.log.push({msg,cls})}
+function order(){return [0,1,2].map((_,i)=>(state.firstPlayer+i)%3)}
+function currentDeclarer(){return state.declarationIndex<3?order()[state.declarationIndex]:null}
+function currentPrice(m){return Math.max(1,project(m.id).open-(m.discount||0))}
+function newState(){
+ const deck=shuffle(PROJECTS.map(p=>p.id));
+ const market=deck.splice(0,5).map(id=>({id,age:0,discount:0,claims:[],bids:{},result:null}));
+ return {round:1,firstPlayer:0,phase:'declare',declarationIndex:0,players:PLAYER_NAMES.map((name,id)=>({id,name,capital:14,influence:2,portfolio:[]})),market,deck,expired:[],log:[{msg:'Началась тестовая партия City Hall v0.16.','cls':'accent'}],bidQueue:[],bidCursor:0};
+}
+function save(){localStorage.setItem('sf1906_cityhall_v016',JSON.stringify(state))}
+function render(){
+ document.getElementById('roundStat').textContent=state.round;
+ document.getElementById('firstStat').textContent=state.players[state.firstPlayer].name;
+ const cd=currentDeclarer();
+ document.getElementById('turnStat').textContent=state.phase==='declare'?(cd==null?'заявки завершены':state.players[cd].name):state.phase==='bids'?'закрытые ставки':state.phase==='ready'?'готово к расчёту':state.phase==='resolved'?'тендеры завершены':'—';
+ document.getElementById('deckStat').textContent=state.deck.length;
+ document.getElementById('phaseBox').textContent={declare:'1. Открытые заявки',bids:'2. Закрытые ставки',ready:'3. Разрешение тендеров',resolved:'4. Cleanup рынка'}[state.phase]||state.phase;
+ renderPlayers();renderMarket();renderButtons();renderLog();save();
+}
+function renderPlayers(){
+ const el=document.getElementById('players');el.innerHTML='';const cd=currentDeclarer();
+ state.players.forEach((p,i)=>{
+  const d=document.createElement('div');d.className='player '+(state.phase==='declare'&&cd===i?'active':'');
+  const color=PLAYER_COLORS[i];
+  d.innerHTML=`<div class="head"><div class="name"><span class="dot ${color}"></span>${p.name}</div><b>$${p.capital}</b></div><div class="meta"><span>Influence: <b>${p.influence}</b></span><span>Проектов: <b>${p.portfolio.length}</b></span></div><div class="portfolio">${p.portfolio.length?p.portfolio.map(id=>project(id).name).join(' · '):'Портфель пуст'}</div><div class="adjust"><button class="mini" data-money="${i}" data-delta="5">+$5</button><button class="mini" data-money="${i}" data-delta="-5">−$5</button><button class="mini" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini" data-inf="${i}" data-delta="-1">Inf −1</button></div>`;
+  el.appendChild(d);
+ });
+ el.querySelectorAll('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render()});
+ el.querySelectorAll('[data-inf]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.inf];p.influence=Math.max(0,p.influence+(+b.dataset.delta));render()});
+}
+function renderMarket(){
+ const el=document.getElementById('market');el.innerHTML='';
+ for(let slot=0;slot<5;slot++){
+  const m=state.market[slot];
+  if(!m){const empty=document.createElement('div');empty.className='card';empty.innerHTML=`<div class="slot">${slot+1}</div><div class="small">Пустое место рынка</div>`;el.appendChild(empty);continue}
+  const p=project(m.id),price=currentPrice(m);const d=document.createElement('div');d.className='card '+(m.age===1?'lastchance':'');
+  const claims=m.claims.map(c=>`<span class="claim ${PLAYER_COLORS[c.player]}">${state.players[c.player].name} #${c.order+1}</span>`).join('');
+  const result=m.result?`<div class="bid-result">${m.result}</div>`:'';
+  const cd=currentDeclarer();const hasDeclared=cd!=null&&state.market.some(x=>x&&x.claims.some(c=>c.player===cd));
+  const canClaim=state.phase==='declare'&&cd!=null&&!hasDeclared&&state.players[cd].capital>=price;
+  d.innerHTML=`<div class="slot">${slot+1}</div><div class="age ${m.age===1?'last':''}">${m.age===1?'LAST CHANCE · −$1':'NEW'}</div><div class="title">${p.name}</div><div class="price">$${price}</div><div class="attrs"><b>Материалы:</b> ${p.materials}<br><b>Условия:</b> ${p.requires}</div><div class="effect">${p.effect}</div><div class="claims">${claims||'<span class="small">Нет заявок</span>'}</div>${result}<button class="btn ${canClaim?'secondary':''}" ${canClaim?'':'disabled'} data-claim="${slot}">Заявиться</button>`;
+  el.appendChild(d);
+ }
+ el.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>claim(+b.dataset.claim));
+}
+function renderButtons(){
+ const pass=document.getElementById('passBtn'),toBids=document.getElementById('toBidsBtn'),resolve=document.getElementById('resolveBtn'),next=document.getElementById('nextRoundBtn');
+ pass.style.display=state.phase==='declare'&&currentDeclarer()!=null?'inline-block':'none';
+ toBids.style.display=state.phase==='declare'&&state.declarationIndex>=3?'inline-block':'none';
+ resolve.style.display=state.phase==='ready'?'inline-block':'none';
+ next.style.display=state.phase==='resolved'?'inline-block':'none';
+}
+function renderLog(){const el=document.getElementById('log');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${x.msg}</div>`).join('');el.scrollTop=el.scrollHeight}
+function claim(slot){
+ const pid=currentDeclarer();if(pid==null||state.phase!=='declare')return;const m=state.market[slot];if(!m)return;const price=currentPrice(m);if(state.players[pid].capital<price){alert('Недостаточно капитала даже для opening price.');return}
+ if(state.market.some(x=>x&&x.claims.some(c=>c.player===pid)))return;
+ m.claims.push({player:pid,order:state.declarationIndex});log(`${state.players[pid].name} заявил проект «${project(m.id).name}» (opening $${price}).`);state.declarationIndex++;render();
+}
+function pass(){const pid=currentDeclarer();if(pid==null)return;log(`${state.players[pid].name} пасует на City Hall Session.`);state.declarationIndex++;render()}
+function beginBids(){
+ if(state.declarationIndex<3)return;
+ state.bidQueue=[];
+ state.market.forEach((m,slot)=>{if(m&&m.claims.length>1)m.claims.forEach(c=>state.bidQueue.push({slot,player:c.player}))});
+ state.bidCursor=0;
+ if(!state.bidQueue.length){state.phase='ready';render();return}
+ state.phase='bids';render();openNextBid();
+}
+function openNextBid(){
+ if(state.bidCursor>=state.bidQueue.length){state.phase='ready';closeBid();render();return}
+ const q=state.bidQueue[state.bidCursor],m=state.market[q.slot],p=project(m.id),pl=state.players[q.player],min=currentPrice(m);
+ document.getElementById('bidTitle').textContent=`Закрытая ставка — ${pl.name}`;
+ document.getElementById('bidNotice').innerHTML=`Проект: <b>${p.name}</b><br>Opening price: <b>$${min}</b><br>Ваш капитал: <b>$${pl.capital}</b><br><br>Передайте устройство игроку <b>${pl.name}</b>. Остальные не должны видеть ставку.`;
+ const inp=document.getElementById('bidInput');inp.min=min;inp.max=pl.capital;inp.value=min;
+ document.getElementById('bidModal').classList.add('open');setTimeout(()=>inp.focus(),50);
+}
+function closeBid(){document.getElementById('bidModal').classList.remove('open')}
+function confirmBid(){
+ const q=state.bidQueue[state.bidCursor],m=state.market[q.slot],pl=state.players[q.player],min=currentPrice(m);const v=Math.floor(+document.getElementById('bidInput').value);
+ if(!Number.isFinite(v)||v<min||v>pl.capital){alert(`Ставка должна быть от $${min} до $${pl.capital}.`);return}
+ m.bids[q.player]=v;log(`${pl.name} сделал закрытую ставку на «${project(m.id).name}».`);state.bidCursor++;closeBid();render();setTimeout(openNextBid,120);
+}
+function resolveTenders(){
+ if(state.phase!=='ready')return;
+ state.market.forEach(m=>{
+  if(!m||!m.claims.length)return;const price=currentPrice(m);
+  if(m.claims.length===1){const pid=m.claims[0].player;award(m,pid,price,'единственный претендент');return}
+  const ranked=m.claims.map(c=>({player:c.player,bid:m.bids[c.player]??price,influence:state.players[c.player].influence,order:c.order})).sort((a,b)=>b.bid-a.bid||b.influence-a.influence||a.order-b.order);
+  const w=ranked[0];let reason=`ставка $${w.bid}`;
+  if(ranked[1]&&w.bid===ranked[1].bid){reason+=w.influence!==ranked[1].influence?` · Influence ${w.influence}`:' · более ранняя заявка'}
+  award(m,w.player,w.bid,reason);
+ });
+ state.phase='resolved';log('Тендерная сессия завершена. Можно выполнить cleanup рынка.','accent');render();
+}
+function award(m,pid,price,reason){
+ const pl=state.players[pid],p=project(m.id);if(pl.capital<price){m.result='Ошибка: недостаточно капитала';return}
+ pl.capital-=price;pl.portfolio.push(m.id);m.sold=true;m.result=`Победитель: ${pl.name} · $${price} · ${reason}`;log(`${pl.name} получает «${p.name}» за $${price} (${reason}).`,'good');
+}
+function cleanupAndNextRound(){
+ if(state.phase!=='resolved')return;
+ const remaining=state.market.filter(m=>m&&!m.sold);
+ const expiredOld=remaining.filter(m=>m.age===1);
+ expiredOld.forEach(m=>{state.expired.push(m.id);log(`«${project(m.id).name}» сгорел: последний шанс истёк.`,'bad')});
+ const fresh=remaining.filter(m=>m.age===0);
+ const survivors=fresh.slice(0,2);
+ fresh.slice(2).forEach(m=>{state.expired.push(m.id);log(`«${project(m.id).name}» сброшен с правого края рынка.`,'bad')});
+ survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
+ const newCards=[];while(newCards.length<5-survivors.length&&state.deck.length)newCards.push({id:state.deck.shift(),age:0,discount:0,claims:[],bids:{},result:null});
+ state.market=[...newCards,...survivors];while(state.market.length<5)state.market.unshift(null);
+ state.round++;state.firstPlayer=(state.firstPlayer+1)%3;state.phase='declare';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
+ log(`Раунд ${state.round}. Первый игрок: ${state.players[state.firstPlayer].name}. Старые проекты сдвинуты вправо и стоят на $1 дешевле.`,'accent');render();
+}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=newState();render()}
+function copyLog(){const txt=state.log.map(x=>x.msg).join('\n');navigator.clipboard?.writeText(txt).then(()=>alert('Лог скопирован.')).catch(()=>prompt('Скопируйте лог:',txt))}
+
+document.getElementById('passBtn').onclick=pass;
+document.getElementById('toBidsBtn').onclick=beginBids;
+document.getElementById('resolveBtn').onclick=resolveTenders;
+document.getElementById('nextRoundBtn').onclick=cleanupAndNextRound;
+document.getElementById('confirmBid').onclick=confirmBid;
+document.getElementById('newGame').onclick=newGame;
+document.getElementById('copyLog').onclick=copyLog;
+document.getElementById('bidInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmBid()});
+
+try{const saved=localStorage.getItem('sf1906_cityhall_v016');state=saved?JSON.parse(saved):newState()}catch(e){state=newState()}
+render();
+</script>
+</body>
+</html>
