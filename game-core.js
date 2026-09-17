@@ -1,23 +1,25 @@
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
 export const MAX_ROUNDS = 3;
+export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
+export const BASE_ROUND_INCOME = 3;
 
 export const PROJECTS = [
-  {id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',effect:'Income +2 · много жителей'},
-  {id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2},
-  {id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',effect:'Income +3 · Influence +1',landMin:3},
-  {id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',effect:'Income +2 · коммерческое action space',landMin:1},
-  {id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',effect:'Income +4 · Influence +2',landMin:3},
-  {id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',effect:'Income +2 · Influence +1 · Banking/Credit action',landMin:2},
-  {id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Influence action',landMin:2},
-  {id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',effect:'Income +2 · Storage +3 · логистический узел'},
-  {id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',effect:'Income +5 · большой промышленный проект'},
-  {id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',effect:'Скидка владельцу · строительное action space'},
-  {id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Influence +1 · страховые действия',landMin:2},
-  {id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',effect:'Fire Protection · Land Value +1 · civic influence'},
-  {id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',effect:'Clinic access · Land Value +1 · civic influence'},
-  {id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',effect:'Water/Gas/repair infrastructure · civic influence'},
-  {id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Между связанными районами',effect:'Улучшает перемещение · повышает привлекательность района'}
+  {income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',effect:'Income +2 · много жителей'},
+  {income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2},
+  {income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',effect:'Income +3 · Influence +1',landMin:3},
+  {income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',effect:'Income +2 · коммерческое action space',landMin:1},
+  {income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',effect:'Income +4 · Influence +2',landMin:3},
+  {income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',effect:'Income +2 · Influence +1 · Banking/Credit action',landMin:2},
+  {income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Influence action',landMin:2},
+  {income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',effect:'Income +2 · Storage +3 · логистический узел'},
+  {income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',effect:'Income +5 · большой промышленный проект'},
+  {income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',effect:'Скидка владельцу · строительное action space'},
+  {income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Influence +1 · страховые действия',landMin:2},
+  {income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',effect:'Fire Protection · Land Value +1 · civic influence'},
+  {income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',effect:'Clinic access · Land Value +1 · civic influence'},
+  {income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',effect:'Water/Gas/repair infrastructure · civic influence'},
+  {income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Между связанными районами',effect:'Улучшает перемещение · повышает привлекательность района'}
 ];
 
 export const DISTRICTS = [
@@ -48,7 +50,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.17',
+    version:'0.18',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -66,7 +68,7 @@ export function createInitialState({rng=Math.random}={}){
     constructions:[],
     nextConstructionId:1,
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.17.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.18.','cls':'accent'}],
     finished:false
   };
 }
@@ -200,7 +202,10 @@ export function beginConstruction(state,playerId,projectId,districtId){
     id:`C${state.nextConstructionId||1}`,
     playerId,projectId,districtId,
     startedRound:state.round,
-    status:'under-construction'
+    status:'under-construction',
+    materialsDelivered:[],
+    rentedSlots:0,
+    completedRound:null
   };
   state.nextConstructionId=(state.nextConstructionId||1)+1;
   player.portfolio.splice(idx,1);
@@ -212,6 +217,126 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.selectedDistrictId=districtId;
   logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля ${check.cost}, использован 1 представитель.`,'good');
   return {ok:true,construction,cost:check.cost};
+}
+
+export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
+
+export function projectMaterialCounts(projectId){
+  const project=projectById(projectId);
+  if(!project)return {};
+  return project.materials.reduce((acc,x)=>{acc[x]=(acc[x]||0)+1;return acc;},{});
+}
+
+export function deliveredMaterialCounts(construction){
+  return (construction?.materialsDelivered||[]).reduce((acc,x)=>{acc[x]=(acc[x]||0)+1;return acc;},{});
+}
+
+export function completedWarehouseCount(state,playerId,districtId){
+  return (state.constructions||[]).filter(c=>
+    c.playerId===playerId&&c.districtId===districtId&&c.projectId==='warehouse'&&c.status==='complete'
+  ).length;
+}
+
+export function warehouseCapacityBonus(state,playerId,districtId){
+  return completedWarehouseCount(state,playerId,districtId)*3;
+}
+
+export function constructionCapacity(state,construction){
+  if(!construction)return 0;
+  return 3+warehouseCapacityBonus(state,construction.playerId,construction.districtId)+(construction.rentedSlots||0);
+}
+
+export function constructionProgress(state,constructionId){
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!construction)return null;
+  const project=projectById(construction.projectId);
+  const required=project?.materials?.length||0;
+  const delivered=(construction.materialsDelivered||[]).length;
+  return {
+    construction,project,required,delivered,
+    capacity:constructionCapacity(state,construction),
+    complete:construction.status==='complete',
+    remaining:Math.max(0,required-delivered)
+  };
+}
+
+export function canRentOverflow(state,constructionId){
+  const progress=constructionProgress(state,constructionId);
+  if(!progress)return {ok:false,reason:'not-found'};
+  const {construction,project}=progress;
+  if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
+  const player=state.players[construction.playerId];
+  const permanent=3+warehouseCapacityBonus(state,construction.playerId,construction.districtId);
+  const maxRental=Math.max(0,project.materials.length-permanent);
+  if((construction.rentedSlots||0)>=maxRental)return {ok:false,reason:'not-needed'};
+  if(player.capital<1)return {ok:false,reason:'capital'};
+  return {ok:true,cost:1,maxRental,permanent};
+}
+
+export function rentOverflowSlot(state,constructionId){
+  const check=canRentOverflow(state,constructionId);
+  if(!check.ok)return check;
+  const construction=state.constructions.find(c=>c.id===constructionId);
+  const player=state.players[construction.playerId];
+  player.capital-=1;
+  construction.rentedSlots=(construction.rentedSlots||0)+1;
+  logEvent(state,`${player.name} арендует 1 временный слот хранения для «${projectById(construction.projectId).name}» за $1.`);
+  return {ok:true,cost:1,capacity:constructionCapacity(state,construction)};
+}
+
+export function canDeliverMaterial(state,constructionId,type){
+  const progress=constructionProgress(state,constructionId);
+  if(!progress)return {ok:false,reason:'not-found'};
+  const {construction,project,capacity,delivered}=progress;
+  if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
+  const price=resourcePrice(type);
+  if(price==null)return {ok:false,reason:'bad-resource'};
+  const required=projectMaterialCounts(project.id);
+  const have=deliveredMaterialCounts(construction);
+  if((have[type]||0)>=(required[type]||0))return {ok:false,reason:'not-needed'};
+  if(delivered>=capacity)return {ok:false,reason:'capacity'};
+  const player=state.players[construction.playerId];
+  if(player.capital<price)return {ok:false,reason:'capital',cost:price};
+  return {ok:true,cost:price};
+}
+
+export function completeConstruction(state,construction){
+  if(!construction||construction.status!=='under-construction')return {ok:false};
+  const project=projectById(construction.projectId);
+  if((construction.materialsDelivered||[]).length<project.materials.length)return {ok:false};
+  construction.status='complete';
+  construction.completedRound=state.round;
+  const player=state.players[construction.playerId];
+  logEvent(state,`${player.name} завершил «${project.name}» в ${districtById(construction.districtId).name}.`,'good');
+  return {ok:true};
+}
+
+export function deliverMaterial(state,constructionId,type){
+  const check=canDeliverMaterial(state,constructionId,type);
+  if(!check.ok)return check;
+  const construction=state.constructions.find(c=>c.id===constructionId);
+  const player=state.players[construction.playerId];
+  player.capital-=check.cost;
+  construction.materialsDelivered=construction.materialsDelivered||[];
+  construction.materialsDelivered.push(type);
+  logEvent(state,`${player.name} доставил ${type} на «${projectById(construction.projectId).name}» за ${check.cost}.`);
+  const project=projectById(construction.projectId);
+  let completed=false;
+  if(construction.materialsDelivered.length===project.materials.length){
+    completed=completeConstruction(state,construction).ok;
+  }
+  return {ok:true,cost:check.cost,completed,progress:constructionProgress(state,constructionId)};
+}
+
+export function buildingIncome(state,playerId){
+  return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
+    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0),0);
+}
+
+export function roundIncome(state,playerId){
+  return BASE_ROUND_INCOME+buildingIncome(state,playerId);
 }
 
 export function setLandValue(state,districtId,value){
@@ -239,6 +364,12 @@ export function cleanupMarket(state){
     logEvent(state,'Тест Phase I завершён после 3 раундов.','accent');
     return {ok:true,finished:true};
   }
+
+  state.players.forEach(p=>{
+    const amount=roundIncome(state,p.id);
+    p.capital+=amount;
+    logEvent(state,`${p.name} получает доход $\${amount} ($\${BASE_ROUND_INCOME} базовый + $\${buildingIncome(state,p.id)} здания).`,'good');
+  });
 
   const needed=5-survivors.length;
   const incoming=[];
