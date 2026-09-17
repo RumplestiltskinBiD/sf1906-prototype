@@ -190,7 +190,7 @@ function renderCity(){
       list.forEach((con,i)=>{
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId);
-        html+=`<g class="construction-token token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><circle r="11"/><text y="3">${i+1}</text><title>${pl.name}: ${pr.name} — Under Construction</title></g>`;
+        html+=`<g class="construction-token token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><circle r="16"/><text y="3">${i+1}</text><title>${pl.name}: ${pr.name} — Under Construction</title></g>`;
       });
     });
     layer.innerHTML=html;
