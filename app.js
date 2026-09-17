@@ -61,7 +61,7 @@ function renderPlayers(){
   });
 }
 
-function setView(view){state.view=view;$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
+function setView(view){state.view=view;$$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
 function renderViews(){setViewSilently(state.view||'hall');$('#endRoundBtn').disabled=state.phase!=='development'||state.finished;}
 function setViewSilently(view){$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');}
 
@@ -163,7 +163,7 @@ $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
 $('#endRoundBtn').onclick=()=>{const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
-$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;$('[data-district]').forEach(x=>x.classList.toggle('selected',x===g));renderContext();syncMobileContext();saveState();});
+$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;$$('[data-district]').forEach(x=>x.classList.toggle('selected',x===g));renderContext();syncMobileContext();saveState();});
 window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();});
 
 render();
