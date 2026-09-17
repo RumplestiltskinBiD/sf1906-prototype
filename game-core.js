@@ -368,7 +368,7 @@ export function cleanupMarket(state){
   state.players.forEach(p=>{
     const amount=roundIncome(state,p.id);
     p.capital+=amount;
-    logEvent(state,`${p.name} получает доход $\${amount} ($\${BASE_ROUND_INCOME} базовый + $\${buildingIncome(state,p.id)} здания).`,'good');
+    logEvent(state,`${p.name} получает доход ${amount} (${BASE_ROUND_INCOME} базовый + ${buildingIncome(state,p.id)} здания).`,'good');
   });
 
   const needed=5-survivors.length;
