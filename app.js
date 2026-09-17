@@ -159,7 +159,7 @@ function renderCity(){
     $('#openOfficeFromCity').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
   }
 
-  $('[data-district]').forEach(g=>{
+  $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     const selected=state.selectedDistrictId===id;
     g.classList.toggle('selected',selected);
@@ -253,7 +253,7 @@ function renderOffice(){
   const activeHtml=active.map(x=>{const pr=projectById(x.projectId),d=districtById(x.districtId);return `<div class="portfolio-card construction-card"><strong>${pr.name}</strong><span>${d.name} · UNDER CONSTRUCTION</span></div>`;}).join('');
   $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Representatives</span><strong>${p.workersLeft??0} / 3</strong></div></div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Under Construction</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Активных строек пока нет.</div>'}</div><div class="district-placeholder"><b>Следующий слой:</b> в v0.18 на этих стройках появятся 3 слота ресурсов и завершение здания.</div>`;
   $('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
-  $('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
+  $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
 }
 
 function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
@@ -283,7 +283,7 @@ $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
 $('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
-$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;render();});
+$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;render();});
 window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();});
 
 render();
