@@ -58,6 +58,14 @@ const RESOURCE_ORDER=['Lumber','Masonry','Steel'];
 function materialLabel(x){return {Lumber:'Lumber',Masonry:'Masonry',Steel:'Steel'}[x]||x;}
 function materialShort(x){return {Lumber:'L',Masonry:'M',Steel:'S'}[x]||'?';}
 function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel'}[x]||'';}
+function resourcePills(materials,delivered=[]){
+  const seen={};
+  const have=delivered.reduce((a,x)=>{a[x]=(a[x]||0)+1;return a;},{});
+  return materials.map(type=>{
+    const idx=seen[type]||0;seen[type]=idx+1;
+    return '<span class="resource-pip '+materialClass(type)+' '+(idx<(have[type]||0)?'filled':'')+'" title="'+materialLabel(type)+'">'+materialShort(type)+'</span>';
+  }).join('');
+}
 function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),1800);}
 
 function render(){
@@ -76,7 +84,7 @@ function renderPlayers(){
   const el=$('#playersBar');el.innerHTML='';const cd=currentDeclarer(state);
   state.players.forEach((p,i)=>{
     const pill=document.createElement('button');pill.className=`player-pill ${cd===i&&state.phase==='declare'?'active':''} ${state.firstPlayer===i?'first':''}`;pill.dataset.office=i;
-    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · Inf ${p.influence} · +${roundIncome(state,p.id)}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">${p.capital}</span>`;
+    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · Inf ${p.influence} · +$${roundIncome(state,p.id)}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">$${p.capital}</span>`;
     pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};el.appendChild(pill);
   });
 }
@@ -147,153 +155,7 @@ const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.18 · доставка прямо на стройку</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>
-  const pending=state.pendingConstruction;
-  const mode=$('#constructionMode');
-  if(state.phase!=='development'){
-    mode.innerHTML='<div><strong>Строительство пока закрыто</strong><span>Сначала завершите City Hall Session.</span></div>';
-    mode.className='construction-mode muted';
-  }else if(pending){
-    const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
-    mode.className='construction-mode active';
-    mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите подсвеченный район. Старт = Land Value + 1 представитель.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
-    $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
-  }else{
-    const total=state.players.reduce((n,p)=>n+(p.workersLeft||0),0);
-    mode.className='construction-mode';
-    mode.innerHTML=`<div><strong>Development Phase</strong><span>Откройте Офис и выберите выигранный проект. Свободных представителей у игроков: ${total}.</span></div><button class="secondary-btn" id="openOfficeFromCity">Офис</button>`;
-    $('#openOfficeFromCity').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
-  }
-
-  $$('[data-district]').forEach(g=>{
-    const id=g.dataset.district;
-    const selected=state.selectedDistrictId===id;
-    g.classList.toggle('selected',selected);
-    g.classList.remove('build-ok','build-blocked');
-    if(pending){
-      const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
-      g.classList.add(check.ok?'build-ok':'build-blocked');
-    }
-  });
-
-  const meta=$('#districtMetaLayer');
-  if(meta){
-    meta.innerHTML=DISTRICTS.map(d=>{
-      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id];
-      const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
-      const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
-      return `<text class="${klass}" x="${x}" y="${y}">LAND ${ds.landValue} · ${used}/${ds.sites}</text>`;
-    }).join('');
-  }
-
-  const layer=$('#constructionLayer');
-  if(layer){
-    const byDistrict={};
-    (state.constructions||[]).forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
-    let html='';
-    Object.entries(byDistrict).forEach(([districtId,list])=>{
-      const [cx,cy]=DISTRICT_POS[districtId]||[0,0];
-      list.forEach((con,i)=>{
-        const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
-        const pl=state.players[con.playerId],pr=projectById(con.projectId);
-        html+=`<g class="construction-token token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><circle r="16"/><text y="3">${i+1}</text><title>${pl.name}: ${pr.name} — Under Construction</title></g>`;
-      });
-    });
-    layer.innerHTML=html;
-  }
-}
-
-function startConstructionFlow(playerId,projectId){
-  const pl=state.players[playerId],pr=projectById(projectId);
-  if(state.phase!=='development'){showToast('Сначала завершите тендеры');return;}
-  if(!pl.portfolio.includes(projectId)){showToast('Проект уже недоступен');return;}
-  if((pl.workersLeft??0)<=0){showToast('У игрока нет свободных представителей');return;}
-  state.pendingConstruction={playerId,projectId};
-  state.view='city';state.selectedDistrictId=state.selectedDistrictId||'civic';
-  mobileContextOpen=false;closeDrawers();render();
-  showToast(`Выберите район для «${pr.name}»`);
-}
-
-function confirmConstructionInDistrict(){
-  const pending=state.pendingConstruction;
-  if(!pending)return;
-  const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId);
-  if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
-  mobileContextOpen=false;
-  showToast(`Стройка начата · земля ${r.cost}`);
-  render();
-}
-
-function renderContext(){
-  const panel=$('#contextPanel');
-  const close=isMobile()?'<button class="context-close" id="contextClose" aria-label="Закрыть подробности">×</button>':'';
-  if(state.view==='hall'){
-    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
-    const p=projectById(m.id);const claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="material-tags">${p.materials.map(x=>`<span class="material-tag">${materialLabel(x)}</span>`).join('')}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
-  }else{
-    const d=districtById(state.selectedDistrictId)||DISTRICTS[0];
-    const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
-    const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
-    let constructionHtml='';
-    if(state.pendingConstruction){
-      const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId);
-      const check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
-      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Begin Construction</div><strong>${pl.name} · ${pr.name}</strong><div class="construction-cost"><span>Земля <b>${check.cost}</b></span><span>Представитель <b>1</b></span></div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
-    }
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Стройки в районе</div><div class="detail-text">${builtHere.length?builtHere.map(x=>`<div class="mini-construction"><span class="player-dot ${state.players[x.playerId].key}"></span><b>${projectById(x.projectId).name}</b> · ${state.players[x.playerId].name}</div>`).join(''):'Пока нет.'}</div></div><div class="district-placeholder"><b>v0.17:</b> сейчас реально проверяются Land Value, свободные площадки, капитал и представитель. Road / Fire Protection / Clinic / Rail / Port пока показаны на карте проекта, но не блокируют строительство.</div>`;
-    const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
-  }
-  wireContextClose();
-}
-function wireContextClose(){const b=$('#contextClose');if(b)b.onclick=closeMobileContext;}
-
-function renderOffice(){
-  const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
-  const active=(state.constructions||[]).filter(x=>x.playerId===p.id);
-  const available=p.portfolio.map(id=>{
-    const pr=projectById(id);
-    const disabled=state.phase!=='development'||(p.workersLeft??0)<=0;
-    return `<div class="portfolio-card available-project"><strong>${pr.name}</strong><span>${pr.type} · ${pr.materials.length} ресурсов</span><span>${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${disabled?'disabled':''}>${state.phase!=='development'?'После тендеров':(p.workersLeft??0)<=0?'Нет представителей':'Начать строительство'}</button></div>`;
-  }).join('');
-  const activeHtml=active.map(x=>{const pr=projectById(x.projectId),d=districtById(x.districtId);return `<div class="portfolio-card construction-card"><strong>${pr.name}</strong><span>${d.name} · UNDER CONSTRUCTION</span></div>`;}).join('');
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Representatives</span><strong>${p.workersLeft??0} / 3</strong></div></div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Under Construction</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Активных строек пока нет.</div>'}</div><div class="district-placeholder"><b>Следующий слой:</b> в v0.18 на этих стройках появятся 3 слота ресурсов и завершение здания.</div>`;
-  $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
-  $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-}
-
-function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
-function renderDebug(){
-  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
-  const lands=DISTRICTS.map(d=>`<div class="debug-land"><span>${d.name}</span><div><button class="mini-btn" data-land="${d.id}" data-delta="-1">−</button><b>${state.districts[d.id].landValue}</b><button class="mini-btn" data-land="${d.id}" data-delta="1">+</button></div></div>`).join('');
-  $('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Value</div>${lands}`;
-  $$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
-  $$('[data-inf]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.inf];p.influence=Math.max(0,p.influence+(+b.dataset.delta));render();});
-  $$('[data-workers]').forEach(b=>b.onclick=()=>{state.players[+b.dataset.workers].workersLeft=3;render();});
-  $$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
-}
-
-function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
-function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
-$$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
-$('#officeBtn').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
-$('#logBtn').onclick=()=>openDrawer('logDrawer');
-$('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('Мэрия → проект в Офис → Begin Construction → район → земля + 1 представитель');};
-$('#drawerBackdrop').onclick=closeDrawers;
-$('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
-$('#modalBackdrop').onclick=()=>{};
-$('#newGameBtn').onclick=newGame;
-$('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(r.ok){state.view=r.finished?'city':'hall';render();}};
-$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile())mobileContextOpen=true;render();});
-window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();});
-
-render();
-+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.18 · доставка прямо на стройку</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
 }
 
 function renderCity(){
@@ -309,15 +171,15 @@ function renderCity(){
     $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
   }else{
     const total=state.players.reduce((n,p)=>n+(p.workersLeft||0),0);
+    const under=(state.constructions||[]).filter(x=>x.status==='under-construction').length;
     mode.className='construction-mode';
-    mode.innerHTML=`<div><strong>Development Phase</strong><span>Откройте Офис и выберите выигранный проект. Свободных представителей у игроков: ${total}.</span></div><button class="secondary-btn" id="openOfficeFromCity">Офис</button>`;
+    mode.innerHTML=`<div><strong>Development Phase</strong><span>Офис: начать стройку или доставить материалы. Незавершённых: ${under}. Свободных представителей: ${total}.</span></div><button class="secondary-btn" id="openOfficeFromCity">Офис</button>`;
     $('#openOfficeFromCity').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
   }
 
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
-    const selected=state.selectedDistrictId===id;
-    g.classList.toggle('selected',selected);
+    g.classList.toggle('selected',state.selectedDistrictId===id);
     g.classList.remove('build-ok','build-blocked');
     if(pending){
       const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
@@ -331,21 +193,21 @@ function renderCity(){
       const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id];
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
       const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
-      return `<text class="${klass}" x="${x}" y="${y}">LAND ${ds.landValue} · ${used}/${ds.sites}</text>`;
+      return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}</text>`;
     }).join('');
   }
 
   const layer=$('#constructionLayer');
   if(layer){
-    const byDistrict={};
-    (state.constructions||[]).forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
+    const byDistrict={};(state.constructions||[]).forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
     let html='';
     Object.entries(byDistrict).forEach(([districtId,list])=>{
       const [cx,cy]=DISTRICT_POS[districtId]||[0,0];
       list.forEach((con,i)=>{
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
-        const pl=state.players[con.playerId],pr=projectById(con.projectId);
-        html+=`<g class="construction-token token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><circle r="16"/><text y="3">${i+1}</text><title>${pl.name}: ${pr.name} — Under Construction</title></g>`;
+        const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
+        const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
+        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-23" y="-14" width="46" height="28" rx="9"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
       });
     });
     layer.innerHTML=html;
@@ -377,21 +239,26 @@ function renderContext(){
   const panel=$('#contextPanel');
   const close=isMobile()?'<button class="context-close" id="contextClose" aria-label="Закрыть подробности">×</button>':'';
   if(state.view==='hall'){
-    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
-    const p=projectById(m.id);const claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="material-tags">${p.materials.map(x=>`<span class="material-tag">${materialLabel(x)}</span>`).join('')}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);
+    if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
+    const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
+    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
-    const d=districtById(state.selectedDistrictId)||DISTRICTS[0];
-    const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
+    const d=districtById(state.selectedDistrictId)||DISTRICTS[0],ds=state.districts[d.id];
+    const used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
     const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
     let constructionHtml='';
     if(state.pendingConstruction){
-      const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId);
-      const check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
-      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Begin Construction</div><strong>${pl.name} · ${pr.name}</strong><div class="construction-cost"><span>Земля <b>${check.cost}</b></span><span>Представитель <b>1</b></span></div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
+      const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
+      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Begin Construction</div><strong>${pl.name} · ${pr.name}</strong><div class="construction-cost"><span>Земля <b>$${check.cost}</b></span><span>Представитель <b>1</b></span></div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
     }
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Стройки в районе</div><div class="detail-text">${builtHere.length?builtHere.map(x=>`<div class="mini-construction"><span class="player-dot ${state.players[x.playerId].key}"></span><b>${projectById(x.projectId).name}</b> · ${state.players[x.playerId].name}</div>`).join(''):'Пока нет.'}</div></div><div class="district-placeholder"><b>v0.17:</b> сейчас реально проверяются Land Value, свободные площадки, капитал и представитель. Road / Fire Protection / Clinic / Rail / Port пока показаны на карте проекта, но не блокируют строительство.</div>`;
+    const objects=builtHere.length?builtHere.map(x=>{
+      const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
+      return `<div class="mini-construction ${x.status==='complete'?'done':''}"><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · Income +$${pr.income||0}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
+    }).join(''):'Пока нет.';
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.18:</b> Supply уже работает. Road / Fire Protection / Clinic / Rail / Port пока будущие ограничения.</div>`;
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
+    $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
   wireContextClose();
 }
@@ -401,19 +268,37 @@ function renderOffice(){
   const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
   const active=(state.constructions||[]).filter(x=>x.playerId===p.id);
   const available=p.portfolio.map(id=>{
-    const pr=projectById(id);
-    const disabled=state.phase!=='development'||(p.workersLeft??0)<=0;
-    return `<div class="portfolio-card available-project"><strong>${pr.name}</strong><span>${pr.type} · ${pr.materials.length} ресурсов</span><span>${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${disabled?'disabled':''}>${state.phase!=='development'?'После тендеров':(p.workersLeft??0)<=0?'Нет представителей':'Начать строительство'}</button></div>`;
+    const pr=projectById(id),disabled=state.phase!=='development'||(p.workersLeft??0)<=0;
+    return `<div class="portfolio-card available-project"><strong>${pr.name}</strong><div class="project-material-line">${resourcePills(pr.materials)}</div><span>${pr.type} · ${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${disabled?'disabled':''}>${state.phase!=='development'?'После тендеров':(p.workersLeft??0)<=0?'Нет представителей':'Начать строительство'}</button></div>`;
   }).join('');
-  const activeHtml=active.map(x=>{const pr=projectById(x.projectId),d=districtById(x.districtId);return `<div class="portfolio-card construction-card"><strong>${pr.name}</strong><span>${d.name} · UNDER CONSTRUCTION</span></div>`;}).join('');
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Representatives</span><strong>${p.workersLeft??0} / 3</strong></div></div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Under Construction</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Активных строек пока нет.</div>'}</div><div class="district-placeholder"><b>Следующий слой:</b> в v0.18 на этих стройках появятся 3 слота ресурсов и завершение здания.</div>`;
+  const activeHtml=active.map(con=>{
+    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
+    if(con.status==='complete'){
+      const wh=con.projectId==='warehouse'?'<div class="warehouse-note">Warehouse: +3 staging capacity для ваших строек в этом районе.</div>':'';
+      return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect">Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}</div>`;
+    }
+    const rent=canRentOverflow(state,con.id),whBonus=warehouseCapacityBonus(state,p.id,con.districtId);
+    const buttons=RESOURCE_ORDER.map(type=>{
+      const check=canDeliverMaterial(state,con.id,type);
+      const need=pr.materials.filter(x=>x===type).length-(con.materialsDelivered||[]).filter(x=>x===type).length;
+      if(need<=0)return '';
+      const reason=check.ok?'':check.reason==='capacity'?'Нет места':check.reason==='capital'?'Нет денег':'Недоступно';
+      return `<button class="resource-buy ${materialClass(type)}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${RESOURCE_PRICES[type]}</b><small>${check.ok?`осталось ${need}`:reason}</small></button>`;
+    }).join('');
+    const capacityNote=prog.delivered>=prog.capacity&&prog.remaining>0?'<div class="capacity-warning">Площадка заполнена. Нужен дополнительный staging slot.</div>':'';
+    const rentBtn=rent.ok?`<button class="overflow-btn" data-rent-slot="${con.id}">Арендовать +1 слот · $1</button>`:'';
+    return `<div class="portfolio-card construction-card active-build"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${prog.capacity}</b><small>base 3${whBonus?` · Warehouse +${whBonus}`:''}${con.rentedSlots?` · rental +${con.rentedSlots}`:''}</small></div>${capacityNote}<div class="resource-buy-grid">${buttons}</div>${rentBtn}</div>`;
+  }).join('');
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div><div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · доставка материалов не требует представителя.</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>Supply v0.18:</b> Lumber $1 · Masonry $1 · Steel $2. База площадки 3 слота. Overflow $1/слот; завершённый ваш Warehouse в том же районе даёт +3 capacity.</div>`;
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
+  $$('[data-deliver]').forEach(b=>b.onclick=()=>{const r=deliverMaterial(state,b.dataset.deliver,b.dataset.resource);if(!r.ok){showToast(r.reason==='capacity'?'Нет места на площадке':r.reason==='capital'?'Недостаточно денег':'Нельзя доставить этот ресурс');return;}showToast(r.completed?'Здание завершено!':`${materialLabel(b.dataset.resource)} доставлен · −$${r.cost}`);render();});
+  $$('[data-rent-slot]').forEach(b=>b.onclick=()=>{const r=rentOverflowSlot(state,b.dataset.rentSlot);if(!r.ok){showToast(r.reason==='capital'?'Недостаточно денег':'Дополнительный слот не нужен');return;}showToast('Временное хранение +1 · −$1');render();});
 }
 
 function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
 function renderDebug(){
-  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
+  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · +$${roundIncome(state,p.id)} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
   const lands=DISTRICTS.map(d=>`<div class="debug-land"><span>${d.name}</span><div><button class="mini-btn" data-land="${d.id}" data-delta="-1">−</button><b>${state.districts[d.id].landValue}</b><button class="mini-btn" data-land="${d.id}" data-delta="1">+</button></div></div>`).join('');
   $('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Value</div>${lands}`;
   $$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
@@ -431,7 +316,7 @@ $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;stat
 $('#officeBtn').onclick=()=>{inspectedOffice=state.firstPlayer;openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('Мэрия → проект в Офис → Begin Construction → район → земля + 1 представитель');};
+$('#helpBtn').onclick=()=>{showToast('Мэрия → земля + 1 представитель → Supply → staging → готовое здание');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
