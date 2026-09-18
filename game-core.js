@@ -3,6 +3,11 @@ export const PLAYER_KEYS = ['blue','red','green'];
 export const MAX_ROUNDS = 3;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const BASE_ROUND_INCOME = 3;
+export const RAISE_CAPITAL_AMOUNT = 3;
+export const LOAN_PRINCIPAL = 6;
+export const MAX_ACTIVE_LOANS = 2;
+export const BUREAU_LAND_DISCOUNT = 2;
+export const LAND_VALUE_IMPROVERS = {firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
 export const PROJECTS = [
   {income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',effect:'Income +2 · много жителей'},
@@ -10,16 +15,16 @@ export const PROJECTS = [
   {income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',effect:'Income +3 · Influence +1',landMin:3},
   {income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',effect:'Income +2 · коммерческое action space',landMin:1},
   {income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',effect:'Income +4 · Influence +2',landMin:3},
-  {income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',effect:'Income +2 · Influence +1 · Banking/Credit action',landMin:2},
+  {income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',effect:'Income +2 · Bank Loan action',landMin:2},
   {income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Influence action',landMin:2},
   {income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',effect:'Income +2 · Storage +3 · логистический узел'},
   {income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',effect:'Income +5 · большой промышленный проект'},
-  {income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',effect:'Скидка владельцу · строительное action space'},
+  {income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',effect:'Construction Contract · −$2 к Land Value'},
   {income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Influence +1 · страховые действия',landMin:2},
   {income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',effect:'Fire Protection · Land Value +1 · civic influence'},
   {income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',effect:'Clinic access · Land Value +1 · civic influence'},
-  {income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',effect:'Water/Gas/repair infrastructure · civic influence'},
-  {income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Между связанными районами',effect:'Улучшает перемещение · повышает привлекательность района'}
+  {income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',effect:'Water/Gas/repair infrastructure · Land Value +1 · civic influence'},
+  {income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Между связанными районами',effect:'Улучшает перемещение · Land Value +1'}
 ];
 
 export const DISTRICTS = [
@@ -43,6 +48,35 @@ export function projectById(id){return PROJECTS.find(p=>p.id===id) || null;}
 export function districtById(id){return DISTRICTS.find(d=>d.id===id) || null;}
 export function turnOrder(state){return [0,1,2].map((_,i)=>(state.firstPlayer+i)%3);}
 export function currentDeclarer(state){return state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
+export function currentDeveloper(state){return state.phase==='development'&&!state.developmentComplete?state.developmentPlayer:null;}
+export function activeLoans(state,playerId){return state.players[playerId]?.loans||[];}
+export function loanInterest(state,playerId){return activeLoans(state,playerId).length;}
+export function completedActionSpaces(state,projectId){
+  return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
+}
+export function canTakeMainAction(state,playerId){
+  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&(state.players[playerId]?.workersLeft??0)>0;
+}
+export function advanceDevelopmentTurn(state,playerId){
+  const player=state.players[playerId];
+  if(player)player.workersLeft=Math.max(0,(player.workersLeft??0)-1);
+  if(state.players.every(p=>(p.workersLeft??0)<=0)){
+    state.developmentPlayer=null;
+    state.developmentComplete=true;
+    logEvent(state,'Все представители использованы. Development Phase можно завершить.','accent');
+    return null;
+  }
+  for(let step=1;step<=state.players.length;step++){
+    const pid=(playerId+step)%state.players.length;
+    if((state.players[pid].workersLeft??0)>0){
+      state.developmentPlayer=pid;
+      return pid;
+    }
+  }
+  state.developmentPlayer=null;
+  state.developmentComplete=true;
+  return null;
+}
 export function openingPrice(marketCard){const p=projectById(marketCard.id);return Math.max(1,p.open-(marketCard.discount||0));}
 export function emptyMarketCard(id){return {id,age:0,discount:0,claims:[],bids:{},result:null,sold:false};}
 
@@ -50,13 +84,13 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.18',
+    version:'0.19',
     round:1,
     firstPlayer:0,
     phase:'declare',
     view:'hall',
     declarationIndex:0,
-    players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,workersLeft:3,portfolio:[]})),
+    players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,workersLeft:3,portfolio:[],loans:[],bureauContracts:0})),
     market,
     deck,
     expired:[],
@@ -67,8 +101,13 @@ export function createInitialState({rng=Math.random}={}){
     pendingConstruction:null,
     constructions:[],
     nextConstructionId:1,
+    nextLoanId:1,
+    developmentPlayer:null,
+    developmentComplete:false,
+    bankOwnerRewarded:{},
+    bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.18.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.19.','cls':'accent'}],
     finished:false
   };
 }
@@ -148,7 +187,11 @@ export function resolveTenders(state){
     award(state,m,w.player,w.bid,reason);
   });
   state.phase='development';
-  logEvent(state,'Тендерная сессия завершена. Игроки переходят к развитию города.','accent');
+  state.developmentPlayer=state.firstPlayer;
+  state.developmentComplete=false;
+  state.bankOwnerRewarded={};
+  state.bureauOwnerRewarded={};
+  logEvent(state,`Тендерная сессия завершена. Development Phase начинает ${state.players[state.developmentPlayer].name}.`,'accent');
   return {ok:true};
 }
 
@@ -175,16 +218,20 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
   if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
-  if(player&&(player.workersLeft??0)<=0) reasons.push('Нет свободных представителей в этом раунде.');
+  if(player&&!canTakeMainAction(state,playerId)) reasons.push('Сейчас ход другого игрока или нет свободных представителей.');
   const used=ds?districtConstructionCount(state,districtId):0;
   if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
-  if(player&&ds&&player.capital<ds.landValue) reasons.push(`Не хватает капитала на землю (${ds.landValue}).`);
+  const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
+  const landCost=ds?Math.max(0,ds.landValue-bureauDiscount):0;
+  if(player&&ds&&player.capital<landCost) reasons.push(`Не хватает капитала на землю ($${landCost}).`);
   return {
     ok:reasons.length===0,
     reasons,
-    cost:ds?.landValue??0,
+    cost:landCost,
+    baseCost:ds?.landValue??0,
+    bureauDiscount,
     landValue:ds?.landValue??0,
     usedSites:used,
     totalSites:ds?.sites??0,
@@ -210,13 +257,15 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.nextConstructionId=(state.nextConstructionId||1)+1;
   player.portfolio.splice(idx,1);
   player.capital-=check.cost;
-  player.workersLeft=Math.max(0,(player.workersLeft??0)-1);
+  if(check.bureauDiscount>0)player.bureauContracts=Math.max(0,(player.bureauContracts||0)-1);
   state.constructions=state.constructions||[];
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля ${check.cost}, использован 1 представитель.`,'good');
-  return {ok:true,construction,cost:check.cost};
+  const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
+  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}, использован 1 представитель.`,'good');
+  advanceDevelopmentTurn(state,playerId);
+  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
@@ -310,6 +359,13 @@ export function completeConstruction(state,construction){
   construction.completedRound=state.round;
   const player=state.players[construction.playerId];
   logEvent(state,`${player.name} завершил «${project.name}» в ${districtById(construction.districtId).name}.`,'good');
+  const landBoost=LAND_VALUE_IMPROVERS[construction.projectId]||0;
+  if(landBoost&&state.districts?.[construction.districtId]){
+    const before=state.districts[construction.districtId].landValue;
+    const after=Math.min(6,before+landBoost);
+    state.districts[construction.districtId].landValue=after;
+    if(after>before)logEvent(state,`${project.name} повышает Land Value района ${districtById(construction.districtId).name}: $${before} → $${after}.`,'accent');
+  }
   return {ok:true};
 }
 
@@ -335,8 +391,79 @@ export function buildingIncome(state,playerId){
     .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0),0);
 }
 
-export function roundIncome(state,playerId){
+export function grossRoundIncome(state,playerId){
   return BASE_ROUND_INCOME+buildingIncome(state,playerId);
+}
+
+export function roundIncome(state,playerId){
+  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId));
+}
+
+export function raiseCapital(state,playerId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  const player=state.players[playerId];
+  player.capital+=RAISE_CAPITAL_AMOUNT;
+  logEvent(state,`${player.name} использует Raise Capital: +$${RAISE_CAPITAL_AMOUNT}, использован 1 представитель.`,'good');
+  advanceDevelopmentTurn(state,playerId);
+  return {ok:true,amount:RAISE_CAPITAL_AMOUNT};
+}
+
+export function takeBankLoan(state,playerId,bankConstructionId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  const bank=(state.constructions||[]).find(c=>c.id===bankConstructionId&&c.projectId==='bank'&&c.status==='complete');
+  if(!bank)return {ok:false,reason:'no-bank'};
+  const player=state.players[playerId];
+  player.loans=player.loans||[];
+  if(player.loans.length>=MAX_ACTIVE_LOANS)return {ok:false,reason:'max-loans'};
+  const received=player.loans.length===0?6:5;
+  const loan={id:`L${state.nextLoanId||1}`,principal:LOAN_PRINCIPAL,received,takenRound:state.round,interestPaid:false};
+  state.nextLoanId=(state.nextLoanId||1)+1;
+  player.loans.push(loan);
+  player.capital+=received;
+  const owner=state.players[bank.playerId];
+  if(bank.playerId!==playerId&&!state.bankOwnerRewarded?.[bank.playerId]){
+    state.bankOwnerRewarded=state.bankOwnerRewarded||{};
+    state.bankOwnerRewarded[bank.playerId]=true;
+    owner.influence+=1;
+    logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank.`,'good');
+  }
+  logEvent(state,`${player.name} берёт Bank Loan: +$${received}, долг $${LOAN_PRINCIPAL}, будущий Income −$1.`,'accent');
+  advanceDevelopmentTurn(state,playerId);
+  return {ok:true,received,loan};
+}
+
+export function repayLoan(state,playerId,loanId=null){
+  if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  const player=state.players[playerId];
+  if(!player)return {ok:false,reason:'player'};
+  player.loans=player.loans||[];
+  const loan=loanId?player.loans.find(x=>x.id===loanId):player.loans.find(x=>x.interestPaid);
+  if(!loan)return {ok:false,reason:'not-seasoned'};
+  if(!loan.interestPaid)return {ok:false,reason:'not-seasoned'};
+  if(player.capital<loan.principal)return {ok:false,reason:'capital'};
+  player.capital-=loan.principal;
+  player.loans=player.loans.filter(x=>x.id!==loan.id);
+  logEvent(state,`${player.name} погашает кредит $${loan.principal}.`,'good');
+  return {ok:true,paid:loan.principal};
+}
+
+export function takeBureauContract(state,playerId,bureauConstructionId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  const bureau=(state.constructions||[]).find(c=>c.id===bureauConstructionId&&c.projectId==='bureau'&&c.status==='complete');
+  if(!bureau)return {ok:false,reason:'no-bureau'};
+  const player=state.players[playerId];
+  if((player.bureauContracts||0)>=1)return {ok:false,reason:'has-contract'};
+  player.bureauContracts=1;
+  const owner=state.players[bureau.playerId];
+  if(bureau.playerId!==playerId&&!state.bureauOwnerRewarded?.[bureau.playerId]){
+    state.bureauOwnerRewarded=state.bureauOwnerRewarded||{};
+    state.bureauOwnerRewarded[bureau.playerId]=true;
+    owner.capital+=1;
+    logEvent(state,`${owner.name} получает $1: другой игрок использовал его Construction Bureau.`,'good');
+  }
+  logEvent(state,`${player.name} получает Construction Contract: следующая платная земля дешевле до $2.`,'accent');
+  advanceDevelopmentTurn(state,playerId);
+  return {ok:true,discount:BUREAU_LAND_DISCOUNT};
 }
 
 export function setLandValue(state,districtId,value){
@@ -350,6 +477,7 @@ export function setLandValue(state,districtId,value){
 
 export function cleanupMarket(state){
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   const remaining=state.market.filter(m=>m&&!m.sold);
   const old=remaining.filter(m=>m.age===1);
   old.forEach(m=>{state.expired.push(m.id);logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
@@ -366,9 +494,13 @@ export function cleanupMarket(state){
   }
 
   state.players.forEach(p=>{
-    const amount=roundIncome(state,p.id);
+    const gross=grossRoundIncome(state,p.id);
+    const interest=loanInterest(state,p.id);
+    const amount=Math.max(0,gross-interest);
     p.capital+=amount;
-    logEvent(state,`${p.name} получает доход ${amount} (${BASE_ROUND_INCOME} базовый + ${buildingIncome(state,p.id)} здания).`,'good');
+    (p.loans||[]).forEach(loan=>loan.interestPaid=true);
+    const interestText=interest?` − $${interest} проценты`:'';
+    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}).`,'good');
   });
 
   const needed=5-survivors.length;
@@ -379,6 +511,8 @@ export function cleanupMarket(state){
   state.round++;
   state.firstPlayer=(state.firstPlayer+1)%3;
   state.players.forEach(p=>p.workersLeft=3);
+  state.developmentPlayer=null;state.developmentComplete=false;
+  state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
   state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
   state.selectedProjectId=state.market.find(Boolean)?.id||null;
