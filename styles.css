@@ -401,3 +401,44 @@ button.city-action-card{cursor:pointer}
   .loan-panel{padding:8px}.loan-head{align-items:flex-start}
   .mini-repay{flex:0 0 auto}
 }
+
+
+/* v0.19.1 — UI audit / mobile clarity */
+.player-pill.declare-active,
+.player-pill.dev-active{
+  box-shadow:0 0 0 2px rgba(232,201,145,.72),0 7px 20px rgba(0,0,0,.14)
+}
+.player-pill.declare-active::before,
+.player-pill.dev-active::before{
+  position:absolute;left:8px;top:-6px;z-index:2;
+  padding:2px 5px;border-radius:5px;
+  font-size:7px;font-weight:900;letter-spacing:.08em;
+  color:#211b14;background:#e7c986
+}
+.player-pill.declare-active::before{content:'ЗАЯВКА'}
+.player-pill.dev-active::before{content:'ХОД'}
+.card-resource-row{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0 2px}
+.card-resource-row .resource-pip{width:21px;height:21px;border-radius:6px;font-size:9px}
+.action-legend{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  margin:0 0 8px;padding:0 2px;color:#6f665a;font-size:9px
+}
+.action-legend b{font-size:9px;letter-spacing:.1em;color:#554b40}
+.action-legend em{margin-left:auto;font-style:normal;font-weight:800;color:#446367}
+.city-action-card:disabled{opacity:.48;filter:saturate(.55)}
+.action-space-btn{min-height:44px}
+.construction-mode.hidden{display:none}
+.action-space-btn span{line-height:1.28}
+#cityView .view-head{margin-bottom:10px}
+
+@media(max-width:640px){
+  .player-pill.declare-active::before,
+  .player-pill.dev-active::before{left:6px;top:-4px;font-size:6px;padding:1px 4px}
+  #cityView .view-head p{display:none}
+  #cityView .view-head{margin-bottom:7px}
+  .action-legend{gap:5px;margin-bottom:6px;font-size:8px}
+  .action-legend em{width:100%;margin-left:0}
+  .city-action-card{flex-basis:min(68vw,270px)}
+  .action-space-btn{min-height:46px}
+  .card-resource-row{margin-top:4px}
+}
