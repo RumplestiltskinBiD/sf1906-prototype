@@ -55,27 +55,48 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
-  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&(state.players[playerId]?.workersLeft??0)>0;
+  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
+    &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed;
 }
-export function advanceDevelopmentTurn(state,playerId){
+export function canUseFreeAction(state,playerId){
+  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId;
+}
+
+export function consumeMainAction(state,playerId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
   const player=state.players[playerId];
-  if(player)player.workersLeft=Math.max(0,(player.workersLeft??0)-1);
+  player.workersLeft=Math.max(0,(player.workersLeft??0)-1);
+  state.activationMainActionUsed=true;
+  return {ok:true,workersLeft:player.workersLeft};
+}
+
+export function endActivation(state,playerId){
+  if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
+  if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
+  if(!state.activationMainActionUsed)return {ok:false,reason:'main-action-required'};
+  const player=state.players[playerId];
   if(state.players.every(p=>(p.workersLeft??0)<=0)){
     state.developmentPlayer=null;
+    state.activationMainActionUsed=false;
     state.developmentComplete=true;
     logEvent(state,'Все представители использованы. Development Phase можно завершить.','accent');
-    return null;
+    return {ok:true,complete:true,nextPlayer:null};
   }
   for(let step=1;step<=state.players.length;step++){
     const pid=(playerId+step)%state.players.length;
     if((state.players[pid].workersLeft??0)>0){
       state.developmentPlayer=pid;
-      return pid;
+      state.activationMainActionUsed=false;
+      logEvent(state,`${player.name} завершает активацию. Следующий: ${state.players[pid].name}.`);
+      return {ok:true,complete:false,nextPlayer:pid};
     }
   }
-  state.developmentPlayer=null;
-  state.developmentComplete=true;
-  return null;
+  return {ok:false,reason:'no-next-player'};
+}
+
+export function actionSpaceOccupant(state,constructionId){
+  const value=state.actionSpaceOccupancy?.[constructionId];
+  return value==null?null:value;
 }
 export function openingPrice(marketCard){const p=projectById(marketCard.id);return Math.max(1,p.open-(marketCard.discount||0));}
 export function emptyMarketCard(id){return {id,age:0,discount:0,claims:[],bids:{},result:null,sold:false};}
@@ -84,7 +105,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.19.1',
+    version:'0.19.2',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -104,10 +125,12 @@ export function createInitialState({rng=Math.random}={}){
     nextLoanId:1,
     developmentPlayer:null,
     developmentComplete:false,
+    activationMainActionUsed:false,
+    actionSpaceOccupancy:{},
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.19.1.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.19.2.','cls':'accent'}],
     finished:false
   };
 }
@@ -189,6 +212,8 @@ export function resolveTenders(state){
   state.phase='development';
   state.developmentPlayer=state.firstPlayer;
   state.developmentComplete=false;
+  state.activationMainActionUsed=false;
+  state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};
   state.bureauOwnerRewarded={};
   logEvent(state,`Тендерная сессия завершена. Development Phase начинает ${state.players[state.developmentPlayer].name}.`,'accent');
@@ -218,7 +243,11 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
   if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
-  if(player&&!canTakeMainAction(state,playerId)) reasons.push('Сейчас ход другого игрока или нет свободных представителей.');
+  if(player&&!canTakeMainAction(state,playerId)){
+    if(currentDeveloper(state)!==playerId)reasons.push('Сейчас ход другого игрока.');
+    else if(state.activationMainActionUsed)reasons.push('Главное действие этой активации уже использовано.');
+    else reasons.push('Нет свободных представителей.');
+  }
   const used=ds?districtConstructionCount(state,districtId):0;
   if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
@@ -263,8 +292,9 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
   const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
+  const consumed=consumeMainAction(state,playerId);
+  if(!consumed.ok)return consumed;
   logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}, использован 1 представитель.`,'good');
-  advanceDevelopmentTurn(state,playerId);
   return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount};
 }
 
@@ -314,6 +344,7 @@ export function canRentOverflow(state,constructionId){
   if(!progress)return {ok:false,reason:'not-found'};
   const {construction,project}=progress;
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(!canUseFreeAction(state,construction.playerId))return {ok:false,reason:'not-active-player'};
   if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
   const player=state.players[construction.playerId];
   const permanent=3+warehouseCapacityBonus(state,construction.playerId,construction.districtId);
@@ -339,6 +370,7 @@ export function canDeliverMaterial(state,constructionId,type){
   if(!progress)return {ok:false,reason:'not-found'};
   const {construction,project,capacity,delivered}=progress;
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(!canUseFreeAction(state,construction.playerId))return {ok:false,reason:'not-active-player'};
   if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
   const price=resourcePrice(type);
   if(price==null)return {ok:false,reason:'bad-resource'};
@@ -377,7 +409,7 @@ export function deliverMaterial(state,constructionId,type){
   player.capital-=check.cost;
   construction.materialsDelivered=construction.materialsDelivered||[];
   construction.materialsDelivered.push(type);
-  logEvent(state,`${player.name} доставил ${type} на «${projectById(construction.projectId).name}» за ${check.cost}.`);
+  logEvent(state,`${player.name} доставил ${type} на «${projectById(construction.projectId).name}» за $${check.cost}.`);
   const project=projectById(construction.projectId);
   let completed=false;
   if(construction.materialsDelivered.length===project.materials.length){
@@ -403,8 +435,9 @@ export function raiseCapital(state,playerId){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
   const player=state.players[playerId];
   player.capital+=RAISE_CAPITAL_AMOUNT;
+  const consumed=consumeMainAction(state,playerId);
+  if(!consumed.ok)return consumed;
   logEvent(state,`${player.name} использует Raise Capital: +$${RAISE_CAPITAL_AMOUNT}, использован 1 представитель.`,'good');
-  advanceDevelopmentTurn(state,playerId);
   return {ok:true,amount:RAISE_CAPITAL_AMOUNT};
 }
 
@@ -412,6 +445,7 @@ export function takeBankLoan(state,playerId,bankConstructionId){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
   const bank=(state.constructions||[]).find(c=>c.id===bankConstructionId&&c.projectId==='bank'&&c.status==='complete');
   if(!bank)return {ok:false,reason:'no-bank'};
+  if(actionSpaceOccupant(state,bankConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   player.loans=player.loans||[];
   if(player.loans.length>=MAX_ACTIVE_LOANS)return {ok:false,reason:'max-loans'};
@@ -420,6 +454,8 @@ export function takeBankLoan(state,playerId,bankConstructionId){
   state.nextLoanId=(state.nextLoanId||1)+1;
   player.loans.push(loan);
   player.capital+=received;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[bankConstructionId]=playerId;
   const owner=state.players[bank.playerId];
   if(bank.playerId!==playerId&&!state.bankOwnerRewarded?.[bank.playerId]){
     state.bankOwnerRewarded=state.bankOwnerRewarded||{};
@@ -427,13 +463,15 @@ export function takeBankLoan(state,playerId,bankConstructionId){
     owner.influence+=1;
     logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank.`,'good');
   }
+  const consumed=consumeMainAction(state,playerId);
+  if(!consumed.ok)return consumed;
   logEvent(state,`${player.name} берёт Bank Loan: +$${received}, долг $${LOAN_PRINCIPAL}, будущий Income −$1.`,'accent');
-  advanceDevelopmentTurn(state,playerId);
   return {ok:true,received,loan};
 }
 
 export function repayLoan(state,playerId,loanId=null){
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
   const player=state.players[playerId];
   if(!player)return {ok:false,reason:'player'};
   player.loans=player.loans||[];
@@ -451,9 +489,12 @@ export function takeBureauContract(state,playerId,bureauConstructionId){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
   const bureau=(state.constructions||[]).find(c=>c.id===bureauConstructionId&&c.projectId==='bureau'&&c.status==='complete');
   if(!bureau)return {ok:false,reason:'no-bureau'};
+  if(actionSpaceOccupant(state,bureauConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   if((player.bureauContracts||0)>=1)return {ok:false,reason:'has-contract'};
   player.bureauContracts=1;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[bureauConstructionId]=playerId;
   const owner=state.players[bureau.playerId];
   if(bureau.playerId!==playerId&&!state.bureauOwnerRewarded?.[bureau.playerId]){
     state.bureauOwnerRewarded=state.bureauOwnerRewarded||{};
@@ -461,8 +502,9 @@ export function takeBureauContract(state,playerId,bureauConstructionId){
     owner.capital+=1;
     logEvent(state,`${owner.name} получает $1: другой игрок использовал его Construction Bureau.`,'good');
   }
+  const consumed=consumeMainAction(state,playerId);
+  if(!consumed.ok)return consumed;
   logEvent(state,`${player.name} получает Construction Contract: следующая платная земля дешевле до $2.`,'accent');
-  advanceDevelopmentTurn(state,playerId);
   return {ok:true,discount:BUREAU_LAND_DISCOUNT};
 }
 
@@ -511,7 +553,8 @@ export function cleanupMarket(state){
   state.round++;
   state.firstPlayer=(state.firstPlayer+1)%3;
   state.players.forEach(p=>p.workersLeft=3);
-  state.developmentPlayer=null;state.developmentComplete=false;
+  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;
+  state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
   state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
