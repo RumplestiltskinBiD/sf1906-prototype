@@ -84,7 +84,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.19',
+    version:'0.19.1',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -107,7 +107,7 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.19.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.19.1.','cls':'accent'}],
     finished:false
   };
 }
