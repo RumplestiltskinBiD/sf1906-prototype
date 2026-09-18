@@ -477,3 +477,43 @@ button.city-action-card{cursor:pointer}
   .end-activation-btn{min-height:48px;font-size:12px}
   .office-activation{font-size:9px}
 }
+
+
+/* v0.20 — Prestige and additional building actions */
+.city-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.city-action-card.shops-card{background:#f1eadf}
+.city-action-card.club-card{background:#eee7e4}
+.action-space-btn.shops{border-color:#9c8462}
+.action-space-btn.club{border-color:#93756b}
+.prestige-chip{
+  margin-left:auto;display:inline-flex;align-items:center;justify-content:center;
+  min-width:38px;height:22px;padding:0 6px;border-radius:999px;
+  background:#e7d5a6;color:#5b4720;font-size:9px;font-weight:900;letter-spacing:.03em
+}
+.project-vp-callout{
+  display:inline-flex;margin:0 0 10px;padding:5px 8px;border-radius:8px;
+  background:#eadbb5;color:#5c4b2b;font-size:10px
+}
+.project-card-title-row{display:flex;align-items:flex-start;gap:8px}
+.project-card-title-row>strong{min-width:0;flex:1}
+.office-summary.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.procurement-chip{
+  display:inline-flex;margin-left:6px;padding:6px 8px;border-radius:999px;
+  background:#dcebe5;color:#315d4c;font-size:9px;font-weight:900
+}
+.resource-buy.procurement{border-color:#6d9a85;background:#edf7f2}
+.resource-buy.procurement>b{color:#2f6c55}
+.factory-building-note{
+  margin-top:7px;padding:7px 8px;border-radius:8px;
+  background:#eee0d5;color:#755244;font-size:9px;line-height:1.35
+}
+
+@media(max-width:900px){
+  .city-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .office-summary.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  .city-action-grid{display:flex}
+  .prestige-chip{height:21px;font-size:8px}
+  .procurement-chip{margin:5px 0 0 0}
+}
