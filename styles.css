@@ -442,3 +442,38 @@ button.city-action-card{cursor:pointer}
   .action-space-btn{min-height:46px}
   .card-resource-row{margin-top:4px}
 }
+
+
+/* v0.19.2 — explicit activation flow */
+.turn-banner.main-used{background:#394247}
+.activation-state{
+  margin-left:auto;padding:5px 7px;border-radius:999px;
+  background:#e8c985;color:#30271d;font-size:8px!important;font-weight:900;letter-spacing:.06em
+}
+.end-activation-btn{
+  width:100%;min-height:44px;margin:0 0 8px;
+  border:1px solid #5d766f;border-radius:10px;background:#355f66;color:white;
+  font-weight:900;font-size:11px;letter-spacing:.02em
+}
+.city-action-grid.main-action-used{opacity:.74}
+.action-space-btn.occupied{
+  background:#e4dfd7;border-style:dashed;opacity:.68
+}
+.action-space-btn.occupied strong{color:#7d5b4f}
+.action-building-note.used{background:#e8ddd5;color:#755649}
+.office-activation{
+  margin:0 0 10px;padding:8px 10px;border-radius:9px;border:1px solid #b9aa93;
+  font-size:9px;line-height:1.4
+}
+.office-activation b,.office-activation span{display:block}
+.office-activation span{margin-top:2px}
+.office-activation.active{background:#e5eee8;color:#425d4d;border-color:#a9bda9}
+.office-activation.locked{background:#ece6dd;color:#756b60}
+.construction-card.view-only{opacity:.72}
+.construction-card.view-only .resource-buy{pointer-events:none}
+
+@media(max-width:640px){
+  .activation-state{margin-left:0;margin-top:5px;display:inline-flex!important;width:max-content}
+  .end-activation-btn{min-height:48px;font-size:12px}
+  .office-activation{font-size:9px}
+}
