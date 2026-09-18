@@ -333,3 +333,71 @@ button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allow
   .construction-token text{font-size:12px}
   .park-shape text{font-size:15px}
 }
+
+
+/* v0.19 — turn-based Development Phase, loans and action spaces */
+.city-actions{
+  margin:0 0 10px;padding:10px;border:1px solid #b8a98f;border-radius:14px;background:#e9decb
+}
+.city-actions-empty,.city-turn-complete{
+  padding:10px 12px;border-radius:10px;background:#f7efe1;color:#61584d;font-size:11px
+}
+.city-turn-complete{background:#e7efe3;border:1px solid #a8bca5}
+.city-turn-complete strong,.city-turn-complete span{display:block}.city-turn-complete span{margin-top:3px;color:#687063}
+.turn-banner{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;margin-bottom:9px;
+  border-radius:10px;background:#262e30;color:#f7efe2
+}
+.turn-banner .player-dot{width:13px;height:13px;flex:0 0 auto}
+.turn-banner div{min-width:0;display:grid;grid-template-columns:auto 1fr;gap:1px 8px;align-items:baseline}
+.turn-banner small{grid-column:1/-1;font-size:8px;letter-spacing:.12em;color:#a99f92}
+.turn-banner strong{font-size:14px}.turn-banner span{font-size:10px;color:#c6bcae}
+.city-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.city-action-card{
+  min-width:0;padding:10px;border:1px solid #c1b297;border-radius:10px;background:#fff8eb;color:#4c453d;
+  text-align:left
+}
+button.city-action-card{cursor:pointer}
+.city-action-card>b{display:block;font-size:12px}.city-action-card>span{display:block;font-size:9px;line-height:1.35;color:#796f63;margin-top:3px}
+.city-action-card>strong{display:block;margin-top:8px;font-size:13px;color:#704332}
+.city-action-card.build{border-color:#9e8260}.city-action-card.capital{border-color:#819a7d}
+.city-action-card.bank-card{background:#eef1f1}.city-action-card.bureau-card{background:#f2eadc}
+.action-space-list{display:grid;gap:5px;margin-top:8px}
+.action-space-btn{
+  width:100%;display:grid;grid-template-columns:1fr auto;gap:1px 6px;align-items:center;
+  padding:7px;border:1px solid #b8aa96;border-radius:8px;background:white;text-align:left;color:#453f38
+}
+.action-space-btn b{font-size:9px}.action-space-btn span{font-size:8px;color:#82776b}.action-space-btn strong{grid-row:1/3;grid-column:2;font-size:10px}
+.action-space-btn.bank{border-color:#80979a}.action-space-btn.bureau{border-color:#aa916e}
+.action-space-locked{padding:8px;border:1px dashed #b7aa97;border-radius:8px;color:#8b8175;font-size:9px;background:rgba(255,255,255,.38)}
+.construction-mode.complete{background:#e7efe3;border-color:#9fb29b}
+.loan-panel{margin:10px 0 12px;padding:9px;border:1px solid #b4a68f;border-radius:10px;background:#f7efe1}
+.loan-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.loan-head b{display:block;font-size:10px;letter-spacing:.08em}.loan-head small{display:block;margin-top:2px;color:#786e62;font-size:9px}
+.mini-repay{min-height:34px;padding:6px 9px;border:1px solid #8f6a54;background:#fff7e9;color:#704a38;border-radius:8px;font-weight:800;font-size:9px}
+.loan-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid #d7c9b6}
+.loan-row:first-of-type{margin-top:7px}
+.loan-row b{display:block;font-size:10px}.loan-row small{display:block;color:#7e7468;font-size:8px;margin-top:2px}.loan-row strong{font-size:12px}
+.contract-line{margin:0 0 12px}
+.contract-chip{display:inline-flex;padding:6px 8px;border-radius:999px;background:#e4d2af;color:#5d482d;font-size:9px;font-weight:800}
+.contract-chip.empty{background:#e9e4db;color:#81776b;font-weight:700}
+.action-building-note,.land-building-note{margin-top:7px;padding:7px 8px;border-radius:8px;font-size:9px;line-height:1.35}
+.action-building-note{background:#e4ecec;color:#3f5d60}
+.land-building-note{background:#e7eedf;color:#486047}
+
+@media(max-width:900px){
+  .city-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  .city-actions{margin:0 0 8px;padding:7px}
+  .turn-banner{padding:7px 8px;margin-bottom:7px}
+  .turn-banner div{display:block}
+  .turn-banner small,.turn-banner strong,.turn-banner span{display:block}
+  .turn-banner strong{font-size:13px}.turn-banner span{margin-top:2px}
+  .city-action-grid{display:flex;overflow-x:auto;gap:7px;scroll-snap-type:x proximity;padding-bottom:2px;scrollbar-width:none}
+  .city-action-grid::-webkit-scrollbar{display:none}
+  .city-action-card{flex:0 0 min(73vw,285px);scroll-snap-align:start;padding:9px}
+  .city-action-card>b{font-size:11px}.city-action-card>strong{font-size:12px}
+  .loan-panel{padding:8px}.loan-head{align-items:flex-start}
+  .mini-repay{flex:0 0 auto}
+}
