@@ -4,11 +4,11 @@ import {
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
   constructionProgress,canDeliverMaterial,deliverMaterial,canRentOverflow,rentOverflowSlot,roundIncome,grossRoundIncome,buildingIncome,warehouseCapacityBonus,
-  activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract
+  activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v0192';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v020';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -25,19 +25,20 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
-  parsed.version='0.19.2';
+  parsed.version='0.20';
   parsed.players=(parsed.players||[]).map(p=>({
     ...p,
     workersLeft:p.workersLeft??3,
     portfolio:p.portfolio||[],
     loans:p.loans||[],
-    bureauContracts:p.bureauContracts||0
+    bureauContracts:p.bureauContracts||0,
+    prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
   }));
   parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.materialsDelivered||[],rentedSlots:x.rentedSlots||0,completedRound:x.completedRound??null}));
   parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -52,6 +53,8 @@ function migrateState(parsed){
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
   parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
   parsed.activationMainActionUsed=parsed.activationMainActionUsed||false;
+  parsed.procurementRemaining=parsed.procurementRemaining||0;
+  parsed.procurementSource=parsed.procurementSource||null;
   parsed.pendingConstruction=null;
   if(parsed.phase==='development'){
     const order=[0,1,2].map((_,i)=>(parsed.firstPlayer+i)%3);
@@ -115,7 +118,7 @@ function renderPlayers(){
     pill.dataset.office=i;
     const debt=(p.loans||[]).length;
     const contract=(p.bureauContracts||0)>0?' · Contract':'';
-    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · Inf ${p.influence} · +$${roundIncome(state,p.id)}${debt?` · Debt ${debt}`:''}${contract}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">$${p.capital}</span>`;
+    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · VP ${p.prestige||0} · Inf ${p.influence} · +$${roundIncome(state,p.id)}${debt?` · Debt ${debt}`:''}${contract}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">$${p.capital}</span>`;
     pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};
     el.appendChild(pill);
   });
@@ -146,7 +149,7 @@ function renderMarket(){
     const claims=m.claims.map(c=>`<span class="claim-chip"><span class="claim-dot ${playerColor(c.player)}"></span>${state.players[c.player].name}</span>`).join('');
     const canClaim=state.phase==='declare'&&cd!=null&&!already&&!m.sold&&state.players[cd].capital>=price;
     const result=m.result?`<div class="result-box">${state.players[m.result.player].name} · $${m.result.price}<br>${m.result.reason}</div>`:'';
-    card.innerHTML=`<div class="card-stripe"></div><div class="project-inner"><div class="card-top"><span class="slot-mark">SLOT ${slot+1}</span><span class="age-badge ${m.age===1?'last':''}">${m.age===1?'LAST CHANCE · −$1':'NEW'}</span></div><div class="project-title">${p.name}</div><div class="project-type">${p.type}</div><div class="opening-price">$${price}<small>opening</small></div><div class="card-resource-row">${resourcePills(p.materials)}</div><div class="mini-line">${p.requires}</div><div class="claims-row">${claims||'<span class="mini-line">Нет заявок</span>'}</div>${result}<button class="claim-btn ${canClaim?'':'secondary'}" ${canClaim?'':'disabled'} data-slot="${slot}">${m.sold?'Продан':canClaim?'Заявиться':'Недоступно'}</button></div>`;
+    card.innerHTML=`<div class="card-stripe"></div><div class="project-inner"><div class="card-top"><span class="slot-mark">SLOT ${slot+1}</span><span class="age-badge ${m.age===1?'last':''}">${m.age===1?'LAST CHANCE · −$1':'NEW'}</span></div><div class="project-title">${p.name}</div><div class="project-type">${p.type}</div><div class="opening-price">$${price}<small>opening</small></div><div class="card-resource-row">${resourcePills(p.materials)}<span class="prestige-chip">VP ${p.prestige||0}</span></div><div class="mini-line">${p.requires}</div><div class="claims-row">${claims||'<span class="mini-line">Нет заявок</span>'}</div>${result}<button class="claim-btn ${canClaim?'':'secondary'}" ${canClaim?'':'disabled'} data-slot="${slot}">${m.sold?'Продан':canClaim?'Заявиться':'Недоступно'}</button></div>`;
     card.querySelector('[data-slot]').onclick=()=>doClaim(slot);el.appendChild(card);
   }
 }
@@ -196,7 +199,7 @@ const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.19 · доставка — free action</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.20 · доставка — free action</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
 }
 
 function renderCityActions(){
@@ -213,16 +216,19 @@ function renderCityActions(){
   const mainUsed=!!state.activationMainActionUsed;
   const banks=completedActionSpaces(state,'bank');
   const bureaus=completedActionSpaces(state,'bureau');
+  const shops=completedActionSpaces(state,'shops');
+  const clubs=completedActionSpaces(state,'club');
   const availableProjects=(p.portfolio||[]).length;
   const debt=(p.loans||[]).length;
   const contract=(p.bureauContracts||0)>0;
+  const procurement=state.procurementRemaining||0;
 
   const bankButtons=banks.length?banks.map(bank=>{
     const owner=state.players[bank.playerId],d=districtById(bank.districtId),occupiedBy=actionSpaceOccupant(state,bank.id);
     const occupied=occupiedBy!=null;
     const disabled=mainUsed||debt>=MAX_ACTIVE_LOANS||occupied;
     const gain=debt===0?6:5;
-    const ownerReward=bank.playerId===pid?'Ваш Bank':'Чужой Bank → владельцу +1 Inf (1×/round)';
+    const ownerReward=bank.playerId===pid?'Ваш Bank':'Чужой Bank → владельцу +1 Inf';
     const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:debt>=MAX_ACTIVE_LOANS?'MAX 2 LOANS':mainUsed?'MAIN USED':`+$${gain}`;
     return `<button class="action-space-btn bank ${occupied?'occupied':''}" data-bank-action="${bank.id}" ${disabled?'disabled':''}><b>Bank · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerReward}</span><strong>${usedText}</strong></button>`;
   }).join(''):'<div class="action-space-locked">Bank ещё не построен</div>';
@@ -231,20 +237,41 @@ function renderCityActions(){
     const owner=state.players[bureau.playerId],d=districtById(bureau.districtId),occupiedBy=actionSpaceOccupant(state,bureau.id);
     const occupied=occupiedBy!=null;
     const disabled=mainUsed||contract||occupied;
-    const ownerReward=bureau.playerId===pid?'Ваш Bureau':'Чужое Bureau → владельцу +$1 (1×/round)';
+    const ownerReward=bureau.playerId===pid?'Ваш Bureau':'Чужое Bureau → владельцу +$1';
     const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:contract?'CONTRACT READY':mainUsed?'MAIN USED':'−$2 land';
     return `<button class="action-space-btn bureau ${occupied?'occupied':''}" data-bureau-action="${bureau.id}" ${disabled?'disabled':''}><b>Bureau · ${owner.name}</b><span>${d.name} · ${occupied?`занято ${state.players[occupiedBy].name}`:ownerReward}</span><strong>${usedText}</strong></button>`;
   }).join(''):'<div class="action-space-locked">Construction Bureau ещё не построено</div>';
 
+  const shopsButtons=shops.length?shops.map(shop=>{
+    const owner=state.players[shop.playerId],d=districtById(shop.districtId),occupiedBy=actionSpaceOccupant(state,shop.id);
+    const occupied=occupiedBy!=null;
+    const hasConstruction=(state.constructions||[]).some(x=>x.playerId===pid&&x.status==='under-construction');
+    const disabled=mainUsed||occupied||p.capital<1||!hasConstruction;
+    const ownerText=shop.playerId===pid?'$1 procurement cost':'$1 → владельцу';
+    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'2 materials / $1';
+    return `<button class="action-space-btn shops ${occupied?'occupied':''}" data-shops-action="${shop.id}" ${disabled?'disabled':''}><b>Shopping Row · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
+  }).join(''):'<div class="action-space-locked">Shopping Row ещё не построен</div>';
+
+  const clubButtons=clubs.length?clubs.map(club=>{
+    const owner=state.players[club.playerId],d=districtById(club.districtId),occupiedBy=actionSpaceOccupant(state,club.id);
+    const occupied=occupiedBy!=null;
+    const disabled=mainUsed||occupied||p.capital<1;
+    const ownerText=club.playerId===pid?'ужин / приём $1':'$1 → владельцу';
+    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:p.capital<1?'NEED $1':mainUsed?'MAIN USED':'−$1 · +1 Inf';
+    return `<button class="action-space-btn club ${occupied?'occupied':''}" data-club-action="${club.id}" ${disabled?'disabled':''}><b>Restaurant & Club · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
+  }).join(''):'<div class="action-space-locked">Restaurant & Club ещё не построен</div>';
+
   const buildDisabled=availableProjects===0||mainUsed;
-  el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · Projects ${availableProjects} · Loans ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Contract ready':''}</span></div><span class="activation-state">${mainUsed?'MAIN ACTION USED':'MAIN ACTION READY'}</span></div>
-  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${mainUsed?'Supply и Repay можно сделать сейчас':'до или после main action можно делать free actions'}</span><em>FREE: Supply · Repay Loan</em></div>
+  el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Projects ${availableProjects} · Loans ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Contract':''}${procurement?` · Procurement ${procurement}`:''}</span></div><span class="activation-state">${mainUsed?'MAIN ACTION USED':'MAIN ACTION READY'}</span></div>
+  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${procurement?`Procurement: ещё ${procurement} бесплатн. материала`:mainUsed?'Supply и Repay можно сделать сейчас':'free actions можно делать до или после main action'}</span><em>FREE: Supply · Overflow · Repay</em></div>
   ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
   <div class="city-action-grid ${mainUsed?'main-action-used':''}">
     <button class="city-action-card build" id="actionBuild" ${buildDisabled?'disabled':''}><b>Begin Construction</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Main action уже использован':'Выбрать проект в Office'}</span><strong>${buildDisabled?'LOCKED':'1 представитель'}</strong></button>
     <button class="city-action-card capital" id="actionRaiseCapital" ${mainUsed?'disabled':''}><b>Raise Capital</b><span>Без долга · всегда доступно</span><strong>${mainUsed?'LOCKED':`+$${RAISE_CAPITAL_AMOUNT}`}</strong></button>
-    <div class="city-action-card bank-card"><b>Bank Loan</b><span>1 use / Bank / round · 1-й +$6 · 2-й +$5</span><div class="action-space-list">${bankButtons}</div></div>
-    <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>1 use / Bureau / round · Contract −$2 land</span><div class="action-space-list">${bureauButtons}</div></div>
+    <div class="city-action-card bank-card"><b>Bank Loan</b><span>1 use / Bank / round</span><div class="action-space-list">${bankButtons}</div></div>
+    <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>1 use / Bureau / round</span><div class="action-space-list">${bureauButtons}</div></div>
+    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Заплати $1 → до 2 материалов без доплаты</span><div class="action-space-list">${shopsButtons}</div></div>
+    <div class="city-action-card club-card"><b>Restaurant & Social Club</b><span>Networking Dinner: −$1 → +1 Influence</span><div class="action-space-list">${clubButtons}</div></div>
   </div>`;
 
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
@@ -265,6 +292,16 @@ function renderCityActions(){
     const r=takeBureauContract(state,pid,b.dataset.bureauAction);
     if(!r.ok){showToast(r.reason==='occupied'?'Это Bureau уже занято в этом раунде':r.reason==='has-contract'?'Контракт уже есть':'Bureau сейчас недоступно');return;}
     showToast('Main action: Construction Contract получен. Можно free actions или End Activation.');render();
+  });
+  $$('[data-shops-action]').forEach(b=>b.onclick=()=>{
+    const r=useShoppingProcurement(state,pid,b.dataset.shopsAction);
+    if(!r.ok){showToast(r.reason==='occupied'?'Этот Shopping Row уже занят':r.reason==='capital'?'Нужен $1':r.reason==='no-construction'?'Нет незавершённой стройки':'Procurement недоступен');return;}
+    showToast('Procurement активирован: до 2 материалов теперь стоят $0 в эту активацию.');render();
+  });
+  $$('[data-club-action]').forEach(b=>b.onclick=()=>{
+    const r=useSocialClub(state,pid,b.dataset.clubAction);
+    if(!r.ok){showToast(r.reason==='occupied'?'Этот Club уже занят':r.reason==='capital'?'Нужен $1 на ужин / приём':'Club сейчас недоступен');return;}
+    showToast('Networking Dinner: −$1 · +1 Influence.');render();
   });
 }
 
@@ -352,7 +389,7 @@ function renderContext(){
     const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);
     if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
     const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Prestige <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
     const d=districtById(state.selectedDistrictId)||DISTRICTS[0],ds=state.districts[d.id];
     const used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
@@ -365,10 +402,10 @@ function renderContext(){
     }
     const objects=builtHere.length?builtHere.map(x=>{
       const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
-      const civic=['firehouse','clinic','publicworks','streetcar'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
-      return `<div class="mini-construction ${x.status==='complete'?'done':''}"><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · Income +$${pr.income||0}${civic}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
+      const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','publicworks','streetcar'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
+      return `<div class="mini-construction ${x.status==='complete'?'done':''}"><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Income +$${pr.income||0}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
     }).join(''):'Пока нет.';
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.19:</b> завершённые Fire House, Clinic, Public Works и Streetcar повышают Land Value этого района на $1. Road / service radius / Rail / Port пока следующий слой.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.20:</b> civic infrastructure повышает Land Value на $1; Major Factory снижает его на $1. Prestige начисляется только после полного завершения проекта.</div>`;
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
@@ -383,11 +420,12 @@ function renderOffice(){
   const active=(state.constructions||[]).filter(x=>x.playerId===p.id);
   const loans=p.loans||[],debt=loans.reduce((s,x)=>s+x.principal,0),interest=loanInterest(state,p.id);
   const canRepay=isActive&&loans.some(x=>x.interestPaid)&&p.capital>=LOAN_PRINCIPAL;
+  const procurement=isActive?(state.procurementRemaining||0):0;
   const loanHtml=loans.length?loans.map((loan,i)=>`<div class="loan-row"><span><b>Loan ${i+1}</b><small>${loan.interestPaid?'процент уже уплачен · можно погашать':'погашение откроется после Income Phase'}</small></span><strong>$${loan.principal}</strong></div>`).join(''):'<div class="empty-state compact">Активных кредитов нет.</div>';
 
   const available=p.portfolio.map(id=>{
     const pr=projectById(id),isTurn=canTakeMainAction(state,p.id);
-    return `<div class="portfolio-card available-project"><strong>${pr.name}</strong><div class="project-material-line">${resourcePills(pr.materials)}</div><span>${pr.type} · ${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${state.phase!=='development'?'После тендеров':!isActive?'Не ваша активация':state.activationMainActionUsed?'Main action уже использован':'Начать строительство'}</button></div>`;
+    return `<div class="portfolio-card available-project"><div class="project-card-title-row"><strong>${pr.name}</strong><span class="prestige-chip">VP ${pr.prestige||0}</span></div><div class="project-material-line">${resourcePills(pr.materials)}</div><span>${pr.type} · ${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${state.phase!=='development'?'После тендеров':!isActive?'Не ваша активация':state.activationMainActionUsed?'Main action уже использован':'Начать строительство'}</button></div>`;
   }).join('');
 
   const activeHtml=active.map(con=>{
@@ -395,14 +433,16 @@ function renderOffice(){
     if(con.status==='complete'){
       const wh=con.projectId==='warehouse'?'<div class="warehouse-note">Warehouse: +3 staging capacity для ваших строек в этом районе.</div>':'';
       let actionNote='';
-      if(con.projectId==='bank'||con.projectId==='bureau'){
+      if(['bank','bureau','shops','club'].includes(con.projectId)){
         const occupant=actionSpaceOccupant(state,con.id);
-        const label=con.projectId==='bank'?'Bank Loan':'Construction Contract −$2 land';
-        actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Action space: ${label} · ${occupant!=null?`USED THIS ROUND · ${state.players[occupant].name}`:'available this round'}</div>`;
+        const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов',club:'Networking Dinner: −$1 → +1 Influence'};
+        actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Action space: ${labels[con.projectId]} · ${occupant!=null?`USED THIS ROUND · ${state.players[occupant].name}`:'available this round'}</div>`;
       }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
-        actionNote='<div class="land-building-note">После завершения этот объект уже повысил Land Value района на $1.</div>';
+        actionNote='<div class="land-building-note">После завершения этот объект повысил Land Value района на $1.</div>';
+      }else if(con.projectId==='factory'){
+        actionNote='<div class="factory-building-note">После завершения Factory снизила Land Value района на $1.</div>';
       }
-      return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect">Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
+      return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Prestige +${pr.prestige||0} VP</b> · Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
     }
 
     const rent=canRentOverflow(state,con.id),whBonus=warehouseCapacityBonus(state,p.id,con.districtId);
@@ -411,7 +451,9 @@ function renderOffice(){
       const need=pr.materials.filter(x=>x===type).length-(con.materialsDelivered||[]).filter(x=>x===type).length;
       if(need<=0)return '';
       const reason=check.ok?'':check.reason==='not-active-player'?'Не ваша активация':check.reason==='capacity'?'Нет места':check.reason==='capital'?'Нет денег':'Недоступно';
-      return `<button class="resource-buy ${materialClass(type)}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${RESOURCE_PRICES[type]}</b><small>${check.ok?`осталось ${need}`:reason}</small></button>`;
+      const price=check.ok&&check.procurement?0:RESOURCE_PRICES[type];
+      const detail=check.ok?(check.procurement?`Procurement · осталось ${procurement}`:`осталось ${need}`):reason;
+      return `<button class="resource-buy ${materialClass(type)} ${check.procurement?'procurement':''}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${price}</b><small>${detail}</small></button>`;
     }).join('');
     const capacityNote=prog.delivered>=prog.capacity&&prog.remaining>0?'<div class="capacity-warning">Площадка заполнена. Нужен дополнительный staging slot.</div>':'';
     const rentBtn=rent.ok?`<button class="overflow-btn" data-rent-slot="${con.id}">Арендовать +1 слот · $1</button>`:'';
@@ -419,24 +461,25 @@ function renderOffice(){
   }).join('');
 
   const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
+  const procurementChip=procurement?`<span class="procurement-chip">Procurement · ${procurement} material${procurement===1?'':'s'} at $0</span>`:'';
   const activationNote=isActive
     ?`<div class="office-activation active"><b>АКТИВАЦИЯ ${p.name}</b><span>Free actions доступны до и после main action. Ход не перейдёт дальше, пока вы не нажмёте End Activation.</span></div>`
     :state.phase==='development'&&!state.developmentComplete
       ?`<div class="office-activation locked"><b>VIEW ONLY</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Supply / Overflow / Repay доступны только активному игроку.</span></div>`
       :'';
 
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary three"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.19.2:</b> в активацию можно делать free actions в любой последовательности — до или после одного main action. End Activation передаёт ход следующему игроку. Bank/Bureau: 1 use на конкретное здание за раунд.</div>`;
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.20:</b> Prestige начисляется после завершения. Shopping Row даёт Procurement, Restaurant & Club — Networking Dinner. Factory снижает Land Value на $1.</div>`;
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-  $$('[data-deliver]').forEach(b=>b.onclick=()=>{const r=deliverMaterial(state,b.dataset.deliver,b.dataset.resource);if(!r.ok){showToast(r.reason==='not-active-player'?'Free actions доступны только активному игроку':r.reason==='capacity'?'Нет места на площадке':r.reason==='capital'?'Недостаточно денег':'Нельзя доставить этот ресурс');return;}showToast(r.completed?'Здание завершено!':`${materialLabel(b.dataset.resource)} доставлен · −$${r.cost}`);render();});
+  $$('[data-deliver]').forEach(b=>b.onclick=()=>{const r=deliverMaterial(state,b.dataset.deliver,b.dataset.resource);if(!r.ok){showToast(r.reason==='not-active-player'?'Free actions доступны только активному игроку':r.reason==='capacity'?'Нет места на площадке':r.reason==='capital'?'Недостаточно денег':'Нельзя доставить этот ресурс');return;}showToast(r.completed?'Здание завершено!':r.procurement?`${materialLabel(b.dataset.resource)} через Procurement · $0`:`${materialLabel(b.dataset.resource)} доставлен · −$${r.cost}`);render();});
   $$('[data-rent-slot]').forEach(b=>b.onclick=()=>{const r=rentOverflowSlot(state,b.dataset.rentSlot);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':r.reason==='capital'?'Недостаточно денег':'Дополнительный слот не нужен');return;}showToast('Временное хранение +1 · −$1');render();});
   const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Repay доступен только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала кредит должен пройти Income Phase':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }
 
 function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
 function renderDebug(){
-  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · +$${roundIncome(state,p.id)} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
+  const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · VP ${p.prestige||0} · +${roundIncome(state,p.id)} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button></div></div>`).join('');
   const lands=DISTRICTS.map(d=>`<div class="debug-land"><span>${d.name}</span><div><button class="mini-btn" data-land="${d.id}" data-delta="-1">−</button><b>${state.districts[d.id].landValue}</b><button class="mini-btn" data-land="${d.id}" data-delta="1">+</button></div></div>`).join('');
   $('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Value</div>${lands}`;
   $$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
@@ -454,7 +497,7 @@ $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;stat
 $('#officeBtn').onclick=()=>{inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('Активация: free actions в любом порядке + ровно 1 main action → End Activation.');};
+$('#helpBtn').onclick=()=>{showToast('v0.20: 1 main action + free actions. Prestige за завершённые здания; Shops = Procurement; Club = −$1 → +1 Influence.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
