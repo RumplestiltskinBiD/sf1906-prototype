@@ -775,3 +775,140 @@ button.city-action-card{cursor:pointer}
   .project-market .card-rule span,
   .starter-draft .card-rule span{-webkit-line-clamp:4}
 }
+
+
+/* v0.23 — finalized starter draft + robust horizontal scrolling */
+#hallView{min-width:0}
+#hallView .project-market{
+  width:100%;max-width:100%;min-width:0!important;
+  display:grid!important;
+  grid-template-columns:none!important;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(205px,230px);
+  gap:10px;
+  overflow-x:auto!important;overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;
+  scroll-padding-inline:8px;
+  -webkit-overflow-scrolling:touch;
+  padding:3px 18px 16px 8px!important;
+  margin:0!important
+}
+#hallView .project-market>.project-card{
+  width:100%!important;min-width:0!important;
+  scroll-snap-align:start
+}
+#hallView .project-market>.project-card:last-child{margin-right:10px}
+
+.starter-draft{
+  width:100%;max-width:100%;min-width:0;
+  overflow:hidden
+}
+.starter-draft-cards{
+  width:100%;max-width:100%;min-width:0;
+  display:flex!important;
+  gap:10px;
+  overflow-x:auto!important;overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;
+  scroll-padding-inline:10px;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y;
+  padding:4px 10px 18px!important;
+  margin:0!important
+}
+.starter-draft-cards>.project-card{
+  flex:0 0 clamp(220px,24vw,260px)!important;
+  width:auto!important;min-width:0!important;
+  scroll-snap-align:start
+}
+.starter-draft-cards>.project-card:last-child{margin-right:10px}
+.starter-draft-cards::after{content:'';flex:0 0 4px}
+
+.draft-market-ref{
+  margin:9px 0 12px;padding:8px;
+  border:1px solid #c8b89f;border-radius:10px;
+  background:#e8ddca
+}
+.draft-market-ref-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;margin-bottom:7px
+}
+.draft-market-ref-head b{
+  font-size:9px;letter-spacing:.1em;color:#574c3f
+}
+.draft-market-ref-head span{
+  font-size:9px;color:#786d60;text-align:right
+}
+.draft-market-strip{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px
+}
+.draft-market-item{
+  position:relative;min-width:0;padding:7px 7px 6px;
+  border:1px solid #cbbca5;border-top:4px solid #8a7d6b;
+  border-radius:8px;background:#fff9ee
+}
+.draft-market-item.type-housing{border-top-color:#a66e55}
+.draft-market-item.type-commerce{border-top-color:#517b83}
+.draft-market-item.type-industry{border-top-color:#755f55}
+.draft-market-item.type-logistics{border-top-color:#92764e}
+.draft-market-item.type-civic{border-top-color:#5f7b5a}
+.draft-market-item.type-infra{border-top-color:#7b6f94}
+.draft-market-slot{
+  display:block;font-size:7px;font-weight:900;letter-spacing:.08em;color:#918475
+}
+.draft-market-item b{
+  display:block;margin-top:2px;
+  font-family:Georgia,serif;font-size:11px;line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.draft-market-item small{
+  display:block;margin-top:4px;font-size:8px;line-height:1.25;color:#756a5e
+}
+.draft-market-materials{
+  display:flex;gap:2px;margin-top:5px;flex-wrap:wrap
+}
+.draft-market-materials .resource-pip{
+  width:17px;height:17px;border-radius:5px;font-size:7px
+}
+
+@media(max-width:900px){
+  .draft-market-strip{
+    display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+    padding:1px 10px 7px 1px
+  }
+  .draft-market-item{
+    flex:0 0 160px;scroll-snap-align:start
+  }
+  .draft-market-item:last-child{margin-right:8px}
+}
+@media(max-width:640px){
+  #hallView .project-market{
+    grid-auto-columns:min(82vw,330px);
+    gap:9px;
+    scroll-snap-type:x mandatory;
+    padding:3px 18px calc(120px + env(safe-area-inset-bottom)) 8px!important
+  }
+  #hallView .project-market>.project-card{
+    min-height:445px!important
+  }
+  .starter-draft{
+    margin:4px 0 10px!important;
+    padding:9px 7px!important
+  }
+  .starter-draft-cards{
+    margin:0 -1px!important;
+    padding:4px 12px 18px 2px!important;
+    scroll-snap-type:x mandatory
+  }
+  .starter-draft-cards>.project-card{
+    flex-basis:min(82vw,330px)!important;
+    min-height:445px!important
+  }
+  .draft-market-ref{padding:7px;margin:8px 0 10px}
+  .draft-market-ref-head{display:block}
+  .draft-market-ref-head span{display:block;text-align:left;margin-top:2px}
+  .draft-market-strip{margin-right:-7px}
+  .draft-market-item{flex-basis:150px}
+}
