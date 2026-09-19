@@ -240,11 +240,13 @@ export function claimProject(state,slot){
   const pid=currentDeclarer(state); if(pid==null) return {ok:false,reason:'no-declarer'};
   const m=state.market[slot]; if(!m) return {ok:false,reason:'empty-slot'};
   if(state.market.some(x=>x&&x.claims.some(c=>c.player===pid))) return {ok:false,reason:'already-declared'};
+  if((state.players[pid].portfolio||[]).length>=HAND_LIMIT)return {ok:false,reason:'hand-limit'};
   const price=openingPrice(m);
   if(state.players[pid].capital<price) return {ok:false,reason:'capital'};
   m.claims.push({player:pid,order:state.declarationIndex});
   logEvent(state,`${state.players[pid].name} заявил проект «${projectById(m.id).name}» (opening $${price}).`);
   state.declarationIndex++;
+  state.selectedMarketUid=m.uid;
   state.selectedProjectId=m.id;
   return {ok:true};
 }
@@ -321,11 +323,12 @@ export function resolveTenders(state){
 function award(state,m,pid,price,reason){
   const pl=state.players[pid], p=projectById(m.id);
   if(pl.capital<price){m.result='Ошибка: недостаточно капитала';return;}
+  if((pl.portfolio||[]).length>=HAND_LIMIT){m.result='Ошибка: рука заполнена';return;}
   pl.capital-=price;
   pl.portfolio.push(m.id);
   m.sold=true;
   m.result={player:pid,price,reason};
-  logEvent(state,`${pl.name} получает «${p.name}» за $${price} (${reason}).`,'good');
+  logEvent(state,`${pl.name} получает «${p.name}» за $${price} (${reason}). Рука: ${pl.portfolio.length}/${HAND_LIMIT}.`,'good');
 }
 
 export function districtConstructionCount(state,districtId){
@@ -714,10 +717,10 @@ export function cleanupMarket(state){
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   const remaining=state.market.filter(m=>m&&!m.sold);
   const old=remaining.filter(m=>m.age===1);
-  old.forEach(m=>{state.expired.push(m.id);logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
+  old.forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
   const fresh=remaining.filter(m=>m.age===0);
   const survivors=fresh.slice(0,2);
-  fresh.slice(2).forEach(m=>{state.expired.push(m.id);logEvent(state,`«${projectById(m.id).name}» сброшен с правого края рынка.`,'bad');});
+  fresh.slice(2).forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сброшен с правого края рынка.`,'bad');});
   survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
 
   if(state.round>=MAX_ROUNDS){
@@ -754,13 +757,16 @@ export function cleanupMarket(state){
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
   state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
-  state.selectedProjectId=state.market.find(Boolean)?.id||null;
+  const first=state.market.find(Boolean);
+  state.selectedMarketUid=first?.uid||null;
+  state.selectedProjectId=first?.id||null;
   logEvent(state,`Раунд ${state.round}. Первый игрок: ${state.players[state.firstPlayer].name}. Старые проекты сдвинуты вправо и стоят на $1 дешевле.`,'accent');
   return {ok:true,finished:false};
 }
 
 export function tenderSummary(state){
   return state.market.filter(Boolean).map(m=>({
+    uid:m.uid,
     id:m.id,
     price:openingPrice(m),
     age:m.age,
