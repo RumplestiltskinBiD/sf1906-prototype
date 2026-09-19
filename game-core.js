@@ -7,24 +7,28 @@ export const RAISE_CAPITAL_AMOUNT = 3;
 export const LOAN_PRINCIPAL = 6;
 export const MAX_ACTIVE_LOANS = 2;
 export const BUREAU_LAND_DISCOUNT = 2;
+export const HAND_LIMIT = 5;
+export const STARTER_DRAFT_SIZE = 5;
+export const STARTER_KEEP = 2;
+export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
 export const PROJECTS = [
-  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1'},
-  {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2},
-  {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',accessAll:['fire'],effect:'Income +3 · Prestige +3',landMin:3},
-  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1},
-  {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',accessAll:['fire','clinic'],effect:'Income +4 · Prestige +3',landMin:3},
-  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2},
-  {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Networking Dinner action · Prestige +2',landMin:2},
-  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1'},
-  {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',accessAny:['rail','port'],effect:'Income +5 · Land Value −1'},
-  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1'},
-  {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Prestige +1 · страховые действия позже',landMin:2},
-  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',accessAll:['road'],effect:'Fire Protection (district + adjacent road district) · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',accessAll:['road'],effect:'Clinic access (district + adjacent road district) · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road network или соседний район с Road access',streetcarExtension:true,effect:'Открывает Road access в районе · Land Value +1 · Prestige +3'}
+  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Road access.'},
+  {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2,benefit:'Income +3 / раунд · Prestige 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Land Value ≤2. Высокий риск в будущей катастрофе.'},
+  {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',accessAll:['fire'],effect:'Income +3 · Prestige +3',landMin:3,benefit:'Income +3 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ и Fire Protection.'},
+  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1,benefit:'Income +2 / раунд · Prestige +1',actionName:'Procurement',actionText:'1 представитель + $1 → до 2 материалов по $0 в эту активацию.',limits:'Нужна незавершённая стройка · 1 use / building / round · при чужом использовании $1 получает владелец.'},
+  {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',accessAll:['fire','clinic'],effect:'Income +4 · Prestige +3',landMin:3,benefit:'Income +4 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ · Fire Protection · Clinic access.'},
+  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2,benefit:'Income +2 / раунд · Prestige +1',actionName:'Bank Loan',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Income.',limits:'Макс. 2 активных кредита · 1 use / Bank / round · чужое использование даёт владельцу +1 Influence максимум 1×/round.'},
+  {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Networking Dinner action · Prestige +2',landMin:2,benefit:'Income +2 / раунд · Prestige +2',actionName:'Networking Dinner',actionText:'1 представитель + $1 → +1 Influence.',limits:'1 use / building / round · если использует соперник, его $1 получает владелец.'},
+  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · +3 staging slots вашим стройкам в этом районе',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Port, Rail или Road access.'},
+  {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',accessAny:['rail','port'],effect:'Income +5 · Land Value −1',benefit:'Income +5 / раунд · Prestige 0 · после завершения Land Value района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Rail или Port access. Land Value не падает ниже 0.'},
+  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1',benefit:'Prestige +1 · Income 0',actionName:'Construction Contract',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый Contract · 1 use / building / round · чужое использование приносит владельцу $1.'},
+  {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Prestige +1 · страховые действия позже',landMin:2,benefit:'Income +3 / раунд · Prestige +1',actionName:'Insurance',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Land Value 2+. Механика страхования будет добавлена позже.'},
+  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',accessAll:['road'],effect:'Fire Protection (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Fire Protection',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Road access. Fire Protection действует в своём и соседнем районе по дорожной сети. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',accessAll:['road'],effect:'Clinic access (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Clinic access',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Road access. Clinic access действует в своём и соседнем районе по дорожной сети.'},
+  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Water/Gas/repair infrastructure',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Road access. Полные water/gas/repair правила будут добавлены позже.'},
+  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road network или соседний район с Road access',streetcarExtension:true,effect:'Открывает Road access в районе · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · открывает Road access',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Road access в районе или в одном из соседних районов.'}
 ]
 
 export const DISTRICTS = [
@@ -152,7 +156,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.21',
+    version:'0.22',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -179,7 +183,7 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.21.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.22.','cls':'accent'}],
     finished:false
   };
 }
