@@ -517,3 +517,66 @@ button.city-action-card{cursor:pointer}
   .prestige-chip{height:21px;font-size:8px}
   .procurement-chip{margin:5px 0 0 0}
 }
+
+
+/* v0.21 — infrastructure access + stable player HUD */
+.player-pill{
+  grid-template-columns:auto minmax(0,1fr) max-content;
+  overflow:visible
+}
+.player-main{min-width:0;overflow:hidden}
+.player-stats{
+  display:flex;flex-wrap:wrap;gap:2px 8px;
+  min-width:0;margin-top:2px;
+  color:#b8aea1;font-size:10px;line-height:1.25
+}
+.player-stats span{white-space:nowrap}
+.player-flags{
+  display:block;min-width:0;margin-top:2px;
+  color:#d2bd94;font-size:8px;font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.player-money{
+  min-width:max-content;justify-self:end;
+  padding-left:2px;white-space:nowrap
+}
+.player-meta{display:none!important}
+
+.access-grid{
+  display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 6px
+}
+.access-chip{
+  display:inline-flex;align-items:center;min-height:26px;padding:4px 7px;
+  border:1px solid #c8baa4;border-radius:999px;
+  font-size:9px;font-weight:900;letter-spacing:.04em
+}
+.access-chip.on{background:#e1eee2;color:#365c42;border-color:#a8c0ab}
+.access-chip.off{background:#eee8df;color:#8a7f72;border-style:dashed}
+.access-source{font-size:10px;line-height:1.4;color:#516556;margin-top:3px}
+.access-neighbors{margin-top:6px;font-size:9px;line-height:1.4;color:#817669}
+.district-meta{font-size:11px}
+
+@media(max-width:900px) and (min-width:641px){
+  .players-bar{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .player-pill{padding:7px 8px;gap:6px}
+  .player-stats{gap:2px 5px;font-size:9px}
+  .player-money{font-size:14px}
+}
+
+@media(max-width:640px){
+  .player-pill{
+    flex:0 0 178px;min-width:178px;min-height:52px;
+    grid-template-columns:9px minmax(0,1fr) max-content;
+    padding:7px 8px;gap:6px
+  }
+  .player-main{align-self:center}
+  .player-name{font-size:11px}
+  .player-stats{
+    display:grid;grid-template-columns:repeat(2,max-content);
+    gap:1px 7px;font-size:8px;line-height:1.2
+  }
+  .player-flags{font-size:7px;line-height:1.2}
+  .player-money{font-size:13px;align-self:center}
+  .district-meta{font-size:13px;stroke-width:5px}
+  .access-chip{min-height:28px;font-size:9px}
+}
