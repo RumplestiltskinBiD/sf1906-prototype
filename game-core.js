@@ -187,21 +187,32 @@ export function confirmStarterDraft(state){
 }
 
 export function createInitialState({rng=Math.random}={}){
-  const deck=shuffle(PROJECTS.map(p=>p.id),rng);
-  const market=deck.splice(0,5).map(emptyMarketCard);
+  const pool=createProjectCardPool({rng});
+  const market=pool.splice(0,5).map(emptyMarketCard);
+  const starterDraftHands=[
+    pool.splice(0,STARTER_DRAFT_SIZE),
+    pool.splice(0,STARTER_DRAFT_SIZE),
+    pool.splice(0,STARTER_DRAFT_SIZE)
+  ];
   return {
     version:'0.22',
     round:1,
     firstPlayer:0,
-    phase:'declare',
+    phase:'draft',
     view:'hall',
     declarationIndex:0,
     players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,prestige:0,workersLeft:3,portfolio:[],loans:[],bureauContracts:0})),
     market,
-    deck,
+    deck:pool,
     expired:[],
+    starterDraftHands,
+    starterDiscards:[],
+    starterDraftPlayer:0,
+    draftSelection:[],
+    draftRevealed:false,
     bidQueue:[],
     bidCursor:0,
+    selectedMarketUid:market[0]?.uid||null,
     selectedProjectId:market[0]?.id||null,
     selectedDistrictId:'civic',
     pendingConstruction:null,
@@ -217,7 +228,7 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.22.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.22. Рынок открыт; впереди стартовый драфт 5 → оставить 2.','cls':'accent'}],
     finished:false
   };
 }
