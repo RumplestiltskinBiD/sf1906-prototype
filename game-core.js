@@ -150,7 +150,41 @@ export function actionSpaceOccupant(state,constructionId){
   return value==null?null:value;
 }
 export function openingPrice(marketCard){const p=projectById(marketCard.id);return Math.max(1,p.open-(marketCard.discount||0));}
-export function emptyMarketCard(id){return {id,age:0,discount:0,claims:[],bids:{},result:null,sold:false};}
+export function emptyMarketCard(card){
+  const data=typeof card==='string'?{uid:`legacy-${card}`,id:card}:card;
+  return {uid:data.uid,id:data.id,age:0,discount:0,claims:[],bids:{},result:null,sold:false};
+}
+export function createProjectCardPool({rng=Math.random}={}){
+  const cards=[];let serial=1;
+  for(let copy=0;copy<PROJECT_COPIES;copy++)for(const project of PROJECTS)cards.push({uid:`PC${serial++}`,id:project.id});
+  return shuffle(cards,rng);
+}
+export function currentDraftPlayer(state){return state.phase==='draft'?state.starterDraftPlayer:null;}
+export function toggleStarterDraftCard(state,uid){
+  if(state.phase!=='draft'||!state.draftRevealed)return {ok:false,reason:'draft-hidden'};
+  const pid=currentDraftPlayer(state),hand=state.starterDraftHands?.[pid]||[];
+  if(!hand.some(card=>card.uid===uid))return {ok:false,reason:'not-in-hand'};
+  state.draftSelection=state.draftSelection||[];
+  if(state.draftSelection.includes(uid)){state.draftSelection=state.draftSelection.filter(x=>x!==uid);return {ok:true,selected:false,count:state.draftSelection.length};}
+  if(state.draftSelection.length>=STARTER_KEEP)return {ok:false,reason:'keep-limit'};
+  state.draftSelection.push(uid);return {ok:true,selected:true,count:state.draftSelection.length};
+}
+export function revealStarterDraft(state){if(state.phase!=='draft')return {ok:false,reason:'wrong-phase'};state.draftRevealed=true;return {ok:true,player:state.starterDraftPlayer};}
+export function confirmStarterDraft(state){
+  if(state.phase!=='draft'||!state.draftRevealed)return {ok:false,reason:'draft-hidden'};
+  const pid=currentDraftPlayer(state),player=state.players[pid],hand=state.starterDraftHands?.[pid]||[],selected=state.draftSelection||[];
+  if(selected.length!==STARTER_KEEP)return {ok:false,reason:'keep-count',required:STARTER_KEEP};
+  const kept=hand.filter(card=>selected.includes(card.uid));
+  if(kept.length!==STARTER_KEEP)return {ok:false,reason:'invalid-selection'};
+  if(player.portfolio.length+kept.length>HAND_LIMIT)return {ok:false,reason:'hand-limit'};
+  const discarded=hand.filter(card=>!selected.includes(card.uid));
+  player.portfolio.push(...kept.map(card=>card.id));
+  state.starterDiscards=state.starterDiscards||[];state.starterDiscards.push(...discarded);state.starterDraftHands[pid]=[];
+  logEvent(state,`${player.name} завершает стартовый драфт: оставляет ${STARTER_KEEP} проекта, сбрасывает ${discarded.length}.`,'good');
+  state.draftSelection=[];state.draftRevealed=false;
+  if(pid>=state.players.length-1){state.phase='declare';state.starterDraftPlayer=null;state.declarationIndex=0;logEvent(state,'Стартовый драфт завершён. Начинается City Hall Session.','accent');return {ok:true,complete:true,nextPlayer:null};}
+  state.starterDraftPlayer=pid+1;return {ok:true,complete:false,nextPlayer:state.starterDraftPlayer};
+}
 
 export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
