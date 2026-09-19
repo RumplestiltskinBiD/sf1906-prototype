@@ -139,7 +139,7 @@ function renderPlayers(){
     pill.className=`player-pill ${declareActive||devActive?'active':''} ${declareActive?'declare-active':''} ${devActive?'dev-active':''} ${state.firstPlayer===i?'first':''}`;
     pill.dataset.office=i;
     const debt=(p.loans||[]).length;
-    const flags=[debt?`Debt ${debt}`:'',(p.bureauContracts||0)>0?'Contract':''].filter(Boolean).join(' · ');
+    const flags=[`Hand ${p.portfolio.length}/${HAND_LIMIT}`,debt?`Debt ${debt}`:'',(p.bureauContracts||0)>0?'Contract':''].filter(Boolean).join(' · ');
     pill.innerHTML=`<span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Inf ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span></span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
     pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};
     el.appendChild(pill);
@@ -161,27 +161,107 @@ function renderTenderSteps(){
   $('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?'Игроки по очереди заявляются на один проект или пасуют. Последний игрок видит предыдущие заявки.':state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?'Тендеры завершены. Результаты остаются видимыми до конца раунда.':'Тест завершён.';
 }
 
+function projectCardRules(p){
+  return `<div class="card-rules">
+    <div class="card-rule build"><b>BUILD</b><span>${p.requires||'Нет дополнительных условий'}</span></div>
+    <div class="card-rule benefit"><b>GIVES</b><span>${p.benefit||p.effect||'—'}</span></div>
+    <div class="card-rule action ${p.actionName==='—'?'muted':''}"><b>ACTION · ${p.actionName||'—'}</b><span>${p.actionText||'—'}</span></div>
+    <div class="card-rule limits"><b>LIMITS</b><span>${p.limits||'—'}</span></div>
+  </div>`;
+}
+function projectCoreCard(p,{topLeft='',topRight='',priceLabel='opening',priceValue=null,selected=false,extraClass='',footer=''}={}){
+  const price=priceValue==null?p.open:priceValue;
+  return `<article class="project-card full-info ${typeClass(p.type)} ${selected?'selected':''} ${extraClass}">
+    <div class="card-stripe"></div>
+    <div class="project-inner">
+      <div class="card-top"><span class="slot-mark">${topLeft}</span><span class="age-badge">${topRight}</span></div>
+      <div class="project-title">${p.name}</div>
+      <div class="project-type">${p.type}</div>
+      <div class="card-value-row"><div class="opening-price">$${price}<small>${priceLabel}</small></div><span class="prestige-chip">VP ${p.prestige||0}</span></div>
+      <div class="card-section-label">MATERIALS</div>
+      <div class="card-resource-row">${resourcePills(p.materials)}</div>
+      ${projectCardRules(p)}
+      ${footer}
+    </div>
+  </article>`;
+}
+
 function renderMarket(){
   const el=$('#projectMarket');el.innerHTML='';const cd=currentDeclarer(state);const already=cd!=null&&state.market.some(x=>x&&x.claims.some(c=>c.player===cd));
   for(let slot=0;slot<5;slot++){
     const m=state.market[slot];
-    if(!m){const d=document.createElement('div');d.className='project-card empty';d.innerHTML=`<span>Пустое место рынка</span>`;el.appendChild(d);continue;}
-    const p=projectById(m.id),price=openingPrice(m),selected=state.selectedProjectId===m.id;
-    const card=document.createElement('article');card.className=`project-card ${typeClass(p.type)} ${m.age===1?'old':''} ${m.sold?'sold':''} ${selected?'selected':''}`;card.onclick=e=>{if(!e.target.closest('button')){state.selectedProjectId=m.id;if(isMobile())mobileContextOpen=true;render();}};
+    if(!m){const d=document.createElement('div');d.className='project-card empty full-info';d.innerHTML='<span>Пустое место рынка</span>';el.appendChild(d);continue;}
+    const p=projectById(m.id),price=openingPrice(m),selected=state.selectedMarketUid===m.uid;
     const claims=m.claims.map(c=>`<span class="claim-chip"><span class="claim-dot ${playerColor(c.player)}"></span>${state.players[c.player].name}</span>`).join('');
-    const canClaim=state.phase==='declare'&&cd!=null&&!already&&!m.sold&&state.players[cd].capital>=price;
-    const result=m.result?`<div class="result-box">${state.players[m.result.player].name} · $${m.result.price}<br>${m.result.reason}</div>`:'';
-    card.innerHTML=`<div class="card-stripe"></div><div class="project-inner"><div class="card-top"><span class="slot-mark">SLOT ${slot+1}</span><span class="age-badge ${m.age===1?'last':''}">${m.age===1?'LAST CHANCE · −$1':'NEW'}</span></div><div class="project-title">${p.name}</div><div class="project-type">${p.type}</div><div class="opening-price">$${price}<small>opening</small></div><div class="card-resource-row">${resourcePills(p.materials)}<span class="prestige-chip">VP ${p.prestige||0}</span></div><div class="mini-line">${p.requires}</div><div class="claims-row">${claims||'<span class="mini-line">Нет заявок</span>'}</div>${result}<button class="claim-btn ${canClaim?'':'secondary'}" ${canClaim?'':'disabled'} data-slot="${slot}">${m.sold?'Продан':canClaim?'Заявиться':'Недоступно'}</button></div>`;
-    card.querySelector('[data-slot]').onclick=()=>doClaim(slot);el.appendChild(card);
+    const handFull=cd!=null&&(state.players[cd].portfolio||[]).length>=HAND_LIMIT;
+    const canClaim=state.phase==='declare'&&cd!=null&&!already&&!m.sold&&!handFull&&state.players[cd].capital>=price;
+    const result=m.result&&typeof m.result==='object'?`<div class="result-box">${state.players[m.result.player].name} · $${m.result.price}<br>${m.result.reason}</div>`:m.result?`<div class="result-box bad">${m.result}</div>`:'';
+    const disabledText=m.sold?'Продан':state.phase==='draft'?'После драфта':handFull?'Рука 5/5':canClaim?'Заявиться':'Недоступно';
+    const footer=`<div class="claims-row">${claims||'<span class="mini-line">Нет заявок</span>'}</div>${result}<button class="claim-btn ${canClaim?'':'secondary'}" ${canClaim?'':'disabled'} data-slot="${slot}">${disabledText}</button>`;
+    const wrap=document.createElement('div');wrap.className='market-card-wrap';
+    wrap.innerHTML=projectCoreCard(p,{
+      topLeft:`SLOT ${slot+1}`,
+      topRight:m.age===1?'LAST CHANCE · −$1':'NEW',
+      priceLabel:'opening',
+      priceValue:price,
+      selected,
+      extraClass:`${m.age===1?'old':''} ${m.sold?'sold':''}`,
+      footer
+    });
+    const card=wrap.firstElementChild;
+    if(m.age===1)card.querySelector('.age-badge')?.classList.add('last');
+    card.onclick=e=>{if(!e.target.closest('button')){state.selectedMarketUid=m.uid;state.selectedProjectId=m.id;if(isMobile())mobileContextOpen=true;render();}};
+    card.querySelector('[data-slot]')?.addEventListener('click',e=>{e.stopPropagation();doClaim(slot);});
+    el.appendChild(card);
   }
+}
+
+function renderStarterDraft(){
+  const el=$('#starterDraft');if(!el)return;
+  if(state.phase!=='draft'){el.classList.remove('active');el.innerHTML='';return;}
+  el.classList.add('active');
+  const pid=currentDraftPlayer(state),player=state.players[pid];
+  if(!state.draftRevealed){
+    el.innerHTML=`<div class="draft-handoff"><div><span class="draft-kicker">PRIVATE STARTING HAND</span><h3>Передайте устройство: ${player.name}</h3><p>Рынок проектов уже открыт выше. ${player.name} увидит 5 стартовых карт и оставит 2. Карты других игроков остаются скрыты.</p></div><button class="primary-btn" id="revealStarterDraft">Показать 5 карт</button></div>`;
+    $('#revealStarterDraft').onclick=()=>{revealStarterDraft(state);render();};
+    return;
+  }
+  const hand=state.starterDraftHands?.[pid]||[];
+  const selected=new Set(state.draftSelection||[]);
+  const cards=hand.map((card,i)=>{
+    const p=projectById(card.id),isSelected=selected.has(card.uid);
+    const footer=`<button class="draft-keep-btn ${isSelected?'selected':''}" data-draft-card="${card.uid}">${isSelected?'ОСТАВЛЯЮ ✓':'Оставить эту карту'}</button>`;
+    return projectCoreCard(p,{topLeft:`START ${i+1}`,topRight:'KEEP 2 / 5',priceLabel:'base open',priceValue:p.open,selected:isSelected,extraClass:'draft-card',footer});
+  }).join('');
+  el.innerHTML=`<div class="draft-head"><div><span class="draft-kicker">STARTING DRAFT · ${player.name}</span><h3>Оставьте 2 карты из 5</h3><p>Рынок выше уже известен — можно строить стартовый план вокруг него. Выбрано: <b>${selected.size}/${STARTER_KEEP}</b>. Лимит руки на всю игру: <b>${HAND_LIMIT}</b>.</p></div><button class="primary-btn" id="confirmStarterDraft" ${selected.size===STARTER_KEEP?'':'disabled'}>Оставить 2 и передать дальше</button></div><div class="starter-draft-cards">${cards}</div>`;
+  $$('[data-draft-card]').forEach(b=>b.onclick=()=>{
+    const r=toggleStarterDraftCard(state,b.dataset.draftCard);
+    if(!r.ok&&r.reason==='keep-limit'){showToast('Можно оставить ровно 2 карты');return;}
+    render();
+  });
+  $('#confirmStarterDraft').onclick=()=>{
+    const r=confirmStarterDraft(state);
+    if(!r.ok){showToast('Выберите ровно 2 карты');return;}
+    showToast(r.complete?'Стартовый драфт завершён':`Передайте устройство: ${state.players[r.nextPlayer].name}`);
+    render();
+  };
 }
 
 function renderActionBar(){
   const bar=$('#hallActionBar');
-  if(state.phase==='declare'){
+  if(state.phase==='draft'){
+    const pid=currentDraftPlayer(state),player=state.players[pid],selected=(state.draftSelection||[]).length;
+    if(!state.draftRevealed){
+      bar.innerHTML=`<div class="sticky-copy"><strong>Стартовый драфт · ${player.name}</strong><span>Рынок открыт. Покажите только свои 5 стартовых карт.</span></div><div class="sticky-actions"><button class="secondary-btn" id="draftRevealSticky">Показать карты</button></div>`;
+      $('#draftRevealSticky').onclick=()=>{revealStarterDraft(state);render();};
+    }else{
+      bar.innerHTML=`<div class="sticky-copy"><strong>${player.name}: оставить 2 из 5 · выбрано ${selected}/${STARTER_KEEP}</strong><span>Стартовые карты бесплатны; остальные 3 сбрасываются.</span></div><div class="sticky-actions"><button class="primary-btn" id="draftConfirmSticky" ${selected===STARTER_KEEP?'':'disabled'}>Подтвердить 2</button></div>`;
+      $('#draftConfirmSticky').onclick=()=>{const r=confirmStarterDraft(state);if(!r.ok){showToast('Выберите ровно 2 карты');return;}render();};
+    }
+  }else if(state.phase==='declare'){
     const pid=currentDeclarer(state);
     if(pid==null){bar.innerHTML=`<div class="sticky-copy"><strong>Все заявки сделаны</strong><span>Перейдите к закрытым ставкам. Если конкуренции нет, сразу к вскрытию.</span></div><div class="sticky-actions"><button class="secondary-btn" id="nextTenderStage">Перейти к ставкам</button></div>`;$('#nextTenderStage').onclick=()=>{beginBidding(state);render();};}
-    else bar.innerHTML=`<div class="sticky-copy"><strong>Заявка: ${state.players[pid].name}</strong><span>Выберите один проект. Решение видно следующим игрокам.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас</button></div>`,$('#passTender').onclick=()=>{passDeclaration(state);render();};
+    else bar.innerHTML=`<div class="sticky-copy"><strong>Заявка: ${state.players[pid].name} · рука ${state.players[pid].portfolio.length}/${HAND_LIMIT}</strong><span>Выберите один проект или пасуйте. При полной руке сначала нужно начать стройку в Development.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас</button></div>`,$('#passTender').onclick=()=>{passDeclaration(state);render();};
   }else if(state.phase==='bids'){
     const q=currentBidTask(state),pl=q?state.players[q.player]:null;bar.innerHTML=`<div class="sticky-copy"><strong>Закрытые ставки</strong><span>${pl?`Следующая ставка: ${pl.name}`:'Ставки собраны'}. Суммы скрыты до вскрытия.</span></div><div class="sticky-actions"><button class="secondary-btn" id="openBidNow">Продолжить ставки</button></div>`;$('#openBidNow').onclick=openBidCurtain;
   }else if(state.phase==='ready'){
@@ -191,14 +271,19 @@ function renderActionBar(){
       bar.innerHTML='<div class="sticky-copy"><strong>Development завершён</strong><span>Все представители использованы.</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>';$('#enterCity').onclick=()=>{state.view='city';render();};
     }else{
       const dev=currentDeveloper(state),used=state.activationMainActionUsed;
-      bar.innerHTML=`<div class="sticky-copy"><strong>Активация: ${state.players[dev].name} · 👤 ${state.players[dev].workersLeft}/3</strong><span>${used?'Main action использован — free actions или End Activation.':'Free actions можно до или после main action.'}</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">${used?'Продолжить активацию':'Городские действия'}</button></div>`;$('#enterCity').onclick=()=>{state.view='city';render();};
+      bar.innerHTML=`<div class="sticky-copy"><strong>Активация: ${state.players[dev].name} · 👤 ${state.players[dev].workersLeft}/3 · рука ${state.players[dev].portfolio.length}/${HAND_LIMIT}</strong><span>${used?'Main action использован — free actions или End Activation.':'Free actions можно до или после main action.'}</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">${used?'Продолжить активацию':'Городские действия'}</button></div>`;$('#enterCity').onclick=()=>{state.view='city';render();};
     }
   }else{
     bar.innerHTML='<div class="sticky-copy"><strong>Тест завершён</strong><span>Можно изучить результаты или начать новую партию.</span></div><div class="sticky-actions"><button class="primary-btn" id="restartBottom">Новая партия</button></div>';$('#restartBottom').onclick=newGame;
   }
 }
 
-function doClaim(slot){const res=claimProject(state,slot);if(!res.ok&&res.reason==='capital')showToast('Недостаточно капитала для opening price');render();}
+function doClaim(slot){
+  const res=claimProject(state,slot);
+  if(!res.ok&&res.reason==='capital')showToast('Недостаточно капитала для opening price');
+  else if(!res.ok&&res.reason==='hand-limit')showToast(`Рука заполнена: лимит ${HAND_LIMIT} карт`);
+  render();
+}
 
 function openBidCurtain(){
   if(state.phase!=='bids')return;const q=currentBidTask(state);if(!q){render();return;}pendingBidReveal=true;
@@ -409,7 +494,7 @@ function renderContext(){
   const panel=$('#contextPanel');
   const close=isMobile()?'<button class="context-close" id="contextClose" aria-label="Закрыть подробности">×</button>':'';
   if(state.view==='hall'){
-    const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);
+    const m=state.market.find(x=>x&&x.uid===state.selectedMarketUid)||state.market.find(Boolean);
     if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
     const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
     panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Prestige <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
