@@ -1,14 +1,14 @@
 import {
   PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,
-  projectById,districtById,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
+  projectById,districtById,districtAccess,districtNeighbors,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
   constructionProgress,canDeliverMaterial,deliverMaterial,canRentOverflow,rentOverflowSlot,roundIncome,grossRoundIncome,buildingIncome,warehouseCapacityBonus,
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v020';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v021';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -25,13 +25,13 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
-  parsed.version='0.20';
+  parsed.version='0.21';
   parsed.players=(parsed.players||[]).map(p=>({
     ...p,
     workersLeft:p.workersLeft??3,
@@ -45,9 +45,13 @@ function migrateState(parsed){
   parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
   parsed.districts=parsed.districts||Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}]));
   DISTRICTS.forEach(d=>{
-    parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites};
+    parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road};
     if(parsed.districts[d.id].landValue==null)parsed.districts[d.id].landValue=d.landValue;
     if(parsed.districts[d.id].sites==null)parsed.districts[d.id].sites=d.sites;
+    if(parsed.districts[d.id].roadAccess==null){
+      const completedStreetcar=(parsed.constructions||[]).some(x=>x.districtId===d.id&&x.projectId==='streetcar'&&x.status==='complete');
+      parsed.districts[d.id].roadAccess=!!d.road||completedStreetcar;
+    }
   });
   parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
@@ -94,6 +98,13 @@ function resourcePills(materials,delivered=[]){
     return '<span class="resource-pip '+materialClass(type)+' '+(idx<(have[type]||0)?'filled':'')+'" title="'+materialLabel(type)+'">'+materialShort(type)+'</span>';
   }).join('');
 }
+function accessChip(label,on){
+  return '<span class="access-chip '+(on?'on':'off')+'">'+label+' '+(on?'✓':'—')+'</span>';
+}
+function serviceSourceText(sources){
+  if(!sources?.length)return '';
+  return [...new Set(sources.map(x=>districtById(x.districtId)?.name).filter(Boolean))].join(', ');
+}
 function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),1800);}
 
 function render(){
@@ -117,8 +128,8 @@ function renderPlayers(){
     pill.className=`player-pill ${declareActive||devActive?'active':''} ${declareActive?'declare-active':''} ${devActive?'dev-active':''} ${state.firstPlayer===i?'first':''}`;
     pill.dataset.office=i;
     const debt=(p.loans||[]).length;
-    const contract=(p.bureauContracts||0)>0?' · Contract':'';
-    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span><span class="player-name">${p.name}</span><span class="player-meta"><span>👤 ${p.workersLeft??0} · VP ${p.prestige||0} · Inf ${p.influence} · +$${roundIncome(state,p.id)}${debt?` · Debt ${debt}`:''}${contract}</span><span>Проекты ${p.portfolio.length}</span></span></span><span class="player-money">$${p.capital}</span>`;
+    const flags=[debt?`Debt ${debt}`:'',(p.bureauContracts||0)>0?'Contract':''].filter(Boolean).join(' · ');
+    pill.innerHTML=`<span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Inf ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span></span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
     pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};
     el.appendChild(pill);
   });
@@ -199,7 +210,7 @@ const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.20 · доставка — free action</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.21 · access rules active</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
 }
 
 function renderCityActions(){
@@ -314,7 +325,7 @@ function renderCity(){
   }else if(pending){
     const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
     mode.className='construction-mode active';
-    mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите подсвеченный район. Begin Construction = Land Value + 1 представитель.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
+    mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите район. Подсветка уже учитывает Land Value и Road / Rail / Port / Fire / Clinic access.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
     $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
   }else if(state.developmentComplete){
     mode.className='construction-mode complete';
@@ -337,10 +348,11 @@ function renderCity(){
   const meta=$('#districtMetaLayer');
   if(meta){
     meta.innerHTML=DISTRICTS.map(d=>{
-      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id];
+      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
       const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
-      return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}</text>`;
+      const tags=[a.road?'R':'',a.rail?'RAIL':'',a.port?'PORT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join(' · ');
+      return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}${tags?` · ${tags}`:''}</text>`;
     }).join('');
   }
 
@@ -389,23 +401,29 @@ function renderContext(){
     const m=state.market.find(x=>x&&x.id===state.selectedProjectId)||state.market.find(Boolean);
     if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
     const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Prestige <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Prestige <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
-    const d=districtById(state.selectedDistrictId)||DISTRICTS[0],ds=state.districts[d.id];
+    const d=districtById(state.selectedDistrictId)||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
     const used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
     const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
+    const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
+    const accessHtml=`<div class="access-grid">${accessChip('ROAD',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
+
     let constructionHtml='';
     if(state.pendingConstruction){
       const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
       const priceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.cost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.cost}</b></span><span>Представитель <b>1</b></span>`;
       constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Begin Construction</div><strong>${pl.name} · ${pr.name}</strong><div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
     }
+
     const objects=builtHere.length?builtHere.map(x=>{
       const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
       const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','publicworks','streetcar'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
       return `<div class="mini-construction ${x.status==='complete'?'done':''}"><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Income +$${pr.income||0}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
     }).join(''):'Пока нет.';
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.20:</b> civic infrastructure повышает Land Value на $1; Major Factory снижает его на $1. Prestige начисляется только после полного завершения проекта.</div>`;
+
+    const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.21:</b> Fire House и Clinic обслуживают свой и соседние районы по дорожной сети. Rail/Port заданы районом. Western Expansion начинает без Road access; Streetcar Extension может открыть его.</div>`;
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
@@ -438,7 +456,7 @@ function renderOffice(){
         const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов',club:'Networking Dinner: −$1 → +1 Influence'};
         actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Action space: ${labels[con.projectId]} · ${occupant!=null?`USED THIS ROUND · ${state.players[occupant].name}`:'available this round'}</div>`;
       }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
-        actionNote='<div class="land-building-note">После завершения этот объект повысил Land Value района на $1.</div>';
+        actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Streetcar повысил Land Value на $1 и, если требовалось, открыл Road access в районе.</div>':'<div class="land-building-note">После завершения этот объект повысил Land Value района на $1.</div>';
       }else if(con.projectId==='factory'){
         actionNote='<div class="factory-building-note">После завершения Factory снизила Land Value района на $1.</div>';
       }
@@ -468,7 +486,7 @@ function renderOffice(){
       ?`<div class="office-activation locked"><b>VIEW ONLY</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Supply / Overflow / Repay доступны только активному игроку.</span></div>`
       :'';
 
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.20:</b> Prestige начисляется после завершения. Shopping Row даёт Procurement, Restaurant & Club — Networking Dinner. Factory снижает Land Value на $1.</div>`;
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.21:</b> требования Road / Rail / Port / Fire / Clinic теперь проверяются реально. Fire House и Clinic работают на свой + соседние дорожные районы; Streetcar может открыть Road access в Western Expansion.</div>`;
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
@@ -497,7 +515,7 @@ $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;stat
 $('#officeBtn').onclick=()=>{inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.20: 1 main action + free actions. Prestige за завершённые здания; Shops = Procurement; Club = −$1 → +1 Influence.');};
+$('#helpBtn').onclick=()=>{showToast('v0.21: требования Road / Rail / Port / Fire / Clinic активны. Fire/Clinic покрывают свой + соседние дорожные районы.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
