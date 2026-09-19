@@ -195,7 +195,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.22',
+    version:'0.23',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -228,7 +228,7 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.22. Рынок открыт; впереди стартовый драфт 5 → оставить 2.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.23. Открыт рынок; каждый игрок получает 5 стартовых проектов, оставляет 2 и сбрасывает 3.','cls':'accent'}],
     finished:false
   };
 }
