@@ -704,3 +704,74 @@ button.city-action-card{cursor:pointer}
     min-height:0!important
   }
 }
+
+
+/* v0.22 UX audit — scan-first cards and faster starter draft */
+.project-market{
+  grid-template-columns:repeat(5,minmax(205px,1fr));
+  min-width:1080px;
+}
+.project-card.full-info{
+  min-height:405px;
+  width:auto;
+}
+.project-market .card-rule.limits,
+.project-market .card-rule.action.muted,
+.starter-draft .card-rule.action.muted{
+  display:none;
+}
+.project-market .card-rules,
+.starter-draft .card-rules{gap:5px}
+.project-market .card-rule,
+.starter-draft .card-rule{padding:6px 7px}
+.project-market .card-rule span,
+.starter-draft .card-rule span{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  overflow:hidden;
+}
+.project-market .project-title{min-height:39px}
+.project-market .card-details-hint,
+.starter-draft .card-details-hint{
+  font-size:8px;color:#8a7f72;margin-top:5px
+}
+.starter-draft{
+  margin:0 0 14px;
+  border-color:#9e8a6d;
+  box-shadow:0 8px 22px rgba(75,54,29,.08)
+}
+.starter-draft-cards .project-card{
+  flex:0 0 230px;width:230px;min-height:430px
+}
+.draft-card.selected{
+  border-color:#2f7659;
+  box-shadow:0 0 0 3px rgba(47,118,89,.22),0 9px 22px rgba(75,54,29,.13)
+}
+.draft-card.selected::after{
+  content:'KEEP';
+  position:absolute;right:9px;top:9px;
+  padding:4px 7px;border-radius:999px;
+  background:#2f7659;color:white;
+  font-size:8px;font-weight:900;letter-spacing:.08em;
+  pointer-events:none
+}
+.draft-keep-btn{position:sticky;bottom:0}
+.market-track-head{margin-top:5px}
+
+@media(max-width:1180px){
+  .project-market{grid-template-columns:repeat(5,205px);min-width:1065px}
+  .project-card.full-info{width:205px}
+}
+@media(max-width:640px){
+  .starter-draft{margin:4px 0 12px}
+  .starter-draft-cards .project-card{
+    flex:0 0 min(82vw,330px);width:min(82vw,330px);min-height:445px
+  }
+  .project-card.full-info{
+    flex:0 0 min(82vw,330px);min-width:min(82vw,330px);
+    width:min(82vw,330px);min-height:445px
+  }
+  .project-market .card-rule span,
+  .starter-draft .card-rule span{-webkit-line-clamp:4}
+}
