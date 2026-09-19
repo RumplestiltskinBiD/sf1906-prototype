@@ -10,33 +10,44 @@ export const BUREAU_LAND_DISCOUNT = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
 export const PROJECTS = [
-  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',effect:'Income +2 · много жителей · Prestige +1'},
+  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1'},
   {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2},
-  {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',effect:'Income +3 · Prestige +3',landMin:3},
-  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',effect:'Income +2 · Procurement action · Prestige +1',landMin:1},
-  {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',effect:'Income +4 · Prestige +3',landMin:3},
-  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2},
+  {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',accessAll:['fire'],effect:'Income +3 · Prestige +3',landMin:3},
+  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1},
+  {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',accessAll:['fire','clinic'],effect:'Income +4 · Prestige +3',landMin:3},
+  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2},
   {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Networking Dinner action · Prestige +2',landMin:2},
-  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',effect:'Income +2 · Storage +3 · Prestige +1'},
-  {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',effect:'Income +5 · Land Value −1'},
-  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',effect:'Construction Contract · −$2 к Land Value · Prestige +1'},
+  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1'},
+  {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',accessAny:['rail','port'],effect:'Income +5 · Land Value −1'},
+  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1'},
   {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Prestige +1 · страховые действия позже',landMin:2},
-  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',effect:'Fire Protection · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',effect:'Clinic access · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3'},
-  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Между связанными районами',effect:'Улучшает перемещение · Land Value +1 · Prestige +3'}
+  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',accessAll:['road'],effect:'Fire Protection (district + adjacent road district) · Land Value +1 · Prestige +3'},
+  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',accessAll:['road'],effect:'Clinic access (district + adjacent road district) · Land Value +1 · Prestige +3'},
+  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3'},
+  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road network или соседний район с Road access',streetcarExtension:true,effect:'Открывает Road access в районе · Land Value +1 · Prestige +3'}
 ]
 
 export const DISTRICTS = [
-  {id:'pacific',name:'Pacific Heights',hint:'Дорогая земля, мало площадок',landValue:4,sites:3},
-  {id:'financial',name:'Financial / Ferry',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:3},
-  {id:'civic',name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:3},
-  {id:'western',name:'Western Addition',hint:'Средняя стоимость, смешанное развитие',landValue:2,sites:4},
-  {id:'soma',name:'SoMa',hint:'Коммерция и промышленность',landValue:2,sites:5},
-  {id:'mission',name:'Mission',hint:'Доступная смешанная застройка',landValue:1,sites:5},
-  {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля; rail / port / fill — позже',landValue:1,sites:5},
-  {id:'sunset',name:'Western Expansion',hint:'Самая дешёвая земля, слабая инфраструктура',landValue:0,sites:5}
+  {id:'pacific',name:'Pacific Heights',hint:'Дорогая земля; развитая уличная сеть',landValue:4,sites:3,road:true,rail:false,port:false},
+  {id:'financial',name:'Financial / Ferry',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:3,road:true,rail:false,port:true},
+  {id:'civic',name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:3,road:true,rail:false,port:false},
+  {id:'western',name:'Western Addition',hint:'Средняя стоимость; развитая уличная сеть',landValue:2,sites:4,road:true,rail:false,port:false},
+  {id:'soma',name:'SoMa',hint:'Промышленный район · Rail + Port',landValue:2,sites:5,road:true,rail:true,port:true},
+  {id:'mission',name:'Mission',hint:'Доступная застройка · Rail access',landValue:1,sites:5,road:true,rail:true,port:false},
+  {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля · Rail + Port · fill',landValue:1,sites:5,road:true,rail:true,port:true},
+  {id:'sunset',name:'Western Expansion',hint:'Самая дешёвая земля; изначально без развитого Road access',landValue:0,sites:5,road:false,rail:false,port:false}
 ];
+
+export const DISTRICT_ADJACENCY = {
+  pacific:['western','civic'],
+  financial:['civic','soma','missionbay'],
+  civic:['pacific','western','financial','soma'],
+  western:['pacific','civic','mission','sunset'],
+  soma:['civic','financial','mission','missionbay'],
+  mission:['western','soma','missionbay','sunset'],
+  missionbay:['financial','soma','mission'],
+  sunset:['western','mission']
+};
 
 export function shuffle(items, rng=Math.random){
   const a=[...items];
@@ -46,6 +57,37 @@ export function shuffle(items, rng=Math.random){
 
 export function projectById(id){return PROJECTS.find(p=>p.id===id) || null;}
 export function districtById(id){return DISTRICTS.find(d=>d.id===id) || null;}
+export function districtNeighbors(id){return [...(DISTRICT_ADJACENCY[id]||[])];}
+export function districtRoadAccess(state,districtId){
+  const d=districtById(districtId);
+  return !!(state.districts?.[districtId]?.roadAccess ?? d?.road);
+}
+export function serviceSources(state,districtId,serviceProjectId){
+  if(!districtRoadAccess(state,districtId))return [];
+  const eligible=new Set([districtId,...districtNeighbors(districtId)]);
+  return (state.constructions||[]).filter(c=>
+    c.status==='complete'&&c.projectId===serviceProjectId&&eligible.has(c.districtId)&&districtRoadAccess(state,c.districtId)
+  );
+}
+export function districtAccess(state,districtId){
+  const d=districtById(districtId);
+  if(!d)return {road:false,rail:false,port:false,fire:false,clinic:false,fireSources:[],clinicSources:[]};
+  const fireSources=serviceSources(state,districtId,'firehouse');
+  const clinicSources=serviceSources(state,districtId,'clinic');
+  return {
+    road:districtRoadAccess(state,districtId),
+    rail:!!d.rail,
+    port:!!d.port,
+    fire:fireSources.length>0,
+    clinic:clinicSources.length>0,
+    fireSources,
+    clinicSources
+  };
+}
+export function canPlaceStreetcar(state,districtId){
+  if(districtRoadAccess(state,districtId))return true;
+  return districtNeighbors(districtId).some(id=>districtRoadAccess(state,id));
+}
 export function turnOrder(state){return [0,1,2].map((_,i)=>(state.firstPlayer+i)%3);}
 export function currentDeclarer(state){return state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
 export function currentDeveloper(state){return state.phase==='development'&&!state.developmentComplete?state.developmentPlayer:null;}
@@ -110,7 +152,7 @@ export function createInitialState({rng=Math.random}={}){
   const deck=shuffle(PROJECTS.map(p=>p.id),rng);
   const market=deck.splice(0,5).map(emptyMarketCard);
   return {
-    version:'0.20',
+    version:'0.21',
     round:1,
     firstPlayer:0,
     phase:'declare',
@@ -136,8 +178,8 @@ export function createInitialState({rng=Math.random}={}){
     actionSpaceOccupancy:{},
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
-    districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.20.','cls':'accent'}],
+    districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
+    log:[{msg:'Началась тестовая партия Phase I UX v0.21.','cls':'accent'}],
     finished:false
   };
 }
@@ -246,7 +288,8 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   const player=state.players[playerId];
   const project=projectById(projectId);
   const district=districtById(districtId);
-  const ds=state.districts?.[districtId] || (district?{landValue:district.landValue,sites:district.sites}:null);
+  const ds=state.districts?.[districtId] || (district?{landValue:district.landValue,sites:district.sites,roadAccess:district.road}:null);
+  const access=districtAccess(state,districtId);
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
   if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
@@ -259,6 +302,25 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
+
+  if(project?.accessAll){
+    for(const need of project.accessAll){
+      if(!access[need]){
+        if(need==='road')reasons.push('Нет Road access.');
+        else if(need==='fire')reasons.push('Нет Fire Protection: нужна завершённая Fire House в этом или соседнем районе с Road access.');
+        else if(need==='clinic')reasons.push('Нет Clinic access: нужна завершённая Clinic в этом или соседнем районе с Road access.');
+        else reasons.push(`Нет требуемого доступа: ${need}.`);
+      }
+    }
+  }
+  if(project?.accessAny?.length&&!project.accessAny.some(need=>access[need])){
+    const names=project.accessAny.map(x=>x==='road'?'Road':x==='rail'?'Rail':x==='port'?'Port':x).join(' или ');
+    reasons.push(`Требуется ${names} access.`);
+  }
+  if(project?.streetcarExtension&&!canPlaceStreetcar(state,districtId)){
+    reasons.push('Streetcar Extension требует Road access в этом или соседнем районе.');
+  }
+
   const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?Math.max(0,ds.landValue-bureauDiscount):0;
   if(player&&ds&&player.capital<landCost) reasons.push(`Не хватает капитала на землю ($${landCost}).`);
@@ -269,6 +331,7 @@ export function constructionEligibility(state,playerId,projectId,districtId){
     baseCost:ds?.landValue??0,
     bureauDiscount,
     landValue:ds?.landValue??0,
+    access,
     usedSites:used,
     totalSites:ds?.sites??0,
     freeSites:Math.max(0,(ds?.sites??0)-used)
@@ -406,6 +469,14 @@ export function completeConstruction(state,construction){
   }else{
     logEvent(state,`${player.name} завершил «${project.name}» в ${districtById(construction.districtId).name}.`,'good');
   }
+
+  let roadOpened=false;
+  if(construction.projectId==='streetcar'&&state.districts?.[construction.districtId]&&!districtRoadAccess(state,construction.districtId)){
+    state.districts[construction.districtId].roadAccess=true;
+    roadOpened=true;
+    logEvent(state,`${project.name} открывает Road access в районе ${districtById(construction.districtId).name}.`,'accent');
+  }
+
   const landChange=LAND_VALUE_COMPLETION_CHANGE[construction.projectId]||0;
   if(landChange&&state.districts?.[construction.districtId]){
     const before=state.districts[construction.districtId].landValue;
@@ -416,7 +487,7 @@ export function completeConstruction(state,construction){
       logEvent(state,`${project.name} ${verb} Land Value района ${districtById(construction.districtId).name}: $${before} → $${after}.`,'accent');
     }
   }
-  return {ok:true,prestige:vp,landChange};
+  return {ok:true,prestige:vp,landChange,roadOpened};
 }
 
 export function deliverMaterial(state,constructionId,type){
