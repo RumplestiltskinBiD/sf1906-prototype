@@ -351,7 +351,7 @@ function renderCity(){
       const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
       const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
-      const tags=[a.road?'R':'',a.rail?'RAIL':'',a.port?'PORT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join(' · ');
+      const tags=[a.road?'RD':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
       return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}${tags?` · ${tags}`:''}</text>`;
     }).join('');
   }
