@@ -141,7 +141,7 @@ function renderPlayers(){
     const debt=(p.loans||[]).length;
     const flags=[`Hand ${p.portfolio.length}/${HAND_LIMIT}`,debt?`Debt ${debt}`:'',(p.bureauContracts||0)>0?'Contract':''].filter(Boolean).join(' · ');
     pill.innerHTML=`<span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Inf ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span></span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
-    pill.onclick=()=>{inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};
+    pill.onclick=()=>{if(state.phase==='draft'){showToast('Стартовые руки скрыты до завершения драфта');return;}inspectedOffice=i;openDrawer('officeDrawer');renderOffice();};
     el.appendChild(pill);
   });
 }
@@ -306,7 +306,7 @@ const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.21 · access rules active</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.22 · access rules active</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
 }
 
 function renderCityActions(){
@@ -519,7 +519,7 @@ function renderContext(){
     }).join(''):'Пока нет.';
 
     const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.21:</b> Fire House и Clinic обслуживают свой и соседние районы по дорожной сети. Rail/Port заданы районом. Western Expansion начинает без Road access; Streetcar Extension может открыть его.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.22:</b> Fire House и Clinic обслуживают свой и соседние районы по дорожной сети. Rail/Port заданы районом. Western Expansion начинает без Road access; Streetcar Extension может открыть его.</div>`;
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
@@ -537,9 +537,11 @@ function renderOffice(){
   const procurement=isActive?(state.procurementRemaining||0):0;
   const loanHtml=loans.length?loans.map((loan,i)=>`<div class="loan-row"><span><b>Loan ${i+1}</b><small>${loan.interestPaid?'процент уже уплачен · можно погашать':'погашение откроется после Income Phase'}</small></span><strong>$${loan.principal}</strong></div>`).join(''):'<div class="empty-state compact">Активных кредитов нет.</div>';
 
-  const available=p.portfolio.map(id=>{
+  const available=p.portfolio.map((id,handIndex)=>{
     const pr=projectById(id),isTurn=canTakeMainAction(state,p.id);
-    return `<div class="portfolio-card available-project"><div class="project-card-title-row"><strong>${pr.name}</strong><span class="prestige-chip">VP ${pr.prestige||0}</span></div><div class="project-material-line">${resourcePills(pr.materials)}</div><span>${pr.type} · ${pr.requires}</span><button class="secondary-btn full" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${state.phase!=='development'?'После тендеров':!isActive?'Не ваша активация':state.activationMainActionUsed?'Main action уже использован':'Начать строительство'}</button></div>`;
+    const buttonText=state.phase!=='development'?'После тендеров':!isActive?'Не ваша активация':state.activationMainActionUsed?'Main action уже использован':'Начать строительство';
+    const footer=`<button class="secondary-btn full hand-build-btn" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${buttonText}</button>`;
+    return projectCoreCard(pr,{topLeft:`HAND ${handIndex+1}/${HAND_LIMIT}`,topRight:'IN HAND',priceLabel:'base open',priceValue:pr.open,extraClass:'hand-card',footer});
   }).join('');
 
   const activeHtml=active.map(con=>{
@@ -582,7 +584,7 @@ function renderOffice(){
       ?`<div class="office-activation locked"><b>VIEW ONLY</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Supply / Overflow / Repay доступны только активному игроку.</span></div>`
       :'';
 
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.21:</b> требования Road / Rail / Port / Fire / Clinic теперь проверяются реально. Fire House и Clinic работают на свой + соседние дорожные районы; Streetcar может открыть Road access в Western Expansion.</div>`;
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.22:</b> рука ограничена 5 проектами. Все условия, доход, Prestige, действия и ограничения проекта теперь написаны прямо на его карте.</div>`;
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
@@ -608,10 +610,10 @@ function newGame(){if(!confirm('Начать новую тестовую пар�
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
-$('#officeBtn').onclick=()=>{inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
+$('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.21: требования Road / Rail / Port / Fire / Clinic активны. Fire/Clinic покрывают свой + соседние дорожные районы.');};
+$('#helpBtn').onclick=()=>{showToast('v0.22: рынок виден до стартового драфта 5→2; лимит руки 5. Полные правила проекта написаны прямо на карте.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
