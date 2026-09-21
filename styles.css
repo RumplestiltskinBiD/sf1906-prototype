@@ -1111,3 +1111,7 @@ button.city-action-card{cursor:pointer}
   .player-money{font-size:10px!important}
   .city-board-scroll.detail .city-board{width:620px!important}
 }
+
+@media(max-width:640px){
+  .city-board-toolbar{display:flex!important}
+}
