@@ -500,10 +500,19 @@ function renderCityActions(){
 
 function renderCity(){
   const pending=state.pendingConstruction;
+  const workerAction=state.pendingWorkerAction;
+  const devPid=currentDeveloper(state);
+  const selectedWorker=devPid!=null?activeWorker(state,devPid):null;
+  const reachableIds=new Set(selectedWorker?workerReachableDistricts(state,devPid,selectedWorker.id):[]);
   const mode=$('#constructionMode');
   if(state.phase!=='development'){
     mode.innerHTML='<div><strong>Строительство пока закрыто</strong><span>Сначала завершите City Hall Session.</span></div>';
     mode.className='construction-mode muted';
+  }else if(workerAction?.type==='raiseCapital'){
+    const pl=state.players[workerAction.playerId],w=activeWorker(state,workerAction.playerId);
+    mode.className='construction-mode active movement-mode';
+    mode.innerHTML=`<div><strong>${pl.name}: Raise Capital +$${RAISE_CAPITAL_AMOUNT}</strong><span>Представитель #${w?.number}: выберите его текущий или соседний район. После действия он останется там.</span></div><button class="ghost-btn" id="cancelWorkerAction">Отмена</button>`;
+    $('#cancelWorkerAction').onclick=()=>{state.pendingWorkerAction=null;mobileContextOpen=false;render();};
   }else if(pending){
     const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
     mode.className='construction-mode active';
@@ -520,7 +529,13 @@ function renderCity(){
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked');
+    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target');
+    if(selectedWorker&&!state.activationMainActionUsed){
+      if(id===selectedWorker.districtId)g.classList.add('worker-origin');
+      if(reachableIds.has(id))g.classList.add('worker-reachable');
+      else g.classList.add('worker-unreachable');
+    }
+    if(workerAction?.type==='raiseCapital'&&reachableIds.has(id))g.classList.add('move-target');
     if(pending){
       const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
       g.classList.add(check.ok?'build-ok':'build-blocked');
@@ -532,7 +547,10 @@ function renderCity(){
     meta.innerHTML=DISTRICTS.map(d=>{
       const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
-      const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta';
+      const movementLegal=workerAction?.type==='raiseCapital'?reachableIds.has(d.id):null;
+      const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked')
+        :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
+        :'district-meta';
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
       return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}${tags?` · ${tags}`:''}</text>`;
     }).join('');
@@ -558,7 +576,7 @@ function renderCity(){
       if(state.phase!=='development'||currentDeveloper(state)!==workerPlayer)return;
       const r=selectWorker(state,workerPlayer,g.dataset.workerToken);
       if(!r.ok)return;
-      state.pendingConstruction=null;render();
+      state.pendingConstruction=null;state.pendingWorkerAction=null;render();
     });
   }
 
@@ -596,8 +614,30 @@ function confirmConstructionInDistrict(){
   const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId);
   if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
   mobileContextOpen=false;
-  const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля $${r.cost}`;
+  const land=r.bureauDiscount>0?`земля ${r.cost} · contract −${r.bureauDiscount}`:`земля ${r.cost}`;
   showToast(`Main action: стройка начата · ${land}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
+  render();
+}
+
+function confirmRaiseCapitalInDistrict(targetDistrictId=state.selectedDistrictId){
+  const pending=state.pendingWorkerAction;
+  if(!pending||pending.type!=='raiseCapital')return;
+  const worker=activeWorker(state,pending.playerId);
+  if(!worker||!workerCanReachDistrict(state,pending.playerId,targetDistrictId,worker.id)){
+    showToast('Этот район дальше одного шага');
+    return;
+  }
+  const from=worker.districtId;
+  const r=raiseCapital(state,pending.playerId,targetDistrictId);
+  if(!r.ok){
+    showToast(r.reason==='worker-range'?'Этот район дальше одного шага':'Raise Capital сейчас недоступен');
+    return;
+  }
+  state.pendingWorkerAction=null;
+  state.selectedDistrictId=targetDistrictId;
+  mobileContextOpen=false;
+  const fromName=districtById(from)?.name||from,toName=districtById(targetDistrictId)?.name||targetDistrictId;
+  showToast(`Raise Capital +${r.amount} · #${r.worker.number}: ${fromName}${from===targetDistrictId?'':` → ${toName}`}`);
   render();
 }
 
@@ -616,6 +656,13 @@ function renderContext(){
     const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
     const accessHtml=`<div class="access-grid">${accessChip('STREET',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
 
+    let workerActionHtml='';
+    if(state.pendingWorkerAction?.type==='raiseCapital'){
+      const pid=state.pendingWorkerAction.playerId,w=activeWorker(state,pid);
+      const canMove=!!w&&workerCanReachDistrict(state,pid,d.id,w.id);
+      workerActionHtml=`<div class="construction-confirm ${canMove?'ok':'blocked'}"><div class="detail-label">Raise Capital · move</div><strong>+$${RAISE_CAPITAL_AMOUNT} · представитель #${w?.number||'—'}</strong><div class="detail-text">${canMove?`После действия останется в ${d.name}.`:'Слишком далеко: максимум текущий или соседний район.'}</div>${canMove?'<button class="primary-btn full" id="confirmRaiseCapital">Получить $3 здесь</button>':''}</div>`;
+    }
+
     let constructionHtml='';
     if(state.pendingConstruction){
       const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
@@ -630,7 +677,8 @@ function renderContext(){
     }).join(''):'Пока нет.';
 
     const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.25:</b> Fire House и Clinic обслуживают свой и соседние районы по дорожной сети. Rail/Port заданы районом. Western Expansion начинает без Street Network; Streetcar Extension может открыть его.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.25:</b> Fire House и Clinic обслуживают свой и соседние районы через Street Network. Rail/Port заданы районом. Western Expansion начинает без Street Network; Streetcar Extension может открыть его.</div>`;
+    const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
@@ -733,7 +781,16 @@ $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n')
 $('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$$('[data-district]').forEach(g=>g.onclick=()=>{state.selectedDistrictId=g.dataset.district;if(isMobile()&&!state.pendingWorkerAction&&!state.pendingConstruction)mobileContextOpen=true;render();});
+$$('[data-district]').forEach(g=>g.onclick=()=>{
+  const id=g.dataset.district;
+  state.selectedDistrictId=id;
+  if(state.pendingWorkerAction?.type==='raiseCapital'){
+    confirmRaiseCapitalInDistrict(id);
+    return;
+  }
+  if(isMobile())mobileContextOpen=true;
+  render();
+});
 window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();syncMapZoom();});
 
 render();
