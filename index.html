@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.23</title>
+  <title>San Francisco 1906 — Prototype v0.24</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.23</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.24</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -63,7 +63,7 @@
           <div>
             <div class="eyebrow">DEVELOPMENT PHASE</div>
             <h2>Город</h2>
-            <p>Каждая активация: free actions в любом порядке, ровно 1 main action, затем End Activation. Требования Road / Rail / Port / Fire / Clinic теперь реально ограничивают места строительства.</p>
+            <p>Каждая активация: выберите 1 из 3 представителей. Main action выполняется в его текущем или соседнем районе; после действия фигурка остаётся там. Street Network / Rail / Port / Fire / Clinic ограничивают строительство.</p>
           </div>
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
@@ -73,7 +73,7 @@
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
             <span class="soft-chip">Схема, не финальная география</span>
-            <span class="soft-chip">RD Road · RL Rail · PT Port · F Fire · C Clinic</span>
+            <span class="soft-chip">ST Street Network · RL Rail · PT Port · F Fire · C Clinic</span>
             <span class="soft-chip">Клик по району → контекст справа</span>
           </div>
           <svg class="city-board" viewBox="0 0 1000 640" role="img" aria-label="Временная схема районов Сан-Франциско">
@@ -98,6 +98,7 @@
             <g class="district" data-district="sunset"><polygon points="105,270 205,250 285,390 270,535 135,500 85,350"/><text x="182" y="404">Western</text><text x="182" y="427">Expansion</text></g>
             <g id="districtMetaLayer"></g>
             <g id="constructionLayer"></g>
+            <g id="workerLayer"></g>
             <g class="park-shape"><rect x="132" y="548" width="250" height="36" rx="16"/><text x="257" y="572">Golden Gate Park</text></g>
             <g class="bay-label"><text x="855" y="210">BAY</text></g>
           </svg>
