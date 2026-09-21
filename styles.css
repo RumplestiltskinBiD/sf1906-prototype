@@ -912,3 +912,59 @@ button.city-action-card{cursor:pointer}
   .draft-market-strip{margin-right:-7px}
   .draft-market-item{flex-basis:150px}
 }
+
+
+/* v0.24 — persistent representatives and district movement */
+.worker-selector{
+  margin:0 0 9px;padding:9px;border:1px solid #b9a88e;border-radius:11px;background:#f3e8d5
+}
+.worker-selector-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:7px}
+.worker-selector-head b{font-size:9px;letter-spacing:.09em;color:#574d40}
+.worker-selector-head span{font-size:9px;color:#786d60;text-align:right}
+.worker-choice-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.worker-choice{
+  position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;
+  gap:1px 7px;align-items:center;min-width:0;padding:8px 9px;
+  border:1px solid #b9aa95;border-left:5px solid #7e7467;border-radius:9px;
+  background:#fff9ee;color:#4d463e;text-align:left
+}
+.worker-choice>span{
+  grid-row:1/3;display:grid;place-items:center;width:27px;height:27px;border-radius:50%;
+  color:white;font-size:11px;font-weight:900;background:#67615a
+}
+.worker-choice>b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.worker-choice>small{font-size:8px;color:#84786b}
+.worker-choice.token-blue{border-left-color:var(--blue)}.worker-choice.token-blue>span{background:var(--blue)}
+.worker-choice.token-red{border-left-color:var(--red)}.worker-choice.token-red>span{background:var(--red)}
+.worker-choice.token-green{border-left-color:var(--green)}.worker-choice.token-green>span{background:var(--green)}
+.worker-choice.selected{outline:2px solid #8f7045;background:#fff2d9}
+.worker-choice.used{opacity:.45;filter:saturate(.45)}
+.worker-reach{margin-top:7px;padding-top:7px;border-top:1px solid #d3c5af;font-size:9px;line-height:1.35;color:#75695b}
+.worker-reach b{color:#53493d}
+
+.worker-token{pointer-events:none;opacity:.94}
+.worker-token circle{stroke:#fff4e4;stroke-width:3}
+.worker-token text{text-anchor:middle;pointer-events:none;font:900 9px/1 Inter,system-ui,sans-serif;fill:white}
+.worker-token.token-blue circle{fill:var(--blue)}
+.worker-token.token-red circle{fill:var(--red)}
+.worker-token.token-green circle{fill:var(--green)}
+.worker-token.used{opacity:.35}
+.worker-token.used circle{fill:#777!important}
+.worker-token.selected circle{stroke:#f1c66f;stroke-width:6;filter:drop-shadow(0 0 4px rgba(241,198,111,.8))}
+.worker-token.selectable{pointer-events:auto;cursor:pointer}
+.worker-token.selectable:hover circle{stroke:#fff;stroke-width:5}
+
+.action-space-btn.out-of-range{opacity:.5}
+.action-space-btn.out-of-range strong{color:#8b4d43}
+
+@media(max-width:900px){
+  .worker-selector-head{display:block}
+  .worker-selector-head span{display:block;text-align:left;margin-top:2px}
+}
+@media(max-width:640px){
+  .worker-choice-row{display:flex;overflow-x:auto;gap:7px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .worker-choice{flex:0 0 min(72vw,250px);min-height:56px}
+  .worker-selector{padding:8px}
+  .worker-reach{font-size:8px}
+  .worker-token text{font-size:11px}
+}
