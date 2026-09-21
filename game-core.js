@@ -485,8 +485,8 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  const discountText=check.bureauDiscount>0?` (Construction Contract −${check.bureauDiscount})`:'';
-  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля ${check.cost}${discountText}.${workerMovementText(consumed)}`,'good');
+  const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
+  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}.${workerMovementText(consumed)}`,'good');
   return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker};
 }
 
@@ -653,7 +653,7 @@ export function raiseCapital(state,playerId){
   const consumed=consumeMainAction(state,playerId);
   if(!consumed.ok)return consumed;
   player.capital+=RAISE_CAPITAL_AMOUNT;
-  logEvent(state,`${player.name} использует Raise Capital: +${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
+  logEvent(state,`${player.name} использует Raise Capital: +$${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
   return {ok:true,amount:RAISE_CAPITAL_AMOUNT,worker:consumed.worker};
 }
 
@@ -682,7 +682,7 @@ export function takeBankLoan(state,playerId,bankConstructionId){
     owner.influence+=1;
     logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank.`,'good');
   }
-  logEvent(state,`${player.name} берёт Bank Loan: +${received}, долг ${LOAN_PRINCIPAL}, будущий Income −$1.${workerMovementText(consumed)}`,'accent');
+  logEvent(state,`${player.name} берёт Bank Loan: +$${received}, долг $${LOAN_PRINCIPAL}, будущий Income −$1.${workerMovementText(consumed)}`,'accent');
   return {ok:true,received,loan,worker:consumed.worker};
 }
 
