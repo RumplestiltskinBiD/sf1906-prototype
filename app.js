@@ -409,7 +409,7 @@ function renderSupply(){
   ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
   <div class="city-action-grid ${mainUsed?'main-action-used':''}">
     <button class="city-action-card build" id="actionBuild" ${buildDisabled?'disabled':''}><b>Begin Construction</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Main action уже использован':!selected?'Сначала выберите представителя':'Выбрать проект в Office'}</span><strong>${buildDisabled?'LOCKED':'move ≤ 1 · 1 представитель'}</strong></button>
-    <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Raise Capital</b><span>Без долга · представитель остаётся в текущем районе</span><strong>${capitalDisabled?'LOCKED':`+$${RAISE_CAPITAL_AMOUNT}`}</strong></button>
+    <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Raise Capital</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'LOCKED':'CHOOSE DISTRICT'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
     <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1</span><div class="action-space-list">${shopsButtons}</div></div>
@@ -419,10 +419,17 @@ function renderSupply(){
   $$('[data-select-worker]').forEach(b=>b.onclick=()=>{
     const r=selectWorker(state,pid,b.dataset.selectWorker);
     if(!r.ok){showToast(r.reason==='used'?'Этот представитель уже использован':'Нельзя выбрать этого представителя');return;}
-    state.pendingConstruction=null;render();
+    state.pendingConstruction=null;state.pendingWorkerAction=null;render();
   });
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
-  const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{const r=raiseCapital(state,pid);if(!r.ok){showToast(r.reason==='worker'?'Сначала выберите представителя':'Сейчас нельзя использовать Raise Capital');return;}showToast(`Raise Capital +$${r.amount}. Worker #${r.worker.number} остаётся в ${districtById(r.worker.districtId)?.name}.`);render();};
+  const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
+    state.pendingConstruction=null;
+    state.pendingWorkerAction={type:'raiseCapital',playerId:pid};
+    state.view='city';
+    closeDrawers();closeMobileContext();
+    render();
+    showToast('Raise Capital: выберите текущий или соседний район на карте');
+  };
   const end=$('#actionEndActivation');if(end)end.onclick=()=>{
     const r=endActivation(state,pid);
     if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
@@ -538,6 +545,7 @@ function startConstructionFlow(playerId,projectId){
   if(state.phase!=='development'){showToast('Сначала завершите тендеры');return;}
   if(!canTakeMainAction(state,playerId)){showToast(activeWorker(state,playerId)?'Сейчас нельзя начать новое main action':'Сначала выберите одного из 3 представителей');return;}
   if(!pl.portfolio.includes(projectId)){showToast('Проект уже недоступен');return;}
+  state.pendingWorkerAction=null;
   state.pendingConstruction={playerId,projectId};
   state.view='city';state.selectedDistrictId=state.selectedDistrictId||'civic';
   mobileContextOpen=false;closeDrawers();render();
