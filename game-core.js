@@ -188,6 +188,7 @@ export function endActivation(state,playerId){
   state.procurementRemaining=0;
   state.procurementSource=null;
   state.activeWorkerId=null;
+  state.pendingWorkerAction=null;
   if(state.players.every(p=>(p.workersLeft??0)<=0)){
     state.developmentPlayer=null;
     state.activationMainActionUsed=false;
@@ -257,7 +258,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.24',
+    version:'0.25',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -285,13 +286,14 @@ export function createInitialState({rng=Math.random}={}){
     developmentComplete:false,
     activationMainActionUsed:false,
     activeWorkerId:null,
+    pendingWorkerAction:null,
     procurementRemaining:0,
     procurementSource:null,
     actionSpaceOccupancy:{},
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.24. Открыт рынок; у каждого игрока 3 представителя, стартующих в Civic Center и сохраняющих позицию между раундами.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.25. У каждого игрока 3 представителя: main action выполняется в текущем или соседнем районе; Raise Capital также можно использовать для такого перемещения. Позиции сохраняются между раундами.','cls':'accent'}],
     finished:false
   };
 }
@@ -377,6 +379,7 @@ export function resolveTenders(state){
   state.developmentComplete=false;
   state.activationMainActionUsed=false;
   state.activeWorkerId=null;
+  state.pendingWorkerAction=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};
   state.bureauOwnerRewarded={};
@@ -647,14 +650,17 @@ export function roundIncome(state,playerId){
   return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId));
 }
 
-export function raiseCapital(state,playerId){
+export function raiseCapital(state,playerId,targetDistrictId=null){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
+  const worker=activeWorker(state,playerId);
+  const target=targetDistrictId||worker?.districtId;
+  if(!target||!workerCanReachDistrict(state,playerId,target,worker?.id))return {ok:false,reason:'worker-range',districtId:target};
   const player=state.players[playerId];
-  const consumed=consumeMainAction(state,playerId);
+  const consumed=consumeMainAction(state,playerId,target);
   if(!consumed.ok)return consumed;
   player.capital+=RAISE_CAPITAL_AMOUNT;
-  logEvent(state,`${player.name} использует Raise Capital: +$${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
-  return {ok:true,amount:RAISE_CAPITAL_AMOUNT,worker:consumed.worker};
+  logEvent(state,`${player.name} использует Raise Capital: +${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
+  return {ok:true,amount:RAISE_CAPITAL_AMOUNT,worker:consumed.worker,from:consumed.from,to:consumed.to};
 }
 
 export function takeBankLoan(state,playerId,bankConstructionId){
@@ -825,7 +831,7 @@ export function cleanupMarket(state){
   state.round++;
   state.firstPlayer=(state.firstPlayer+1)%3;
   state.players.forEach(p=>{p.workers=p.workers?.length?p.workers:createWorkers(p.id);p.workers.forEach(w=>w.used=false);p.workersLeft=p.workers.length;});
-  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;
+  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};

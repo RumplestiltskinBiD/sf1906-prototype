@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.24</title>
+  <title>San Francisco 1906 — Prototype v0.25</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.24</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.25</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -63,19 +63,22 @@
           <div>
             <div class="eyebrow">DEVELOPMENT PHASE</div>
             <h2>Город</h2>
-            <p>Каждая активация: выберите 1 из 3 представителей. Main action выполняется в его текущем или соседнем районе; после действия фигурка остаётся там. Street Network / Rail / Port / Fire / Clinic ограничивают строительство.</p>
+            <p>Каждая активация: выберите 1 из 3 представителей. Main action выполняется в текущем или соседнем районе; Raise Capital тоже может переместить фигурку на 1 район. Позиции сохраняются между раундами.</p>
           </div>
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
         <div class="resource-supply" id="resourceSupply" aria-label="Цены ресурсов"></div>
+        <div class="worker-dock" id="workerDock" aria-label="Представители активного игрока"></div>
         <div class="city-actions" id="cityActions" aria-label="Городские действия"></div>
         <div class="construction-mode" id="constructionMode"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
             <span class="soft-chip">Схема, не финальная география</span>
             <span class="soft-chip">ST Street Network · RL Rail · PT Port · F Fire · C Clinic</span>
-            <span class="soft-chip">Клик по району → контекст справа</span>
+            <span class="soft-chip mobile-pan-hint">На телефоне: FIT для обзора · DETAIL для чтения</span>
+            <span class="map-zoom-controls"><button type="button" id="mapZoomFit">FIT</button><button type="button" id="mapZoomDetail">DETAIL</button></span>
           </div>
+          <div class="city-board-scroll" id="cityBoardScroll">
           <svg class="city-board" viewBox="0 0 1000 640" role="img" aria-label="Временная схема районов Сан-Франциско">
             <defs>
               <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-opacity=".16"/></filter>
@@ -102,6 +105,7 @@
             <g class="park-shape"><rect x="132" y="548" width="250" height="36" rx="16"/><text x="257" y="572">Golden Gate Park</text></g>
             <g class="bay-label"><text x="855" y="210">BAY</text></g>
           </svg>
+          </div>
         </div>
       </section>
 
