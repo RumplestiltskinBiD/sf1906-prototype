@@ -10,25 +10,27 @@ export const BUREAU_LAND_DISCOUNT = 2;
 export const HAND_LIMIT = 5;
 export const STARTER_DRAFT_SIZE = 5;
 export const STARTER_KEEP = 2;
+export const WORKERS_PER_PLAYER = 3;
+export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
 export const PROJECTS = [
-  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Road access',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Road access.'},
+  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Street Network',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Street Network.'},
   {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2,benefit:'Income +3 / раунд · Prestige 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Land Value ≤2. Высокий риск в будущей катастрофе.'},
   {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',accessAll:['fire'],effect:'Income +3 · Prestige +3',landMin:3,benefit:'Income +3 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ и Fire Protection.'},
-  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1,benefit:'Income +2 / раунд · Prestige +1',actionName:'Procurement',actionText:'1 представитель + $1 → до 2 материалов по $0 в эту активацию.',limits:'Нужна незавершённая стройка · 1 use / building / round · при чужом использовании $1 получает владелец.'},
+  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Street Network · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1,benefit:'Income +2 / раунд · Prestige +1',actionName:'Procurement',actionText:'1 представитель + $1 → до 2 материалов по $0 в эту активацию.',limits:'Нужна незавершённая стройка · 1 use / building / round · при чужом использовании $1 получает владелец.'},
   {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',accessAll:['fire','clinic'],effect:'Income +4 · Prestige +3',landMin:3,benefit:'Income +4 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ · Fire Protection · Clinic access.'},
-  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Road access',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2,benefit:'Income +2 / раунд · Prestige +1',actionName:'Bank Loan',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Income.',limits:'Макс. 2 активных кредита · 1 use / Bank / round · чужое использование даёт владельцу +1 Influence максимум 1×/round.'},
+  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Street Network',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2,benefit:'Income +2 / раунд · Prestige +1',actionName:'Bank Loan',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Income.',limits:'Макс. 2 активных кредита · 1 use / Bank / round · чужое использование даёт владельцу +1 Influence максимум 1×/round.'},
   {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Networking Dinner action · Prestige +2',landMin:2,benefit:'Income +2 / раунд · Prestige +2',actionName:'Networking Dinner',actionText:'1 представитель + $1 → +1 Influence.',limits:'1 use / building / round · если использует соперник, его $1 получает владелец.'},
-  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Road access',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · +3 staging slots вашим стройкам в этом районе',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Port, Rail или Road access.'},
+  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Street Network',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · +3 staging slots вашим стройкам в этом районе',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Port, Rail или Street Network.'},
   {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',accessAny:['rail','port'],effect:'Income +5 · Land Value −1',benefit:'Income +5 / раунд · Prestige 0 · после завершения Land Value района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Rail или Port access. Land Value не падает ниже 0.'},
-  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1',benefit:'Prestige +1 · Income 0',actionName:'Construction Contract',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый Contract · 1 use / building / round · чужое использование приносит владельцу $1.'},
+  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Street Network',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1',benefit:'Prestige +1 · Income 0',actionName:'Construction Contract',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый Contract · 1 use / building / round · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Prestige +1 · страховые действия позже',landMin:2,benefit:'Income +3 / раунд · Prestige +1',actionName:'Insurance',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Land Value 2+. Механика страхования будет добавлена позже.'},
-  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Road access · municipal site',accessAll:['road'],effect:'Fire Protection (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Fire Protection',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Road access. Fire Protection действует в своём и соседнем районе по дорожной сети. Municipal site пока не проверяется.'},
-  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Road access',accessAll:['road'],effect:'Clinic access (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Clinic access',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Road access. Clinic access действует в своём и соседнем районе по дорожной сети.'},
-  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Road access',accessAll:['road'],effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Water/Gas/repair infrastructure',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Road access. Полные water/gas/repair правила будут добавлены позже.'},
-  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Road network или соседний район с Road access',streetcarExtension:true,effect:'Открывает Road access в районе · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · открывает Road access',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Road access в районе или в одном из соседних районов.'}
+  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Street Network · municipal site',accessAll:['road'],effect:'Fire Protection (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Fire Protection',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Street Network. Fire Protection действует в своём и соседнем районе через развитую уличную сеть. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Street Network',accessAll:['road'],effect:'Clinic access (district + adjacent road district) · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Clinic access',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Street Network. Clinic access действует в своём и соседнем районе через развитую уличную сеть.'},
+  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Street Network',accessAll:['road'],effect:'Water/Gas/repair infrastructure · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · Water/Gas/repair infrastructure',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Street Network. Полные water/gas/repair правила будут добавлены позже.'},
+  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Street Network или соседний район с Street Network',streetcarExtension:true,effect:'Открывает Street Network в районе · Land Value +1 · Prestige +3',benefit:'Prestige +3 · Land Value района +1 · открывает Street Network',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Street Network в районе или в одном из соседних районов.'}
 ]
 
 export const DISTRICTS = [
@@ -39,7 +41,7 @@ export const DISTRICTS = [
   {id:'soma',name:'SoMa',hint:'Промышленный район · Rail + Port',landValue:2,sites:5,road:true,rail:true,port:true},
   {id:'mission',name:'Mission',hint:'Доступная застройка · Rail access',landValue:1,sites:5,road:true,rail:true,port:false},
   {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля · Rail + Port · fill',landValue:1,sites:5,road:true,rail:true,port:true},
-  {id:'sunset',name:'Western Expansion',hint:'Самая дешёвая земля; изначально без развитого Road access',landValue:0,sites:5,road:false,rail:false,port:false}
+  {id:'sunset',name:'Western Expansion',hint:'Самая дешёвая земля; изначально без развитого Street Network',landValue:0,sites:5,road:false,rail:false,port:false}
 ];
 
 export const DISTRICT_ADJACENCY = {
@@ -62,6 +64,58 @@ export function shuffle(items, rng=Math.random){
 export function projectById(id){return PROJECTS.find(p=>p.id===id) || null;}
 export function districtById(id){return DISTRICTS.find(d=>d.id===id) || null;}
 export function districtNeighbors(id){return [...(DISTRICT_ADJACENCY[id]||[])];}
+
+export function createWorkers(playerId,{districtId=STARTING_WORKER_DISTRICT}={}){
+  return Array.from({length:WORKERS_PER_PLAYER},(_,i)=>({
+    id:`P${playerId+1}W${i+1}`,
+    number:i+1,
+    districtId,
+    used:false
+  }));
+}
+export function playerWorkers(state,playerId){return state.players?.[playerId]?.workers||[];}
+export function availableWorkers(state,playerId){return playerWorkers(state,playerId).filter(w=>!w.used);}
+export function activeWorker(state,playerId){
+  const id=state.activeWorkerId;
+  if(!id)return null;
+  const worker=playerWorkers(state,playerId).find(w=>w.id===id);
+  return worker&&!worker.used?worker:null;
+}
+export function workerCanReachDistrict(state,playerId,targetDistrictId,workerId=null){
+  const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
+  if(!worker||worker.used||!districtById(targetDistrictId))return false;
+  return worker.districtId===targetDistrictId||districtNeighbors(worker.districtId).includes(targetDistrictId);
+}
+export function workerReachableDistricts(state,playerId,workerId=null){
+  const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
+  if(!worker||worker.used)return [];
+  return [worker.districtId,...districtNeighbors(worker.districtId)];
+}
+export function selectWorker(state,playerId,workerId){
+  if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
+  if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
+  if(state.activationMainActionUsed)return {ok:false,reason:'main-used'};
+  const worker=playerWorkers(state,playerId).find(w=>w.id===workerId);
+  if(!worker)return {ok:false,reason:'worker'};
+  if(worker.used)return {ok:false,reason:'used'};
+  state.activeWorkerId=worker.id;
+  return {ok:true,worker};
+}
+function syncWorkersLeft(state,playerId){
+  const player=state.players[playerId];
+  if(!player)return 0;
+  player.workersLeft=availableWorkers(state,playerId).length;
+  return player.workersLeft;
+}
+function workerMovementText(consumed){
+  if(!consumed?.worker)return '';
+  const from=districtById(consumed.from)?.name||consumed.from;
+  const to=districtById(consumed.to)?.name||consumed.to;
+  return consumed.moved
+    ? ` Представитель #${consumed.worker.number}: ${from} → ${to}.`
+    : ` Представитель #${consumed.worker.number} остаётся в ${to}.`;
+}
+
 export function districtRoadAccess(state,districtId){
   const d=districtById(districtId);
   return !!(state.districts?.[districtId]?.roadAccess ?? d?.road);
@@ -101,19 +155,26 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
+  const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
-    &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed;
+    &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId;
 }
 
-export function consumeMainAction(state,playerId){
+export function consumeMainAction(state,playerId,targetDistrictId=null){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
-  const player=state.players[playerId];
-  player.workersLeft=Math.max(0,(player.workersLeft??0)-1);
+  const worker=activeWorker(state,playerId);
+  if(targetDistrictId&&!workerCanReachDistrict(state,playerId,targetDistrictId,worker.id)){
+    return {ok:false,reason:'worker-range',worker,targetDistrictId};
+  }
+  const from=worker.districtId;
+  if(targetDistrictId)worker.districtId=targetDistrictId;
+  worker.used=true;
+  const workersLeft=syncWorkersLeft(state,playerId);
   state.activationMainActionUsed=true;
-  return {ok:true,workersLeft:player.workersLeft};
+  return {ok:true,workersLeft,worker,from,to:worker.districtId,moved:from!==worker.districtId};
 }
 
 export function endActivation(state,playerId){
@@ -126,6 +187,7 @@ export function endActivation(state,playerId){
   }
   state.procurementRemaining=0;
   state.procurementSource=null;
+  state.activeWorkerId=null;
   if(state.players.every(p=>(p.workersLeft??0)<=0)){
     state.developmentPlayer=null;
     state.activationMainActionUsed=false;
@@ -195,13 +257,13 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.23',
+    version:'0.24',
     round:1,
     firstPlayer:0,
     phase:'draft',
     view:'hall',
     declarationIndex:0,
-    players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,prestige:0,workersLeft:3,portfolio:[],loans:[],bureauContracts:0})),
+    players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0})),
     market,
     deck:pool,
     expired:[],
@@ -222,13 +284,14 @@ export function createInitialState({rng=Math.random}={}){
     developmentPlayer:null,
     developmentComplete:false,
     activationMainActionUsed:false,
+    activeWorkerId:null,
     procurementRemaining:0,
     procurementSource:null,
     actionSpaceOccupancy:{},
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.23. Открыт рынок; каждый игрок получает 5 стартовых проектов, оставляет 2 и сбрасывает 3.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I UX v0.24. Открыт рынок; у каждого игрока 3 представителя, стартующих в Civic Center и сохраняющих позицию между раундами.','cls':'accent'}],
     finished:false
   };
 }
@@ -313,6 +376,7 @@ export function resolveTenders(state){
   state.developmentPlayer=state.firstPlayer;
   state.developmentComplete=false;
   state.activationMainActionUsed=false;
+  state.activeWorkerId=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};
   state.bureauOwnerRewarded={};
@@ -345,10 +409,16 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
   if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
-  if(player&&!canTakeMainAction(state,playerId)){
+  if(player){
+    const worker=activeWorker(state,playerId);
     if(currentDeveloper(state)!==playerId)reasons.push('Сейчас ход другого игрока.');
     else if(state.activationMainActionUsed)reasons.push('Главное действие этой активации уже использовано.');
-    else reasons.push('Нет свободных представителей.');
+    else if((player.workersLeft??0)<=0)reasons.push('Нет свободных представителей.');
+    else if(!worker)reasons.push('Выберите одного из 3 представителей для этой активации.');
+    else if(district&&!workerCanReachDistrict(state,playerId,districtId,worker.id)){
+      const here=districtById(worker.districtId)?.name||worker.districtId;
+      reasons.push(`Представитель #${worker.number} находится в ${here}: можно действовать только здесь или в соседнем районе.`);
+    }
   }
   const used=ds?districtConstructionCount(state,districtId):0;
   if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
@@ -358,19 +428,19 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(project?.accessAll){
     for(const need of project.accessAll){
       if(!access[need]){
-        if(need==='road')reasons.push('Нет Road access.');
-        else if(need==='fire')reasons.push('Нет Fire Protection: нужна завершённая Fire House в этом или соседнем районе с Road access.');
-        else if(need==='clinic')reasons.push('Нет Clinic access: нужна завершённая Clinic в этом или соседнем районе с Road access.');
+        if(need==='road')reasons.push('Нет Street Network.');
+        else if(need==='fire')reasons.push('Нет Fire Protection: нужна завершённая Fire House в этом или соседнем районе с Street Network.');
+        else if(need==='clinic')reasons.push('Нет Clinic access: нужна завершённая Clinic в этом или соседнем районе с Street Network.');
         else reasons.push(`Нет требуемого доступа: ${need}.`);
       }
     }
   }
   if(project?.accessAny?.length&&!project.accessAny.some(need=>access[need])){
-    const names=project.accessAny.map(x=>x==='road'?'Road':x==='rail'?'Rail':x==='port'?'Port':x).join(' или ');
+    const names=project.accessAny.map(x=>x==='road'?'Street':x==='rail'?'Rail':x==='port'?'Port':x).join(' или ');
     reasons.push(`Требуется ${names} access.`);
   }
   if(project?.streetcarExtension&&!canPlaceStreetcar(state,districtId)){
-    reasons.push('Streetcar Extension требует Road access в этом или соседнем районе.');
+    reasons.push('Streetcar Extension требует Street Network в этом или соседнем районе.');
   }
 
   const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
@@ -396,6 +466,8 @@ export function beginConstruction(state,playerId,projectId,districtId){
   const player=state.players[playerId];
   const idx=player.portfolio.indexOf(projectId);
   if(idx<0)return {ok:false,reasons:['Проект уже недоступен.']};
+  const consumed=consumeMainAction(state,playerId,districtId);
+  if(!consumed.ok)return consumed;
   const construction={
     id:`C${state.nextConstructionId||1}`,
     playerId,projectId,districtId,
@@ -413,11 +485,9 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
-  const consumed=consumeMainAction(state,playerId);
-  if(!consumed.ok)return consumed;
-  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}, использован 1 представитель.`,'good');
-  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount};
+  const discountText=check.bureauDiscount>0?` (Construction Contract −${check.bureauDiscount})`:'';
+  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля ${check.cost}${discountText}.${workerMovementText(consumed)}`,'good');
+  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
@@ -526,7 +596,7 @@ export function completeConstruction(state,construction){
   if(construction.projectId==='streetcar'&&state.districts?.[construction.districtId]&&!districtRoadAccess(state,construction.districtId)){
     state.districts[construction.districtId].roadAccess=true;
     roadOpened=true;
-    logEvent(state,`${project.name} открывает Road access в районе ${districtById(construction.districtId).name}.`,'accent');
+    logEvent(state,`${project.name} открывает Street Network в районе ${districtById(construction.districtId).name}.`,'accent');
   }
 
   const landChange=LAND_VALUE_COMPLETION_CHANGE[construction.projectId]||0;
@@ -578,24 +648,27 @@ export function roundIncome(state,playerId){
 }
 
 export function raiseCapital(state,playerId){
-  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const player=state.players[playerId];
-  player.capital+=RAISE_CAPITAL_AMOUNT;
   const consumed=consumeMainAction(state,playerId);
   if(!consumed.ok)return consumed;
-  logEvent(state,`${player.name} использует Raise Capital: +$${RAISE_CAPITAL_AMOUNT}, использован 1 представитель.`,'good');
-  return {ok:true,amount:RAISE_CAPITAL_AMOUNT};
+  player.capital+=RAISE_CAPITAL_AMOUNT;
+  logEvent(state,`${player.name} использует Raise Capital: +${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
+  return {ok:true,amount:RAISE_CAPITAL_AMOUNT,worker:consumed.worker};
 }
 
 export function takeBankLoan(state,playerId,bankConstructionId){
-  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const bank=(state.constructions||[]).find(c=>c.id===bankConstructionId&&c.projectId==='bank'&&c.status==='complete');
   if(!bank)return {ok:false,reason:'no-bank'};
+  if(!workerCanReachDistrict(state,playerId,bank.districtId))return {ok:false,reason:'worker-range',districtId:bank.districtId};
   if(actionSpaceOccupant(state,bankConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   player.loans=player.loans||[];
   if(player.loans.length>=MAX_ACTIVE_LOANS)return {ok:false,reason:'max-loans'};
   const received=player.loans.length===0?6:5;
+  const consumed=consumeMainAction(state,playerId,bank.districtId);
+  if(!consumed.ok)return consumed;
   const loan={id:`L${state.nextLoanId||1}`,principal:LOAN_PRINCIPAL,received,takenRound:state.round,interestPaid:false};
   state.nextLoanId=(state.nextLoanId||1)+1;
   player.loans.push(loan);
@@ -609,10 +682,8 @@ export function takeBankLoan(state,playerId,bankConstructionId){
     owner.influence+=1;
     logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank.`,'good');
   }
-  const consumed=consumeMainAction(state,playerId);
-  if(!consumed.ok)return consumed;
-  logEvent(state,`${player.name} берёт Bank Loan: +$${received}, долг $${LOAN_PRINCIPAL}, будущий Income −$1.`,'accent');
-  return {ok:true,received,loan};
+  logEvent(state,`${player.name} берёт Bank Loan: +${received}, долг ${LOAN_PRINCIPAL}, будущий Income −$1.${workerMovementText(consumed)}`,'accent');
+  return {ok:true,received,loan,worker:consumed.worker};
 }
 
 export function repayLoan(state,playerId,loanId=null){
@@ -632,12 +703,15 @@ export function repayLoan(state,playerId,loanId=null){
 }
 
 export function takeBureauContract(state,playerId,bureauConstructionId){
-  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const bureau=(state.constructions||[]).find(c=>c.id===bureauConstructionId&&c.projectId==='bureau'&&c.status==='complete');
   if(!bureau)return {ok:false,reason:'no-bureau'};
+  if(!workerCanReachDistrict(state,playerId,bureau.districtId))return {ok:false,reason:'worker-range',districtId:bureau.districtId};
   if(actionSpaceOccupant(state,bureauConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   if((player.bureauContracts||0)>=1)return {ok:false,reason:'has-contract'};
+  const consumed=consumeMainAction(state,playerId,bureau.districtId);
+  if(!consumed.ok)return consumed;
   player.bureauContracts=1;
   state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
   state.actionSpaceOccupancy[bureauConstructionId]=playerId;
@@ -648,21 +722,22 @@ export function takeBureauContract(state,playerId,bureauConstructionId){
     owner.capital+=1;
     logEvent(state,`${owner.name} получает $1: другой игрок использовал его Construction Bureau.`,'good');
   }
-  const consumed=consumeMainAction(state,playerId);
-  if(!consumed.ok)return consumed;
-  logEvent(state,`${player.name} получает Construction Contract: следующая платная земля дешевле до $2.`,'accent');
-  return {ok:true,discount:BUREAU_LAND_DISCOUNT};
+  logEvent(state,`${player.name} получает Construction Contract: следующая платная земля дешевле до $2.${workerMovementText(consumed)}`,'accent');
+  return {ok:true,discount:BUREAU_LAND_DISCOUNT,worker:consumed.worker};
 }
 
 export function useShoppingProcurement(state,playerId,shopsConstructionId){
-  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const shops=(state.constructions||[]).find(c=>c.id===shopsConstructionId&&c.projectId==='shops'&&c.status==='complete');
   if(!shops)return {ok:false,reason:'no-shops'};
+  if(!workerCanReachDistrict(state,playerId,shops.districtId))return {ok:false,reason:'worker-range',districtId:shops.districtId};
   if(actionSpaceOccupant(state,shopsConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   if(player.capital<1)return {ok:false,reason:'capital'};
   const hasConstruction=(state.constructions||[]).some(c=>c.playerId===playerId&&c.status==='under-construction');
   if(!hasConstruction)return {ok:false,reason:'no-construction'};
+  const consumed=consumeMainAction(state,playerId,shops.districtId);
+  if(!consumed.ok)return consumed;
   player.capital-=1;
   const owner=state.players[shops.playerId];
   if(shops.playerId!==playerId)owner.capital+=1;
@@ -670,37 +745,36 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
   state.actionSpaceOccupancy[shopsConstructionId]=playerId;
   state.procurementRemaining=2;
   state.procurementSource=shopsConstructionId;
-  const consumed=consumeMainAction(state,playerId);
-  if(!consumed.ok)return consumed;
   if(shops.playerId!==playerId){
-    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 материалов без дополнительной оплаты.`,'accent');
+    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 материалов без дополнительной оплаты.${workerMovementText(consumed)}`,'accent');
   }else{
-    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 материалов без дополнительной оплаты.`,'accent');
+    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 материалов без дополнительной оплаты.${workerMovementText(consumed)}`,'accent');
   }
-  return {ok:true,materials:2,cost:1};
+  return {ok:true,materials:2,cost:1,worker:consumed.worker};
 }
 
 export function useSocialClub(state,playerId,clubConstructionId){
-  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'turn'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const club=(state.constructions||[]).find(c=>c.id===clubConstructionId&&c.projectId==='club'&&c.status==='complete');
   if(!club)return {ok:false,reason:'no-club'};
+  if(!workerCanReachDistrict(state,playerId,club.districtId))return {ok:false,reason:'worker-range',districtId:club.districtId};
   if(actionSpaceOccupant(state,clubConstructionId)!=null)return {ok:false,reason:'occupied'};
   const player=state.players[playerId];
   if(player.capital<1)return {ok:false,reason:'capital'};
+  const consumed=consumeMainAction(state,playerId,club.districtId);
+  if(!consumed.ok)return consumed;
   player.capital-=1;
   const owner=state.players[club.playerId];
   if(club.playerId!==playerId)owner.capital+=1;
   player.influence+=1;
   state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
   state.actionSpaceOccupancy[clubConstructionId]=playerId;
-  const consumed=consumeMainAction(state,playerId);
-  if(!consumed.ok)return consumed;
   if(club.playerId!==playerId){
-    logEvent(state,`${player.name} ужинает и заводит связи в клубе игрока ${owner.name}: −$1, +1 Influence; $1 получает владелец заведения.`,'accent');
+    logEvent(state,`${player.name} ужинает и заводит связи в клубе игрока ${owner.name}: −$1, +1 Influence; $1 получает владелец заведения.${workerMovementText(consumed)}`,'accent');
   }else{
-    logEvent(state,`${player.name} тратит $1 на ужин и приём состоятельных горожан в своём клубе: +1 Influence.`,'accent');
+    logEvent(state,`${player.name} тратит $1 на ужин и приём состоятельных горожан в своём клубе: +1 Influence.${workerMovementText(consumed)}`,'accent');
   }
-  return {ok:true,cost:1,influence:1};
+  return {ok:true,cost:1,influence:1,worker:consumed.worker};
 }
 
 export function setLandValue(state,districtId,value){
@@ -750,8 +824,8 @@ export function cleanupMarket(state){
   state.market=[...incoming,...blanks,...survivors];
   state.round++;
   state.firstPlayer=(state.firstPlayer+1)%3;
-  state.players.forEach(p=>p.workersLeft=3);
-  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;
+  state.players.forEach(p=>{p.workers=p.workers?.length?p.workers:createWorkers(p.id);p.workers.forEach(w=>w.used=false);p.workersLeft=p.workers.length;});
+  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
