@@ -968,3 +968,146 @@ button.city-action-card{cursor:pointer}
   .worker-reach{font-size:8px}
   .worker-token text{font-size:11px}
 }
+
+
+/* v0.25 — movement clarity + mobile-first action visibility */
+.worker-dock{display:none}
+.city-board-scroll{width:100%;overflow:hidden}
+.map-zoom-controls{display:none;margin-left:auto;gap:4px}
+.map-zoom-controls button{
+  min-height:30px;padding:5px 9px;border:1px solid #aa9c88;border-radius:7px;
+  background:#fff8eb;color:#665b4d;font-size:9px;font-weight:900;letter-spacing:.05em
+}
+.map-zoom-controls button.active{background:#355f66;color:white;border-color:#355f66}
+.mobile-pan-hint{display:none}
+
+.district.worker-reachable polygon{stroke:#4f8161;stroke-width:8}
+.district.worker-origin polygon{stroke:#d7a94c;stroke-width:10}
+.district.worker-unreachable polygon{opacity:.52;filter:saturate(.6)}
+.district.move-target polygon{
+  stroke:#26744c!important;stroke-width:12!important;opacity:1!important;
+  filter:brightness(1.08) drop-shadow(0 0 4px rgba(38,116,76,.32))
+}
+.movement-mode{border-color:#639075!important;background:#e4f0e6!important}
+
+@media(max-width:640px){
+  /* Active player + three pieces: no hidden horizontal selector. */
+  .worker-dock.active{
+    display:block;order:1;margin:0 0 7px;padding:7px;
+    border:1px solid #b8a98f;border-radius:11px;background:#eee2cf
+  }
+  .worker-dock-head{display:flex;align-items:center;gap:7px;min-width:0;margin-bottom:6px}
+  .worker-dock-head>div{min-width:0}
+  .worker-dock-head b{display:block;font-size:10px;line-height:1.2;color:#50473d}
+  .worker-dock-head small{
+    display:block;margin-top:2px;font-size:8px;line-height:1.28;color:#766a5d;
+    white-space:normal;overflow-wrap:anywhere
+  }
+  .worker-dock-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+  .dock-worker{
+    min-width:0;min-height:54px;padding:5px 3px;border:1px solid #b8aa95;border-radius:8px;
+    background:#fff9ee;color:#4d463e;text-align:center
+  }
+  .dock-worker>span{
+    display:grid;place-items:center;width:24px;height:24px;margin:0 auto 3px;
+    border-radius:50%;color:#fff;font-size:9px;font-weight:900;background:#67615a
+  }
+  .dock-worker>b{
+    display:block;max-width:100%;font-size:9px;line-height:1.1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .dock-worker>small{display:block;margin-top:2px;font-size:7px;line-height:1;color:#807466}
+  .dock-worker.token-blue>span{background:var(--blue)}
+  .dock-worker.token-red>span{background:var(--red)}
+  .dock-worker.token-green>span{background:var(--green)}
+  .dock-worker.selected{outline:2px solid #a87b30;background:#fff1d4}
+  .dock-worker.used{opacity:.42;filter:saturate(.45)}
+  .worker-dock-reach{
+    margin-top:5px;padding-top:5px;border-top:1px solid #d1c2aa;
+    font-size:7.5px;line-height:1.3;color:#75695b;white-space:normal;overflow-wrap:anywhere
+  }
+  .city-actions .worker-selector{display:none!important}
+
+  /* The three players must all remain visible; no scroll-only hidden player. */
+  .players-bar{
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    overflow:visible!important;gap:4px!important;padding:5px 6px!important
+  }
+  .player-pill{
+    width:auto!important;min-width:0!important;max-width:none!important;flex:none!important;
+    min-height:48px!important;padding:5px 5px!important;gap:4px!important;
+    grid-template-columns:7px minmax(0,1fr) max-content!important
+  }
+  .player-dot{width:7px;height:7px}
+  .player-name{font-size:10px!important;overflow:hidden;text-overflow:ellipsis}
+  .player-stats{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,max-content))!important;
+    gap:0 4px!important;font-size:7px!important;line-height:1.15!important
+  }
+  .player-money{font-size:11px!important;padding-left:0!important}
+  .player-flags{display:none!important}
+  .player-pill.first::after{right:3px!important;top:-3px!important;font-size:6px!important}
+
+  /* Core actions must never be hidden off-screen in a horizontal carousel. */
+  .city-action-grid{
+    display:grid!important;grid-template-columns:1fr!important;overflow:visible!important;
+    gap:6px!important;padding:0!important;scroll-snap-type:none!important
+  }
+  .city-action-card{
+    width:100%!important;max-width:none!important;min-width:0!important;
+    flex:none!important;scroll-snap-align:none!important;padding:8px!important
+  }
+  .city-action-card>b{font-size:11px!important}
+  .city-action-card>span{font-size:8.5px!important}
+  .city-action-card>strong{font-size:11px!important;margin-top:5px!important}
+  .action-space-btn{width:100%;min-width:0}
+  .action-space-btn b,.action-space-btn span{min-width:0;overflow-wrap:anywhere}
+  .action-space-btn strong{white-space:nowrap}
+
+  /* City screen order: worker → target/map → action catalogue → supply. */
+  #cityView.active{display:flex!important;flex-direction:column}
+  #cityView .view-head{order:0}
+  #workerDock{order:1}
+  #constructionMode{order:2}
+  .city-board-wrap{order:3;margin-bottom:7px;overflow:hidden}
+  #cityActions{order:4}
+  #resourceSupply{order:5}
+
+  /* Map defaults to full overview; DETAIL offers explicit pan/zoom instead of accidental clipping. */
+  .city-board-toolbar{gap:4px;padding:6px;align-items:center}
+  .city-board-toolbar .soft-chip{font-size:7.5px;padding:4px 5px}
+  .mobile-pan-hint{display:inline-flex}
+  .map-zoom-controls{display:inline-flex}
+  .city-board-scroll{
+    width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y
+  }
+  .city-board{
+    width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;
+    aspect-ratio:1000/640
+  }
+  .city-board-scroll.detail .city-board{width:680px!important}
+  .city-board-scroll.detail{scrollbar-width:thin}
+  .district text{font-size:20px!important}
+  .district-meta{font-size:15px!important;stroke-width:4px!important}
+  .worker-token text{font-size:11px!important}
+  .construction-token text{font-size:11px!important}
+
+  .construction-mode{order:2;min-width:0}
+  .construction-mode>div{min-width:0}
+  .construction-mode strong,.construction-mode span{overflow-wrap:anywhere}
+  .construction-mode .ghost-btn{flex:0 0 auto}
+
+  /* Prevent long labels/toasts from producing page-level horizontal overflow. */
+  #cityView,.city-actions,.worker-dock,.resource-supply,.construction-mode{min-width:0;max-width:100%}
+  .toast{max-width:calc(100vw - 20px);white-space:normal;text-align:center}
+}
+
+@media(max-width:390px){
+  .dock-worker{padding-left:2px;padding-right:2px}
+  .dock-worker>b{font-size:8px}
+  .player-pill{padding-left:4px!important;padding-right:4px!important}
+  .player-stats{font-size:6.5px!important;gap:0 3px!important}
+  .player-money{font-size:10px!important}
+  .city-board-scroll.detail .city-board{width:620px!important}
+}
