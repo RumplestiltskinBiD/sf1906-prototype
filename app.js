@@ -614,7 +614,7 @@ function confirmConstructionInDistrict(){
   const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId);
   if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
   mobileContextOpen=false;
-  const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля ${r.cost}`;
+  const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля $${r.cost}`;
   showToast(`Main action: стройка начата · ${land}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
   render();
 }
