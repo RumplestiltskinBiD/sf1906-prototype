@@ -1115,3 +1115,131 @@ button.city-action-card{cursor:pointer}
 @media(max-width:640px){
   .city-board-toolbar{display:flex!important}
 }
+
+
+/* v0.26 — full San Francisco map test */
+.city-board.full-sf-map{
+  width:100%;height:auto;min-height:0;aspect-ratio:1536/1024;
+  background:#87b5bc
+}
+.full-sf-map .map-landmass{
+  fill:#d9c7a6;stroke:#5f503b;stroke-width:5
+}
+.full-sf-map .district path{
+  stroke:#f4ead8;stroke-width:5;cursor:pointer;transition:.15s;
+  opacity:.94;vector-effect:non-scaling-stroke
+}
+.full-sf-map .district:hover path,
+.full-sf-map .district.selected path{
+  stroke:#283c3e;stroke-width:7;filter:brightness(1.05)
+}
+.full-sf-map .district text{
+  pointer-events:none;text-anchor:middle;font-family:Georgia,serif;
+  font-weight:800;font-size:18px;fill:#342f27;
+  paint-order:stroke;stroke:rgba(247,238,219,.75);stroke-width:2px
+}
+.full-sf-map .district .submap-label{font-size:12px;font-weight:700}
+
+.full-sf-map .district[data-district="presidio"] path{fill:#738e50}
+.full-sf-map .district[data-district="marina"] path{fill:#8db2c8}
+.full-sf-map .district[data-district="northbeach"] path{fill:#d98b5e}
+.full-sf-map .district[data-district="chinatown"] path{fill:#b95d4e}
+.full-sf-map .district[data-district="pacific"] path{fill:#abb96b}
+.full-sf-map .district[data-district="financial"] path{fill:#6d98bb}
+.full-sf-map .district[data-district="soma"] path{fill:#dc8b55}
+.full-sf-map .district[data-district="civic"] path{fill:#d7b45d}
+.full-sf-map .district[data-district="western"] path{fill:#aa83ad}
+.full-sf-map .district[data-district="innerrichmond"] path{fill:#a7b598}
+.full-sf-map .district[data-district="outerrichmond"] path{fill:#d8bd70}
+.full-sf-map .district[data-district="haight"] path{fill:#d4aa58}
+.full-sf-map .district[data-district="innersunset"] path{fill:#d9934f}
+.full-sf-map .district[data-district="sunset"] path{fill:#d9bd72}
+.full-sf-map .district[data-district="mission"] path{fill:#cb8175}
+.full-sf-map .district[data-district="missionbay"] path{fill:#83aebe}
+.full-sf-map .district[data-district="potrero"] path{fill:#70a9a1}
+.full-sf-map .district[data-district="noe"] path{fill:#a5b598}
+.full-sf-map .district[data-district="bernal"] path{fill:#aaa172}
+.full-sf-map .district[data-district="park"] path{fill:#73925d}
+.full-sf-map .district[data-district="twinpeaks"] path{fill:#9b8060}
+
+.full-sf-map .special-zone path{stroke-dasharray:10 6}
+.full-sf-map .blocked-zone path{opacity:.68;cursor:not-allowed;filter:saturate(.7)}
+.full-sf-map .passage-zone path{stroke:#e8f0d8;stroke-width:7}
+
+.full-sf-map .map-roads path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.full-sf-map .major-road{stroke:#f7efe0;stroke-width:12}
+.full-sf-map .market-road{stroke:#544535;stroke-width:18}
+.full-sf-map .secondary-road{stroke:#f4ead7;stroke-width:8}
+.full-sf-map .map-rail path{fill:none;stroke:#262823;stroke-width:4;stroke-dasharray:8 5}
+
+.full-sf-map .map-title-card rect,
+.full-sf-map .board-legend>rect{fill:#eadfc7;stroke:#65543d;stroke-width:3;opacity:.96}
+.full-sf-map .map-title-card text{font-family:Georgia,serif;fill:#30291f;font-weight:900;font-size:34px;letter-spacing:.02em}
+.full-sf-map .map-title-card .map-year{font-size:28px}
+.full-sf-map .map-title-card .map-motto{font-size:12px;letter-spacing:.12em}
+.full-sf-map .board-legend text{font-family:Georgia,serif;fill:#352f26;font-size:13px}
+.full-sf-map .board-legend .legend-title{font-size:26px;font-weight:900;text-anchor:middle}
+.full-sf-map .board-legend .legend-head{font-size:15px;font-weight:900}
+.full-sf-map .board-legend .legend-items rect,
+.full-sf-map .board-legend .lg-firm{stroke:#635641;stroke-width:1}
+.full-sf-map .lg-presidio{fill:#738e50}.full-sf-map .lg-marina{fill:#8db2c8}
+.full-sf-map .lg-northbeach{fill:#d98b5e}.full-sf-map .lg-chinatown{fill:#b95d4e}
+.full-sf-map .lg-pacific{fill:#abb96b}.full-sf-map .lg-financial{fill:#6d98bb}
+.full-sf-map .lg-soma{fill:#dc8b55}.full-sf-map .lg-civic{fill:#d7b45d}
+.full-sf-map .lg-western{fill:#aa83ad}.full-sf-map .lg-innerrichmond{fill:#a7b598}
+.full-sf-map .lg-outerrichmond{fill:#d8bd70}.full-sf-map .lg-haight{fill:#d4aa58}
+.full-sf-map .lg-innersunset{fill:#d9934f}.full-sf-map .lg-sunset{fill:#d9bd72}
+.full-sf-map .lg-mission{fill:#cb8175}.full-sf-map .lg-missionbay{fill:#83aebe}
+.full-sf-map .lg-potrero{fill:#70a9a1}.full-sf-map .lg-noe{fill:#a5b598}
+.full-sf-map .lg-bernal{fill:#aaa172}.full-sf-map .lg-park{fill:#73925d}
+.full-sf-map .lg-firm{fill:#ddd3b9}
+.full-sf-map .legend-market{stroke:#544535;stroke-width:7}
+.full-sf-map .legend-road{stroke:#f6ecdc;stroke-width:7}
+.full-sf-map .legend-rail{stroke:#262823;stroke-width:4;stroke-dasharray:6 4}
+
+.full-sf-map .district-meta{
+  font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;font-weight:950;
+  text-anchor:middle;fill:#2e3938;paint-order:stroke;
+  stroke:#f7eddc;stroke-width:4px;stroke-linejoin:round;pointer-events:none
+}
+.full-sf-map .district-meta.special{font-size:11px}
+.full-sf-map .district-meta.closed{fill:#6a342e}
+.full-sf-map .district-meta.passage{fill:#315d40}
+.full-sf-map .worker-token circle{stroke-width:4}
+.full-sf-map .construction-token rect{stroke-width:3}
+
+/* v0.26 uses SVG paths, not the old polygon schematic. */
+.full-sf-map .district.worker-reachable path{stroke:#4f8161;stroke-width:8}
+.full-sf-map .district.worker-origin path{stroke:#d7a94c;stroke-width:10}
+.full-sf-map .district.worker-unreachable path{opacity:.46;filter:saturate(.58)}
+.full-sf-map .district.move-target path{
+  stroke:#26744c!important;stroke-width:12!important;opacity:1!important;
+  filter:brightness(1.08) drop-shadow(0 0 4px rgba(38,116,76,.32))
+}
+.full-sf-map .district.build-ok path{
+  stroke:#26744c!important;stroke-width:10!important;opacity:1!important;
+  filter:brightness(1.06)
+}
+.full-sf-map .district.build-blocked path{opacity:.38;filter:saturate(.45)}
+.full-sf-map .blocked-zone.worker-unreachable path{opacity:.3}
+.full-sf-map .passage-zone.build-blocked path{opacity:.7}
+
+.special-stats strong{font-size:13px!important}
+
+@media(max-width:900px){
+  .city-board.full-sf-map{height:auto!important;min-height:0!important}
+}
+@media(max-width:640px){
+  .city-board.full-sf-map{
+    width:100%!important;height:auto!important;min-height:0!important;
+    aspect-ratio:1536/1024!important
+  }
+  .city-board-scroll.detail .city-board.full-sf-map{width:960px!important}
+  .full-sf-map .district text{font-size:22px!important}
+  .full-sf-map .district .submap-label{font-size:15px!important}
+  .full-sf-map .district-meta{font-size:15px!important;stroke-width:5px!important}
+  .full-sf-map .district-meta.special{font-size:13px!important}
+}
+@media(max-width:390px){
+  .city-board-scroll.detail .city-board.full-sf-map{width:900px!important}
+}
