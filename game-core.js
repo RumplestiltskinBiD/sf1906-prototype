@@ -34,25 +34,51 @@ export const PROJECTS = [
 ]
 
 export const DISTRICTS = [
-  {id:'pacific',name:'Pacific Heights',hint:'Дорогая земля; развитая уличная сеть',landValue:4,sites:3,road:true,rail:false,port:false},
-  {id:'financial',name:'Financial / Ferry',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:3,road:true,rail:false,port:true},
-  {id:'civic',name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:3,road:true,rail:false,port:false},
-  {id:'western',name:'Western Addition',hint:'Средняя стоимость; развитая уличная сеть',landValue:2,sites:4,road:true,rail:false,port:false},
-  {id:'soma',name:'SoMa',hint:'Промышленный район · Rail + Port',landValue:2,sites:5,road:true,rail:true,port:true},
-  {id:'mission',name:'Mission',hint:'Доступная застройка · Rail access',landValue:1,sites:5,road:true,rail:true,port:false},
-  {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля · Rail + Port · fill',landValue:1,sites:5,road:true,rail:true,port:true},
-  {id:'sunset',name:'Western Expansion',hint:'Самая дешёвая земля; изначально без развитого Street Network',landValue:0,sites:5,road:false,rail:false,port:false}
+  {id:'presidio',name:'Presidio',hint:'Federal Territory · закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false},
+  {id:'marina',name:'Marina',hint:'Северная набережная · дорогая земля · Port',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'northbeach',name:'North Beach',hint:'Плотная северо-восточная застройка · Port',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'chinatown',name:'Chinatown',hint:'Плотный центральный район',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'pacific',name:'Pacific Heights',hint:'Самая дорогая жилая земля',landValue:4,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'financial',name:'Financial District',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'soma',name:'SoMa',hint:'Промышленный район · Rail + Port',landValue:2,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'civic',name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'western',name:'Western Addition',hint:'Средняя стоимость · развитая уличная сеть',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'innerrichmond',name:'Inner Richmond',hint:'Западный жилой район рядом с Golden Gate Park',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'outerrichmond',name:'Outer Richmond',hint:'Доступная западная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'haight',name:'Haight-Ashbury',hint:'Средняя стоимость · центрально-западный узел',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'innersunset',name:'Inner Sunset',hint:'Доступная земля к югу от Golden Gate Park',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'sunset',name:'Outer Sunset',hint:'Самая дешёвая периферия · Street Network ещё не развит',landValue:0,sites:5,road:false,rail:false,port:false,buildable:true,passable:true},
+  {id:'mission',name:'Mission',hint:'Доступная плотная застройка · Rail access',landValue:1,sites:5,road:true,rail:true,port:false,buildable:true,passable:true},
+  {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля · Rail + Port · artificial fill',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'potrero',name:'Potrero',hint:'Доступная промышленная земля · Rail + Port',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'noe',name:'Noe Valley',hint:'Средняя стоимость · южный жилой район',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'bernal',name:'Bernal Heights',hint:'Доступная южная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'park',name:'Golden Gate Park',hint:'Строительство запрещено · рабочие могут проходить через парк',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:true},
+  {id:'twinpeaks',name:'Twin Peaks',hint:'Закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false}
 ];
 
 export const DISTRICT_ADJACENCY = {
-  pacific:['western','civic'],
-  financial:['civic','soma','missionbay'],
-  civic:['pacific','western','financial','soma'],
-  western:['pacific','civic','mission','sunset'],
+  presidio:[],
+  marina:['pacific','northbeach'],
+  northbeach:['marina','chinatown'],
+  chinatown:['northbeach','civic','financial'],
+  pacific:['marina','western','civic'],
+  financial:['chinatown','civic','soma'],
+  civic:['pacific','western','chinatown','financial','haight','soma'],
+  western:['pacific','civic','innerrichmond','haight'],
+  innerrichmond:['outerrichmond','western','park'],
+  outerrichmond:['innerrichmond','park'],
+  park:['outerrichmond','innerrichmond','haight','innersunset','sunset'],
+  haight:['park','western','civic','innersunset','mission'],
+  innersunset:['park','sunset','haight','mission','noe'],
+  sunset:['park','innersunset'],
   soma:['civic','financial','mission','missionbay'],
-  mission:['western','soma','missionbay','sunset'],
-  missionbay:['financial','soma','mission'],
-  sunset:['western','mission']
+  mission:['haight','innersunset','soma','missionbay','potrero','noe','bernal'],
+  missionbay:['soma','mission','potrero'],
+  potrero:['missionbay','mission','bernal'],
+  noe:['mission','innersunset','bernal'],
+  bernal:['mission','noe','potrero'],
+  twinpeaks:[]
 };
 
 export function shuffle(items, rng=Math.random){
@@ -83,13 +109,14 @@ export function activeWorker(state,playerId){
 }
 export function workerCanReachDistrict(state,playerId,targetDistrictId,workerId=null){
   const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
-  if(!worker||worker.used||!districtById(targetDistrictId))return false;
+  const target=districtById(targetDistrictId);
+  if(!worker||worker.used||!target||target.passable===false)return false;
   return worker.districtId===targetDistrictId||districtNeighbors(worker.districtId).includes(targetDistrictId);
 }
 export function workerReachableDistricts(state,playerId,workerId=null){
   const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
   if(!worker||worker.used)return [];
-  return [worker.districtId,...districtNeighbors(worker.districtId)];
+  return [worker.districtId,...districtNeighbors(worker.districtId)].filter(id=>districtById(id)?.passable!==false);
 }
 export function selectWorker(state,playerId,workerId){
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
@@ -258,7 +285,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.25',
+    version:'0.26',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -293,7 +320,7 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I UX v0.25. У каждого игрока 3 представителя: main action выполняется в текущем или соседнем районе; Raise Capital также можно использовать для такого перемещения. Позиции сохраняются между раундами.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I Map Test v0.26. На карте 18 строительных районов по 5 слотов. Golden Gate Park закрыт для строительства, но открыт для передвижения; Presidio и Twin Peaks полностью закрыты. Main action выполняется в текущем или соседнем доступном районе.','cls':'accent'}],
     finished:false
   };
 }
@@ -424,7 +451,8 @@ export function constructionEligibility(state,playerId,projectId,districtId){
     }
   }
   const used=ds?districtConstructionCount(state,districtId):0;
-  if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
+  if(district?.buildable===false) reasons.push('В этой зоне строительство запрещено.');
+  else if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
 
