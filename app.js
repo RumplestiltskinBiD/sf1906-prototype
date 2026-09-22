@@ -8,8 +8,8 @@ import {
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v025';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v026';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -27,14 +27,14 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
   const originalVersion=parsed.version;
-  parsed.version='0.25';
+  parsed.version='0.26';
   parsed.players=(parsed.players||[]).map(p=>{
     let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
       id:w.id||`P${p.id+1}W${i+1}`,
@@ -67,7 +67,7 @@ function migrateState(parsed){
   DISTRICTS.forEach(d=>{
     parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road};
     if(parsed.districts[d.id].landValue==null)parsed.districts[d.id].landValue=d.landValue;
-    if(parsed.districts[d.id].sites==null)parsed.districts[d.id].sites=d.sites;
+    parsed.districts[d.id].sites=d.sites;
     if(parsed.districts[d.id].roadAccess==null){
       const completedStreetcar=(parsed.constructions||[]).some(x=>x.districtId===d.id&&x.projectId==='streetcar'&&x.status==='complete');
       parsed.districts[d.id].roadAccess=!!d.road||completedStreetcar;
@@ -324,19 +324,29 @@ function openBidCurtain(){
 function closePrivacy(){ $('#privacyModal').classList.remove('open');$('#modalBackdrop').classList.remove('open'); }
 
 const DISTRICT_POS={
-  pacific:[275,198],financial:[708,250],civic:[510,322],western:[308,340],
-  soma:[535,452],mission:[365,502],missionbay:[742,444],sunset:[182,462]
+  presidio:[500,160],marina:[745,120],northbeach:[900,125],chinatown:[945,210],
+  pacific:[730,225],financial:[1060,325],soma:[985,455],civic:[850,365],western:[650,350],
+  innerrichmond:[430,330],outerrichmond:[250,345],haight:[650,505],innersunset:[505,655],
+  sunset:[260,690],mission:[845,655],missionbay:[1140,655],potrero:[1135,800],
+  noe:[675,785],bernal:[860,835],park:[355,495],twinpeaks:[505,810]
 };
-const TOKEN_OFFSETS=[[-24,-12],[0,-12],[24,-12],[-12,13],[12,13],[36,13]];
-const WORKER_OFFSETS=[[-54,-42],[-27,-42],[0,-42],[27,-42],[54,-42],[-40,-19],[-13,-19],[14,-19],[41,-19]];
+const DISTRICT_META_POS={
+  presidio:[500,205],marina:[745,165],northbeach:[900,170],chinatown:[945,255],
+  pacific:[730,272],financial:[1060,370],soma:[985,500],civic:[850,410],western:[650,397],
+  innerrichmond:[430,375],outerrichmond:[250,390],haight:[650,550],innersunset:[505,700],
+  sunset:[260,735],mission:[845,705],missionbay:[1140,705],potrero:[1135,850],
+  noe:[675,835],bernal:[860,885],park:[355,540],twinpeaks:[505,860]
+};
+const TOKEN_OFFSETS=[[-36,-18],[0,-18],[36,-18],[-18,19],[18,19]];
+const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[32,-18],[64,-18],[-64,-18]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.25 · movement + mobile UX</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.26 · full 1906 district map</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
 }
 
 function shortDistrictName(id){
-  return {pacific:'Pacific',financial:'Financial',civic:'Civic',western:'Western',soma:'SoMa',mission:'Mission',missionbay:'M. Bay',sunset:'W. Exp.'}[id]||districtById(id)?.name||id;
+  return {presidio:'Presidio',marina:'Marina',northbeach:'N. Beach',chinatown:'Chinatown',pacific:'Pacific',financial:'Financial',civic:'Civic',western:'Western',innerrichmond:'I. Richmond',outerrichmond:'O. Richmond',haight:'Haight',innersunset:'I. Sunset',sunset:'O. Sunset',soma:'SoMa',mission:'Mission',missionbay:'M. Bay',potrero:'Potrero',noe:'Noe',bernal:'Bernal',park:'G.G. Park',twinpeaks:'Twin Peaks'}[id]||districtById(id)?.name||id;
 }
 
 function renderWorkerDock(){
@@ -545,14 +555,16 @@ function renderCity(){
   const meta=$('#districtMetaLayer');
   if(meta){
     meta.innerHTML=DISTRICTS.map(d=>{
-      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_POS[d.id],a=districtAccess(state,d.id);
+      const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_META_POS[d.id]||DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
       const movementLegal=workerAction?.type==='raiseCapital'?reachableIds.has(d.id):null;
-      const klass=pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked')
+      const klass=(d.passable===false?'district-meta special closed':d.buildable===false?'district-meta special passage':
+        pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked')
         :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
-        :'district-meta';
+        :'district-meta');
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
-      return `<text class="${klass}" x="${x}" y="${y}">LAND $${ds.landValue} · ${used}/${ds.sites}${tags?` · ${tags}`:''}</text>`;
+      const label=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
+      return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
     }).join('');
   }
 
@@ -567,7 +579,7 @@ function renderCity(){
         const [dx,dy]=WORKER_OFFSETS[i]||[0,-42-i*22];
         const isSelected=state.activeWorkerId===w.id&&currentDeveloper(state)===p.id;
         const selectable=state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===p.id&&!w.used&&!state.activationMainActionUsed;
-        workerHtml+=`<g class="worker-token token-${p.key} ${w.used?'used':''} ${isSelected?'selected':''} ${selectable?'selectable':''}" transform="translate(${cx+dx} ${cy+dy})" data-worker-token="${w.id}" data-worker-player="${p.id}"><circle r="11"/><text y="4">${w.number}</text><title>${p.name} · представитель #${w.number} · ${districtById(w.districtId)?.name}${w.used?' · использован':''}</title></g>`;
+        workerHtml+=`<g class="worker-token token-${p.key} ${w.used?'used':''} ${isSelected?'selected':''} ${selectable?'selectable':''}" transform="translate(${cx+dx} ${cy+dy})" data-worker-token="${w.id}" data-worker-player="${p.id}"><circle r="16"/><text y="4">${w.number}</text><title>${p.name} · представитель #${w.number} · ${districtById(w.districtId)?.name}${w.used?' · использован':''}</title></g>`;
       });
     });
     workerLayer.innerHTML=workerHtml;
@@ -590,7 +602,7 @@ function renderCity(){
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
         const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
-        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-23" y="-14" width="46" height="28" rx="9"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
+        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
       });
     });
     layer.innerHTML=html;
@@ -650,8 +662,8 @@ function renderContext(){
     const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
     panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Prestige <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
-    const d=districtById(state.selectedDistrictId)||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
-    const used=districtConstructionCount(state,d.id),free=Math.max(0,ds.sites-used);
+    const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
+    const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
     const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
     const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
     const accessHtml=`<div class="access-grid">${accessChip('STREET',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
@@ -677,7 +689,10 @@ function renderContext(){
     }).join(''):'Пока нет.';
 
     const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
-    panel.innerHTML=`${close}<div class="detail-type">DISTRICT</div><h3>${d.name}</h3><div class="district-stats"><div><span>LAND VALUE</span><strong>$${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / ${ds.sites}</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div><div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${accessHtml}<div class="access-neighbors">Соседние районы: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.25:</b> Fire House и Clinic обслуживают свой и соседние районы через Street Network. Rail/Port заданы районом. Western Expansion начинает без Street Network; Streetcar Extension может открыть его.</div>`;
+    const statsHtml=d.buildable===false
+      ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
+      :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.26 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
     const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
