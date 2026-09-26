@@ -3,6 +3,11 @@ import {createInitialState} from '../game-core.js';
 
 const STORAGE_KEY='sf1906_phase1_ui_v028';
 
+test.beforeEach(async({page})=>{
+  page.on('pageerror',error=>{throw error;});
+  page.on('console',msg=>{if(msg.type()==='error')throw new Error('Browser console error: '+msg.text());});
+});
+
 function makeDevState(){
   const s=createInitialState({rng:()=>0.1});
   s.phase='development';
@@ -185,3 +190,74 @@ function assertDelivery(saved,id,materials){
   expect(c).toBeTruthy();
   for(const m of materials)expect(c.materialsDelivered).toContain(m);
 }
+
+
+test('Warehouse can be the Delivery source and stored materials are not charged again',async({page})=>{
+  const s=makeDevState();
+  s.selectedDistrictId='northbeach';
+  s.constructions=[
+    con('W1',0,'warehouse','northbeach','complete',['Lumber','Masonry','Steel'],['Lumber']),
+    con('C1',0,'tenement','northbeach')
+  ];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-ds-wh="W1"]').click();
+  await page.locator('[data-hauler="standard"]').click();
+  await page.locator('[data-load="Lumber"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('[data-drop-id="C1"][data-drop-type="Lumber"]').click();
+  await expect(page.locator('.delivery-total')).toContainText('Материалы $0');
+  await expect(page.locator('.delivery-total')).toContainText('Границы $0');
+  await expect(page.locator('.delivery-total')).toContainText('ИТОГО $3');
+  await page.locator('#deliveryConfirm').click();
+
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='W1').warehouseInventory).toEqual([]);
+  expect(saved.constructions.find(c=>c.id==='C1').materialsDelivered).toEqual(['Lumber']);
+});
+
+test('a complete Development round uses all 9 workers and advances cleanly to round 2',async({page})=>{
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+
+  for(let i=0;i<9;i++){
+    const worker=page.locator('[data-select-worker]:not([disabled])').first();
+    await expect(worker).toBeVisible();
+    await worker.click();
+    await page.locator('#actionRaiseCapital').click();
+    await page.locator('[data-district="civic"]').click();
+    await expect(page.locator('#actionEndActivation')).toBeVisible();
+    await page.locator('#actionEndActivation').click();
+  }
+
+  await expect(page.locator('#endRoundBtn')).toBeEnabled();
+  await page.locator('#endRoundBtn').click();
+  const saved=await stored(page);
+  expect(saved.round).toBe(2);
+  expect(saved.phase).toBe('declare');
+  expect(saved.firstPlayer).toBe(1);
+  expect(saved.players.every(p=>p.workersLeft===3)).toBe(true);
+});
+
+test('state survives a browser reload after Delivery',async({page})=>{
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-ds-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('[data-drop-id="C1"][data-drop-type="Masonry"]').click();
+  await page.locator('#deliveryConfirm').click();
+
+  await page.reload();
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='C1').materialsDelivered).toEqual(['Masonry']);
+  expect(saved.haulersUsed).toContain('dray2a');
+});

@@ -288,3 +288,93 @@ test('Fire House and Clinic service reach own and adjacent road districts only',
   assert.equal(outer.fire,false);
   assert.equal(outer.clinic,false);
 });
+
+
+test('complete three-round Phase I lifecycle reaches finished state with workers resetting between rounds',()=>{
+  const s=G.createInitialState({rng:()=>0.42});
+  for(let pid=0;pid<3;pid++){
+    G.revealStarterDraft(s);
+    const hand=s.starterDraftHands[pid];
+    G.toggleStarterDraftCard(s,hand[0].uid);
+    G.toggleStarterDraftCard(s,hand[1].uid);
+    assert.equal(G.confirmStarterDraft(s).ok,true);
+  }
+
+  for(let round=1;round<=3;round++){
+    assert.equal(s.phase,'declare');
+    for(let i=0;i<3;i++)assert.equal(G.passDeclaration(s).ok,true);
+    assert.equal(G.beginBidding(s).ok,true);
+    assert.equal(s.phase,'ready');
+    assert.equal(G.resolveTenders(s).ok,true);
+    assert.equal(s.phase,'development');
+
+    let activations=0;
+    while(!s.developmentComplete){
+      const pid=G.currentDeveloper(s);
+      const worker=G.playerWorkers(s,pid).find(w=>!w.used);
+      assert.ok(worker,`round ${round}, player ${pid}`);
+      assert.equal(G.selectWorker(s,pid,worker.id).ok,true);
+      assert.equal(G.raiseCapital(s,pid,worker.districtId).ok,true);
+      assert.equal(G.endActivation(s,pid).ok,true);
+      activations++;
+      assert.ok(activations<=9);
+    }
+    assert.equal(activations,9);
+    assert.ok(s.players.every(p=>p.workersLeft===0));
+
+    const cleaned=G.cleanupMarket(s,{rng:()=>0.7});
+    assert.equal(cleaned.ok,true);
+    if(round<3){
+      assert.equal(cleaned.finished,false);
+      assert.equal(s.round,round+1);
+      assert.equal(s.phase,'declare');
+      assert.ok(s.players.every(p=>p.workersLeft===3));
+    }else{
+      assert.equal(cleaned.finished,true);
+      assert.equal(s.phase,'finished');
+      assert.equal(s.finished,true);
+    }
+  }
+});
+
+test('Bureau contract discounts the next paid land and is consumed',()=>{
+  const s=devState();
+  const w=G.playerWorkers(s,0)[0];
+  w.districtId='civic';
+  G.selectWorker(s,0,w.id);
+  s.constructions=[construction('BU',0,'bureau','civic','complete',['Lumber','Masonry','Steel'])];
+  assert.equal(G.takeBureauContract(s,0,'BU').ok,true);
+  assert.equal(s.players[0].bureauContracts,1);
+  assert.equal(G.endActivation(s,0).ok,true);
+
+  // Bring player 0 back to a fresh activation for the construction test.
+  s.developmentPlayer=0;
+  s.activationMainActionUsed=false;
+  const w2=G.playerWorkers(s,0).find(x=>!x.used);
+  w2.districtId='civic';
+  assert.equal(G.selectWorker(s,0,w2.id).ok,true);
+  s.players[0].portfolio=['tenement'];
+  const e=G.constructionEligibility(s,0,'tenement','civic');
+  assert.equal(e.baseCost,3);
+  assert.equal(e.cost,1);
+  assert.equal(e.bureauDiscount,2);
+  const r=G.beginConstruction(s,0,'tenement','civic');
+  assert.equal(r.ok,true);
+  assert.equal(s.players[0].bureauContracts,0);
+});
+
+test('Social Club pays owner on opponent use and grants Influence to visitor',()=>{
+  const s=devState();
+  const w=G.playerWorkers(s,0)[0];
+  w.districtId='civic';
+  G.selectWorker(s,0,w.id);
+  s.constructions=[construction('CL',1,'club','civic','complete',['Lumber','Masonry','Masonry'])];
+  const visitorMoney=s.players[0].capital;
+  const ownerMoney=s.players[1].capital;
+  const visitorInf=s.players[0].influence;
+  const r=G.useSocialClub(s,0,'CL');
+  assert.equal(r.ok,true);
+  assert.equal(s.players[0].capital,visitorMoney-1);
+  assert.equal(s.players[1].capital,ownerMoney+1);
+  assert.equal(s.players[0].influence,visitorInf+1);
+});
