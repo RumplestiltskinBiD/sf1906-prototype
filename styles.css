@@ -1477,3 +1477,165 @@ button.city-action-card{cursor:pointer}
   .delivery-footer button{min-height:44px}
   body.delivery-active .toast{bottom:49vh}
 }
+
+
+/* v0.29 — persistent information HUD */
+:root{--topbar-h:76px;--hud-stack-h:148px}
+
+.players-bar{
+  position:sticky;top:var(--topbar-h);z-index:29;
+  box-shadow:0 5px 15px rgba(0,0,0,.16)
+}
+.player-pill.overview{
+  border-color:#d7b86d;
+  box-shadow:inset 0 0 0 1px rgba(215,184,109,.5)
+}
+.player-pill.overview::before{
+  content:'ОБЪЕКТЫ';position:absolute;left:9px;bottom:-6px;
+  padding:1px 5px;border-radius:5px;background:#e0c681;color:#352c20;
+  font-size:7px;font-weight:900;letter-spacing:.06em
+}
+.nav-rail{top:var(--hud-stack-h);height:calc(100vh - var(--hud-stack-h))}
+
+.city-overview-panel{
+  display:none;min-width:0;margin:0 0 10px;padding:8px;
+  border:1px solid #ab9c84;border-radius:12px;background:#ede2cf;
+  box-shadow:0 6px 18px rgba(61,46,28,.12)
+}
+.city-overview-panel.active{
+  display:block;position:sticky;top:calc(var(--hud-stack-h) + 7px);z-index:22
+}
+.overview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.overview-head>div:first-child{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;min-width:0}
+.overview-head .player-dot{grid-row:1/3}
+.overview-head b{font-size:11px;color:#4c4339;white-space:nowrap}
+.overview-head small{font-size:8px;color:#807465}
+.overview-head-actions{display:flex!important;gap:5px!important;grid-template-columns:none!important}
+.overview-head-actions button{
+  min-height:30px;padding:5px 8px;border:1px solid #a99b87;border-radius:7px;
+  background:#fff8eb;color:#5e5448;font-size:8px;font-weight:900
+}
+.overview-effect{
+  margin:0 0 7px;padding:6px 9px;border:1px solid #7ba476;border-radius:8px;
+  background:#e5f2df;color:#37593b;font-size:9px
+}
+.overview-scroll{display:flex;gap:7px;overflow-x:auto;padding:1px 1px 3px;scrollbar-width:thin}
+.overview-object{
+  flex:0 0 218px;min-width:0;min-height:74px;padding:7px 8px;border:1px solid #b8aa94;
+  border-radius:9px;background:#fff9ee;color:#4a433a;text-align:left
+}
+.overview-object:hover,.overview-object.focused{border-color:#507b71;box-shadow:0 0 0 2px rgba(80,123,113,.16)}
+.overview-object-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.overview-object-head b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.overview-object-head em{font-style:normal;font-size:8px;color:#7d7061;white-space:nowrap}
+.overview-materials{display:flex;gap:4px;margin-top:5px}
+.overview-materials .resource-pip{width:21px;height:21px;font-size:8px}
+.overview-object-foot{display:flex;align-items:center;gap:7px;margin-top:5px}
+.overview-object-foot strong{font-size:10px}
+.overview-object-foot small{min-width:0;font-size:8px;color:#76695a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.overview-empty{flex:0 0 auto;display:flex;align-items:center;padding:10px;color:#877b6c;font-size:9px}
+.warehouse-object{background:#eef0e7}
+.warehouse-counts{display:flex;gap:4px;align-items:center;margin-top:7px}
+.warehouse-counts i{
+  min-width:34px;padding:3px 5px;border-radius:5px;font-style:normal;text-align:center;
+  font-size:8px;font-weight:900;color:white
+}
+.warehouse-counts .lumber{background:#9a6b42}.warehouse-counts .masonry{background:#77766d}.warehouse-counts .steel{background:#516c78}
+.warehouse-counts strong{margin-left:auto;font-size:10px}
+
+.card-requirement-band{
+  margin:8px 0 5px;padding:7px 8px;border:1px solid #bea97f;border-radius:8px;
+  background:#f5ead2
+}
+.card-requirement-band>b,.context-requirements>b{
+  display:block;margin-bottom:4px;font-size:8px;letter-spacing:.1em;color:#755c32
+}
+.requirement-chip-row{display:flex;gap:4px;flex-wrap:wrap}
+.requirement-chip{
+  display:inline-flex;padding:4px 6px;border:1px solid #cab995;border-radius:999px;
+  background:#fff9ed;color:#5f5548;font-size:8px;font-weight:800;line-height:1.15
+}
+.context-requirements{margin:0 0 8px;padding:7px;border-radius:8px;background:rgba(255,255,255,.48)}
+.card-rule b,.card-section-label{font-size:8px!important}
+
+.city-action-card.action-available{
+  position:relative;border-color:#65906a!important;background:#edf6e9!important;
+  box-shadow:0 0 0 2px rgba(72,117,84,.13),0 4px 10px rgba(54,94,60,.08)
+}
+.city-action-card.action-available::after{
+  content:'ДОСТУПНО';position:absolute;right:7px;top:6px;
+  padding:2px 5px;border-radius:5px;background:#568260;color:white;
+  font-size:7px;font-weight:900;letter-spacing:.05em
+}
+.city-action-card.free-action-available{
+  border-color:#53858b!important;background:#e8f2f1!important;
+  box-shadow:0 0 0 1px rgba(55,101,107,.14)
+}
+.action-space-btn.available-action{
+  border-color:#568663!important;background:#eff8ed!important;
+  box-shadow:inset 3px 0 0 #568663
+}
+.action-space-btn.available-action strong{color:#35623f}
+
+/* During construction choice: only the selected worker's reachable districts are evaluated. */
+.full-sf-map .district.build-ok path{
+  fill:rgba(55,145,82,.22)!important;stroke:#2f8a50!important;stroke-width:8!important;opacity:1!important
+}
+.full-sf-map .district.build-blocked path{
+  fill:rgba(171,64,53,.18)!important;stroke:#a54038!important;stroke-width:7!important;opacity:1!important
+}
+.full-sf-map .district.build-dim path{
+  fill:rgba(25,28,28,.14)!important;stroke:transparent!important;stroke-width:2!important;opacity:1!important
+}
+.full-sf-map .district-meta.dimmed{opacity:.32}
+.full-sf-map .district-meta.blocked{fill:#813d36!important;stroke:#f4dfd9!important;opacity:1!important}
+.full-sf-map .district-meta.eligible{fill:#285c3a!important;stroke:#e7f2e5!important;opacity:1!important}
+
+.construction-token{cursor:pointer}
+.construction-token .warehouse-token-title,.construction-token .warehouse-token-stock{
+  text-anchor:middle;pointer-events:none;fill:white;font-family:Inter,system-ui,sans-serif;font-weight:900
+}
+.construction-token .warehouse-token-title{font-size:8px}
+.construction-token .warehouse-token-stock{font-size:7px;letter-spacing:.02em}
+.construction-token.focus-pulse rect{
+  animation:construction-focus 1.5s ease-out 1;
+  stroke:#ffe28a!important;stroke-width:8!important
+}
+@keyframes construction-focus{
+  0%,100%{filter:brightness(1)}
+  25%,70%{filter:brightness(1.5) drop-shadow(0 0 12px rgba(255,226,138,.95))}
+}
+
+@media(max-width:640px){
+  .players-bar{
+    position:sticky!important;top:var(--topbar-h)!important;z-index:44!important;
+    box-shadow:0 5px 12px rgba(0,0,0,.22)
+  }
+  .player-pill.overview::before{display:none}
+  .nav-rail{top:auto!important;height:62px!important}
+  .city-overview-panel.active{
+    position:fixed;left:7px;right:7px;bottom:calc(68px + env(safe-area-inset-bottom));
+    top:auto;z-index:42;margin:0;padding:6px;max-height:135px;
+    border-radius:11px;box-shadow:0 10px 26px rgba(0,0,0,.28)
+  }
+  .overview-head{margin-bottom:4px}
+  .overview-head b{font-size:9px}.overview-head small{font-size:7px}
+  .overview-head-actions button{min-height:27px;padding:4px 6px}
+  .overview-effect{padding:4px 6px;margin-bottom:4px;font-size:7px}
+  .overview-object{flex-basis:178px;min-height:62px;padding:5px 6px}
+  .overview-object-head b{font-size:9px}.overview-object-head em{font-size:7px}
+  .overview-materials{margin-top:3px}.overview-materials .resource-pip{width:18px;height:18px;font-size:7px}
+  .overview-object-foot{margin-top:3px}.overview-object-foot small{font-size:7px}
+  .warehouse-counts{margin-top:5px}.warehouse-counts i{min-width:29px;padding:2px 4px;font-size:7px}
+  body.delivery-active .city-overview-panel,
+  body.context-open .city-overview-panel{display:none!important}
+  #cityView.active{padding-bottom:205px}
+  .city-action-card.action-available::after{font-size:6px;right:5px;top:5px}
+  .full-sf-map .construction-token .warehouse-token-title{font-size:10px}
+  .full-sf-map .construction-token .warehouse-token-stock{font-size:9px}
+}
+
+@media(max-width:390px){
+  .city-overview-panel.active{max-height:128px}
+  .overview-object{flex-basis:164px}
+}
