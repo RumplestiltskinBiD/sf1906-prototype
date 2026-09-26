@@ -2,7 +2,7 @@
 
 Мобильный веб-прототип настольной игры про землетрясение и пожары в Сан-Франциско 1906 года.
 
-## Prototype v0.26
+## Prototype v0.27
 
 Текущая версия проверяет основной игровой цикл:
 
@@ -40,7 +40,7 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Районы в радиусе одного шага выбранного представителя подсвечиваются до действия.
 
 
-## v0.26 full map test
+## v0.27 full map test
 
 - В Phase I используются 18 строительных районов карты San Francisco 1900–1906.
 - В каждом строительном районе ровно 5 building slots.
@@ -50,3 +50,19 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Земля сохраняет шкалу $0–$4: дорогие центральные/северо-восточные районы, средние центрально-западные, дешёвые южные/западные; Outer Sunset стартует с $0.
 - Карта переведена в интерактивный SVG: районы кликабельны, legal destinations подсвечиваются, а workers/buildings рисуются поверх поля.
 - Легенда оставлена на поле для тестирования ощущения физической настольной карты.
+
+
+## v0.27 — V8 development map + logistics foundations
+
+- The browser board now uses the approved **V8 development map with the manual red district contours** as the visual background.
+- All 21 gameplay territories use the manually traced geometry as a transparent SVG interaction layer.
+- The adjacency graph is locked to the current design, including geographic links for **Presidio** and **Twin Peaks** even though normal movement into them remains blocked.
+- **Golden Gate Park** remains non-buildable but passable.
+- Five logistics supply nodes are placed on the development map:
+  - Broadway Wharf — North Beach — throughput 3
+  - Pacific Mail / Pier 40 — SoMa — throughput 4
+  - Southern Pacific · Third & Townsend — SoMa — throughput 4
+  - China Basin / ATSF — Mission Bay — throughput 4
+  - Union Iron Works / Potrero Point — Potrero — throughput 2
+- At game start and after each round cleanup, every node receives a completely new random supply: **Lumber 40% / Masonry 35% / Steel 25%**. Any old node stock is discarded.
+- The new logistics stock is **not yet connected to construction/payment**. The existing construction procurement flow is intentionally left intact until the delivery/hauler rules are designed and tested.

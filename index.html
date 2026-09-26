@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.26</title>
+  <title>San Francisco 1906 — Prototype v0.27</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.26</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.27</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -73,131 +73,43 @@
         <div class="construction-mode" id="constructionMode"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
-            <span class="soft-chip">Map Test · 18 районов × 5 слотов</span>
-            <span class="soft-chip">ST Street Network · RL Rail · PT Port · F Fire · C Clinic</span>
+            <span class="soft-chip">v0.27 · V8 development map · ручная gameplay geometry</span>
+            <span class="soft-chip">5 supply nodes · Lumber 40% · Masonry 35% · Steel 25%</span>
             <span class="soft-chip mobile-pan-hint">На телефоне: FIT для обзора · DETAIL для чтения</span>
             <span class="map-zoom-controls"><button type="button" id="mapZoomFit">FIT</button><button type="button" id="mapZoomDetail">DETAIL</button></span>
           </div>
           <div class="city-board-scroll" id="cityBoardScroll">
-          <svg class="city-board full-sf-map" viewBox="0 0 1536 1024" role="img" aria-label="Тестовая карта Сан-Франциско 1906 с полным набором районов">
-            <defs>
-              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-opacity=".18"/></filter>
-              <pattern id="fillHatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
-                <rect width="12" height="12" fill="#8dbbc6"/><line x1="0" y1="0" x2="0" y2="12" stroke="#467f8e" stroke-width="3" opacity=".55"/>
-              </pattern>
-              <pattern id="softDots" width="14" height="14" patternUnits="userSpaceOnUse">
-                <rect width="14" height="14" fill="transparent"/><circle cx="4" cy="4" r="1.7" fill="#625945" opacity=".25"/>
-              </pattern>
-            </defs>
+          <svg class="city-board full-sf-map" viewBox="0 0 1536 1024" role="img" aria-label="V8 development map Сан-Франциско с интерактивными gameplay районами и логистическими узлами">
+            <image id="devMapImage" class="dev-map-image" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"></image>
 
-            <rect width="1536" height="1024" fill="#d9c7a6"/>
-            <rect x="10" y="10" width="1516" height="1004" rx="4" fill="#87b5bc" stroke="#3d3428" stroke-width="8"/>
-            <path class="map-landmass" d="M330 35 L660 42 L780 50 L1010 70 L1180 185 L1260 360 L1280 610 L1260 930 L1090 990 L840 975 L620 950 L420 945 L220 915 L110 810 L85 610 L105 405 L125 250 L250 125 Z" filter="url(#softShadow)"/>
-
-            <g id="mapDistricts">
-              <g class="district special-zone blocked-zone" data-district="presidio"><path d="M318 55 L625 50 L650 205 L555 258 L350 252 L284 160 Z"/><text x="485" y="150">PRESIDIO</text><text class="submap-label" x="485" y="174">Federal Territory</text></g>
-
-              <g class="district" data-district="marina"><path d="M625 62 L818 62 L842 195 L650 208 Z"/><text x="735" y="125">MARINA</text></g>
-              <g class="district" data-district="northbeach"><path d="M818 62 L1008 78 L1090 198 L842 232 L842 195 Z"/><text x="930" y="130">NORTH BEACH</text></g>
-              <g class="district" data-district="chinatown"><path d="M842 232 L1090 198 L1125 344 L900 365 Z"/><text x="982" y="282">CHINATOWN</text></g>
-              <g class="district" data-district="pacific"><path d="M650 208 L842 195 L900 365 L590 360 L555 258 Z"/><text x="730" y="292">PACIFIC HEIGHTS</text></g>
-
-              <g class="district" data-district="outerrichmond"><path d="M118 260 L340 255 L340 448 L120 466 Z"/><text x="230" y="350">OUTER RICHMOND</text></g>
-              <g class="district" data-district="innerrichmond"><path d="M340 255 L520 255 L520 458 L340 448 Z"/><text x="430" y="350">INNER RICHMOND</text></g>
-              <g class="district" data-district="western"><path d="M520 255 L590 360 L780 350 L748 468 L520 458 Z"/><text x="645" y="390">WESTERN ADDITION</text></g>
-
-              <g class="district" data-district="civic"><path d="M780 350 L900 365 L948 455 L820 538 L748 468 Z"/><text x="845" y="430">CIVIC CENTER</text></g>
-              <g class="district" data-district="financial"><path d="M900 365 L1125 344 L1198 430 L1215 520 L1088 560 L948 455 Z"/><text x="1070" y="430">FINANCIAL</text><text x="1070" y="455">DISTRICT</text></g>
-              <g class="district" data-district="soma"><path d="M820 538 L948 455 L1088 560 L1060 642 L900 625 Z"/><text x="980" y="565">SoMa</text></g>
-
-              <g class="district special-zone passage-zone" data-district="park"><path d="M120 466 L520 458 L565 535 L530 605 L382 625 L150 600 L104 520 Z"/><text x="355" y="535">GOLDEN GATE PARK</text></g>
-              <g class="district" data-district="haight"><path d="M565 535 L748 468 L820 538 L720 615 L565 605 Z"/><text x="655" y="565">HAIGHT-ASHBURY</text></g>
-              <g class="district" data-district="innersunset"><path d="M382 625 L565 605 L720 615 L690 758 L390 760 Z"/><text x="515" y="690">INNER SUNSET</text></g>
-              <g class="district" data-district="sunset"><path d="M150 600 L382 625 L390 760 L360 900 L135 875 L115 720 Z"/><text x="255" y="720">OUTER SUNSET</text></g>
-
-              <g class="district" data-district="mission"><path d="M720 615 L900 625 L1060 642 L1010 782 L805 782 L690 705 Z"/><text x="860" y="700">MISSION</text></g>
-              <g class="district" data-district="missionbay"><path d="M1088 560 L1215 520 L1250 565 L1255 760 L1080 760 L1060 642 Z"/><text x="1160" y="675">MISSION BAY</text></g>
-              <g class="district" data-district="potrero"><path d="M1080 760 L1255 760 L1230 935 L1050 922 L1010 782 Z"/><text x="1145" y="840">POTRERO</text></g>
-              <g class="district" data-district="noe"><path d="M690 705 L805 782 L820 930 L690 905 L610 820 Z"/><text x="710" y="820">NOE VALLEY</text></g>
-              <g class="district" data-district="bernal"><path d="M805 782 L1010 782 L1050 922 L820 930 Z"/><text x="905" y="855">BERNAL HEIGHTS</text></g>
-              <g class="district special-zone blocked-zone" data-district="twinpeaks"><path d="M390 760 L530 705 L610 820 L690 905 L520 945 L360 900 Z"/><text x="510" y="850">TWIN PEAKS</text></g>
-            </g>
-
-            <g class="ground-overlay" pointer-events="none">
-              <path d="M900 625 L1060 642 L1010 782 L805 782 Z" fill="url(#softDots)"/>
-              <path d="M1088 560 L1215 520 L1250 565 L1255 760 L1080 760 L1060 642 Z" fill="url(#fillHatch)" opacity=".55"/>
-              <path d="M1080 760 L1255 760 L1230 935 L1050 922 Z" fill="url(#softDots)" opacity=".55"/>
-            </g>
-
-            <g class="map-roads" pointer-events="none">
-              <path class="major-road market-road" d="M455 805 L1005 390"/>
-              <path class="major-road" d="M815 120 L850 470"/>
-              <path class="secondary-road" d="M155 410 L760 390"/>
-              <path class="secondary-road" d="M690 630 L1080 630"/>
-              <path class="secondary-road" d="M120 600 L690 600"/>
-            </g>
-            <g class="map-rail" pointer-events="none">
-              <path d="M1110 470 C1100 585 1075 710 1080 940"/>
-              <path d="M1124 470 C1115 590 1092 712 1096 945"/>
-              <path d="M1138 470 C1130 592 1110 716 1112 948"/>
+            <g id="mapDistricts" aria-label="Gameplay district interaction layer">
+              <g class="district special-zone blocked-zone" data-district="presidio"><path d="M 464 57 L 501 88 L 520 93 L 557 108 L 572 104 L 621 88 L 645 138 L 648 153 L 661 165 L 657 185 L 643 197 L 618 212 L 609 228 L 610 276 L 588 263 L 535 261 L 457 265 L 433 262 L 375 271 L 299 268 L 278 248 L 324 217 L 333 185 L 355 164 L 368 133 L 383 54 L 409 61 L 429 68 L 464 57 Z"/></g>
+              <g class="district" data-district="marina"><path d="M 657 110 L 660 125 L 644 138 L 645 152 L 659 163 L 711 163 L 744 167 L 820 155 L 797 86 L 753 89 L 687 102 L 657 110 Z"/></g>
+              <g class="district" data-district="northbeach"><path d="M 984 158 L 891 179 L 888 192 L 857 195 L 840 157 L 819 156 L 798 83 L 831 74 L 859 73 L 881 77 L 906 86 L 936 101 L 961 118 L 993 140 L 1039 174 L 1066 215 L 1038 234 L 984 158 Z"/></g>
+              <g class="district" data-district="chinatown"><path d="M 1019 254 L 1035 233 L 984 161 L 889 178 L 889 194 L 855 197 L 862 226 L 884 266 L 1019 254 Z"/></g>
+              <g class="district" data-district="pacific"><path d="M 661 166 L 662 180 L 653 185 L 656 194 L 642 197 L 638 206 L 617 213 L 609 234 L 611 278 L 650 296 L 890 287 L 840 154 L 747 167 L 710 161 L 661 166 Z"/></g>
+              <g class="district" data-district="financial"><path d="M 1154 343 L 1122 285 L 1070 214 L 1036 234 L 1020 254 L 885 268 L 891 295 L 926 293 L 932 304 L 963 324 L 1009 378 L 1028 381 L 1154 343 Z"/></g>
+              <g class="district" data-district="soma"><path d="M 868 472 L 985 354 L 1008 377 L 1030 381 L 1154 344 L 1167 377 L 1175 401 L 1179 444 L 1188 499 L 1203 545 L 1089 572 L 960 628 L 897 505 L 868 472 Z"/></g>
+              <g class="district" data-district="civic"><path d="M 736 464 L 734 554 L 759 561 L 975 343 L 955 317 L 929 305 L 924 291 L 892 293 L 883 286 L 789 293 L 790 317 L 736 464 Z"/></g>
+              <g class="district" data-district="western"><path d="M 530 423 L 525 265 L 581 264 L 607 279 L 648 299 L 789 293 L 792 318 L 753 422 L 607 429 L 604 418 L 530 423 Z"/></g>
+              <g class="district" data-district="innerrichmond"><path d="M 523 262 L 351 275 L 345 407 L 525 392 L 523 262 Z"/></g>
+              <g class="district" data-district="outerrichmond"><path d="M 348 274 L 348 405 L 177 427 L 143 441 L 143 409 L 131 391 L 135 375 L 129 363 L 117 350 L 125 333 L 138 323 L 163 315 L 171 301 L 180 295 L 190 266 L 210 264 L 214 273 L 246 268 L 262 249 L 279 248 L 300 267 L 348 274 Z"/></g>
+              <g class="district" data-district="haight"><path d="M 594 586 L 732 553 L 735 468 L 752 420 L 606 429 L 604 475 L 582 482 L 563 495 L 542 512 L 541 575 L 594 586 Z"/></g>
+              <g class="district" data-district="innersunset"><path d="M 394 577 L 542 576 L 593 583 L 593 653 L 569 660 L 485 660 L 473 664 L 462 674 L 460 685 L 444 693 L 446 709 L 432 719 L 416 716 L 408 731 L 393 738 L 392 719 L 394 577 Z"/></g>
+              <g class="district" data-district="sunset"><path d="M 320 856 L 340 845 L 378 747 L 390 740 L 393 576 L 184 574 L 146 602 L 152 629 L 151 649 L 159 659 L 159 677 L 163 710 L 173 802 L 196 818 L 209 842 L 287 840 L 320 856 Z"/></g>
+              <g class="district" data-district="mission"><path d="M 768 567 L 867 474 L 899 506 L 927 556 L 959 622 L 945 683 L 946 763 L 825 769 L 781 767 L 678 737 L 649 715 L 633 678 L 616 658 L 593 655 L 592 586 L 732 551 L 761 559 L 768 567 Z"/></g>
+              <g class="district" data-district="missionbay"><path d="M 1237 706 L 1232 607 L 1202 543 L 1090 571 L 964 629 L 951 687 L 951 704 L 1076 734 L 1083 711 L 1200 707 L 1218 717 L 1237 706 Z"/></g>
+              <g class="district" data-district="potrero"><path d="M 1177 980 L 1235 924 L 1233 778 L 1224 744 L 1240 734 L 1237 706 L 1221 718 L 1193 707 L 1082 712 L 1078 733 L 952 702 L 946 764 L 952 824 L 1002 909 L 1042 931 L 1068 929 L 1107 920 L 1177 980 Z"/></g>
+              <g class="district" data-district="noe"><path d="M 585 877 L 598 852 L 601 816 L 613 811 L 615 772 L 598 744 L 543 740 L 524 712 L 512 703 L 509 682 L 491 662 L 566 663 L 593 654 L 634 679 L 641 702 L 647 716 L 668 727 L 684 741 L 731 753 L 736 845 L 742 865 L 740 907 L 703 901 L 665 907 L 659 898 L 637 899 L 620 886 L 585 877 Z"/></g>
+              <g class="district" data-district="bernal"><path d="M 740 909 L 743 866 L 736 848 L 732 752 L 779 766 L 826 770 L 944 767 L 949 920 L 868 959 L 841 965 L 815 958 L 791 938 L 762 928 L 740 909 Z"/></g>
+              <g class="district special-zone passage-zone" data-district="park"><path d="M 130 454 L 117 500 L 138 545 L 146 602 L 183 574 L 540 580 L 546 512 L 582 483 L 606 474 L 604 415 L 529 420 L 525 388 L 445 401 L 405 396 L 179 424 L 142 439 L 130 454 Z"/></g>
+              <g class="district special-zone blocked-zone" data-district="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g>
             </g>
 
             <g id="districtMetaLayer"></g>
+            <g id="supplyNodeLayer"></g>
             <g id="constructionLayer"></g>
             <g id="workerLayer"></g>
-
-            <g class="map-title-card" pointer-events="none">
-              <rect x="22" y="20" width="310" height="165" rx="5"/>
-              <text x="42" y="70">SAN FRANCISCO</text>
-              <text class="map-year" x="90" y="108">1900–1906</text>
-              <text class="map-motto" x="62" y="140">A CITY OF OPPORTUNITY</text>
-              <text class="map-motto" x="54" y="162">A MORE RESILIENT TOMORROW</text>
-            </g>
-
-            <g class="board-legend" pointer-events="none">
-              <rect x="1298" y="14" width="220" height="996" rx="3"/>
-              <text class="legend-title" x="1408" y="52">LEGEND</text>
-              <text class="legend-head" x="1320" y="82">Neighbourhoods</text>
-              <g class="legend-items">
-                <rect x="1320" y="98" width="28" height="14" class="lg-presidio"/><text x="1360" y="111">Presidio</text>
-                <rect x="1320" y="120" width="28" height="14" class="lg-marina"/><text x="1360" y="133">Marina</text>
-                <rect x="1320" y="142" width="28" height="14" class="lg-northbeach"/><text x="1360" y="155">North Beach</text>
-                <rect x="1320" y="164" width="28" height="14" class="lg-chinatown"/><text x="1360" y="177">Chinatown</text>
-                <rect x="1320" y="186" width="28" height="14" class="lg-pacific"/><text x="1360" y="199">Pacific Heights</text>
-                <rect x="1320" y="208" width="28" height="14" class="lg-financial"/><text x="1360" y="221">Financial District</text>
-                <rect x="1320" y="230" width="28" height="14" class="lg-soma"/><text x="1360" y="243">SoMa</text>
-                <rect x="1320" y="252" width="28" height="14" class="lg-civic"/><text x="1360" y="265">Civic Center</text>
-                <rect x="1320" y="274" width="28" height="14" class="lg-western"/><text x="1360" y="287">Western Addition</text>
-                <rect x="1320" y="296" width="28" height="14" class="lg-innerrichmond"/><text x="1360" y="309">Inner Richmond</text>
-                <rect x="1320" y="318" width="28" height="14" class="lg-outerrichmond"/><text x="1360" y="331">Outer Richmond</text>
-                <rect x="1320" y="340" width="28" height="14" class="lg-haight"/><text x="1360" y="353">Haight-Ashbury</text>
-                <rect x="1320" y="362" width="28" height="14" class="lg-innersunset"/><text x="1360" y="375">Inner Sunset</text>
-                <rect x="1320" y="384" width="28" height="14" class="lg-sunset"/><text x="1360" y="397">Outer Sunset</text>
-                <rect x="1320" y="406" width="28" height="14" class="lg-mission"/><text x="1360" y="419">Mission</text>
-                <rect x="1320" y="428" width="28" height="14" class="lg-missionbay"/><text x="1360" y="441">Mission Bay</text>
-                <rect x="1320" y="450" width="28" height="14" class="lg-potrero"/><text x="1360" y="463">Potrero</text>
-                <rect x="1320" y="472" width="28" height="14" class="lg-noe"/><text x="1360" y="485">Noe Valley</text>
-                <rect x="1320" y="494" width="28" height="14" class="lg-bernal"/><text x="1360" y="507">Bernal Heights</text>
-                <rect x="1320" y="516" width="28" height="14" class="lg-park"/><text x="1360" y="529">Golden Gate Park</text>
-              </g>
-
-              <text class="legend-head" x="1320" y="570">Ground Type</text>
-              <rect x="1320" y="586" width="38" height="20" class="lg-firm"/><text x="1370" y="601">Firm ground</text>
-              <rect x="1320" y="616" width="38" height="20" fill="url(#softDots)" stroke="#5a4c39"/><text x="1370" y="631">Soft ground</text>
-              <rect x="1320" y="646" width="38" height="20" fill="url(#fillHatch)" stroke="#466b75"/><text x="1370" y="661">Artificial fill</text>
-
-              <text class="legend-head" x="1320" y="706">Transportation</text>
-              <line x1="1320" y1="726" x2="1360" y2="726" class="legend-market"/><text x="1370" y="731">Market Street</text>
-              <line x1="1320" y1="754" x2="1360" y2="754" class="legend-road"/><text x="1370" y="759">Major road</text>
-              <line x1="1320" y1="782" x2="1360" y2="782" class="legend-rail"/><text x="1370" y="787">Railroad</text>
-
-              <text class="legend-head" x="1320" y="836">Map Test v0.26</text>
-              <text x="1320" y="862">18 buildable districts</text>
-              <text x="1320" y="884">5 building slots each</text>
-              <text x="1320" y="906">Park: movement only</text>
-              <text x="1320" y="928">Presidio / Twin Peaks:</text>
-              <text x="1320" y="948">closed</text>
-            </g>
           </svg>
           </div>
         </div>
