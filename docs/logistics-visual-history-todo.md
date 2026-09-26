@@ -16,9 +16,8 @@ No logistics node belongs to two gameplay districts.
 
 ### Southern Pacific · Third & Townsend
 - Keep as a SoMa rail node.
-- Move the marker slightly so the circle reads unambiguously as a single-district node.
+- Move the marker slightly upward so the circle reads unambiguously as a SoMa node and does not overlap Mission Bay.
 - Marker must sit on the historical rail alignment/tracks.
-- IMPORTANT: current user note says “move slightly downward so the circle does not enter SoMa”; this conflicts with the locked gameplay affiliation (SoMa). Before editing, confirm whether the intended wording was “does not enter Mission Bay”.
 
 Historical note:
 - Third & Townsend was Southern Pacific's San Francisco passenger/freight terminal in 1906.
