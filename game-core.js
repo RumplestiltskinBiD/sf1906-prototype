@@ -15,6 +15,35 @@ export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
+export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
+
+export const LOGISTICS_NODES = [
+  {id:'broadway',name:'Broadway Wharf',shortName:'Broadway Wharf',districtId:'northbeach',kind:'port',throughput:3,x:1015,y:155},
+  {id:'pacificmail',name:'Pacific Mail / Pier 40',shortName:'Pacific Mail',districtId:'soma',kind:'port',throughput:4,x:1158,y:514},
+  {id:'southernpacific',name:'Southern Pacific · Third & Townsend',shortName:'SP · 3rd & Townsend',districtId:'soma',kind:'rail',throughput:4,x:1052,y:585},
+  {id:'chinabasin',name:'China Basin / ATSF',shortName:'China Basin',districtId:'missionbay',kind:'rail-port',throughput:4,x:1183,y:665},
+  {id:'unioniron',name:'Union Iron Works / Potrero Point',shortName:'Union Iron Works',districtId:'potrero',kind:'industrial-port',throughput:2,x:1185,y:820}
+];
+
+export function randomLogisticsResource(rng=Math.random){
+  const roll=rng();
+  if(roll<LOGISTICS_RESOURCE_WEIGHTS.Lumber)return 'Lumber';
+  if(roll<LOGISTICS_RESOURCE_WEIGHTS.Lumber+LOGISTICS_RESOURCE_WEIGHTS.Masonry)return 'Masonry';
+  return 'Steel';
+}
+
+export function generateLogisticsSupply({rng=Math.random}={}){
+  return Object.fromEntries(LOGISTICS_NODES.map(node=>[
+    node.id,
+    Array.from({length:node.throughput},()=>randomLogisticsResource(rng))
+  ]));
+}
+
+export function refreshLogisticsSupply(state,{rng=Math.random}={}){
+  state.logisticsSupply=generateLogisticsSupply({rng});
+  return state.logisticsSupply;
+}
+
 export const PROJECTS = [
   {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Street Network',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Street Network.'},
   {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2,benefit:'Income +3 / раунд · Prestige 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Land Value ≤2. Высокий риск в будущей катастрофе.'},
@@ -58,28 +87,28 @@ export const DISTRICTS = [
 ];
 
 export const DISTRICT_ADJACENCY = {
-  presidio:[],
-  marina:['pacific','northbeach'],
-  northbeach:['marina','chinatown'],
-  chinatown:['northbeach','civic','financial'],
-  pacific:['marina','western','civic'],
-  financial:['chinatown','civic','soma'],
-  civic:['pacific','western','chinatown','financial','haight','soma'],
-  western:['pacific','civic','innerrichmond','haight'],
-  innerrichmond:['outerrichmond','western','park'],
-  outerrichmond:['innerrichmond','park'],
-  park:['outerrichmond','innerrichmond','haight','innersunset','sunset'],
+  presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
+  marina:['presidio','pacific','northbeach'],
+  northbeach:['marina','pacific','chinatown','financial'],
+  chinatown:['northbeach','financial','pacific'],
+  pacific:['presidio','marina','northbeach','chinatown','financial','civic','western'],
+  financial:['northbeach','chinatown','pacific','civic','soma'],
+  soma:['financial','civic','mission','missionbay'],
+  civic:['pacific','western','financial','soma','haight','mission'],
+  western:['presidio','innerrichmond','pacific','civic','haight','park'],
+  innerrichmond:['presidio','outerrichmond','western','park'],
+  outerrichmond:['presidio','innerrichmond','park'],
   haight:['park','western','civic','innersunset','mission'],
-  innersunset:['park','sunset','haight','mission','noe'],
-  sunset:['park','innersunset'],
-  soma:['civic','financial','mission','missionbay'],
-  mission:['haight','innersunset','soma','missionbay','potrero','noe','bernal'],
+  innersunset:['park','sunset','haight','mission','noe','twinpeaks'],
+  sunset:['park','innersunset','twinpeaks'],
+  mission:['soma','civic','haight','innersunset','noe','bernal','missionbay','potrero'],
   missionbay:['soma','mission','potrero'],
   potrero:['missionbay','mission','bernal'],
-  noe:['mission','innersunset','bernal'],
+  noe:['innersunset','mission','bernal','twinpeaks'],
   bernal:['mission','noe','potrero'],
-  twinpeaks:[]
-};
+  park:['outerrichmond','innerrichmond','western','haight','innersunset','sunset'],
+  twinpeaks:['innersunset','sunset','noe']
+}
 
 export function shuffle(items, rng=Math.random){
   const a=[...items];
@@ -285,7 +314,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.26',
+    version:'0.27',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -320,7 +349,8 @@ export function createInitialState({rng=Math.random}={}){
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
-    log:[{msg:'Началась тестовая партия Phase I Map Test v0.26. На карте 18 строительных районов по 5 слотов. Golden Gate Park закрыт для строительства, но открыт для передвижения; Presidio и Twin Peaks полностью закрыты. Main action выполняется в текущем или соседнем доступном районе.','cls':'accent'}],
+    logisticsSupply:generateLogisticsSupply({rng}),
+    log:[{msg:'Началась тестовая партия Phase I Map Test v0.27. V8 используется как development map; gameplay geometry зафиксирована ручными контурами. Пять логистических узлов получают новую случайную поставку каждый раунд. Golden Gate Park открыт для передвижения; Presidio и Twin Peaks закрыты для входа.','cls':'accent'}],
     finished:false
   };
 }
@@ -820,7 +850,7 @@ export function setLandValue(state,districtId,value){
   return {ok:true,value:v};
 }
 
-export function cleanupMarket(state){
+export function cleanupMarket(state,{rng=Math.random}={}){
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   const remaining=state.market.filter(m=>m&&!m.sold);
@@ -857,6 +887,7 @@ export function cleanupMarket(state){
   const blanks=Array(Math.max(0,5-incoming.length-survivors.length)).fill(null);
   state.market=[...incoming,...blanks,...survivors];
   state.round++;
+  refreshLogisticsSupply(state,{rng});
   state.firstPlayer=(state.firstPlayer+1)%3;
   state.players.forEach(p=>{p.workers=p.workers?.length?p.workers:createWorkers(p.id);p.workers.forEach(w=>w.used=false);p.workersLeft=p.workers.length;});
   state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
@@ -869,6 +900,7 @@ export function cleanupMarket(state){
   state.selectedMarketUid=first?.uid||null;
   state.selectedProjectId=first?.id||null;
   logEvent(state,`Раунд ${state.round}. Первый игрок: ${state.players[state.firstPlayer].name}. Старые проекты сдвинуты вправо и стоят на $1 дешевле.`,'accent');
+  logEvent(state,'Поставки в портах и на станциях полностью обновлены: Lumber 40% · Masonry 35% · Steel 25%.','accent');
   return {ok:true,finished:false};
 }
 
