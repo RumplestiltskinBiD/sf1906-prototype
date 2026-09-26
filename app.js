@@ -277,7 +277,7 @@ function renderDeliveryPanel(){
     html+='</div><div class="load-resource-grid">';
     for(const t of RESOURCE_ORDER){
       const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity;
-      html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+(deliveryDraft.source.kind==='node'?')+'</strong><small>'+left+' ост.</small></button>';
+      html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+(deliveryDraft.source.kind==='node'?'$'+RESOURCE_PRICES[t]:'ОПЛАЧЕНО')+'</strong><small>'+left+' ост.</small></button>';
     }
     html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
     const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
