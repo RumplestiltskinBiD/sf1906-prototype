@@ -1,6 +1,6 @@
 # Logistics nodes — visual/history TODO
 
-Status: deferred. Do not move map markers or redraw tracks until the dedicated visual pass.
+Status: marker placement/classification implemented in v0.28.7. Background rail artwork itself remains deferred.
 
 ## Locked gameplay affiliation
 
@@ -73,3 +73,14 @@ Historical note:
 - San Francisco Planning / Central Waterfront historic context (Union Iron Works).
 - San Francisco Museum 1906 Southern Pacific records (Third & Townsend).
 - FoundSF / San Francisco Maritime historical material on Pacific Mail wharf and tramway.
+
+
+## Implemented in v0.28.7
+
+- Marker coordinates updated for all five logistics nodes.
+- Third & Townsend moved upward and kept fully inside SoMa.
+- Pacific Mail moved to the SoMa waterfront edge and classified as port + rail.
+- China Basin moved toward the northeast waterfront/car-ferry side of Mission Bay and remains port + rail.
+- Union Iron Works moved to the Potrero waterfront edge and classified as industrial port + rail.
+- Broadway Wharf moved to the North Beach waterfront edge.
+- Background railway artwork was not redrawn in this pass; exact rail-line artwork can be refined later if needed.
