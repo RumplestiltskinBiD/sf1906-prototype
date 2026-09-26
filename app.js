@@ -817,7 +817,7 @@ function renderCity(){
       list.forEach((con,i)=>{
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
-        const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
+        const complete=con.status==='complete',label=complete?(con.projectId==='warehouse'?`W ${warehouseInventory(con).length}/${WAREHOUSE_STORAGE_CAPACITY}`:'✓'):`${prog.delivered}/${prog.required}`;
         const whSource=deliveryMode?.step==='source'&&complete&&con.projectId==='warehouse'&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
         html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''}" transform="translate(${cx+dx} ${cy+dy+30})"${whSource}><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
       });
