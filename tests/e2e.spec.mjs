@@ -43,7 +43,7 @@ async function stored(page){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.28.6');
+  await expect(page.locator('.version-badge')).toHaveText('v0.28.7');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -286,4 +286,50 @@ test('unload targets are presented before optional route continuation',async({pa
     return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
   });
   expect(order).toBe(true);
+});
+
+
+test('logistics markers show Russian types and centers remain inside their gameplay districts',async({page})=>{
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+  const expected=[
+    ['broadway','northbeach','Порт'],
+    ['pacificmail','soma','Порт + ж/д'],
+    ['southernpacific','soma','Ж/д станция'],
+    ['chinabasin','missionbay','Порт + ж/д'],
+    ['unioniron','potrero','Порт + ж/д · промышленный']
+  ];
+  for(const [nodeId,districtId,label] of expected){
+    const node=page.locator('[data-delivery-node="'+nodeId+'"]');
+    await expect(node).toBeVisible();
+    await expect(node.locator('.node-type')).toHaveText(label);
+    const inside=await page.evaluate(({nodeId,districtId})=>{
+      const node=document.querySelector('[data-delivery-node="'+nodeId+'"]');
+      const path=document.querySelector('[data-district="'+districtId+'"] path');
+      if(!node||!path||typeof path.isPointInFill!=='function')return false;
+      const root=document.querySelector('.city-board');
+      const p=root.createSVGPoint();
+      const m=node.getCTM();
+      p.x=m.e;p.y=m.f;
+      const local=p.matrixTransform(path.getCTM().inverse());
+      return path.isPointInFill(local);
+    },{nodeId,districtId});
+    expect(inside,nodeId+' center must stay inside '+districtId).toBe(true);
+  }
+});
+
+test('Delivery source cards expose Russian node type and profile without losing names',async({page})=>{
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  const pacific=page.locator('[data-ds-node="pacificmail"]');
+  await expect(pacific).toContainText('Pacific Mail');
+  await expect(pacific).toContainText('Порт + ж/д');
+  await expect(pacific).toContainText('Д 40% · К 40% · С 20%');
+  const union=page.locator('[data-ds-node="unioniron"]');
+  await expect(union).toContainText('Union Iron Works');
+  await expect(union).toContainText('Порт + ж/д · промышленный');
+  await expect(union).toContainText('Д 20% · К 25% · С 55%');
 });
