@@ -802,8 +802,16 @@ function renderCity(){
 
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
-    g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target');
+    g.classList.toggle('selected',!deliveryDraft&&state.selectedDistrictId===id);
+    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route-district','delivery-route-current','delivery-next','delivery-blocked');
+    if(deliveryDraft?.step==='route'){
+      const route=deliveryDraft.route||[],last=route[route.length-1],next=new Set(deliveryNeighbors(last));
+      if(route.includes(id))g.classList.add('delivery-route-district');
+      if(id===last)g.classList.add('delivery-route-current');
+      if(next.has(id))g.classList.add('delivery-next');
+      if(['park','presidio','twinpeaks'].includes(id))g.classList.add('delivery-blocked');
+      return;
+    }
     if(selectedWorker&&!state.activationMainActionUsed){
       if(id===selectedWorker.districtId)g.classList.add('worker-origin');
       if(reachableIds.has(id))g.classList.add('worker-reachable');
@@ -842,14 +850,14 @@ function renderCity(){
       items.forEach(({p,w},i)=>{
         const [dx,dy]=WORKER_OFFSETS[i]||[0,-42-i*22];
         const isSelected=state.activeWorkerId===w.id&&currentDeveloper(state)===p.id;
-        const selectable=state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===p.id&&!w.used&&!state.activationMainActionUsed;
+        const selectable=!deliveryDraft&&state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===p.id&&!w.used&&!state.activationMainActionUsed;
         workerHtml+=`<g class="worker-token token-${p.key} ${w.used?'used':''} ${isSelected?'selected':''} ${selectable?'selectable':''}" transform="translate(${cx+dx} ${cy+dy})" data-worker-token="${w.id}" data-worker-player="${p.id}"><circle r="16"/><text y="4">${w.number}</text><title>${p.name} · представитель #${w.number} · ${districtById(w.districtId)?.name}${w.used?' · использован':''}</title></g>`;
       });
     });
     workerLayer.innerHTML=workerHtml;
     $$('[data-worker-token]').forEach(g=>g.onclick=()=>{
       const workerPlayer=Number(g.dataset.workerPlayer);
-      if(state.phase!=='development'||currentDeveloper(state)!==workerPlayer)return;
+      if(deliveryDraft||state.phase!=='development'||currentDeveloper(state)!==workerPlayer)return;
       const r=selectWorker(state,workerPlayer,g.dataset.workerToken);
       if(!r.ok)return;
       state.pendingConstruction=null;state.pendingWorkerAction=null;render();
@@ -865,11 +873,16 @@ function renderCity(){
       list.forEach((con,i)=>{
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
-        const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
-        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
+        const complete=con.status==='complete';
+        const warehouseComplete=complete&&con.projectId==='warehouse';
+        const warehouseLoad=(con.storedMaterials||[]).length;
+        const label=warehouseComplete?'W '+warehouseLoad+'/'+WAREHOUSE_STORAGE_CAPACITY:complete?'✓':prog.delivered+'/'+prog.required;
+        const sourceSelectable=deliveryDraft?.step==='source'&&warehouseComplete&&con.playerId===deliveryDraft.playerId&&warehouseLoad>0;
+        html+='<g class="construction-token '+(complete?'complete':'under')+' token-'+pl.key+' '+(sourceSelectable?'delivery-source-selectable':'')+'" transform="translate('+(cx+dx)+' '+(cy+dy+30)+')" '+(sourceSelectable?'data-delivery-source-warehouse="'+con.id+'"':'')+'><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">'+label+'</text><title>'+pl.name+': '+pr.name+' — '+(warehouseComplete?'Storage '+warehouseLoad+'/'+WAREHOUSE_STORAGE_CAPACITY:complete?'Completed':prog.delivered+'/'+prog.required+' materials')+'</title></g>';
       });
     });
     layer.innerHTML=html;
+    $('[data-delivery-source-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();selectDeliverySource({kind:'warehouse',id:g.dataset.deliverySourceWarehouse});});
   }
 }
 
