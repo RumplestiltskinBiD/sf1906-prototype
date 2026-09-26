@@ -123,3 +123,11 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Same-district deliveries are explicitly supported in the UI: a construction in the source district can be unloaded without crossing a district border.
 - When an unload target exists in the current district, Delivery shows a prominent “Разгрузить здесь” action before optional onward route choices.
 - Clicking the current route district now explains that the truck is already there instead of incorrectly requiring a neighboring district.
+
+
+## v0.28.4 — unload click hotfix
+
+- Fixed a route-button selector regression introduced in v0.28.3.
+- The first unload click no longer causes the Delivery panel re-render to crash.
+- Resource assignment buttons (+L / +M / +S) remain wired after every Delivery re-render.
+- Full app.js scan confirms there are no remaining querySelector(...).forEach selector mistakes.

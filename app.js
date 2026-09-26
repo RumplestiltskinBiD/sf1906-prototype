@@ -307,7 +307,7 @@ function renderDeliveryPanel(){
   $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];render();});
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
   $('#deliveryUnloadHere')?.addEventListener('click',()=>$('#deliveryTargets')?.scrollIntoView({behavior:'smooth',block:'nearest'}));
-  $('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
+  $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
   $('#deliveryUndoRoute')?.addEventListener('click',undoDeliveryRoute);
   $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
   $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
