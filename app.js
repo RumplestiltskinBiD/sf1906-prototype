@@ -637,7 +637,7 @@ function renderCityActions(){
     const hasConstruction=(state.constructions||[]).some(x=>x.playerId===pid&&x.status==='under-construction');
     const disabled=mainUsed||!selected||!range||occupied||p.capital<1||!hasConstruction;
     const ownerText=shop.playerId===pid?'$1 procurement cost':'$1 → владельцу';
-    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'2 materials / $1';
+    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'next Delivery · 2 free';
     return `<button class="action-space-btn shops ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-shops-action="${shop.id}" ${disabled?'disabled':''}><b>Shopping Row · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
   }).join(''):'<div class="action-space-locked">Shopping Row ещё не построен</div>';
 
@@ -663,7 +663,7 @@ function renderCityActions(){
     <button class="city-action-card delivery" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Delivery · FREE ACTION</b><span>Источник → перевозчик → маршрут → несколько разгрузок</span><strong>${deliveryDisabled?'LOCKED':'START ROUTE'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
-    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1</span><div class="action-space-list">${shopsButtons}</div></div>
+    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
     <div class="city-action-card club-card"><b>Restaurant & Social Club</b><span>Нужно добраться до Club · −$1 → +1 Influence</span><div class="action-space-list">${clubButtons}</div></div>
   </div>`;
 
@@ -755,7 +755,7 @@ function renderCity(){
       if(id===last)g.classList.add('delivery-current');
       if(next.has(id))g.classList.add('delivery-next');
       else if(!route.includes(id))g.classList.add('delivery-blocked');
-    }else if(selectedWorker&&!state.activationMainActionUsed){
+    }else if(!deliveryMode&&selectedWorker&&!state.activationMainActionUsed){
       if(id===selectedWorker.districtId)g.classList.add('worker-origin');
       if(reachableIds.has(id))g.classList.add('worker-reachable');
       else g.classList.add('worker-unreachable');
@@ -1004,7 +1004,7 @@ $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;stat
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.25: выберите представителя → main action в текущем/соседнем районе. Raise Capital +$3 тоже может переместить его на 1 район. FIT/DETAIL управляют картой на телефоне.');};
+$('#helpBtn').onclick=()=>{showToast('v0.28: Delivery — free action. Выберите источник, перевозчика и груз, затем маршрут по соседним районам и разгрузку на свои стройки / Warehouse.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
