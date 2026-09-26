@@ -29,6 +29,8 @@ test('initial state is internally consistent',()=>{
   assert.equal(G.DELIVERY_HAULERS.filter(h=>h.limited).length,6);
   assert.equal(G.DELIVERY_HAULERS.find(h=>h.id==='standard').capacity,3);
   assert.equal(G.DELIVERY_HAULERS.find(h=>h.id==='standard').baseCost,3);
+  assert.equal(G.LOGISTICS_NODES.find(n=>n.id==='pacificmail').kind,'rail-port');
+  assert.equal(G.LOGISTICS_NODES.find(n=>n.id==='unioniron').kind,'industrial-rail-port');
 });
 
 test('district adjacency is symmetric and references valid districts',()=>{
@@ -406,4 +408,42 @@ test('Delivery log preserves causal order for partial then completing shipment',
   assert.ok(secondDeliveryIndex>firstDeliveryIndex);
   assert.ok(completionIndex>secondDeliveryIndex,'completion must be logged after the Delivery that caused it');
   assert.match(s.log[secondDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Masonry ×1/);
+});
+
+
+test('logistics node profiles specialize sources while preserving citywide 40/35/25 balance',()=>{
+  const expected={
+    broadway:{Lumber:.60,Masonry:.30,Steel:.10},
+    pacificmail:{Lumber:.40,Masonry:.40,Steel:.20},
+    southernpacific:{Lumber:.40,Masonry:.35,Steel:.25},
+    chinabasin:{Lumber:.35,Masonry:.40,Steel:.25},
+    unioniron:{Lumber:.20,Masonry:.25,Steel:.55}
+  };
+  for(const node of G.LOGISTICS_NODES){
+    assert.deepEqual(node.weights,expected[node.id]);
+    assert.ok(Math.abs(Object.values(node.weights).reduce((a,b)=>a+b,0)-1)<1e-9,node.id);
+  }
+  const total=G.LOGISTICS_NODES.reduce((s,n)=>s+n.throughput,0);
+  const weighted={Lumber:0,Masonry:0,Steel:0};
+  for(const node of G.LOGISTICS_NODES)for(const type of Object.keys(weighted))weighted[type]+=node.throughput*node.weights[type];
+  assert.ok(Math.abs(weighted.Lumber/total-.40)<.001);
+  assert.ok(Math.abs(weighted.Masonry/total-.35)<.01);
+  assert.ok(Math.abs(weighted.Steel/total-.25)<.01);
+});
+
+test('logistics node map coordinates match approved historical placement pass',()=>{
+  const pos=Object.fromEntries(G.LOGISTICS_NODES.map(n=>[n.id,[n.x,n.y,n.districtId,n.kind]]));
+  assert.deepEqual(pos.broadway,[1048,195,'northbeach','port']);
+  assert.deepEqual(pos.pacificmail,[1195,525,'soma','rail-port']);
+  assert.deepEqual(pos.southernpacific,[1052,560,'soma','rail']);
+  assert.deepEqual(pos.chinabasin,[1225,625,'missionbay','rail-port']);
+  assert.deepEqual(pos.unioniron,[1222,850,'potrero','industrial-rail-port']);
+});
+
+test('node-specific random resource thresholds work at profile boundaries',()=>{
+  const node=id=>G.LOGISTICS_NODES.find(n=>n.id===id);
+  assert.equal(G.randomLogisticsResource(()=>.59,node('broadway').weights),'Lumber');
+  assert.equal(G.randomLogisticsResource(()=>.61,node('broadway').weights),'Masonry');
+  assert.equal(G.randomLogisticsResource(()=>.95,node('broadway').weights),'Steel');
+  assert.equal(G.randomLogisticsResource(()=>.54,node('unioniron').weights),'Steel');
 });
