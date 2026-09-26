@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\.28\.7/);
-  assert.match(html,/app\.js\?v=0287/);
-  assert.match(html,/styles\.css\?v=0287/);
+  assert.match(html,/Prototype v0\.29\.0/);
+  assert.match(html,/app\.js\?v=0290/);
+  assert.match(html,/styles\.css\?v=0290/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -35,4 +35,17 @@ test('JavaScript entry files parse successfully',()=>{
     const r=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
     assert.equal(r.status,0,file+' syntax error:\n'+(r.stderr||r.stdout));
   }
+});
+
+
+test('persistent city overview hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  for(const needle of [
+    'function renderCityOverview()',
+    'function focusConstruction(',
+    'function focusMapOnDistrict(',
+    'action-available',
+    'build-dim',
+    'data-construction-token'
+  ]) assert.ok(app.includes(needle),needle);
 });
