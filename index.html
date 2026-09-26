@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.27.2</title>
+  <title>San Francisco 1906 — Prototype v0.28</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.27.2</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.28</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -73,7 +73,7 @@
         <div class="construction-mode" id="constructionMode"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
-            <span class="soft-chip">v0.27 · V8 development map · ручная gameplay geometry</span>
+            <span class="soft-chip">v0.28 · route delivery prototype</span>
             <span class="soft-chip">5 supply nodes · Lumber 40% · Masonry 35% · Steel 25%</span>
             <span class="soft-chip mobile-pan-hint">На телефоне: FIT для обзора · DETAIL для чтения</span>
             <span class="map-zoom-controls"><button type="button" id="mapZoomFit">FIT</button><button type="button" id="mapZoomDetail">DETAIL</button></span>
@@ -106,6 +106,7 @@
               <g class="district special-zone blocked-zone" data-district="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g>
             </g>
 
+            <g id="deliveryRouteLayer" transform="translate(0 -11)"></g>
             <g id="districtMetaLayer" transform="translate(0 -11)"></g>
             <g id="supplyNodeLayer"></g>
             <g id="constructionLayer" transform="translate(0 -11)"></g>
@@ -113,6 +114,7 @@
           </svg>
           </div>
         </div>
+        <section class="delivery-sheet" id="deliveryPanel" aria-live="polite"></section>
       </section>
 
       <aside class="context-panel" id="contextPanel" aria-live="polite"></aside>
