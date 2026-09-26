@@ -606,7 +606,7 @@ export function warehouseCapacityBonus(){return 0;}
 
 export function constructionCapacity(state,construction){
   if(!construction)return 0;
-  return construction.projectId==='warehouse'?4:CONSTRUCTION_STAGING_CAPACITY;
+  return CONSTRUCTION_STAGING_CAPACITY;
 }
 
 function materialCounts(list=[]){
