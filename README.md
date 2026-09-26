@@ -109,3 +109,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Undoing the last route district now removes only unloads that are no longer on the route.
 - Increased key Delivery touch targets on mobile.
 - State schema remains v0.28, so existing local test saves are preserved.
+
+
+## v0.28.2 — Delivery panel visibility fix
+
+- Fixed Delivery panel visibility: starting the free action now explicitly opens the Delivery panel.
+- After choosing a port/station or Warehouse, the visible panel advances to hauler + cargo selection.
+- No game-state schema change; existing v0.28 saves remain compatible.

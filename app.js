@@ -245,6 +245,7 @@ function renderDeliveryPanel(){
   const active=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
   document.body.classList.toggle('delivery-active',active);
   if(!active){if(deliveryDraft)deliveryDraft=null;el.className='delivery-panel';el.innerHTML='';return;}
+  el.className='delivery-panel active';
   const pid=deliveryDraft.playerId,p=state.players[pid];
   let html='<div class="delivery-head"><div><small>FREE ACTION · DELIVERY</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close">×</button></div>';
   if(deliveryDraft.step==='source'){
