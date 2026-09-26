@@ -1639,3 +1639,14 @@ button.city-action-card{cursor:pointer}
   .city-overview-panel.active{max-height:128px}
   .overview-object{flex-basis:164px}
 }
+
+.focused-object-detail{
+  margin:8px 0 12px;padding:9px;border:1px solid #6f8f83;border-radius:10px;
+  background:#f4f7ed;box-shadow:inset 3px 0 0 #5e8276
+}
+.focused-object-detail.warehouse{background:#eef1e8}
+.focused-object-title{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.focused-object-title span:last-child{min-width:0}
+.focused-object-title b{display:block;font-size:11px}
+.focused-object-title small{display:block;margin-top:1px;font-size:8px;color:#74695c}
+.focused-object-note{margin-top:6px;font-size:9px;line-height:1.35;color:#5c5348}
