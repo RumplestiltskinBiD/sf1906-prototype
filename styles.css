@@ -1333,7 +1333,7 @@ button.city-action-card{cursor:pointer}
 }
 .full-sf-map .supply-node.node-rail .node-pin{fill:#ded7ca}
 .full-sf-map .supply-node.node-rail-port .node-pin{fill:#d4e2de}
-.full-sf-map .supply-node.node-industrial-port .node-pin{fill:#ddd0bf}
+.full-sf-map .supply-node.node-industrial-port .node-pin{fill:#ddd0bf}\n.full-sf-map .supply-node.node-industrial-rail-port .node-pin{fill:#d7ccb9}
 .full-sf-map .node-code{
   font:900 10px/1 ui-sans-serif,system-ui,sans-serif;
   text-anchor:middle;
@@ -1350,6 +1350,15 @@ button.city-action-card{cursor:pointer}
   paint-order:stroke;
   stroke:#f6ecd9;
   stroke-width:3px;
+  stroke-linejoin:round;
+}
+.full-sf-map .node-type{
+  font:800 8px/1 ui-sans-serif,system-ui,sans-serif;
+  text-anchor:middle;
+  fill:#544c42;
+  paint-order:stroke;
+  stroke:#f6ecd9;
+  stroke-width:2.5px;
   stroke-linejoin:round;
 }
 .full-sf-map .node-resource{stroke:#27231e;stroke-width:1.5}
