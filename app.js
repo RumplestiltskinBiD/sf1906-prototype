@@ -1,5 +1,5 @@
 import {
-  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,generateLogisticsSupply,
   projectById,districtById,districtAccess,districtNeighbors,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
@@ -8,8 +8,8 @@ import {
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v026';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v027';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -27,14 +27,14 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
   const originalVersion=parsed.version;
-  parsed.version='0.26';
+  parsed.version='0.27';
   parsed.players=(parsed.players||[]).map(p=>{
     let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
       id:w.id||`P${p.id+1}W${i+1}`,
@@ -73,6 +73,7 @@ function migrateState(parsed){
       parsed.districts[d.id].roadAccess=!!d.road||completedStreetcar;
     }
   });
+  parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
   parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
   parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
@@ -138,7 +139,7 @@ function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('s
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderWorkerDock();renderCityActions();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
+  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -324,25 +325,56 @@ function openBidCurtain(){
 function closePrivacy(){ $('#privacyModal').classList.remove('open');$('#modalBackdrop').classList.remove('open'); }
 
 const DISTRICT_POS={
-  presidio:[500,160],marina:[745,120],northbeach:[900,125],chinatown:[945,210],
-  pacific:[730,225],financial:[1060,325],soma:[985,455],civic:[850,365],western:[650,350],
-  innerrichmond:[430,330],outerrichmond:[250,345],haight:[650,505],innersunset:[505,655],
-  sunset:[260,690],mission:[845,655],missionbay:[1140,655],potrero:[1135,800],
-  noe:[675,785],bernal:[860,835],park:[355,495],twinpeaks:[505,810]
+  presidio:[479,177],marina:[735,130],northbeach:[910,140],chinatown:[944,217],
+  pacific:[747,231],financial:[1034,303],soma:[1042,480],civic:[835,399],western:[646,352],
+  innerrichmond:[436,335],outerrichmond:[243,346],haight:[647,505],innersunset:[479,632],
+  sunset:[274,700],mission:[795,644],missionbay:[1106,646],potrero:[1103,822],
+  noe:[641,784],bernal:[842,855],park:[358,490],twinpeaks:[480,800]
 };
-const DISTRICT_META_POS={
-  presidio:[500,205],marina:[745,165],northbeach:[900,170],chinatown:[945,255],
-  pacific:[730,272],financial:[1060,370],soma:[985,500],civic:[850,410],western:[650,397],
-  innerrichmond:[430,375],outerrichmond:[250,390],haight:[650,550],innersunset:[505,700],
-  sunset:[260,735],mission:[845,705],missionbay:[1140,705],potrero:[1135,850],
-  noe:[675,835],bernal:[860,885],park:[355,540],twinpeaks:[505,860]
-};
+const DISTRICT_META_POS=Object.fromEntries(
+  Object.entries(DISTRICT_POS).map(([id,[x,y]])=>[id,[x,y+34]])
+);
 const TOKEN_OFFSETS=[[-36,-18],[0,-18],[36,-18],[-18,19],[18,19]];
 const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[32,-18],[64,-18],[-64,-18]];
 
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
-  el.innerHTML='<div class="supply-label"><strong>SUPPLY YARD</strong><span>v0.26 · full 1906 district map</span></div><div class="supply-items">'+RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>$'+RESOURCE_PRICES[type]+'</strong></span>').join('')+'</div>';
+  const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0);
+  el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>v0.27 · остатки исчезают, новая случайная партия приходит каждый раунд · доставка пока не подключена к стройке</span></div><div class="supply-items">'
+    +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
+    +'<span class="supply-resource city-throughput"><b>'+total+'</b><span>кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов</strong></span></div>';
+}
+
+function renderSupplyNodes(){
+  const layer=$('#supplyNodeLayer');if(!layer)return;
+  const supply=state.logisticsSupply||{};
+  layer.innerHTML=LOGISTICS_NODES.map(node=>{
+    const stock=supply[node.id]||[];
+    const nodeClass='node-'+node.kind;
+    const code=node.kind==='rail'?'R':node.kind==='rail-port'?'R/P':node.kind==='industrial-port'?'IND':'P';
+    const start=-((stock.length-1)*7);
+    const pips=stock.map((type,i)=>'<circle class="node-resource '+materialClass(type)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join('');
+    const stockText=stock.length?stock.join(', '):'нет груза';
+    return '<g class="supply-node '+nodeClass+'" transform="translate('+node.x+' '+node.y+')">'
+      +'<title>'+node.name+' · '+(districtById(node.districtId)?.name||node.districtId)+' · throughput '+node.throughput+' · '+stockText+'</title>'
+      +'<circle class="node-pin" r="20"/><text class="node-code" y="4">'+code+'</text>'
+      +pips+'<text class="node-name" y="48">'+node.shortName+'</text></g>';
+  }).join('');
+}
+
+async function loadDevMapBackground(){
+  const image=$('#devMapImage');if(!image)return;
+  try{
+    const files=['00','01','02'];
+    const parts=await Promise.all(files.map(async part=>{
+      const response=await fetch('./assets/v8-map-'+part+'.txt',{cache:'force-cache'});
+      if(!response.ok)throw new Error('map chunk '+part);
+      return (await response.text()).trim();
+    }));
+    image.setAttribute('href','data:image/webp;base64,'+parts.join(''));
+  }catch(error){
+    console.error('V8 development map failed to load',error);
+  }
 }
 
 function shortDistrictName(id){
@@ -692,7 +724,7 @@ function renderContext(){
     const statsHtml=d.buildable===false
       ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
       :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
-    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.26 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.27 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
     const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -808,4 +840,5 @@ $$('[data-district]').forEach(g=>g.onclick=()=>{
 });
 window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();syncMapZoom();});
 
+loadDevMapBackground();
 render();
