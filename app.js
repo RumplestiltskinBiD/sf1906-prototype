@@ -192,7 +192,8 @@ function beginDeliveryRoute(){
 function addDeliveryRouteDistrict(id){
   if(deliveryDraft?.step!=='route')return false;
   const last=deliveryDraft.route[deliveryDraft.route.length-1];
-  if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Нужен соседний район');return true;}
+  if(id===last){showToast('Вы уже в этом районе — выберите точку разгрузки в панели Delivery');return true;}
+  if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Чтобы ехать дальше, выберите соседний район');return true;}
   deliveryDraft.route.push(id);render();return true;
 }
 function undoDeliveryRoute(){
@@ -273,12 +274,15 @@ function renderDeliveryPanel(){
     html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>Маршрут →</button></div>';
   }else{
     const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0),last=deliveryDraft.route.at(-1),next=deliveryNeighbors(last);
-    html+='<div class="delivery-instruction">3. Нажимайте соседние районы. $1 за каждую границу. Разгрузка — только в свои стройки / Warehouse.</div><div class="delivery-route-strip">';
+    const hasCurrentTarget=(state.constructions||[]).some(con=>con.playerId===pid&&con.districtId===last&&(con.status==='under-construction'||(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id))));
+    html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. Точка разгрузки уже есть в текущем районе. Можно разгрузиться здесь без пересечения границы ($0 за дорогу) или продолжить маршрут дальше.':'3. В текущем районе подходящей точки разгрузки нет. Выберите соседний район, чтобы продолжить маршрут (+$1 за границу).')+'</div><div class="delivery-route-strip">';
     deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-    html+='</div><div class="route-next-list">';
+    html+='</div>';
+    if(hasCurrentTarget)html+='<button id="deliveryUnloadHere" class="primary-btn delivery-unload-here">Разгрузить здесь · '+shortDistrictName(last)+' ↓</button>';
+    html+='<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если нужна другая точка маршрута.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
     next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
     html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
-    html+='<div class="delivery-cargo-status"><b>Не распределено:</b> L '+(left.Lumber||0)+' · M '+(left.Masonry||0)+' · S '+(left.Steel||0)+'</div><div class="delivery-targets">';
+    html+='<div class="delivery-cargo-status"><b>Не распределено:</b> L '+(left.Lumber||0)+' · M '+(left.Masonry||0)+' · S '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
     const routeSet=new Set(deliveryDraft.route);
     for(const con of state.constructions||[]){
       if(con.playerId!==pid||!routeSet.has(con.districtId))continue;
@@ -302,7 +306,8 @@ function renderDeliveryPanel(){
   $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
   $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];render();});
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
-  $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
+  $('#deliveryUnloadHere')?.addEventListener('click',()=>$('#deliveryTargets')?.scrollIntoView({behavior:'smooth',block:'nearest'}));
+  $('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
   $('#deliveryUndoRoute')?.addEventListener('click',undoDeliveryRoute);
   $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
   $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));

@@ -116,3 +116,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Fixed Delivery panel visibility: starting the free action now explicitly opens the Delivery panel.
 - After choosing a port/station or Warehouse, the visible panel advances to hauler + cargo selection.
 - No game-state schema change; existing v0.28 saves remain compatible.
+
+
+## v0.28.3 — same-district Delivery UX
+
+- Same-district deliveries are explicitly supported in the UI: a construction in the source district can be unloaded without crossing a district border.
+- When an unload target exists in the current district, Delivery shows a prominent “Разгрузить здесь” action before optional onward route choices.
+- Clicking the current route district now explains that the truck is already there instead of incorrectly requiring a neighboring district.
