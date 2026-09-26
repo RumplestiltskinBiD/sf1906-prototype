@@ -78,7 +78,8 @@ test('same-district Delivery works end-to-end with $0 road cost and live unload 
   await page.locator('[data-load="Steel"]').click();
   await page.locator('#deliveryBeginRoute').click();
 
-  await expect(page.locator('#deliveryUnloadHere')).toBeVisible();
+  await expect(page.locator('#deliveryTargets')).toBeVisible();
+  await expect(page.locator('[data-drop-id="C1"][data-drop-type="Masonry"]')).toBeVisible();
   await expect(page.locator('.delivery-total')).toContainText('Границы $0');
   await page.locator('[data-drop-id="C1"][data-drop-type="Masonry"]').click();
   await expect(page.locator('.delivery-cargo-status')).toContainText('M 0');
