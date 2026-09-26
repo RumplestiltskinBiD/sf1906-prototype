@@ -80,3 +80,23 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Corrected the manual gameplay overlay by **11 px upward** to compensate for the PSD layer/page offset that had been carried into the SVG coordinates.
 - The V8 raster background and logistics-node positions are unchanged.
 - District hit areas, district metadata, construction tokens and worker tokens are shifted together so selected/hovered district borders align with the visible V8 boundaries.
+
+
+## v0.28 — routed multi-drop Delivery
+
+- Resource prices remain **Lumber $1 / Masonry $1 / Steel $2**.
+- City supply nodes still refresh completely every round with **40% / 35% / 25%** random resources.
+- Delivery is a repeatable **free action** during the active player's activation, before or after the main action.
+- Six shared one-use haulers refresh each round:
+  - capacity 2 / base $0 ×2
+  - capacity 3 / base $1 ×2
+  - capacity 4 / base $2 ×1
+  - capacity 5 / base $3 ×1
+- An unlimited **Standard Hauler** is always available: capacity 3 / base $3.
+- Delivery cost = purchased materials + hauler base cost + **$1 per crossed district border**.
+- One route may unload at multiple owned construction sites and Warehouses.
+- Cargo may pass through ordinary gameplay districts only; **Golden Gate Park, Presidio and Twin Peaks are not valid freight-route districts**.
+- Construction staging capacity is fixed at **3 resources**. Overflow rental and direct material buying were removed.
+- Warehouse now costs **Lumber + Masonry + Steel**, stores **5 resources**, persists across rounds, can be a delivery source/destination, and can supply construction in its own district.
+- Buildings needing 4+ resources therefore require a completed Warehouse in that district.
+- Resources left in city ports/stations disappear at round refresh; materials already staged on construction or stored in Warehouses persist.
