@@ -373,6 +373,8 @@ test('clicking overview construction focuses its district and map token',async({
   await page.locator('[data-overview-construction="C1"]').click();
   await expect(page.locator('[data-construction-token="C1"]')).toHaveClass(/focus-pulse/);
   await expect(page.locator('#contextPanel')).toContainText('SoMa');
+  await expect(page.locator('.focused-object-detail')).toContainText('Страховая компания');
+  await expect(page.locator('.focused-object-detail')).toContainText('Нужно: Камень ×1, Сталь ×1');
   const saved=await stored(page);
   expect(saved.selectedDistrictId).toBe('soma');
 });
@@ -462,6 +464,21 @@ test('mobile overview stays usable and construction focus switches map to detail
   const overview=page.locator('#cityOverviewPanel');
   await expect(overview).toBeVisible();
   expect(await overview.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
+  const layout=await page.evaluate(()=>{
+    const nav=document.querySelector('.nav-rail').getBoundingClientRect();
+    const panel=document.querySelector('#cityOverviewPanel').getBoundingClientRect();
+    const players=[...document.querySelectorAll('.player-pill')].map(x=>x.getBoundingClientRect());
+    return {
+      pageWidth:document.documentElement.scrollWidth,
+      viewport:window.innerWidth,
+      panelBottom:panel.bottom,
+      navTop:nav.top,
+      playersInside:players.every(r=>r.left>=-1&&r.right<=window.innerWidth+1)
+    };
+  });
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.panelBottom).toBeLessThanOrEqual(layout.navTop+2);
+  expect(layout.playersInside).toBe(true);
   const card=page.locator('[data-overview-construction="C1"]');
   const box=await card.boundingBox();
   expect(box).not.toBeNull();
