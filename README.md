@@ -146,3 +146,12 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Delivery is now logged before any construction completion it triggers.
 - Every Delivery log entry records exact unload destinations and material quantities.
 - Added regression coverage for Insurance Company built by two shipments: M+S from Pacific Mail, then M from Third & Townsend.
+
+
+## v0.28.7 — specialized logistics nodes
+
+- Each logistics node now has its own resource profile while weighted citywide supply remains approximately 40% Lumber / 35% Masonry / 25% Steel.
+- Broadway Wharf is lumber-heavy; Union Iron Works is steel-heavy; other hubs use distinct mixed profiles.
+- Historical marker positions were revised for all five logistics nodes.
+- Pacific Mail is now shown as port + rail; Union Iron Works as industrial port + rail.
+- Logistics UI is substantially Russianized while place names remain in English.
