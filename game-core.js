@@ -516,6 +516,9 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(project?.streetcarExtension&&!canPlaceStreetcar(state,districtId)){
     reasons.push('Streetcar Extension требует Street Network в этом или соседнем районе.');
   }
+  if(project&&player&&project.materials.length>CONSTRUCTION_STAGING_CAPACITY&&completedWarehouseCount(state,playerId,districtId)<1){
+    reasons.push('Для проекта на 4+ ресурса нужен ваш завершённый Warehouse в этом районе.');
+  }
 
   const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?Math.max(0,ds.landValue-bureauDiscount):0;
