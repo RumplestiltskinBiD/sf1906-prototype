@@ -952,19 +952,17 @@ function renderOffice(){
       return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Prestige +${pr.prestige||0} VP</b> · Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
     }
 
-    const rent=canRentOverflow(state,con.id),whBonus=warehouseCapacityBonus(state,p.id,con.districtId);
-    const buttons=RESOURCE_ORDER.map(type=>{
-      const check=canDeliverMaterial(state,con.id,type);
-      const need=pr.materials.filter(x=>x===type).length-(con.materialsDelivered||[]).filter(x=>x===type).length;
-      if(need<=0)return '';
-      const reason=check.ok?'':check.reason==='not-active-player'?'Не ваша активация':check.reason==='capacity'?'Нет места':check.reason==='capital'?'Нет денег':'Недоступно';
-      const price=check.ok&&check.procurement?0:RESOURCE_PRICES[type];
-      const detail=check.ok?(check.procurement?`Procurement · осталось ${procurement}`:`осталось ${need}`):reason;
-      return `<button class="resource-buy ${materialClass(type)} ${check.procurement?'procurement':''}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${price}</b><small>${detail}</small></button>`;
-    }).join('');
-    const capacityNote=prog.delivered>=prog.capacity&&prog.remaining>0?'<div class="capacity-warning">Площадка заполнена. Нужен дополнительный staging slot.</div>':'';
-    const rentBtn=rent.ok?`<button class="overflow-btn" data-rent-slot="${con.id}">Арендовать +1 слот · $1</button>`:'';
-    return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${prog.capacity}</b><small>base 3${whBonus?` · Warehouse +${whBonus}`:''}${con.rentedSlots?` · rental +${con.rentedSlots}`:''}</small></div>${capacityNote}<div class="resource-buy-grid">${buttons}</div>${rentBtn}</div>`;
+    const finish=canCompleteConstruction(state,con.id);
+    const warehouses=completedWarehouses(state,p.id,con.districtId);
+    const stored=warehouses.reduce((sum,w)=>sum+warehouseInventory(w).length,0);
+    const needsWarehouse=pr.materials.length>CONSTRUCTION_STAGING_CAPACITY;
+    const warehouseLine=warehouses.length
+      ?`<div class="warehouse-support">Warehouse support: <b>${stored}/${warehouses.length*WAREHOUSE_STORAGE_CAPACITY}</b> stored in ${d.name}</div>`
+      :needsWarehouse?'<div class="capacity-warning">Для здания на 4+ ресурса нужен завершённый Warehouse в этом районе.</div>':'';
+    const finishBtn=isActive&&finish.ok
+      ?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
+      :'';
+    return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div>${warehouseLine}${finishBtn}</div>`;
   }).join('');
 
   const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
