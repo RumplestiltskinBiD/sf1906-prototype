@@ -175,16 +175,19 @@ test('Delivery rejects forbidden routes, opponent targets, off-route targets, ov
 test('limited haulers are shared once per round; Standard Hauler is reusable',()=>{
   const s=devState();
   s.logisticsSupply.broadway=['Lumber','Lumber','Lumber'];
-  s.constructions=[construction('C1',0,'tenement','northbeach')];
-  const p={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2a',cargo:['Lumber'],route:['northbeach'],drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
-  assert.equal(G.executeDelivery(s,p).ok,true);
-  s.logisticsSupply.broadway=['Lumber','Lumber'];
-  assert.equal(G.validateDeliveryPlan(s,p).reason,'hauler-used');
+  s.constructions=[
+    construction('C1',0,'tenement','northbeach'),
+    construction('C2',0,'tenement','northbeach')
+  ];
+  const limited={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2a',cargo:['Lumber'],route:['northbeach'],drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
+  assert.equal(G.executeDelivery(s,limited).ok,true);
+  assert.equal(G.validateDeliveryPlan(s,limited).reason,'hauler-used');
 
-  const standard={...p,haulerId:'standard'};
-  assert.equal(G.executeDelivery(s,standard).ok,true);
-  s.logisticsSupply.broadway=['Lumber'];
-  assert.equal(G.validateDeliveryPlan(s,standard).ok,true);
+  const standard1={...limited,haulerId:'standard',drops:[{kind:'construction',id:'C2',materials:['Lumber']}]};
+  assert.equal(G.executeDelivery(s,standard1).ok,true);
+  const standard2={...limited,haulerId:'standard',drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
+  assert.equal(G.validateDeliveryPlan(s,standard2).ok,true);
+  assert.equal(G.executeDelivery(s,standard2).ok,true);
 });
 
 test('Warehouse stores max 5 and can supply missing resources in same district',()=>{
