@@ -675,6 +675,7 @@ function renderCityActions(){
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
   const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
   const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
+    deliveryDraft=null;
     state.pendingConstruction=null;
     state.pendingWorkerAction={type:'raiseCapital',playerId:pid};
     state.view='city';
@@ -683,6 +684,7 @@ function renderCityActions(){
     showToast('Raise Capital: выберите текущий или соседний район на карте');
   };
   const end=$('#actionEndActivation');if(end)end.onclick=()=>{
+    deliveryDraft=null;
     const r=endActivation(state,pid);
     if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
     closeDrawers();closeMobileContext();
@@ -827,6 +829,7 @@ function renderCity(){
 }
 
 function startConstructionFlow(playerId,projectId){
+  deliveryDraft=null;
   const pl=state.players[playerId],pr=projectById(projectId);
   if(state.phase!=='development'){showToast('Сначала завершите тендеры');return;}
   if(!canTakeMainAction(state,playerId)){showToast(activeWorker(state,playerId)?'Сейчас нельзя начать новое main action':'Сначала выберите одного из 3 представителей');return;}
@@ -996,7 +999,7 @@ function renderDebug(){
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
@@ -1009,11 +1012,13 @@ $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEa
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
+$('#endRoundBtn').onclick=()=>{deliveryDraft=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$$('[data-district]').forEach(g=>g.onclick=()=>{
+$('[data-district]').forEach(g=>g.onclick=()=>{
   const id=g.dataset.district;
+  if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
+  if(deliveryDraft)return;
   state.selectedDistrictId=id;
   if(state.pendingWorkerAction?.type==='raiseCapital'){
     confirmRaiseCapitalInDistrict(id);
