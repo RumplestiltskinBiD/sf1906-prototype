@@ -1,20 +1,24 @@
 import {
-  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,generateLogisticsSupply,
+  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+  LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
   projectById,districtById,districtAccess,districtNeighbors,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
-  constructionProgress,canDeliverMaterial,deliverMaterial,canRentOverflow,rentOverflowSlot,roundIncome,grossRoundIncome,buildingIncome,warehouseCapacityBonus,
+  constructionProgress,completedWarehouses,warehouseInventory,canCompleteConstruction,completeConstructionFromStorage,
+  availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
+  roundIncome,grossRoundIncome,buildingIncome,
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v027';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v028';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
 let mobileContextOpen=false;
 let mobileMapDetail=false;
+let deliveryDraft=null;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -27,14 +31,14 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
   const originalVersion=parsed.version;
-  parsed.version='0.27';
+  parsed.version='0.28';
   parsed.players=(parsed.players||[]).map(p=>{
     let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
       id:w.id||`P${p.id+1}W${i+1}`,
@@ -57,7 +61,7 @@ function migrateState(parsed){
       prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
     };
   });
-  parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.materialsDelivered||[],rentedSlots:x.rentedSlots||0,completedRound:x.completedRound??null}));
+  parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],completedRound:x.completedRound??null}));
   parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
   parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-${i}-${card}`,id:card}:card);
   parsed.expired=parsed.expired||[];
@@ -74,6 +78,7 @@ function migrateState(parsed){
     }
   });
   parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
+  parsed.haulersUsed=Array.isArray(parsed.haulersUsed)?parsed.haulersUsed:[];
   parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
   parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
@@ -137,9 +142,175 @@ function serviceSourceText(sources){
 }
 function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove('show'),1800);}
 
+
+function deliveryCounts(items=[]){
+  return items.reduce((a,t)=>{a[t]=(a[t]||0)+1;return a;},{});
+}
+function deliveryAssigned(){
+  return (deliveryDraft?.drops||[]).flatMap(d=>d.materials||[]);
+}
+function deliveryRemaining(){
+  const c=deliveryCounts(deliveryDraft?.cargo||[]);
+  for(const t of deliveryAssigned())c[t]=Math.max(0,(c[t]||0)-1);
+  return c;
+}
+function startDeliveryFlow(playerId){
+  if(!canUseFreeAction(state,playerId)){showToast('Delivery доступна только во время вашей активации');return;}
+  deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],route:[],drops:[]};
+  state.pendingConstruction=null;state.pendingWorkerAction=null;state.view='city';
+  closeDrawers();closeMobileContext();render();
+}
+function cancelDeliveryFlow(){deliveryDraft=null;document.body.classList.remove('delivery-active');render();}
+function chooseDeliverySource(source){
+  if(deliveryDraft?.step!=='source')return;
+  const info=deliverySourceInfo(state,deliveryDraft.playerId,source);
+  if(!info?.inventory?.length){showToast('В этом источнике нет ресурсов');return;}
+  deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.route=[];deliveryDraft.drops=[];render();
+}
+function chooseDeliveryHauler(id){
+  if(deliveryDraft?.step!=='load')return;
+  const h=availableDeliveryHaulers(state).find(x=>x.id===id);
+  if(!h?.available){showToast('Перевозчик уже использован');return;}
+  deliveryDraft.haulerId=id;if(deliveryDraft.cargo.length>h.capacity)deliveryDraft.cargo=[];render();
+}
+function addDeliveryCargo(type){
+  if(deliveryDraft?.step!=='load'||!deliveryDraft.haulerId)return;
+  const h=availableDeliveryHaulers(state).find(x=>x.id===deliveryDraft.haulerId);
+  const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);
+  if(!h||!src)return;
+  if(deliveryDraft.cargo.length>=h.capacity){showToast('Перевозчик заполнен');return;}
+  const have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
+  if((used[type]||0)>=(have[type]||0)){showToast('Больше такого ресурса нет');return;}
+  deliveryDraft.cargo.push(type);render();
+}
+function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.cargo=[];render();}}
+function beginDeliveryRoute(){
+  if(!deliveryDraft?.haulerId||!deliveryDraft.cargo.length){showToast('Выберите перевозчика и груз');return;}
+  const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);if(!src)return;
+  deliveryDraft.step='route';deliveryDraft.route=[src.districtId];deliveryDraft.drops=[];render();
+}
+function addDeliveryRouteDistrict(id){
+  if(deliveryDraft?.step!=='route')return false;
+  const last=deliveryDraft.route[deliveryDraft.route.length-1];
+  if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Нужен соседний район');return true;}
+  deliveryDraft.route.push(id);deliveryDraft.drops=[];render();return true;
+}
+function undoDeliveryRoute(){if(deliveryDraft?.step==='route'&&deliveryDraft.route.length>1){deliveryDraft.route.pop();deliveryDraft.drops=[];render();}}
+function deliveryTarget(kind,id){
+  return (deliveryDraft?.drops||[]).find(d=>d.kind===kind&&d.id===id);
+}
+function deliveryCanDrop(kind,id,type){
+  if(deliveryDraft?.step!=='route'||(deliveryRemaining()[type]||0)<=0)return false;
+  const con=(state.constructions||[]).find(x=>x.id===id);
+  if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
+  const assigned=deliveryTarget(kind,id)?.materials||[];
+  if(kind==='construction'){
+    if(con.status!=='under-construction'||(con.materialsDelivered||[]).length+assigned.length>=CONSTRUCTION_STAGING_CAPACITY)return false;
+    const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts([...(con.materialsDelivered||[]),...assigned]);
+    return (have[type]||0)<(req[type]||0);
+  }
+  if(kind==='warehouse'){
+    if(con.projectId!=='warehouse'||con.status!=='complete')return false;
+    if(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)return false;
+    return warehouseInventory(con).length+assigned.length<WAREHOUSE_STORAGE_CAPACITY;
+  }
+  return false;
+}
+function addDeliveryDrop(kind,id,type){
+  if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
+  let d=deliveryTarget(kind,id);if(!d){d={kind,id,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
+}
+function clearDeliveryDrops(){if(deliveryDraft?.step==='route'){deliveryDraft.drops=[];render();}}
+function deliveryPlan(){
+  return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,materials:[...d.materials]}))};
+}
+function confirmDelivery(){
+  if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
+  if(!check.ok){showToast(check.reason==='unassigned'?'Разгрузите весь груз':check.reason==='capital'?'Недостаточно Capital':'План доставки недопустим');return;}
+  const r=executeDelivery(state,plan);if(!r.ok){showToast('Delivery не выполнена');return;}
+  deliveryDraft=null;document.body.classList.remove('delivery-active');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
+  render();
+}
+function renderDeliveryPanel(){
+  const el=$('#deliveryPanel');if(!el)return;
+  const active=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
+  document.body.classList.toggle('delivery-active',active);
+  if(!active){if(deliveryDraft)deliveryDraft=null;el.className='delivery-panel';el.innerHTML='';return;}
+  const pid=deliveryDraft.playerId,p=state.players[pid];
+  let html='<div class="delivery-head"><div><small>FREE ACTION · DELIVERY</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close">×</button></div>';
+  if(deliveryDraft.step==='source'){
+    html+='<div class="delivery-instruction">1. Выберите порт / станцию или свой Warehouse.</div><div class="delivery-source-grid">';
+    for(const n of LOGISTICS_NODES){
+      const inv=state.logisticsSupply?.[n.id]||[],cnt=deliveryCounts(inv);
+      html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.length?'':'disabled')+'><b>'+n.shortName+'</b><span>'+districtById(n.districtId)?.name+'</span><small>L '+(cnt.Lumber||0)+' · M '+(cnt.Masonry||0)+' · S '+(cnt.Steel||0)+'</small></button>';
+    }
+    for(const w of completedWarehouses(state,pid)){
+      const inv=warehouseInventory(w),cnt=deliveryCounts(inv);
+      html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Warehouse</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</span><small>L '+(cnt.Lumber||0)+' · M '+(cnt.Masonry||0)+' · S '+(cnt.Steel||0)+'</small></button>';
+    }
+    html+='</div>';
+  }else if(deliveryDraft.step==='load'){
+    const src=deliverySourceInfo(state,pid,deliveryDraft.source),haulers=availableDeliveryHaulers(state),sel=haulers.find(h=>h.id===deliveryDraft.haulerId),have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
+    html+='<div class="delivery-instruction">2. Перевозчик + груз из <b>'+src.name+'</b>.</div><div class="hauler-grid">';
+    for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'USED'):'∞ standard')+'</small></button>';
+    html+='</div><div class="load-resource-grid">';
+    for(const t of RESOURCE_ORDER){
+      const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity;
+      html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+(deliveryDraft.source.kind==='node'?'$'+RESOURCE_PRICES[t]:'PAID')+'</strong><small>'+left+' left</small></button>';
+    }
+    html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
+    const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
+    html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>Маршрут →</button></div>';
+  }else{
+    const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0),last=deliveryDraft.route.at(-1),next=deliveryNeighbors(last);
+    html+='<div class="delivery-instruction">3. Нажимайте соседние районы. $1 за каждую границу. Разгрузка — только в свои стройки / Warehouse.</div><div class="delivery-route-strip">';
+    deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
+    html+='</div><div class="route-next-list">';
+    next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
+    html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
+    html+='<div class="delivery-cargo-status"><b>Не распределено:</b> L '+(left.Lumber||0)+' · M '+(left.Masonry||0)+' · S '+(left.Steel||0)+'</div><div class="delivery-targets">';
+    const routeSet=new Set(deliveryDraft.route);
+    for(const con of state.constructions||[]){
+      if(con.playerId!==pid||!routeSet.has(con.districtId))continue;
+      let kind=null,label='',cap='';
+      if(con.status==='under-construction'){kind='construction';label=projectById(con.projectId).name;cap='Staging '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+CONSTRUCTION_STAGING_CAPACITY;}
+      else if(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id)){kind='warehouse';label='Warehouse';cap='Storage '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+      if(!kind)continue;
+      const assigned=deliveryTarget(kind,con.id)?.materials||[];
+      html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
+      for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
+      html+='</div></div>';
+    }
+    html+='</div><div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
+  }
+  el.innerHTML=html;
+  $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
+  $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
+  $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
+  $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
+  $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
+  $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
+  $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];render();});
+  $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
+  $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
+  $('#deliveryUndoRoute')?.addEventListener('click',undoDeliveryRoute);
+  $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
+  $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
+  $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];render();});
+  $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
+}
+function renderDeliveryRouteOverlay(){
+  const layer=$('#deliveryRouteLayer');if(!layer)return;
+  if(deliveryDraft?.step!=='route'||!deliveryDraft.route?.length){layer.innerHTML='';return;}
+  const pts=deliveryDraft.route.map(id=>DISTRICT_POS[id]).filter(Boolean);let html='';
+  for(let i=1;i<pts.length;i++)html+='<line class="delivery-route-line" x1="'+pts[i-1][0]+'" y1="'+pts[i-1][1]+'" x2="'+pts[i][0]+'" y2="'+pts[i][1]+'"/>';
+  pts.forEach((p,i)=>html+='<g class="delivery-route-stop '+(i===pts.length-1?'current':'')+'" transform="translate('+p[0]+' '+p[1]+')"><circle r="17"/><text y="4">'+i+'</text></g>');
+  layer.innerHTML=html;
+}
+
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
+  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -340,7 +511,7 @@ const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[3
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
   const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0);
-  el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>v0.27 · остатки исчезают, новая случайная партия приходит каждый раунд · доставка пока не подключена к стройке</span></div><div class="supply-items">'
+  el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>v0.28 · остатки исчезают в конце раунда · Delivery = материалы + перевозчик + $1 за границу</span></div><div class="supply-items">'
     +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
     +'<span class="supply-resource city-throughput"><b>'+total+'</b><span>кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов</strong></span></div>';
 }
@@ -348,6 +519,7 @@ function renderSupply(){
 function renderSupplyNodes(){
   const layer=$('#supplyNodeLayer');if(!layer)return;
   const supply=state.logisticsSupply||{};
+  const selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===currentDeveloper(state);
   layer.innerHTML=LOGISTICS_NODES.map(node=>{
     const stock=supply[node.id]||[];
     const nodeClass='node-'+node.kind;
@@ -355,16 +527,22 @@ function renderSupplyNodes(){
     const start=-((stock.length-1)*7);
     const pips=stock.map((type,i)=>'<circle class="node-resource '+materialClass(type)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join('');
     const stockText=stock.length?stock.join(', '):'нет груза';
-    return '<g class="supply-node '+nodeClass+'" transform="translate('+node.x+' '+node.y+')">'
+    const selectable=selecting&&stock.length;
+    return '<g class="supply-node '+nodeClass+' '+(selectable?'source-available':'')+'" transform="translate('+node.x+' '+node.y+')" data-delivery-node="'+node.id+'">'
       +'<title>'+node.name+' · '+(districtById(node.districtId)?.name||node.districtId)+' · throughput '+node.throughput+' · '+stockText+'</title>'
       +'<circle class="node-pin" r="20"/><text class="node-code" y="4">'+code+'</text>'
       +pips+'<text class="node-name" y="48">'+node.shortName+'</text></g>';
   }).join('');
+  $$('[data-delivery-node]').forEach(g=>g.onclick=e=>{
+    e.stopPropagation();
+    if(deliveryDraft?.step!=='source')return;
+    chooseDeliverySource({kind:'node',id:g.dataset.deliveryNode});
+  });
 }
 
 function loadDevMapBackground(){
   const image=$('#devMapImage');if(!image)return;
-  image.setAttribute('href','./assets/v8-map.webp?v=0271');
+  image.setAttribute('href','./assets/v8-map.webp?v=028');
 }
 
 function shortDistrictName(id){
@@ -459,7 +637,7 @@ function renderCityActions(){
     const hasConstruction=(state.constructions||[]).some(x=>x.playerId===pid&&x.status==='under-construction');
     const disabled=mainUsed||!selected||!range||occupied||p.capital<1||!hasConstruction;
     const ownerText=shop.playerId===pid?'$1 procurement cost':'$1 → владельцу';
-    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'2 materials / $1';
+    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'next Delivery · 2 free';
     return `<button class="action-space-btn shops ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-shops-action="${shop.id}" ${disabled?'disabled':''}><b>Shopping Row · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
   }).join(''):'<div class="action-space-locked">Shopping Row ещё не построен</div>';
 
@@ -474,16 +652,18 @@ function renderCityActions(){
 
   const buildDisabled=availableProjects===0||mainUsed||!selected;
   const capitalDisabled=mainUsed||!selected;
+  const deliveryDisabled=!canUseFreeAction(state,pid);
   el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Projects ${availableProjects} · Loans ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Contract':''}${procurement?` · Procurement ${procurement}`:''}</span></div><span class="activation-state">${mainUsed?'MAIN ACTION USED':selected?`WORKER #${selected.number} READY`:'SELECT WORKER'}</span></div>
   <div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>
-  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${procurement?`Procurement: ещё ${procurement} бесплатн. материала`:mainUsed?'Supply и Repay можно сделать сейчас':selected?'Выберите действие в пределах 1 района':'сначала выберите одного свободного представителя'}</span><em>FREE: Supply · Overflow · Repay</em></div>
+  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${procurement?`Procurement: ещё ${procurement} бесплатн. материала на следующую покупку`:mainUsed?'Delivery и Repay доступны до End Activation':selected?'Выберите main action или сделайте Delivery':'Delivery можно сделать и до выбора представителя'}</span><em>FREE: Delivery · Complete from Warehouse · Repay</em></div>
   ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
   <div class="city-action-grid ${mainUsed?'main-action-used':''}">
     <button class="city-action-card build" id="actionBuild" ${buildDisabled?'disabled':''}><b>Begin Construction</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Main action уже использован':!selected?'Сначала выберите представителя':'Выбрать проект в Office'}</span><strong>${buildDisabled?'LOCKED':'move ≤ 1 · 1 представитель'}</strong></button>
     <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Raise Capital</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'LOCKED':'CHOOSE DISTRICT'}</strong></button>
+    <button class="city-action-card delivery" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Delivery · FREE ACTION</b><span>Источник → перевозчик → маршрут → несколько разгрузок</span><strong>${deliveryDisabled?'LOCKED':'START ROUTE'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
-    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1</span><div class="action-space-list">${shopsButtons}</div></div>
+    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
     <div class="city-action-card club-card"><b>Restaurant & Social Club</b><span>Нужно добраться до Club · −$1 → +1 Influence</span><div class="action-space-list">${clubButtons}</div></div>
   </div>`;
 
@@ -493,7 +673,9 @@ function renderCityActions(){
     state.pendingConstruction=null;state.pendingWorkerAction=null;render();
   });
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
+  const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
   const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
+    deliveryDraft=null;
     state.pendingConstruction=null;
     state.pendingWorkerAction={type:'raiseCapital',playerId:pid};
     state.view='city';
@@ -502,6 +684,7 @@ function renderCityActions(){
     showToast('Raise Capital: выберите текущий или соседний район на карте');
   };
   const end=$('#actionEndActivation');if(end)end.onclick=()=>{
+    deliveryDraft=null;
     const r=endActivation(state,pid);
     if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
     closeDrawers();closeMobileContext();
@@ -536,10 +719,14 @@ function renderCity(){
   const devPid=currentDeveloper(state);
   const selectedWorker=devPid!=null?activeWorker(state,devPid):null;
   const reachableIds=new Set(selectedWorker?workerReachableDistricts(state,devPid,selectedWorker.id):[]);
+  const deliveryMode=deliveryDraft?.playerId===devPid?deliveryDraft:null;
   const mode=$('#constructionMode');
   if(state.phase!=='development'){
     mode.innerHTML='<div><strong>Строительство пока закрыто</strong><span>Сначала завершите City Hall Session.</span></div>';
     mode.className='construction-mode muted';
+  }else if(deliveryMode){
+    mode.className='construction-mode hidden';
+    mode.innerHTML='';
   }else if(workerAction?.type==='raiseCapital'){
     const pl=state.players[workerAction.playerId],w=activeWorker(state,workerAction.playerId);
     mode.className='construction-mode active movement-mode';
@@ -561,8 +748,14 @@ function renderCity(){
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target');
-    if(selectedWorker&&!state.activationMainActionUsed){
+    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked');
+    if(deliveryMode?.step==='route'){
+      const route=deliveryMode.route||[],last=route[route.length-1],next=new Set(deliveryNeighbors(last));
+      if(route.includes(id))g.classList.add('delivery-route');
+      if(id===last)g.classList.add('delivery-current');
+      if(next.has(id))g.classList.add('delivery-next');
+      else if(!route.includes(id))g.classList.add('delivery-blocked');
+    }else if(!deliveryMode&&selectedWorker&&!state.activationMainActionUsed){
       if(id===selectedWorker.districtId)g.classList.add('worker-origin');
       if(reachableIds.has(id))g.classList.add('worker-reachable');
       else g.classList.add('worker-unreachable');
@@ -607,6 +800,7 @@ function renderCity(){
     workerLayer.innerHTML=workerHtml;
     $$('[data-worker-token]').forEach(g=>g.onclick=()=>{
       const workerPlayer=Number(g.dataset.workerPlayer);
+      if(deliveryDraft)return;
       if(state.phase!=='development'||currentDeveloper(state)!==workerPlayer)return;
       const r=selectWorker(state,workerPlayer,g.dataset.workerToken);
       if(!r.ok)return;
@@ -623,15 +817,19 @@ function renderCity(){
       list.forEach((con,i)=>{
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
-        const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
-        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
+        const complete=con.status==='complete',label=complete?(con.projectId==='warehouse'?`W ${warehouseInventory(con).length}/${WAREHOUSE_STORAGE_CAPACITY}`:'✓'):`${prog.delivered}/${prog.required}`;
+        const whSource=deliveryMode?.step==='source'&&complete&&con.projectId==='warehouse'&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
+        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''}" transform="translate(${cx+dx} ${cy+dy+30})"${whSource}><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
       });
     });
     layer.innerHTML=html;
+    $$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
   }
+  renderDeliveryRouteOverlay();
 }
 
 function startConstructionFlow(playerId,projectId){
+  deliveryDraft=null;
   const pl=state.players[playerId],pr=projectById(projectId);
   if(state.phase!=='development'){showToast('Сначала завершите тендеры');return;}
   if(!canTakeMainAction(state,playerId)){showToast(activeWorker(state,playerId)?'Сейчас нельзя начать новое main action':'Сначала выберите одного из 3 представителей');return;}
@@ -714,7 +912,7 @@ function renderContext(){
     const statsHtml=d.buildable===false
       ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
       :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
-    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.27 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
     const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -743,11 +941,11 @@ function renderOffice(){
   const activeHtml=active.map(con=>{
     const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
     if(con.status==='complete'){
-      const wh=con.projectId==='warehouse'?'<div class="warehouse-note">Warehouse: +3 staging capacity для ваших строек в этом районе.</div>':'';
+      const wh=con.projectId==='warehouse'?`<div class="warehouse-note">Warehouse · Storage <b>${warehouseInventory(con).length}/${WAREHOUSE_STORAGE_CAPACITY}</b> · может быть источником/точкой Delivery и снабжать стройки в этом районе.</div>`:'';
       let actionNote='';
       if(['bank','bureau','shops','club'].includes(con.projectId)){
         const occupant=actionSpaceOccupant(state,con.id);
-        const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов',club:'Networking Dinner: −$1 → +1 Influence'};
+        const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Influence'};
         actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Action space: ${labels[con.projectId]} · ${occupant!=null?`USED THIS ROUND · ${state.players[occupant].name}`:'available this round'}</div>`;
       }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
         actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Streetcar повысил Land Value на $1 и, если требовалось, открыл Street Network в районе.</div>':'<div class="land-building-note">После завершения этот объект повысил Land Value района на $1.</div>';
@@ -757,35 +955,32 @@ function renderOffice(){
       return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Prestige +${pr.prestige||0} VP</b> · Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
     }
 
-    const rent=canRentOverflow(state,con.id),whBonus=warehouseCapacityBonus(state,p.id,con.districtId);
-    const buttons=RESOURCE_ORDER.map(type=>{
-      const check=canDeliverMaterial(state,con.id,type);
-      const need=pr.materials.filter(x=>x===type).length-(con.materialsDelivered||[]).filter(x=>x===type).length;
-      if(need<=0)return '';
-      const reason=check.ok?'':check.reason==='not-active-player'?'Не ваша активация':check.reason==='capacity'?'Нет места':check.reason==='capital'?'Нет денег':'Недоступно';
-      const price=check.ok&&check.procurement?0:RESOURCE_PRICES[type];
-      const detail=check.ok?(check.procurement?`Procurement · осталось ${procurement}`:`осталось ${need}`):reason;
-      return `<button class="resource-buy ${materialClass(type)} ${check.procurement?'procurement':''}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${price}</b><small>${detail}</small></button>`;
-    }).join('');
-    const capacityNote=prog.delivered>=prog.capacity&&prog.remaining>0?'<div class="capacity-warning">Площадка заполнена. Нужен дополнительный staging slot.</div>':'';
-    const rentBtn=rent.ok?`<button class="overflow-btn" data-rent-slot="${con.id}">Арендовать +1 слот · $1</button>`:'';
-    return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${prog.capacity}</b><small>base 3${whBonus?` · Warehouse +${whBonus}`:''}${con.rentedSlots?` · rental +${con.rentedSlots}`:''}</small></div>${capacityNote}<div class="resource-buy-grid">${buttons}</div>${rentBtn}</div>`;
+    const finish=canCompleteConstruction(state,con.id);
+    const warehouses=completedWarehouses(state,p.id,con.districtId);
+    const stored=warehouses.reduce((sum,w)=>sum+warehouseInventory(w).length,0);
+    const needsWarehouse=pr.materials.length>CONSTRUCTION_STAGING_CAPACITY;
+    const warehouseLine=warehouses.length
+      ?`<div class="warehouse-support">Warehouse support: <b>${stored}/${warehouses.length*WAREHOUSE_STORAGE_CAPACITY}</b> stored in ${d.name}</div>`
+      :needsWarehouse?'<div class="capacity-warning">Для здания на 4+ ресурса нужен завершённый Warehouse в этом районе.</div>':'';
+    const finishBtn=isActive&&finish.ok
+      ?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
+      :'';
+    return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div>${warehouseLine}${finishBtn}</div>`;
   }).join('');
 
   const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
   const procurementChip=procurement?`<span class="procurement-chip">Procurement · ${procurement} material${procurement===1?'':'s'} at $0</span>`:'';
   const activationNote=isActive
-    ?`<div class="office-activation active"><b>АКТИВАЦИЯ ${p.name}</b><span>Free actions доступны до и после main action. Ход не перейдёт дальше, пока вы не нажмёте End Activation.</span></div>`
+    ?`<div class="office-activation active"><b>АКТИВАЦИЯ ${p.name}</b><span>Delivery / Complete from Warehouse / Repay доступны до и после main action. Ход не перейдёт дальше, пока вы не нажмёте End Activation.</span></div>`
     :state.phase==='development'&&!state.developmentComplete
-      ?`<div class="office-activation locked"><b>VIEW ONLY</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Supply / Overflow / Repay доступны только активному игроку.</span></div>`
+      ?`<div class="office-activation locked"><b>VIEW ONLY</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Delivery / Complete / Repay доступны только активному игроку.</span></div>`
       :'';
 
-  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Supply / Overflow / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.25:</b> рука ограничена 5 проектами. Каждый из 3 представителей имеет собственную позицию и может выполнить main action только здесь или в соседнем районе.</div>`;
+  $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Delivery / Complete from Warehouse / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.28:</b> рука ограничена 5 проектами. Main action привязан к представителю; Delivery — отдельное повторяемое free action.</div>`;
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
-  $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-  $$('[data-deliver]').forEach(b=>b.onclick=()=>{const r=deliverMaterial(state,b.dataset.deliver,b.dataset.resource);if(!r.ok){showToast(r.reason==='not-active-player'?'Free actions доступны только активному игроку':r.reason==='capacity'?'Нет места на площадке':r.reason==='capital'?'Недостаточно денег':'Нельзя доставить этот ресурс');return;}showToast(r.completed?'Здание завершено!':r.procurement?`${materialLabel(b.dataset.resource)} через Procurement · $0`:`${materialLabel(b.dataset.resource)} доставлен · −$${r.cost}`);render();});
-  $$('[data-rent-slot]').forEach(b=>b.onclick=()=>{const r=rentOverflowSlot(state,b.dataset.rentSlot);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':r.reason==='capital'?'Недостаточно денег':'Дополнительный слот не нужен');return;}showToast('Временное хранение +1 · −$1');render();});
+  $('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
+  $('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
   const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Repay доступен только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала кредит должен пройти Income Phase':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }
 
@@ -802,24 +997,26 @@ function renderDebug(){
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.25: выберите представителя → main action в текущем/соседнем районе. Raise Capital +$3 тоже может переместить его на 1 район. FIT/DETAIL управляют картой на телефоне.');};
+$('#helpBtn').onclick=()=>{showToast('v0.28: Delivery — free action. Выберите источник, перевозчика и груз, затем маршрут по соседним районам и разгрузку на свои стройки / Warehouse.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
+$('#endRoundBtn').onclick=()=>{deliveryDraft=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$$('[data-district]').forEach(g=>g.onclick=()=>{
+$('[data-district]').forEach(g=>g.onclick=()=>{
   const id=g.dataset.district;
+  if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
+  if(deliveryDraft)return;
   state.selectedDistrictId=id;
   if(state.pendingWorkerAction?.type==='raiseCapital'){
     confirmRaiseCapitalInDistrict(id);
