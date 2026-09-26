@@ -1,0 +1,13 @@
+{
+  "name": "sf1906-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:core": "node --test tests/core.test.mjs tests/static.test.mjs",
+    "test:e2e": "playwright test",
+    "test": "npm run test:core && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
