@@ -560,9 +560,10 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
-  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}.${workerMovementText(consumed)}`,'good');
-  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker};
+  const discountText=check.bureauDiscount>0?' (Construction Contract −$'+check.bureauDiscount+')':'';
+  logEvent(state,player.name+' начал строительство «'+projectById(projectId).name+'» в '+districtById(districtId).name+': земля $'+check.cost+discountText+'.'+workerMovementText(consumed),'good');
+  const autoCompleted=constructionCanComplete(state,construction.id)?completeConstruction(state,construction).ok:false;
+  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker,completed:autoCompleted};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
