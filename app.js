@@ -365,7 +365,7 @@ function renderSupplyNodes(){
 async function loadDevMapBackground(){
   const image=$('#devMapImage');if(!image)return;
   try{
-    const files=['00','01','02'];
+    const files=['00','01','02','03'];
     const parts=await Promise.all(files.map(async part=>{
       const response=await fetch('./assets/v8-map-'+part+'.txt',{cache:'force-cache'});
       if(!response.ok)throw new Error('map chunk '+part);
