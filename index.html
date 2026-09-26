@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.28.6</title>
-  <link rel="stylesheet" href="./styles.css?v=0286" />
+  <title>San Francisco 1906 — Prototype v0.28.7</title>
+  <link rel="stylesheet" href="./styles.css?v=0287" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
-      <div class="brand-kicker">BOARD GAME PROTOTYPE</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.28.6</span></div>
+      <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.28.7</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
@@ -40,7 +40,7 @@
       <section class="view active" id="hallView">
         <div class="view-head">
           <div>
-            <div class="eyebrow">CITY HALL SESSION</div>
+            <div class="eyebrow">СЕССИЯ МЭРИИ</div>
             <h2>Городские проекты</h2>
             <p id="hallInstruction">Старт: каждый игрок получает 5 случайных проектов, оставляет 2 и сбрасывает 3. Открытый рынок виден сразу.</p>
           </div>
@@ -50,7 +50,7 @@
         <section class="starter-draft" id="starterDraft" aria-label="Стартовый драфт"></section>
         <div class="market-track-head">
           <span>Открытый рынок · новые проекты входят слева</span>
-          <div class="track-arrow">NEW&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;LAST CHANCE</div>
+          <div class="track-arrow">НОВЫЕ&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;→&nbsp;&nbsp;ПОСЛЕДНИЙ ШАНС</div>
           <span>Правый край сгорает</span>
         </div>
         <div class="project-market" id="projectMarket"></div>
@@ -61,9 +61,9 @@
       <section class="view" id="cityView">
         <div class="view-head compact">
           <div>
-            <div class="eyebrow">DEVELOPMENT PHASE</div>
+            <div class="eyebrow">ФАЗА РАЗВИТИЯ</div>
             <h2>Город</h2>
-            <p>Каждая активация: выберите 1 из 3 представителей. Main action выполняется в текущем или соседнем районе; Raise Capital тоже может переместить фигурку на 1 район. Позиции сохраняются между раундами.</p>
+            <p>Каждая активация: выберите 1 из 3 представителей. Главное действие выполняется в текущем или соседнем районе; «Привлечь капитал» тоже может переместить фигурку на 1 район. Позиции сохраняются между раундами.</p>
           </div>
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
@@ -74,10 +74,10 @@
         <div class="delivery-panel" id="deliveryPanel" aria-live="polite"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
-            <span class="soft-chip">v0.28.6 · V8 development map · routed logistics</span>
-            <span class="soft-chip">5 supply nodes · Lumber 40% · Masonry 35% · Steel 25%</span>
-            <span class="soft-chip mobile-pan-hint">На телефоне: FIT для обзора · DETAIL для чтения</span>
-            <span class="map-zoom-controls"><button type="button" id="mapZoomFit">FIT</button><button type="button" id="mapZoomDetail">DETAIL</button></span>
+            <span class="soft-chip">v0.28.7 · V8 · карта развития · маршрутная логистика</span>
+            <span class="soft-chip">5 логистических узлов · общий баланс: Дерево 40% · Камень 35% · Сталь 25%</span>
+            <span class="soft-chip mobile-pan-hint">На телефоне: ОБЗОР для карты · ДЕТАЛИ для чтения</span>
+            <span class="map-zoom-controls"><button type="button" id="mapZoomFit">ОБЗОР</button><button type="button" id="mapZoomDetail">ДЕТАЛИ</button></span>
           </div>
           <div class="city-board-scroll" id="cityBoardScroll">
           <svg class="city-board full-sf-map" viewBox="0 0 1536 1024" role="img" aria-label="V8 development map Сан-Франциско с интерактивными gameplay районами и логистическими узлами">
@@ -125,15 +125,15 @@
 <div class="context-backdrop" id="contextBackdrop"></div>
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="drawer" id="officeDrawer" aria-label="Офис игрока">
-  <div class="drawer-head"><div><div class="eyebrow">PLAYER OFFICE</div><h3 id="officeTitle">Офис</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-head"><div><div class="eyebrow">ОФИС ИГРОКА</div><h3 id="officeTitle">Офис</h3></div><button class="close-btn" data-close-drawer>×</button></div>
   <div class="drawer-body" id="officeContent"></div>
 </aside>
 <aside class="drawer" id="logDrawer" aria-label="Журнал партии">
-  <div class="drawer-head"><div><div class="eyebrow">ACTION LOG</div><h3>Журнал партии</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-head"><div><div class="eyebrow">ЖУРНАЛ ПАРТИИ</div><h3>Журнал партии</h3></div><button class="close-btn" data-close-drawer>×</button></div>
   <div class="drawer-body"><div class="game-log" id="gameLog"></div><button class="secondary-btn full" id="copyLogBtn">Копировать весь лог</button></div>
 </aside>
 <aside class="drawer" id="settingsDrawer" aria-label="Настройки теста">
-  <div class="drawer-head"><div><div class="eyebrow">TEST TOOLS</div><h3>Настройки теста</h3></div><button class="close-btn" data-close-drawer>×</button></div>
+  <div class="drawer-head"><div><div class="eyebrow">ИНСТРУМЕНТЫ ТЕСТА</div><h3>Настройки теста</h3></div><button class="close-btn" data-close-drawer>×</button></div>
   <div class="drawer-body">
     <div class="test-note">Эти кнопки нужны только для быстрых проверок баланса. В обычной игре их не будет.</div>
     <div id="debugPlayers"></div>
@@ -150,6 +150,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=0286"></script>
+<script type="module" src="./app.js?v=0287"></script>
 </body>
 </html>
