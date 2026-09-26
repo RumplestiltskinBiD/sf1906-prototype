@@ -66,3 +66,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
   - Union Iron Works / Potrero Point — Potrero — throughput 2
 - At game start and after each round cleanup, every node receives a completely new random supply: **Lumber 40% / Masonry 35% / Steel 25%**. Any old node stock is discarded.
 - The new logistics stock is **not yet connected to construction/payment**. The existing construction procurement flow is intentionally left intact until the delivery/hauler rules are designed and tested.
+
+
+## v0.27.1 — map quality hotfix
+
+- Replaced the aggressively compressed ~16 KB development-map payload with a dedicated high-quality 1536×1024 WebP asset (~491 KB, quality 95).
+- The exact SVG gameplay geometry, adjacency, workers, buildings and logistics nodes are unchanged.
+- Browser now loads `assets/v8-map.webp` directly instead of reconstructing a tiny image from text chunks.
