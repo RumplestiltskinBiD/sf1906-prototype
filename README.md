@@ -73,3 +73,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Replaced the aggressively compressed ~16 KB development-map payload with a dedicated high-quality 1536×1024 WebP asset (~491 KB, quality 95).
 - The exact SVG gameplay geometry, adjacency, workers, buildings and logistics nodes are unchanged.
 - Browser now loads `assets/v8-map.webp` directly instead of reconstructing a tiny image from text chunks.
+
+
+## v0.27.2 — district overlay alignment hotfix
+
+- Corrected the manual gameplay overlay by **11 px upward** to compensate for the PSD layer/page offset that had been carried into the SVG coordinates.
+- The V8 raster background and logistics-node positions are unchanged.
+- District hit areas, district metadata, construction tokens and worker tokens are shifted together so selected/hovered district borders align with the visible V8 boundaries.
