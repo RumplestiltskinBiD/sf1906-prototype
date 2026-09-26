@@ -1458,5 +1458,9 @@ button.city-action-card{cursor:pointer}
   .hauler-grid{grid-template-columns:repeat(4,minmax(58px,1fr))}
   .delivery-targets{grid-template-columns:1fr;max-height:none}
   .delivery-head{position:sticky;top:-10px;z-index:2;background:#f4ead9;padding:8px 0 5px}
+  .delivery-close{width:44px;height:44px}
+  .delivery-source-card,.hauler-card,.load-resource,.route-next-btn{min-height:44px}
+  .drop-buttons button{min-width:44px;min-height:44px}
+  .delivery-footer button{min-height:44px}
   body.delivery-active .toast{bottom:49vh}
 }

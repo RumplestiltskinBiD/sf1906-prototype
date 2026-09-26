@@ -193,9 +193,18 @@ function addDeliveryRouteDistrict(id){
   if(deliveryDraft?.step!=='route')return false;
   const last=deliveryDraft.route[deliveryDraft.route.length-1];
   if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Нужен соседний район');return true;}
-  deliveryDraft.route.push(id);deliveryDraft.drops=[];render();return true;
+  deliveryDraft.route.push(id);render();return true;
 }
-function undoDeliveryRoute(){if(deliveryDraft?.step==='route'&&deliveryDraft.route.length>1){deliveryDraft.route.pop();deliveryDraft.drops=[];render();}}
+function undoDeliveryRoute(){
+  if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
+  deliveryDraft.route.pop();
+  const routeSet=new Set(deliveryDraft.route);
+  deliveryDraft.drops=(deliveryDraft.drops||[]).filter(d=>{
+    const con=(state.constructions||[]).find(x=>x.id===d.id);
+    return con&&routeSet.has(con.districtId);
+  });
+  render();
+}
 function deliveryTarget(kind,id){
   return (deliveryDraft?.drops||[]).find(d=>d.kind===kind&&d.id===id);
 }
@@ -979,8 +988,8 @@ function renderOffice(){
   $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}<div class="office-summary four"><div class="office-stat"><span>Capital</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Prestige</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Influence</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Next income</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Delivery / Complete from Warehouse / Repay = free actions только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>LOANS ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Debt $${debt} · Interest −$${interest} next Income</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Repay $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Available Projects</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Выиграйте их в City Hall.</div>'}</div><div class="detail-label office-subhead">Construction & Buildings</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.28:</b> рука ограничена 5 проектами. Main action привязан к представителю; Delivery — отдельное повторяемое free action.</div>`;
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
-  $('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-  $('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
+  $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
+  $$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
   const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Repay доступен только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала кредит должен пройти Income Phase':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }
 
@@ -1013,7 +1022,7 @@ $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n')
 $('#endRoundBtn').onclick=()=>{deliveryDraft=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$('[data-district]').forEach(g=>g.onclick=()=>{
+$$('[data-district]').forEach(g=>g.onclick=()=>{
   const id=g.dataset.district;
   if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
   if(deliveryDraft)return;

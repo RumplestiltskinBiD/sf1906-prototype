@@ -100,3 +100,12 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Warehouse now costs **Lumber + Masonry + Steel**, stores **5 resources**, persists across rounds, can be a delivery source/destination, and can supply construction in its own district.
 - Buildings needing 4+ resources therefore require a completed Warehouse in that district.
 - Resources left in city ports/stations disappear at round refresh; materials already staged on construction or stored in Warehouses persist.
+
+
+## v0.28.1 — Delivery UI hotfix
+
+- Fixed three DOM selector crashes that prevented the v0.28 interface from completing its initial render.
+- Extending a freight route no longer erases already assigned multi-drop unloads.
+- Undoing the last route district now removes only unloads that are no longer on the route.
+- Increased key Delivery touch targets on mobile.
+- State schema remains v0.28, so existing local test saves are preserved.
