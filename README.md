@@ -131,3 +131,11 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - The first unload click no longer causes the Delivery panel re-render to crash.
 - Resource assignment buttons (+L / +M / +S) remain wired after every Delivery re-render.
 - Full app.js scan confirms there are no remaining querySelector(...).forEach selector mistakes.
+
+
+## v0.28.5 — Delivery unload-first UX
+
+- Delivery now presents valid unload targets immediately after the route strip.
+- Optional “ЕХАТЬ ДАЛЬШЕ” controls appear only after unload choices, matching the natural player decision order.
+- Removed the misleading “Разгрузить здесь” button that only scrolled rather than unloading.
+- The current-district hint now checks whether a target can actually accept at least one remaining cargo resource.

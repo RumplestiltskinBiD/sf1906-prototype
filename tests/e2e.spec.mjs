@@ -43,7 +43,7 @@ async function stored(page){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.28.4');
+  await expect(page.locator('.version-badge')).toHaveText('v0.28.5');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -262,4 +262,27 @@ test('state survives a browser reload after Delivery',async({page})=>{
   const saved=await stored(page);
   expect(saved.constructions.find(c=>c.id==='C1').materialsDelivered).toEqual(['Masonry']);
   expect(saved.haulersUsed).toContain('dray2a');
+});
+
+
+test('unload targets are presented before optional route continuation',async({page})=>{
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-ds-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  const targets=page.locator('#deliveryTargets');
+  const onward=page.locator('.route-continue-label');
+  await expect(targets).toBeVisible();
+  await expect(onward).toBeVisible();
+  const order=await page.evaluate(()=>{
+    const a=document.querySelector('#deliveryTargets');
+    const b=document.querySelector('.route-continue-label');
+    return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect(order).toBe(true);
 });

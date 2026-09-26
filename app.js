@@ -274,28 +274,34 @@ function renderDeliveryPanel(){
     html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>Маршрут →</button></div>';
   }else{
     const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0),last=deliveryDraft.route.at(-1),next=deliveryNeighbors(last);
-    const hasCurrentTarget=(state.constructions||[]).some(con=>con.playerId===pid&&con.districtId===last&&(con.status==='under-construction'||(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id))));
-    html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. Точка разгрузки уже есть в текущем районе. Можно разгрузиться здесь без пересечения границы ($0 за дорогу) или продолжить маршрут дальше.':'3. В текущем районе подходящей точки разгрузки нет. Выберите соседний район, чтобы продолжить маршрут (+$1 за границу).')+'</div><div class="delivery-route-strip">';
-    deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-    html+='</div>';
-    if(hasCurrentTarget)html+='<button id="deliveryUnloadHere" class="primary-btn delivery-unload-here">Разгрузить здесь · '+shortDistrictName(last)+' ↓</button>';
-    html+='<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если нужна другая точка маршрута.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
-    next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
-    html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
-    html+='<div class="delivery-cargo-status"><b>Не распределено:</b> L '+(left.Lumber||0)+' · M '+(left.Masonry||0)+' · S '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
     const routeSet=new Set(deliveryDraft.route);
-    for(const con of state.constructions||[]){
-      if(con.playerId!==pid||!routeSet.has(con.districtId))continue;
+    const routeTargets=(state.constructions||[]).filter(con=>{
+      if(con.playerId!==pid||!routeSet.has(con.districtId))return false;
+      if(con.status==='under-construction')return true;
+      return con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id);
+    });
+    const hasCurrentTarget=routeTargets.some(con=>{
+      if(con.districtId!==last)return false;
+      const kind=con.status==='under-construction'?'construction':'warehouse';
+      return RESOURCE_ORDER.some(type=>deliveryCanDrop(kind,con.id,type));
+    });
+    html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. Вы уже в районе с подходящей точкой разгрузки. Сначала распределите груз ниже. Ехать дальше необязательно.':'3. В текущем районе нет точки, которая может принять этот груз. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
+    deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
+    html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> L '+(left.Lumber||0)+' · M '+(left.Masonry||0)+' · S '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
+    for(const con of routeTargets){
       let kind=null,label='',cap='';
       if(con.status==='under-construction'){kind='construction';label=projectById(con.projectId).name;cap='Staging '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+CONSTRUCTION_STAGING_CAPACITY;}
-      else if(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id)){kind='warehouse';label='Warehouse';cap='Storage '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
-      if(!kind)continue;
+      else {kind='warehouse';label='Warehouse';cap='Storage '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
       const assigned=deliveryTarget(kind,con.id)?.materials||[];
       html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
       for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
       html+='</div></div>';
     }
-    html+='</div><div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
+    if(!routeTargets.length)html+='<div class="delivery-target-empty">На текущем маршруте пока нет вашей стройки или Warehouse для разгрузки.</div>';
+    html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
+    next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
+    html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
+    html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
   }
   el.innerHTML=html;
   $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
@@ -306,7 +312,6 @@ function renderDeliveryPanel(){
   $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
   $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];render();});
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
-  $('#deliveryUnloadHere')?.addEventListener('click',()=>$('#deliveryTargets')?.scrollIntoView({behavior:'smooth',block:'nearest'}));
   $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
   $('#deliveryUndoRoute')?.addEventListener('click',undoDeliveryRoute);
   $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
