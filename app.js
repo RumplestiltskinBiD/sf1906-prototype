@@ -701,7 +701,7 @@ function renderCityActions(){
     const hasConstruction=(state.constructions||[]).some(x=>x.playerId===pid&&x.status==='under-construction');
     const disabled=mainUsed||!selected||!range||occupied||p.capital<1||!hasConstruction;
     const ownerText=shop.playerId===pid?'$1 procurement cost':'$1 → владельцу';
-    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'2 materials / $1';
+    const usedText=occupied?`USED · ${state.players[occupiedBy].name}`:!selected?'SELECT WORKER':!range?'TOO FAR':!hasConstruction?'NO BUILD':p.capital<1?'NEED $1':mainUsed?'MAIN USED':'2 bought materials $0 / $1';
     return `<button class="action-space-btn shops ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-shops-action="${shop.id}" ${disabled?'disabled':''}><b>Shopping Row · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
   }).join(''):'<div class="action-space-locked">Shopping Row ещё не построен</div>';
 
@@ -725,7 +725,7 @@ function renderCityActions(){
     <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Raise Capital</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'LOCKED':'CHOOSE DISTRICT'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
-    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1</span><div class="action-space-list">${shopsButtons}</div></div>
+    <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1 · до 2 купленных материалов по $0</span><div class="action-space-list">${shopsButtons}</div></div>
     <div class="city-action-card club-card"><b>Restaurant & Social Club</b><span>Нужно добраться до Club · −$1 → +1 Influence</span><div class="action-space-list">${clubButtons}</div></div>
   </div>`;
 
