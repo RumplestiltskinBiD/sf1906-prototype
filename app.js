@@ -8,7 +8,7 @@ import {
   constructionProgress,completedWarehouses,warehouseInventory,canCompleteConstruction,completeConstructionFromStorage,
   availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
   roundIncome,grossRoundIncome,buildingIncome,
-  activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseКапитал,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+  activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
 const STORAGE_KEY='sf1906_phase1_ui_v028';
@@ -689,7 +689,7 @@ function renderCityActions(){
   ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
   <div class="city-action-grid ${mainUsed?'main-action-used':''}">
     <button class="city-action-card build" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
-    <button class="city-action-card capital" id="actionRaiseКапитал" ${capitalDisabled?'disabled':''}><b>Привлечь капитал</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ РАЙОН'}</strong></button>
+    <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Привлечь капитал</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ РАЙОН'}</strong></button>
     <button class="city-action-card delivery" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Источник → перевозчик → маршрут → несколько разгрузок</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
@@ -704,10 +704,10 @@ function renderCityActions(){
   });
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
   const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
-  const raise=$('#actionRaiseКапитал');if(raise&&!capitalDisabled)raise.onclick=()=>{
+  const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
     deliveryDraft=null;
     state.pendingConstruction=null;
-    state.pendingWorkerAction={type:'raiseКапитал',playerId:pid};
+    state.pendingWorkerAction={type:'raiseCapital',playerId:pid};
     state.view='city';
     closeDrawers();closeMobileContext();
     render();
@@ -757,7 +757,7 @@ function renderCity(){
   }else if(deliveryMode){
     mode.className='construction-mode hidden';
     mode.innerHTML='';
-  }else if(workerAction?.type==='raiseКапитал'){
+  }else if(workerAction?.type==='raiseCapital'){
     const pl=state.players[workerAction.playerId],w=activeWorker(state,workerAction.playerId);
     mode.className='construction-mode active movement-mode';
     mode.innerHTML=`<div><strong>${pl.name}: Привлечь капитал +$${RAISE_CAPITAL_AMOUNT}</strong><span>Представитель #${w?.number}: выберите его текущий или соседний район. После действия он останется там.</span></div><button class="ghost-btn" id="cancelWorkerAction">Отмена</button>`;
@@ -790,7 +790,7 @@ function renderCity(){
       if(reachableIds.has(id))g.classList.add('worker-reachable');
       else g.classList.add('worker-unreachable');
     }
-    if(workerAction?.type==='raiseКапитал'&&reachableIds.has(id))g.classList.add('move-target');
+    if(workerAction?.type==='raiseCapital'&&reachableIds.has(id))g.classList.add('move-target');
     if(pending){
       const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
       g.classList.add(check.ok?'build-ok':'build-blocked');
@@ -802,10 +802,10 @@ function renderCity(){
     meta.innerHTML=DISTRICTS.map(d=>{
       const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_META_POS[d.id]||DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
-      const movementLegal=workerAction?.type==='raiseКапитал'?reachableIds.has(d.id):null;
+      const movementLegal=workerAction?.type==='raiseCapital'?reachableIds.has(d.id):null;
       const klass=(d.passable===false?'district-meta special closed':d.buildable===false?'district-meta special passage':
         pending?(pendingCheck.ok?'district-meta eligible':'district-meta blocked')
-        :workerAction?.type==='raiseКапитал'?(movementLegal?'district-meta eligible':'district-meta blocked')
+        :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
         :'district-meta');
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
       const label=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
@@ -881,16 +881,16 @@ function confirmConstructionInDistrict(){
   render();
 }
 
-function confirmRaiseКапиталInDistrict(targetDistrictId=state.selectedDistrictId){
+function confirmRaiseCapitalInDistrict(targetDistrictId=state.selectedDistrictId){
   const pending=state.pendingWorkerAction;
-  if(!pending||pending.type!=='raiseКапитал')return;
+  if(!pending||pending.type!=='raiseCapital')return;
   const worker=activeWorker(state,pending.playerId);
   if(!worker||!workerCanReachDistrict(state,pending.playerId,targetDistrictId,worker.id)){
     showToast('Этот район дальше одного шага');
     return;
   }
   const from=worker.districtId;
-  const r=raiseКапитал(state,pending.playerId,targetDistrictId);
+  const r=raiseCapital(state,pending.playerId,targetDistrictId);
   if(!r.ok){
     showToast(r.reason==='worker-range'?'Этот район дальше одного шага':'Привлечь капитал сейчас недоступен');
     return;
@@ -919,10 +919,10 @@ function renderContext(){
     const accessHtml=`<div class="access-grid">${accessChip('STREET',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
 
     let workerActionHtml='';
-    if(state.pendingWorkerAction?.type==='raiseКапитал'){
+    if(state.pendingWorkerAction?.type==='raiseCapital'){
       const pid=state.pendingWorkerAction.playerId,w=activeWorker(state,pid);
       const canMove=!!w&&workerCanReachDistrict(state,pid,d.id,w.id);
-      workerActionHtml=`<div class="construction-confirm ${canMove?'ok':'blocked'}"><div class="detail-label">Привлечь капитал · move</div><strong>+$${RAISE_CAPITAL_AMOUNT} · представитель #${w?.number||'—'}</strong><div class="detail-text">${canMove?`После действия останется в ${d.name}.`:'Слишком далеко: максимум текущий или соседний район.'}</div>${canMove?'<button class="primary-btn full" id="confirmRaiseКапитал">Получить $3 здесь</button>':''}</div>`;
+      workerActionHtml=`<div class="construction-confirm ${canMove?'ok':'blocked'}"><div class="detail-label">Привлечь капитал · move</div><strong>+$${RAISE_CAPITAL_AMOUNT} · представитель #${w?.number||'—'}</strong><div class="detail-text">${canMove?`После действия останется в ${d.name}.`:'Слишком далеко: максимум текущий или соседний район.'}</div>${canMove?'<button class="primary-btn full" id="confirmRaiseCapital">Получить $3 здесь</button>':''}</div>`;
     }
 
     let constructionHtml='';
@@ -943,7 +943,7 @@ function renderContext(){
       ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
       :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
     panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
-    const confirmMove=$('#confirmRaiseКапитал');if(confirmMove)confirmMove.onclick=()=>confirmRaiseКапиталInDistrict(d.id);
+    const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
   }
@@ -1048,8 +1048,8 @@ $$('[data-district]').forEach(g=>g.onclick=()=>{
   if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
   if(deliveryDraft)return;
   state.selectedDistrictId=id;
-  if(state.pendingWorkerAction?.type==='raiseКапитал'){
-    confirmRaiseКапиталInDistrict(id);
+  if(state.pendingWorkerAction?.type==='raiseCapital'){
+    confirmRaiseCapitalInDistrict(id);
     return;
   }
   if(isMobile())mobileContextOpen=true;
