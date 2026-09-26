@@ -33,7 +33,9 @@ function con(id,playerId,projectId,districtId,status='under-construction',materi
   return {id,playerId,projectId,districtId,status,materialsDelivered:[...materialsDelivered],warehouseInventory:[...warehouseInventory],startedRound:1,completedRound:status==='complete'?1:null};
 }
 async function seed(page,state){
-  await page.addInitScript(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(state)});
+  await page.addInitScript(({key,value})=>{
+    if(!localStorage.getItem(key))localStorage.setItem(key,value);
+  },{key:STORAGE_KEY,value:JSON.stringify(state)});
 }
 async function stored(page){
   return JSON.parse(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEY));
