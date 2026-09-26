@@ -904,7 +904,7 @@ function confirmConstructionInDistrict(){
   if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
   mobileContextOpen=false;
   const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля $${r.cost}`;
-  showToast(`Main action: стройка начата · ${land}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
+  showToast(r.completed?`Main action: объект сразу завершён со склада · ${land}`:`Main action: стройка начата · ${land}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
   render();
 }
 
@@ -1012,7 +1012,7 @@ function renderOffice(){
       }else if(con.projectId==='factory'){
         actionNote='<div class="factory-building-note">После завершения Factory снизила Land Value района на $1.</div>';
       }
-      return '<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>'+pr.name+'</strong><small>'+d.name+'</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">'+resourcePills(pr.materials,con.materialsDelivered)+'</div><div class="completed-effect"><b>Prestige +'+(pr.prestige||0)+' VP</b> · Income +$'+(pr.income||0)+' / раунд · '+pr.effect+'</div>'+wh+actionNote+'</div>';
+      return '<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>'+pr.name+'</strong><small>'+d.name+'</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">'+resourcePills(pr.materials,pr.materials)+'</div><div class="completed-effect"><b>Prestige +'+(pr.prestige||0)+' VP</b> · Income +$'+(pr.income||0)+' / раунд · '+pr.effect+'</div>'+wh+actionNote+'</div>';
     }
 
     const localWarehouses=playerWarehouses(state,p.id,con.districtId);
