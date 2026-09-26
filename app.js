@@ -19,6 +19,8 @@ let pendingBidReveal=false;
 let mobileContextOpen=false;
 let mobileMapDetail=false;
 let deliveryDraft=null;
+let overviewPlayerId=null;
+let focusedConstructionId=null;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -135,6 +137,66 @@ function logisticsProfileText(node){
   const w=node?.weights||LOGISTICS_RESOURCE_WEIGHTS;
   return 'Д '+Math.round((w.Lumber||0)*100)+'% · К '+Math.round((w.Masonry||0)*100)+'% · С '+Math.round((w.Steel||0)*100)+'%';
 }
+
+function currentOverviewPlayerId(){
+  const active=currentDeveloper(state);
+  if(overviewPlayerId==null)return active??state.firstPlayer??0;
+  return overviewPlayerId;
+}
+function materialCountText(items=[]){
+  const counts=deliveryCounts(items);
+  return RESOURCE_ORDER.map(type=>materialShort(type)+(counts[type]||0)).join(' · ');
+}
+function missingConstructionMaterials(con){
+  const pr=projectById(con?.projectId);
+  const need=deliveryCounts(pr?.materials||[]);
+  const have=deliveryCounts(con?.materialsDelivered||[]);
+  const missing=[];
+  for(const type of RESOURCE_ORDER){
+    const count=Math.max(0,(need[type]||0)-(have[type]||0));
+    if(count)missing.push(materialLabel(type)+' ×'+count);
+  }
+  return missing;
+}
+function requirementParts(project){
+  return String(project?.requires||'Нет дополнительных требований').split('·').map(x=>x.trim()).filter(Boolean);
+}
+function requirementChips(project){
+  return requirementParts(project).map(x=>'<span class="requirement-chip">'+x+'</span>').join('');
+}
+function syncStickyLayout(){
+  const top=$('.topbar'),players=$('#playersBar');
+  if(!top||!players)return;
+  const topH=Math.ceil(top.getBoundingClientRect().height);
+  const playersH=Math.ceil(players.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--topbar-h',topH+'px');
+  document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH)+'px');
+}
+function focusMapOnDistrict(districtId){
+  const wrap=$('.city-board-wrap'),scroll=$('#cityBoardScroll'),svg=$('.city-board');
+  if(!wrap||!scroll||!svg)return;
+  if(isMobile()){mobileMapDetail=true;syncMapZoom();}
+  wrap.scrollIntoView({behavior:'smooth',block:'center'});
+  requestAnimationFrame(()=>{
+    const pos=DISTRICT_POS[districtId];if(!pos)return;
+    const width=svg.getBoundingClientRect().width;
+    const scale=width/1536;
+    const left=Math.max(0,pos[0]*scale-scroll.clientWidth/2);
+    scroll.scrollTo({left,behavior:'smooth'});
+  });
+}
+function focusConstruction(constructionId){
+  const con=(state.constructions||[]).find(x=>x.id===constructionId);if(!con)return;
+  overviewPlayerId=con.playerId===currentDeveloper(state)?null:con.playerId;
+  focusedConstructionId=constructionId;
+  state.view='city';
+  state.selectedDistrictId=con.districtId;
+  if(isMobile())mobileContextOpen=true;
+  render();
+  requestAnimationFrame(()=>focusMapOnDistrict(con.districtId));
+  setTimeout(()=>document.querySelector('[data-construction-token="'+constructionId+'"]')?.classList.remove('focus-pulse'),1700);
+}
+
 function resourcePills(materials,delivered=[]){
   const seen={};
   const have=delivered.reduce((a,x)=>{a[x]=(a[x]||0)+1;return a;},{});
@@ -340,7 +402,7 @@ function renderDeliveryRouteOverlay(){
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
+  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderCityOverview();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();requestAnimationFrame(syncStickyLayout);
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -367,7 +429,50 @@ function renderPlayers(){
   });
 }
 
-function setView(view){state.view=view;$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
+
+function renderCityOverview(){
+  const el=$('#cityOverviewPanel');if(!el)return;
+  if(state.view!=='city'||state.phase==='draft'){
+    el.classList.remove('active');el.innerHTML='';return;
+  }
+  const pid=currentOverviewPlayerId(),p=state.players[pid];
+  if(!p){el.classList.remove('active');el.innerHTML='';return;}
+  el.classList.add('active');
+  const activePid=currentDeveloper(state);
+  const builds=(state.constructions||[]).filter(x=>x.playerId===pid&&x.status==='under-construction');
+  const warehouses=completedWarehouses(state,pid);
+  const buildHtml=builds.map(con=>{
+    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
+    const missing=missingConstructionMaterials(con);
+    const finish=canCompleteConstruction(state,con.id);
+    const ready=finish.ok&&finish.warehouseUse>0;
+    return '<button class="overview-object build-object '+(focusedConstructionId===con.id?'focused':'')+'" data-overview-construction="'+con.id+'">'
+      +'<span class="overview-object-head"><b>'+pr.name+'</b><em>'+d.name+'</em></span>'
+      +'<span class="overview-materials">'+resourcePills(pr.materials,con.materialsDelivered||[])+'</span>'
+      +'<span class="overview-object-foot"><strong>'+prog.delivered+'/'+prog.required+'</strong><small>'+(ready?'Склад может завершить':missing.length?'Нужно: '+missing.join(', '):'Комплект собран')+'</small></span>'
+      +'</button>';
+  }).join('');
+  const warehouseHtml=warehouses.map(wh=>{
+    const d=districtById(wh.districtId),inv=warehouseInventory(wh),counts=deliveryCounts(inv);
+    const supported=builds.filter(x=>x.districtId===wh.districtId).map(x=>projectById(x.projectId)?.name).filter(Boolean);
+    return '<button class="overview-object warehouse-object '+(focusedConstructionId===wh.id?'focused':'')+'" data-overview-construction="'+wh.id+'">'
+      +'<span class="overview-object-head"><b>Склад</b><em>'+d.name+'</em></span>'
+      +'<span class="warehouse-counts"><i class="lumber">Д '+(counts.Lumber||0)+'</i><i class="masonry">К '+(counts.Masonry||0)+'</i><i class="steel">С '+(counts.Steel||0)+'</i><strong>'+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</strong></span>'
+      +'<span class="overview-object-foot"><small>'+(supported.length?'Поддерживает: '+supported.join(', '):'Нет активной стройки в районе')+'</small></span>'
+      +'</button>';
+  }).join('');
+  const viewingOpponent=activePid!=null&&pid!==activePid;
+  const procurement=activePid===pid?(state.procurementRemaining||0):0;
+  el.innerHTML='<div class="overview-head"><div><span class="player-dot '+p.key+'"></span><b>'+(viewingOpponent?'Просмотр: ':'Объекты: ')+p.name+'</b><small>'+builds.length+' строек · '+warehouses.length+' складов</small></div>'
+    +'<div class="overview-head-actions">'+(viewingOpponent?'<button class="overview-active-btn" id="overviewBackActive">Активный игрок</button>':'')+'<button class="overview-office-btn" id="overviewOpenOffice">Офис</button></div></div>'
+    +(procurement?'<div class="overview-effect">Закупка активна: <b>'+procurement+'</b> материала по $0 в следующих доставках этой активации</div>':'')
+    +'<div class="overview-scroll">'+(buildHtml||'<div class="overview-empty">Незавершённых строек нет</div>')+warehouseHtml+'</div>';
+  $('[data-overview-construction]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.overviewConstruction));
+  $('#overviewBackActive')?.addEventListener('click',()=>{overviewPlayerId=null;renderPlayers();renderCityOverview();});
+  $('#overviewOpenOffice')?.addEventListener('click',()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();});
+}
+
+function setView(view){state.view=view;$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
 function renderViews(){
   setViewSilently(state.view||'hall');
   $('#endRoundBtn').disabled=state.phase!=='development'||state.finished||!state.developmentComplete;
@@ -1027,7 +1132,7 @@ function renderDebug(){
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
@@ -1055,7 +1160,7 @@ $$('[data-district]').forEach(g=>g.onclick=()=>{
   if(isMobile())mobileContextOpen=true;
   render();
 });
-window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();syncMapZoom();});
+window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();syncMapZoom();syncStickyLayout();});
 
 loadDevMapBackground();
 render();
