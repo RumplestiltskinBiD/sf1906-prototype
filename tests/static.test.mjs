@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
 
 test('app.js has no querySelector(...).forEach regression',async()=>{
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
@@ -26,4 +27,12 @@ test('Delivery UI contains all progressive flow handlers',async()=>{
     "$('#deliveryConfirm')?.addEventListener('click',confirmDelivery)",
     "el.className='delivery-panel active'"
   ]) assert.ok(app.includes(needle),needle);
+});
+
+
+test('JavaScript entry files parse successfully',()=>{
+  for(const file of ['app.js','game-core.js']){
+    const r=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
+    assert.equal(r.status,0,file+' syntax error:\n'+(r.stderr||r.stdout));
+  }
 });
