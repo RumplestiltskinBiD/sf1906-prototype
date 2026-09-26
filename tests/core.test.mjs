@@ -395,7 +395,7 @@ test('Delivery log preserves causal order for partial then completing shipment',
   assert.deepEqual(s.constructions[0].materialsDelivered,['Masonry','Steel']);
   const firstDeliveryIndex=s.log.findIndex(x=>x.msg.includes('Pacific Mail / Pier 40')&&x.msg.includes('выполняет Delivery'));
   assert.ok(firstDeliveryIndex>=0);
-  assert.match(s.log[firstDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Masonry ×1, Steel ×1/);
+  assert.match(s.log[firstDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Камень ×1, Сталь ×1/);
   assert.equal(s.log.some(x=>x.msg.includes('завершил «Страховая компания»')),false);
 
   const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry'],route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
@@ -407,7 +407,7 @@ test('Delivery log preserves causal order for partial then completing shipment',
   const completionIndex=s.log.findIndex(x=>x.msg.includes('завершил «Страховая компания»'));
   assert.ok(secondDeliveryIndex>firstDeliveryIndex);
   assert.ok(completionIndex>secondDeliveryIndex,'completion must be logged after the Delivery that caused it');
-  assert.match(s.log[secondDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Masonry ×1/);
+  assert.match(s.log[secondDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Камень ×1/);
 });
 
 
