@@ -396,7 +396,10 @@ test('construction choice marks reachable legal green, reachable illegal red and
   const w=s.players[0].workers[0];
   w.districtId='civic';
   s.activeWorkerId=w.id;
-  s.constructions=[con('FIRE',0,'firehouse','civic','complete',['Lumber','Masonry','Steel'])];
+  s.constructions=[
+    con('FIRE',0,'firehouse','civic','complete',['Lumber','Masonry','Steel']),
+    con('WH-PAC',0,'warehouse','pacific','complete',['Lumber','Masonry','Steel'],[])
+  ];
   await seed(page,s);
   await page.goto('/');
 
