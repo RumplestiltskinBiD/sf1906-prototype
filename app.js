@@ -486,13 +486,15 @@ function renderCityActions(){
 
   const buildDisabled=availableProjects===0||mainUsed||!selected;
   const capitalDisabled=mainUsed||!selected;
+  const deliveryDisabled=!canUseFreeAction(state,pid);
   el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Projects ${availableProjects} · Loans ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Contract':''}${procurement?` · Procurement ${procurement}`:''}</span></div><span class="activation-state">${mainUsed?'MAIN ACTION USED':selected?`WORKER #${selected.number} READY`:'SELECT WORKER'}</span></div>
   <div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>
-  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${procurement?`Procurement: ещё ${procurement} бесплатн. материала`:mainUsed?'Supply и Repay можно сделать сейчас':selected?'Выберите действие в пределах 1 района':'сначала выберите одного свободного представителя'}</span><em>FREE: Supply · Overflow · Repay</em></div>
+  <div class="action-legend"><b>${mainUsed?'FREE ACTIONS / END ACTIVATION':'MAIN ACTION'}</b><span>${procurement?`Procurement: ещё ${procurement} бесплатн. материала на следующую покупку`:mainUsed?'Delivery и Repay доступны до End Activation':selected?'Выберите main action или сделайте Delivery':'Delivery можно сделать и до выбора представителя'}</span><em>FREE: Delivery · Complete from Warehouse · Repay</em></div>
   ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
   <div class="city-action-grid ${mainUsed?'main-action-used':''}">
     <button class="city-action-card build" id="actionBuild" ${buildDisabled?'disabled':''}><b>Begin Construction</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Main action уже использован':!selected?'Сначала выберите представителя':'Выбрать проект в Office'}</span><strong>${buildDisabled?'LOCKED':'move ≤ 1 · 1 представитель'}</strong></button>
     <button class="city-action-card capital" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Raise Capital</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'LOCKED':'CHOOSE DISTRICT'}</strong></button>
+    <button class="city-action-card delivery" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Delivery · FREE ACTION</b><span>Источник → перевозчик → маршрут → несколько разгрузок</span><strong>${deliveryDisabled?'LOCKED':'START ROUTE'}</strong></button>
     <div class="city-action-card bank-card"><b>Bank Loan</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
     <div class="city-action-card bureau-card"><b>Construction Bureau</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
     <div class="city-action-card shops-card"><b>Shopping Row · Procurement</b><span>Нужно добраться до Shopping Row · $1</span><div class="action-space-list">${shopsButtons}</div></div>
@@ -505,6 +507,7 @@ function renderCityActions(){
     state.pendingConstruction=null;state.pendingWorkerAction=null;render();
   });
   const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
+  const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
   const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
     state.pendingConstruction=null;
     state.pendingWorkerAction={type:'raiseCapital',playerId:pid};
