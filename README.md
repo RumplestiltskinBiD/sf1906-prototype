@@ -155,3 +155,17 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Historical marker positions were revised for all five logistics nodes.
 - Pacific Mail is now shown as port + rail; Union Iron Works as industrial port + rail.
 - Logistics UI is substantially Russianized while place names remain in English.
+
+
+## v0.29.0 — usability HUD and map guidance
+
+- Added a persistent player-object overview for unfinished construction and Warehouse inventories.
+- Clicking a construction or Warehouse focuses its district on the map and opens object context.
+- Top player HUD is sticky; clicking a player in City view switches object inspection to that player.
+- Warehouses show compact D/K/S inventory directly on the map.
+- Project cards surface construction requirements in a dedicated requirement band.
+- During construction selection, reachable legal districts are green, reachable illegal districts are red, and unreachable districts are dimmed.
+- Currently usable main/action-space actions are highlighted green, including Shopping Row Procurement.
+- Active Procurement is surfaced persistently in the object overview.
+- Added desktop and mobile E2E coverage for the new HUD and navigation.
+- Phase I remains at 3 rounds in this build so the next playtest isolates UX changes from balance/duration changes.
