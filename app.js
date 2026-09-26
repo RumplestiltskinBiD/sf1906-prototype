@@ -823,7 +823,7 @@ function renderCity(){
       });
     });
     layer.innerHTML=html;
-    $('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
+    $$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
   }
   renderDeliveryRouteOverlay();
 }
