@@ -378,3 +378,32 @@ test('Social Club pays owner on opponent use and grants Influence to visitor',()
   assert.equal(s.players[1].capital,ownerMoney+1);
   assert.equal(s.players[0].influence,visitorInf+1);
 });
+
+
+test('Delivery log preserves causal order for partial then completing shipment',()=>{
+  const s=devState();
+  s.logisticsSupply.pacificmail=['Masonry','Steel'];
+  s.logisticsSupply.southernpacific=['Masonry'];
+  s.constructions=[construction('C1',0,'insurance','soma')];
+
+  const first={playerId:0,source:{kind:'node',id:'pacificmail'},haulerId:'dray2a',cargo:['Masonry','Steel'],route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry','Steel']}]};
+  const r1=G.executeDelivery(s,first);
+  assert.equal(r1.ok,true);
+  assert.equal(s.constructions[0].status,'under-construction');
+  assert.deepEqual(s.constructions[0].materialsDelivered,['Masonry','Steel']);
+  const firstDeliveryIndex=s.log.findIndex(x=>x.msg.includes('Pacific Mail / Pier 40')&&x.msg.includes('выполняет Delivery'));
+  assert.ok(firstDeliveryIndex>=0);
+  assert.match(s.log[firstDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Masonry ×1, Steel ×1/);
+  assert.equal(s.log.some(x=>x.msg.includes('завершил «Страховая компания»')),false);
+
+  const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry'],route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
+  const r2=G.executeDelivery(s,second);
+  assert.equal(r2.ok,true);
+  assert.equal(s.constructions[0].status,'complete');
+
+  const secondDeliveryIndex=s.log.findIndex(x=>x.msg.includes('Southern Pacific · Third & Townsend')&&x.msg.includes('выполняет Delivery'));
+  const completionIndex=s.log.findIndex(x=>x.msg.includes('завершил «Страховая компания»'));
+  assert.ok(secondDeliveryIndex>firstDeliveryIndex);
+  assert.ok(completionIndex>secondDeliveryIndex,'completion must be logged after the Delivery that caused it');
+  assert.match(s.log[secondDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Masonry ×1/);
+});

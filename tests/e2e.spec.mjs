@@ -43,7 +43,7 @@ async function stored(page){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.28.5');
+  await expect(page.locator('.version-badge')).toHaveText('v0.28.6');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');

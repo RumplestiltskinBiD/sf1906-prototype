@@ -904,6 +904,19 @@ export function executeDelivery(state,plan){
     }
   }
 
+  const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
+  const dropText=(plan.drops||[]).filter(d=>Array.isArray(d.materials)&&d.materials.length).map(drop=>{
+    const con=state.constructions.find(c=>c.id===drop.id);
+    const districtName=districtById(con?.districtId)?.name||con?.districtId||'?';
+    const targetName=drop.kind==='warehouse'
+      ?`Warehouse (${districtName})`
+      :`«${projectById(con?.projectId)?.name||con?.projectId||'стройка'}» (${districtName})`;
+    const counts=materialCounts(drop.materials);
+    const materials=Object.entries(counts).map(([type,count])=>`${type} ×${count}`).join(', ');
+    return `${targetName}: ${materials}`;
+  }).join('; ');
+  logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; разгрузка: ${dropText||'—'}; материалы ${cost.materialCost} + перевозчик ${cost.haulerCost} + дорога ${cost.routeCost} = ${cost.total}.`,'accent');
+
   const completed=[];
   for(const id of directConstructionIds){
     const con=state.constructions.find(c=>c.id===id);
@@ -911,8 +924,6 @@ export function executeDelivery(state,plan){
     if(result.ok)completed.push(id);
   }
 
-  const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
-  logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; материалы $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} = $${cost.total}.`,'accent');
   return {ok:true,cost,completed,hauler,source};
 }
 

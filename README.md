@@ -139,3 +139,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Optional “ЕХАТЬ ДАЛЬШЕ” controls appear only after unload choices, matching the natural player decision order.
 - Removed the misleading “Разгрузить здесь” button that only scrolled rather than unloading.
 - The current-district hint now checks whether a target can actually accept at least one remaining cargo resource.
+
+
+## v0.28.6 — causal Delivery log
+
+- Delivery is now logged before any construction completion it triggers.
+- Every Delivery log entry records exact unload destinations and material quantities.
+- Added regression coverage for Insurance Company built by two shipments: M+S from Pacific Mail, then M from Third & Townsend.
