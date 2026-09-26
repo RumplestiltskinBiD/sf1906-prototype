@@ -1428,6 +1428,7 @@ button.city-action-card{cursor:pointer}
 .full-sf-map .district.delivery-route-current path{fill:rgba(31,112,108,.22)!important;stroke:#214f4d!important;stroke-width:9!important}
 .full-sf-map .district.delivery-next path{fill:rgba(233,190,83,.16)!important;stroke:#d09b2f!important;stroke-width:7!important;cursor:pointer}
 .full-sf-map .district.delivery-blocked path{fill:rgba(100,90,84,.08)!important;stroke:#8c8177!important;stroke-dasharray:9 7!important;opacity:.55!important}
+.delivery-route-line,.delivery-route-stop{pointer-events:none}
 .delivery-route-line{stroke:#1f6f6b;stroke-width:10;stroke-linecap:round;opacity:.78;filter:drop-shadow(0 2px 2px rgba(255,255,255,.75))}
 .delivery-route-stop circle{fill:#f3e1b8;stroke:#245b58;stroke-width:4}.delivery-route-stop.current circle{fill:#d7a94c}
 .delivery-route-stop text{text-anchor:middle;font:900 10px/1 ui-sans-serif,system-ui,sans-serif;fill:#283d3b;pointer-events:none}.delivery-route-stop .delivery-drop-count{font-size:9px;fill:#704d2e;paint-order:stroke;stroke:#f7ecd8;stroke-width:3}
