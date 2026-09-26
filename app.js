@@ -717,10 +717,14 @@ function renderCity(){
   const devPid=currentDeveloper(state);
   const selectedWorker=devPid!=null?activeWorker(state,devPid):null;
   const reachableIds=new Set(selectedWorker?workerReachableDistricts(state,devPid,selectedWorker.id):[]);
+  const deliveryMode=deliveryDraft?.playerId===devPid?deliveryDraft:null;
   const mode=$('#constructionMode');
   if(state.phase!=='development'){
     mode.innerHTML='<div><strong>Строительство пока закрыто</strong><span>Сначала завершите City Hall Session.</span></div>';
     mode.className='construction-mode muted';
+  }else if(deliveryMode){
+    mode.className='construction-mode hidden';
+    mode.innerHTML='';
   }else if(workerAction?.type==='raiseCapital'){
     const pl=state.players[workerAction.playerId],w=activeWorker(state,workerAction.playerId);
     mode.className='construction-mode active movement-mode';
@@ -742,8 +746,14 @@ function renderCity(){
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target');
-    if(selectedWorker&&!state.activationMainActionUsed){
+    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked');
+    if(deliveryMode?.step==='route'){
+      const route=deliveryMode.route||[],last=route[route.length-1],next=new Set(deliveryNeighbors(last));
+      if(route.includes(id))g.classList.add('delivery-route');
+      if(id===last)g.classList.add('delivery-current');
+      if(next.has(id))g.classList.add('delivery-next');
+      else if(!route.includes(id))g.classList.add('delivery-blocked');
+    }else if(selectedWorker&&!state.activationMainActionUsed){
       if(id===selectedWorker.districtId)g.classList.add('worker-origin');
       if(reachableIds.has(id))g.classList.add('worker-reachable');
       else g.classList.add('worker-unreachable');
@@ -788,6 +798,7 @@ function renderCity(){
     workerLayer.innerHTML=workerHtml;
     $$('[data-worker-token]').forEach(g=>g.onclick=()=>{
       const workerPlayer=Number(g.dataset.workerPlayer);
+      if(deliveryDraft)return;
       if(state.phase!=='development'||currentDeveloper(state)!==workerPlayer)return;
       const r=selectWorker(state,workerPlayer,g.dataset.workerToken);
       if(!r.ok)return;
@@ -805,11 +816,14 @@ function renderCity(){
         const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
         const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
         const complete=con.status==='complete',label=complete?'✓':`${prog.delivered}/${prog.required}`;
-        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key}" transform="translate(${cx+dx} ${cy+dy+30})"><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
+        const whSource=deliveryMode?.step==='source'&&complete&&con.projectId==='warehouse'&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}" source-available`:``;
+        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''}" transform="translate(${cx+dx} ${cy+dy+30})"${whSource}><rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text><title>${pl.name}: ${pr.name} — ${complete?'Completed':`${prog.delivered}/${prog.required} materials`}</title></g>`;
       });
     });
     layer.innerHTML=html;
+    $('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
   }
+  renderDeliveryRouteOverlay();
 }
 
 function startConstructionFlow(playerId,projectId){
