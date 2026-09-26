@@ -998,33 +998,31 @@ function renderOffice(){
   const activeHtml=active.map(con=>{
     const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
     if(con.status==='complete'){
-      const wh=con.projectId==='warehouse'?'<div class="warehouse-note">Warehouse: +3 staging capacity для ваших строек в этом районе.</div>':'';
+      const stored=con.projectId==='warehouse'?(con.storedMaterials||[]):[];
+      const wh=con.projectId==='warehouse'
+        ?'<div class="warehouse-note"><b>Warehouse storage '+stored.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</b><div class="warehouse-stock">'+(stored.length?stored.map(type=>'<span class="drop-chip '+materialClass(type)+'">'+materialShort(type)+'</span>').join(''):'<small>Пусто</small>')+'</div><span>Ресурсы сохраняются между раундами. Из склада можно начинать Delivery.</span></div>'
+        :'';
       let actionNote='';
       if(['bank','bureau','shops','club'].includes(con.projectId)){
         const occupant=actionSpaceOccupant(state,con.id);
-        const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов',club:'Networking Dinner: −$1 → +1 Influence'};
-        actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Action space: ${labels[con.projectId]} · ${occupant!=null?`USED THIS ROUND · ${state.players[occupant].name}`:'available this round'}</div>`;
+        const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 купленных материалов по $0',club:'Networking Dinner: −$1 → +1 Influence'};
+        actionNote='<div class="action-building-note '+(occupant!=null?'used':'')+'">Action space: '+labels[con.projectId]+' · '+(occupant!=null?'USED THIS ROUND · '+state.players[occupant].name:'available this round')+'</div>';
       }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
         actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Streetcar повысил Land Value на $1 и, если требовалось, открыл Street Network в районе.</div>':'<div class="land-building-note">После завершения этот объект повысил Land Value района на $1.</div>';
       }else if(con.projectId==='factory'){
         actionNote='<div class="factory-building-note">После завершения Factory снизила Land Value района на $1.</div>';
       }
-      return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Prestige +${pr.prestige||0} VP</b> · Income +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
+      return '<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>'+pr.name+'</strong><small>'+d.name+'</small></span><span class="status-badge done">COMPLETE</span></div><div class="project-material-line large">'+resourcePills(pr.materials,con.materialsDelivered)+'</div><div class="completed-effect"><b>Prestige +'+(pr.prestige||0)+' VP</b> · Income +$'+(pr.income||0)+' / раунд · '+pr.effect+'</div>'+wh+actionNote+'</div>';
     }
 
-    const rent=canRentOverflow(state,con.id),whBonus=warehouseCapacityBonus(state,p.id,con.districtId);
-    const buttons=RESOURCE_ORDER.map(type=>{
-      const check=canDeliverMaterial(state,con.id,type);
-      const need=pr.materials.filter(x=>x===type).length-(con.materialsDelivered||[]).filter(x=>x===type).length;
-      if(need<=0)return '';
-      const reason=check.ok?'':check.reason==='not-active-player'?'Не ваша активация':check.reason==='capacity'?'Нет места':check.reason==='capital'?'Нет денег':'Недоступно';
-      const price=check.ok&&check.procurement?0:RESOURCE_PRICES[type];
-      const detail=check.ok?(check.procurement?`Procurement · осталось ${procurement}`:`осталось ${need}`):reason;
-      return `<button class="resource-buy ${materialClass(type)} ${check.procurement?'procurement':''}" data-deliver="${con.id}" data-resource="${type}" ${check.ok?'':'disabled'}><span class="resource-buy-icon">${materialShort(type)}</span><span>${materialLabel(type)}</span><b>$${price}</b><small>${detail}</small></button>`;
-    }).join('');
-    const capacityNote=prog.delivered>=prog.capacity&&prog.remaining>0?'<div class="capacity-warning">Площадка заполнена. Нужен дополнительный staging slot.</div>':'';
-    const rentBtn=rent.ok?`<button class="overflow-btn" data-rent-slot="${con.id}">Арендовать +1 слот · $1</button>`:'';
-    return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${prog.capacity}</b><small>base 3${whBonus?` · Warehouse +${whBonus}`:''}${con.rentedSlots?` · rental +${con.rentedSlots}`:''}</small></div>${capacityNote}<div class="resource-buy-grid">${buttons}</div>${rentBtn}</div>`;
+    const localWarehouses=playerWarehouses(state,p.id,con.districtId);
+    const localStored=localWarehouses.reduce((sum,w)=>sum+(w.storedMaterials||[]).length,0);
+    const needsWarehouse=pr.materials.length>CONSTRUCTION_STAGING_CAPACITY&&con.projectId!=='warehouse';
+    const capacityNote=needsWarehouse&&!localWarehouses.length
+      ?'<div class="capacity-warning">Для завершения проекта из '+pr.materials.length+' материалов нужен завершённый Warehouse в этом районе.</div>'
+      :con.projectId==='warehouse'?'<div class="warehouse-note">Bootstrap: у самого Warehouse разрешён финальный 4-й материал, чтобы первый склад можно было построить.</div>'
+      :localWarehouses.length?'<div class="warehouse-note">В районе Warehouse: '+localStored+' сохранённых ресурсов. Они могут автоматически закрыть недостающие требования проекта.</div>':'';
+    return '<div class="portfolio-card construction-card active-build '+(isActive?'':'view-only')+'"><div class="construction-card-head"><span><strong>'+pr.name+'</strong><small>'+d.name+'</small></span><span class="status-badge">'+prog.delivered+'/'+prog.required+'</span></div><div class="project-material-line large">'+resourcePills(pr.materials,con.materialsDelivered)+'</div><div class="site-capacity"><span>Staging</span><b>'+prog.delivered+' / '+CONSTRUCTION_STAGING_CAPACITY+'</b><small>Ресурсы поступают только через Delivery fast action.</small></div>'+capacityNote+'</div>';
   }).join('');
 
   const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
@@ -1039,8 +1037,6 @@ function renderOffice(){
 
   $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-  $$('[data-deliver]').forEach(b=>b.onclick=()=>{const r=deliverMaterial(state,b.dataset.deliver,b.dataset.resource);if(!r.ok){showToast(r.reason==='not-active-player'?'Free actions доступны только активному игроку':r.reason==='capacity'?'Нет места на площадке':r.reason==='capital'?'Недостаточно денег':'Нельзя доставить этот ресурс');return;}showToast(r.completed?'Здание завершено!':r.procurement?`${materialLabel(b.dataset.resource)} через Procurement · $0`:`${materialLabel(b.dataset.resource)} доставлен · −$${r.cost}`);render();});
-  $$('[data-rent-slot]').forEach(b=>b.onclick=()=>{const r=rentOverflowSlot(state,b.dataset.rentSlot);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':r.reason==='capital'?'Недостаточно денег':'Дополнительный слот не нужен');return;}showToast('Временное хранение +1 · −$1');render();});
   const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Repay доступен только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала кредит должен пройти Income Phase':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }
 
