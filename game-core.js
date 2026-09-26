@@ -621,7 +621,9 @@ export function constructionProgress(state,constructionId){
   };
 }
 
-function materialNameRu(type){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь'}[type]||type;}\n\nfunction materialCounts(items=[]){
+function materialNameRu(type){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь'}[type]||type;}
+
+function materialCounts(items=[]){
   return items.reduce((acc,type)=>{acc[type]=(acc[type]||0)+1;return acc;},{});
 }
 
