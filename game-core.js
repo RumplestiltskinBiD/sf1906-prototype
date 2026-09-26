@@ -16,6 +16,19 @@ export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
 
 export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
+export const CONSTRUCTION_STAGING_CAPACITY = 3;
+export const WAREHOUSE_STORAGE_CAPACITY = 5;
+export const DELIVERY_BLOCKED_DISTRICTS = ['park','presidio','twinpeaks'];
+export const HAULERS = [
+  {id:'small-a',name:'Small Dray A',capacity:2,baseCost:0,limited:true},
+  {id:'small-b',name:'Small Dray B',capacity:2,baseCost:0,limited:true},
+  {id:'standard-a',name:'Standard Wagon A',capacity:3,baseCost:1,limited:true},
+  {id:'standard-b',name:'Standard Wagon B',capacity:3,baseCost:1,limited:true},
+  {id:'heavy',name:'Heavy Wagon',capacity:4,baseCost:2,limited:true},
+  {id:'freight',name:'Freight Wagon',capacity:5,baseCost:3,limited:true},
+  {id:'spot',name:'Standard Hauler',capacity:3,baseCost:3,limited:false}
+];
+
 
 export const LOGISTICS_NODES = [
   {id:'broadway',name:'Broadway Wharf',shortName:'Broadway Wharf',districtId:'northbeach',kind:'port',throughput:3,x:1015,y:155},
@@ -48,11 +61,11 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Street Network',accessAll:['road'],effect:'Income +2 · много жителей · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Street Network.'},
   {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Land Value ≤2',effect:'Income +3 · очень много жителей · высокий риск',landMax:2,benefit:'Income +3 / раунд · Prestige 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Land Value ≤2. Высокий риск в будущей катастрофе.'},
   {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection',accessAll:['fire'],effect:'Income +3 · Prestige +3',landMin:3,benefit:'Income +3 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ и Fire Protection.'},
-  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Street Network · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1,benefit:'Income +2 / раунд · Prestige +1',actionName:'Procurement',actionText:'1 представитель + $1 → до 2 материалов по $0 в эту активацию.',limits:'Нужна незавершённая стройка · 1 use / building / round · при чужом использовании $1 получает владелец.'},
+  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Street Network · Land Value 1+',accessAll:['road'],effect:'Income +2 · Procurement action · Prestige +1',landMin:1,benefit:'Income +2 / раунд · Prestige +1',actionName:'Procurement',actionText:'1 представитель + $1 → до 2 купленных материалов по $0 в доставках этой активации.',limits:'Нужна незавершённая стройка · 1 use / building / round · при чужом использовании $1 получает владелец.'},
   {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Land Value 3+ · Fire Protection · Clinic access',accessAll:['fire','clinic'],effect:'Income +4 · Prestige +3',landMin:3,benefit:'Income +4 / раунд · Prestige +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Land Value 3+ · Fire Protection · Clinic access.'},
   {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Land Value 2+ · Street Network',accessAll:['road'],effect:'Income +2 · Bank Loan action · Prestige +1',landMin:2,benefit:'Income +2 / раунд · Prestige +1',actionName:'Bank Loan',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Income.',limits:'Макс. 2 активных кредита · 1 use / Bank / round · чужое использование даёт владельцу +1 Influence максимум 1×/round.'},
   {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Land Value 2+',effect:'Income +2 · Networking Dinner action · Prestige +2',landMin:2,benefit:'Income +2 / раунд · Prestige +2',actionName:'Networking Dinner',actionText:'1 представитель + $1 → +1 Influence.',limits:'1 use / building / round · если использует соперник, его $1 получает владелец.'},
-  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Street Network',accessAny:['port','rail','road'],effect:'Income +2 · Storage +3 · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · +3 staging slots вашим стройкам в этом районе',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Port, Rail или Street Network.'},
+  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Port, Rail или Street Network',accessAny:['port','rail','road'],effect:'Income +2 · Storage 5 · logistics hub · Prestige +1',benefit:'Income +2 / раунд · Prestige +1 · хранит до 5 ресурсов и снабжает стройки в своём районе',actionName:'Logistics Hub',actionText:'Можно начинать рейс со склада и хранить на нём ресурсы между раундами.',limits:'Нужен Port, Rail или Street Network. Для первой постройки склада действует bootstrap: финальный 4-й материал может завершить сам склад.'},
   {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Rail или Port access',accessAny:['rail','port'],effect:'Income +5 · Land Value −1',benefit:'Income +5 / раунд · Prestige 0 · после завершения Land Value района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Rail или Port access. Land Value не падает ниже 0.'},
   {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Street Network',accessAll:['road'],effect:'Construction Contract · −$2 к Land Value · Prestige +1',benefit:'Prestige +1 · Income 0',actionName:'Construction Contract',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый Contract · 1 use / building / round · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Land Value 2+',effect:'Income +3 · Prestige +1 · страховые действия позже',landMin:2,benefit:'Income +3 / раунд · Prestige +1',actionName:'Insurance',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Land Value 2+. Механика страхования будет добавлена позже.'},
@@ -314,7 +327,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.27',
+    version:'0.28',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -350,7 +363,8 @@ export function createInitialState({rng=Math.random}={}){
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
     logisticsSupply:generateLogisticsSupply({rng}),
-    log:[{msg:'Началась тестовая партия Phase I Map Test v0.27. V8 используется как development map; gameplay geometry зафиксирована ручными контурами. Пять логистических узлов получают новую случайную поставку каждый раунд. Golden Gate Park открыт для передвижения; Presidio и Twin Peaks закрыты для входа.','cls':'accent'}],
+    haulersUsed:[],
+    log:[{msg:'Началась тестовая партия Phase I Map Test v0.28. Ресурсы приходят в 5 логистических узлов; Delivery — быстрое действие с перевозчиком, маршрутом и разгрузками. Golden Gate Park открыт для людей, но закрыт для грузовых маршрутов.','cls':'accent'}],
     finished:false
   };
 }
@@ -535,7 +549,7 @@ export function beginConstruction(state,playerId,projectId,districtId){
     startedRound:state.round,
     status:'under-construction',
     materialsDelivered:[],
-    rentedSlots:0,
+    storedMaterials:[],
     completedRound:null
   };
   state.nextConstructionId=(state.nextConstructionId||1)+1;
