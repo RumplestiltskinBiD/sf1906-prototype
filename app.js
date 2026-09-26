@@ -1,20 +1,24 @@
 import {
-  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,generateLogisticsSupply,
+  PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+  LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
   projectById,districtById,districtAccess,districtNeighbors,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
-  constructionProgress,canDeliverMaterial,deliverMaterial,canRentOverflow,rentOverflowSlot,roundIncome,grossRoundIncome,buildingIncome,warehouseCapacityBonus,
+  constructionProgress,completedWarehouses,warehouseInventory,canCompleteConstruction,completeConstructionFromStorage,
+  availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
+  roundIncome,grossRoundIncome,buildingIncome,
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v027';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v028';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
 let mobileContextOpen=false;
 let mobileMapDetail=false;
+let deliveryDraft=null;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -27,14 +31,14 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
   const originalVersion=parsed.version;
-  parsed.version='0.27';
+  parsed.version='0.28';
   parsed.players=(parsed.players||[]).map(p=>{
     let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
       id:w.id||`P${p.id+1}W${i+1}`,
@@ -57,7 +61,7 @@ function migrateState(parsed){
       prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
     };
   });
-  parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.materialsDelivered||[],rentedSlots:x.rentedSlots||0,completedRound:x.completedRound??null}));
+  parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.materialsDelivered||[],warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],completedRound:x.completedRound??null}));
   parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
   parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-${i}-${card}`,id:card}:card);
   parsed.expired=parsed.expired||[];
@@ -74,6 +78,7 @@ function migrateState(parsed){
     }
   });
   parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
+  parsed.haulersUsed=Array.isArray(parsed.haulersUsed)?parsed.haulersUsed:[];
   parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
   parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
@@ -139,7 +144,7 @@ function showToast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('s
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
+  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -340,7 +345,7 @@ const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[3
 function renderSupply(){
   const el=$('#resourceSupply');if(!el)return;
   const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0);
-  el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>v0.27 · остатки исчезают, новая случайная партия приходит каждый раунд · доставка пока не подключена к стройке</span></div><div class="supply-items">'
+  el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>v0.28 · остатки исчезают в конце раунда · Delivery = материалы + перевозчик + $1 за границу</span></div><div class="supply-items">'
     +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
     +'<span class="supply-resource city-throughput"><b>'+total+'</b><span>кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов</strong></span></div>';
 }
@@ -348,6 +353,7 @@ function renderSupply(){
 function renderSupplyNodes(){
   const layer=$('#supplyNodeLayer');if(!layer)return;
   const supply=state.logisticsSupply||{};
+  const selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===currentDeveloper(state);
   layer.innerHTML=LOGISTICS_NODES.map(node=>{
     const stock=supply[node.id]||[];
     const nodeClass='node-'+node.kind;
@@ -355,16 +361,22 @@ function renderSupplyNodes(){
     const start=-((stock.length-1)*7);
     const pips=stock.map((type,i)=>'<circle class="node-resource '+materialClass(type)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join('');
     const stockText=stock.length?stock.join(', '):'нет груза';
-    return '<g class="supply-node '+nodeClass+'" transform="translate('+node.x+' '+node.y+')">'
+    const selectable=selecting&&stock.length;
+    return '<g class="supply-node '+nodeClass+' '+(selectable?'source-available':'')+'" transform="translate('+node.x+' '+node.y+')" data-delivery-node="'+node.id+'">'
       +'<title>'+node.name+' · '+(districtById(node.districtId)?.name||node.districtId)+' · throughput '+node.throughput+' · '+stockText+'</title>'
       +'<circle class="node-pin" r="20"/><text class="node-code" y="4">'+code+'</text>'
       +pips+'<text class="node-name" y="48">'+node.shortName+'</text></g>';
   }).join('');
+  $$('[data-delivery-node]').forEach(g=>g.onclick=e=>{
+    e.stopPropagation();
+    if(deliveryDraft?.step!=='source')return;
+    chooseDeliverySource({kind:'node',id:g.dataset.deliveryNode});
+  });
 }
 
 function loadDevMapBackground(){
   const image=$('#devMapImage');if(!image)return;
-  image.setAttribute('href','./assets/v8-map.webp?v=0271');
+  image.setAttribute('href','./assets/v8-map.webp?v=028');
 }
 
 function shortDistrictName(id){
