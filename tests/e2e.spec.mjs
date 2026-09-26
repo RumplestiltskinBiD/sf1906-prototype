@@ -43,7 +43,7 @@ async function stored(page){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.28.7');
+  await expect(page.locator('.version-badge')).toHaveText('v0.29.0');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -332,4 +332,139 @@ test('Delivery source cards expose Russian node type and profile without losing 
   await expect(union).toContainText('Union Iron Works');
   await expect(union).toContainText('Порт + ж/д · промышленный');
   await expect(union).toContainText('Д 20% · К 25% · С 55%');
+});
+
+test('persistent object overview shows active player construction and warehouse stock and can inspect opponents',async({page})=>{
+  const s=makeDevState();
+  s.constructions=[
+    con('C1',0,'insurance','soma','under-construction',['Masonry']),
+    con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Lumber','Steel']),
+    con('C2',1,'tenement','northbeach','under-construction',['Lumber'])
+  ];
+  await seed(page,s);
+  await page.goto('/');
+
+  const overview=page.locator('#cityOverviewPanel');
+  await expect(overview).toHaveClass(/active/);
+  await expect(overview).toContainText('Объекты: Синий');
+  await expect(overview).toContainText('Страховая компания');
+  await expect(overview).toContainText('Нужно: Камень ×1, Сталь ×1');
+  await expect(overview).toContainText('Склад');
+  await expect(overview).toContainText('Д 1');
+  await expect(overview).toContainText('С 1');
+
+  const players=page.locator('#playersBar');
+  expect(await players.evaluate(el=>getComputedStyle(el).position)).toBe('sticky');
+
+  await page.locator('.player-pill[data-office="1"]').click();
+  await expect(overview).toContainText('Просмотр: Красный');
+  await expect(overview).toContainText('Рабочий доходный дом');
+  await page.locator('#overviewBackActive').click();
+  await expect(overview).toContainText('Объекты: Синий');
+});
+
+test('clicking overview construction focuses its district and map token',async({page})=>{
+  const s=makeDevState();
+  s.selectedDistrictId='civic';
+  s.constructions=[con('C1',0,'insurance','soma','under-construction',['Masonry'])];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('[data-overview-construction="C1"]').click();
+  await expect(page.locator('[data-construction-token="C1"]')).toHaveClass(/focus-pulse/);
+  await expect(page.locator('#contextPanel')).toContainText('SoMa');
+  const saved=await stored(page);
+  expect(saved.selectedDistrictId).toBe('soma');
+});
+
+test('project cards surface requirements before starting construction',async({page})=>{
+  const s=makeDevState();
+  s.players[0].portfolio=['luxury'];
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#officeBtn').click();
+
+  const card=page.locator('.hand-card').filter({hasText:'Роскошные апартаменты'});
+  await expect(card.locator('.card-requirement-band')).toBeVisible();
+  await expect(card.locator('.card-requirement-band')).toContainText('Стоимость земли 3+');
+  await expect(card.locator('.card-requirement-band')).toContainText('Пожарная защита');
+});
+
+test('construction choice marks reachable legal green, reachable illegal red and unreachable dim',async({page})=>{
+  const s=makeDevState();
+  s.players[0].portfolio=['luxury'];
+  const w=s.players[0].workers[0];
+  w.districtId='civic';
+  s.activeWorkerId=w.id;
+  s.constructions=[con('FIRE',0,'firehouse','civic','complete',['Lumber','Masonry','Steel'])];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#officeBtn').click();
+  await page.locator('[data-start-project="luxury"]').click();
+
+  await expect(page.locator('[data-district="pacific"]')).toHaveClass(/build-ok/);
+  await expect(page.locator('[data-district="western"]')).toHaveClass(/build-blocked/);
+  await expect(page.locator('[data-district="outerrichmond"]')).toHaveClass(/build-dim/);
+});
+
+test('available main and building actions are visibly highlighted including Shopping Row',async({page})=>{
+  const s=makeDevState();
+  const w=s.players[0].workers[0];
+  w.districtId='soma';
+  s.activeWorkerId=w.id;
+  s.players[0].portfolio=['tenement'];
+  s.constructions=[
+    con('SHOP',1,'shops','soma','complete',['Lumber','Masonry','Masonry']),
+    con('C1',0,'insurance','soma','under-construction',['Masonry'])
+  ];
+  await seed(page,s);
+  await page.goto('/');
+
+  await expect(page.locator('#actionBuild')).toHaveClass(/action-available/);
+  await expect(page.locator('#actionRaiseCapital')).toHaveClass(/action-available/);
+  await expect(page.locator('.shops-card')).toHaveClass(/action-available/);
+  await expect(page.locator('[data-shops-action="SHOP"]')).toHaveClass(/available-action/);
+
+  await page.locator('[data-shops-action="SHOP"]').click();
+  await expect(page.locator('#cityOverviewPanel')).toContainText('Закупка активна: 2');
+  const saved=await stored(page);
+  expect(saved.procurementRemaining).toBe(2);
+});
+
+test('warehouse map marker always shows compact inventory without enlarging the token',async({page})=>{
+  const s=makeDevState();
+  s.constructions=[con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Lumber','Masonry','Steel'])];
+  await seed(page,s);
+  await page.goto('/');
+
+  const marker=page.locator('[data-construction-token="W1"]');
+  await expect(marker.locator('.warehouse-token-title')).toHaveText('СКЛ 3/5');
+  await expect(marker.locator('.warehouse-token-stock')).toHaveText('Д1 К1 С1');
+  const rect=await marker.locator('rect').evaluate(el=>({w:+el.getAttribute('width'),h:+el.getAttribute('height')}));
+  expect(rect.w).toBeLessThanOrEqual(62);
+  expect(rect.h).toBeLessThanOrEqual(38);
+});
+
+test('mobile overview stays usable and construction focus switches map to detail',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[
+    con('C1',0,'insurance','soma','under-construction',['Masonry']),
+    con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Lumber','Steel'])
+  ];
+  await seed(page,s);
+  await page.goto('/');
+
+  const overview=page.locator('#cityOverviewPanel');
+  await expect(overview).toBeVisible();
+  expect(await overview.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
+  const card=page.locator('[data-overview-construction="C1"]');
+  const box=await card.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.height).toBeGreaterThanOrEqual(44);
+
+  await card.click();
+  await expect(page.locator('#cityBoardScroll')).toHaveClass(/detail/);
+  await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
 });
