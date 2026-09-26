@@ -173,16 +173,20 @@ function syncStickyLayout(){
   document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH)+'px');
 }
 function focusMapOnDistrict(districtId){
-  const wrap=$('.city-board-wrap'),scroll=$('#cityBoardScroll'),svg=$('.city-board');
-  if(!wrap||!scroll||!svg)return;
+  const scroll=$('#cityBoardScroll'),svg=$('.city-board');
+  if(!scroll||!svg)return;
   if(isMobile()){mobileMapDetail=true;syncMapZoom();}
-  wrap.scrollIntoView({behavior:'smooth',block:'center'});
   requestAnimationFrame(()=>{
     const pos=DISTRICT_POS[districtId];if(!pos)return;
-    const width=svg.getBoundingClientRect().width;
-    const scale=width/1536;
+    const rect=svg.getBoundingClientRect();
+    const scale=rect.width/1536;
     const left=Math.max(0,pos[0]*scale-scroll.clientWidth/2);
     scroll.scrollTo({left,behavior:'smooth'});
+    const sticky=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hud-stack-h'))||0;
+    const bottomReserve=isMobile()?72:0;
+    const viewportCenter=sticky+Math.max(120,(window.innerHeight-sticky-bottomReserve)/2);
+    const targetDocumentY=window.scrollY+rect.top+pos[1]*scale;
+    window.scrollTo({top:Math.max(0,targetDocumentY-viewportCenter),behavior:'smooth'});
   });
 }
 function focusConstruction(constructionId){
@@ -838,6 +842,7 @@ function renderCityActions(){
     deliveryDraft=null;
     const r=endActivation(state,pid);
     if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
+    overviewPlayerId=null;focusedConstructionId=null;
     closeDrawers();closeMobileContext();
     showToast(r.complete?'Все представители использованы':`Ход: ${state.players[r.nextPlayer].name} · выберите представителя`);
     render();
@@ -1057,6 +1062,20 @@ function renderContext(){
     const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
     const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
     const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id);
+    const focusedHere=builtHere.find(x=>x.id===focusedConstructionId);
+    let focusedHtml='';
+    if(focusedHere){
+      const fp=projectById(focusedHere.projectId),owner=state.players[focusedHere.playerId];
+      if(focusedHere.status==='under-construction'){
+        const prog=constructionProgress(state,focusedHere.id),missing=missingConstructionMaterials(focusedHere);
+        focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · стройка ${prog.delivered}/${prog.required}</small></span></div><div class="project-material-line">${resourcePills(fp.materials,focusedHere.materialsDelivered||[])}</div><div class="focused-object-note">${missing.length?'Нужно: '+missing.join(', '):'Все материалы доставлены'}</div></div>`;
+      }else if(focusedHere.projectId==='warehouse'){
+        const inv=warehouseInventory(focusedHere);
+        focusedHtml=`<div class="focused-object-detail warehouse"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>Склад</b><small>${owner.name} · ${d.name} · ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</small></span></div><div class="focused-object-note">На складе: ${materialCountText(inv)}</div></div>`;
+      }else{
+        focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · готово</small></span></div><div class="focused-object-note">Престиж +${fp.prestige||0} VP · Доход +${fp.income||0} / раунд</div></div>`;
+      }
+    }
     const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
     const accessHtml=`<div class="access-grid">${accessChip('STREET',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
 
@@ -1084,7 +1103,7 @@ function renderContext(){
     const statsHtml=d.buildable===false
       ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
       :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
-    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
     const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -1182,7 +1201,7 @@ $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEa
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{deliveryDraft=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
+$('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
 $$('[data-district]').forEach(g=>g.onclick=()=>{
