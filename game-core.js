@@ -20,34 +20,34 @@ export const CONSTRUCTION_STAGING_CAPACITY = 3;
 export const WAREHOUSE_STORAGE_CAPACITY = 5;
 export const DELIVERY_EDGE_COST = 1;
 export const DELIVERY_HAULERS = [
-  {id:'dray2a',name:'Small Dray A',capacity:2,baseCost:0,limited:true},
-  {id:'dray2b',name:'Small Dray B',capacity:2,baseCost:0,limited:true},
-  {id:'wagon3a',name:'Standard Wagon A',capacity:3,baseCost:1,limited:true},
-  {id:'wagon3b',name:'Standard Wagon B',capacity:3,baseCost:1,limited:true},
-  {id:'heavy4',name:'Heavy Wagon',capacity:4,baseCost:2,limited:true},
-  {id:'freight5',name:'Freight Wagon',capacity:5,baseCost:3,limited:true},
-  {id:'standard',name:'Standard Hauler',capacity:3,baseCost:3,limited:false}
+  {id:'dray2a',name:'Малая подвода A',capacity:2,baseCost:0,limited:true},
+  {id:'dray2b',name:'Малая подвода B',capacity:2,baseCost:0,limited:true},
+  {id:'wagon3a',name:'Стандартная повозка A',capacity:3,baseCost:1,limited:true},
+  {id:'wagon3b',name:'Стандартная повозка B',capacity:3,baseCost:1,limited:true},
+  {id:'heavy4',name:'Тяжёлая повозка',capacity:4,baseCost:2,limited:true},
+  {id:'freight5',name:'Грузовая повозка',capacity:5,baseCost:3,limited:true},
+  {id:'standard',name:'Обычный перевозчик',capacity:3,baseCost:3,limited:false}
 ];
 
 export const LOGISTICS_NODES = [
-  {id:'broadway',name:'Broadway Wharf',shortName:'Broadway Wharf',districtId:'northbeach',kind:'port',throughput:3,x:1015,y:155},
-  {id:'pacificmail',name:'Pacific Mail / Pier 40',shortName:'Pacific Mail',districtId:'soma',kind:'port',throughput:4,x:1158,y:514},
-  {id:'southernpacific',name:'Southern Pacific · Third & Townsend',shortName:'SP · 3rd & Townsend',districtId:'soma',kind:'rail',throughput:4,x:1052,y:585},
-  {id:'chinabasin',name:'China Basin / ATSF',shortName:'China Basin',districtId:'missionbay',kind:'rail-port',throughput:4,x:1183,y:665},
-  {id:'unioniron',name:'Union Iron Works / Potrero Point',shortName:'Union Iron Works',districtId:'potrero',kind:'industrial-port',throughput:2,x:1185,y:820}
+  {id:'broadway',name:'Broadway Wharf',shortName:'Broadway Wharf',districtId:'northbeach',kind:'port',throughput:3,x:1048,y:195,weights:{Lumber:0.60,Masonry:0.30,Steel:0.10},profile:'Дерево'},
+  {id:'pacificmail',name:'Pacific Mail / Pier 40',shortName:'Pacific Mail',districtId:'soma',kind:'rail-port',throughput:4,x:1195,y:525,weights:{Lumber:0.40,Masonry:0.40,Steel:0.20},profile:'Смешанный импорт'},
+  {id:'southernpacific',name:'Southern Pacific · Third & Townsend',shortName:'SP · 3rd & Townsend',districtId:'soma',kind:'rail',throughput:4,x:1052,y:560,weights:{Lumber:0.40,Masonry:0.35,Steel:0.25},profile:'Универсальный ж/д'},
+  {id:'chinabasin',name:'China Basin / ATSF',shortName:'China Basin',districtId:'missionbay',kind:'rail-port',throughput:4,x:1225,y:625,weights:{Lumber:0.35,Masonry:0.40,Steel:0.25},profile:'Промышленный смешанный'},
+  {id:'unioniron',name:'Union Iron Works / Potrero Point',shortName:'Union Iron Works',districtId:'potrero',kind:'industrial-rail-port',throughput:2,x:1222,y:850,weights:{Lumber:0.20,Masonry:0.25,Steel:0.55},profile:'Сталь'}
 ];
 
-export function randomLogisticsResource(rng=Math.random){
+export function randomLogisticsResource(rng=Math.random,weights=LOGISTICS_RESOURCE_WEIGHTS){
   const roll=rng();
-  if(roll<LOGISTICS_RESOURCE_WEIGHTS.Lumber)return 'Lumber';
-  if(roll<LOGISTICS_RESOURCE_WEIGHTS.Lumber+LOGISTICS_RESOURCE_WEIGHTS.Masonry)return 'Masonry';
+  if(roll<weights.Lumber)return 'Lumber';
+  if(roll<weights.Lumber+weights.Masonry)return 'Masonry';
   return 'Steel';
 }
 
 export function generateLogisticsSupply({rng=Math.random}={}){
   return Object.fromEntries(LOGISTICS_NODES.map(node=>[
     node.id,
-    Array.from({length:node.throughput},()=>randomLogisticsResource(rng))
+    Array.from({length:node.throughput},()=>randomLogisticsResource(rng,node.weights||LOGISTICS_RESOURCE_WEIGHTS))
   ]));
 }
 
@@ -363,7 +363,7 @@ export function createInitialState({rng=Math.random}={}){
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
     logisticsSupply:generateLogisticsSupply({rng}),
     haulersUsed:[],
-    log:[{msg:'Началась тестовая партия Phase I Map Test v0.28. V8 используется как development map; gameplay geometry зафиксирована ручными контурами. Пять логистических узлов получают новую случайную поставку каждый раунд. Golden Gate Park открыт для передвижения; Presidio и Twin Peaks закрыты для входа.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия Phase I Map Test v0.28. V8 используется как development map; gameplay geometry зафиксирована ручными контурами. Пять логистических узлов получают новую случайную поставку каждый раунд; у каждого узла свой профиль ресурсов. Golden Gate Park открыт для передвижения; Presidio и Twin Peaks закрыты для входа.','cls':'accent'}],
     finished:false
   };
 }
@@ -621,7 +621,7 @@ export function constructionProgress(state,constructionId){
   };
 }
 
-function materialCounts(items=[]){
+function materialNameRu(type){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь'}[type]||type;}\n\nfunction materialCounts(items=[]){
   return items.reduce((acc,type)=>{acc[type]=(acc[type]||0)+1;return acc;},{});
 }
 
@@ -912,7 +912,7 @@ export function executeDelivery(state,plan){
       ?`Warehouse (${districtName})`
       :`«${projectById(con?.projectId)?.name||con?.projectId||'стройка'}» (${districtName})`;
     const counts=materialCounts(drop.materials);
-    const materials=Object.entries(counts).map(([type,count])=>`${type} ×${count}`).join(', ');
+    const materials=Object.entries(counts).map(([type,count])=>`${materialNameRu(type)} ×${count}`).join(', ');
     return `${targetName}: ${materials}`;
   }).join('; ');
   logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; разгрузка: ${dropText||'—'}; материалы ${cost.materialCost} + перевозчик ${cost.haulerCost} + дорога ${cost.routeCost} = ${cost.total}.`,'accent');
