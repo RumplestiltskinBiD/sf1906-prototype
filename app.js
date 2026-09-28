@@ -551,7 +551,7 @@ function renderMobileObjectStrip(){
   if(!items.length)items.push('<span class="mobile-empty-chip">Нет активных строек и складов</span>');
   el.className='mobile-object-strip active';
   el.innerHTML='<div class="mobile-object-owner"><span class="player-dot '+p.key+'"></span><span><b>'+(viewingOpponent?'Просмотр: ':'Объекты: ')+p.name+'</b><small>'+builds.length+' стр. · '+warehouses.length+' скл.</small></span>'+(viewingOpponent?'<button id="mobileObjectsBack" aria-label="Вернуться к активному игроку">×</button>':'')+'</div><div class="mobile-object-scroll">'+items.join('')+'</div>';
-  $('[data-mobile-object]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.mobileObject));
+  $$('[data-mobile-object]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.mobileObject));
   $('#mobileObjectsBack')?.addEventListener('click',()=>{overviewPlayerId=null;focusedConstructionId=null;renderPlayers();renderCityOverview();renderMobileObjectStrip();});
 }
 
@@ -1242,7 +1242,7 @@ function renderOffice(){
 
   $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Следующий доход</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.28:</b> рука ограничена 5 проектами. Основное действие привязано к представителю; доставка — отдельное повторяемое свободное действие.</div>`;
 
-  $('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
+  $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
   $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
   $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
   $$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
