@@ -71,3 +71,20 @@ Purpose: improve usability of the digital Phase I prototype without changing the
 - Changing rules/balance in the same build as a major usability pass.
 
 Research inputs included official/BGA interface guidelines, Steam user feedback, and specialist digital-board-game reviews (Ars Technica, Meeple Mountain and similar sources). The research is directional UX evidence rather than a numerical ranking of the 40 games.
+
+
+## v0.29.1 mobile follow-up
+
+Observed from real iPhone playtest:
+- A bottom fixed object panel competes with the action area and navigation.
+- Geographic logistics choices are more intuitive on the map than in a modal/list that obscures the map.
+- Reusing a player pill for a new inspection behavior breaks learned interaction; player pill -> Office should remain stable.
+- Landscape phones need their own composition rather than simply inheriting portrait or desktop CSS.
+
+Implemented:
+- Compact object strip in the existing top service row beside Help/Settings.
+- Player pill -> Office restored.
+- Office -> “Показать объекты на карте” made explicit.
+- Map-first source and route selection with optional list fallbacks.
+- Separate landscape delivery side dock and vertical FIT behavior.
+- Hidden mobile overlays explicitly disable pointer events in landscape.
