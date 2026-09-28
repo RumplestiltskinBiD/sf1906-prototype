@@ -108,7 +108,7 @@ function migrateState(parsed){
   if(!['0.22','0.23','0.24','0.25'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
   return parsed;
 }
-function isMobile(){return window.matchMedia('(max-width:640px)').matches;}
+function isMobile(){return window.matchMedia('(max-width:640px), (max-height:500px) and (max-width:960px)').matches;}
 function closeMobileContext(){mobileContextOpen=false;syncMobileContext();}
 function syncMobileContext(){
   const open=isMobile()&&mobileContextOpen;
@@ -172,6 +172,25 @@ function syncStickyLayout(){
   document.documentElement.style.setProperty('--topbar-h',topH+'px');
   document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH)+'px');
 }
+
+function showObjectsOnMap(playerId){
+  overviewPlayerId=playerId===currentDeveloper(state)?null:playerId;
+  focusedConstructionId=null;
+  state.view='city';
+  closeDrawers();closeMobileContext();
+  render();
+  requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
+}
+function focusDeliveryMap({detail=false,districtId=null}={}){
+  if(!isMobile())return;
+  mobileMapDetail=!!detail;
+  syncMapZoom();
+  requestAnimationFrame(()=>{
+    if(districtId){focusMapOnDistrict(districtId);return;}
+    $('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
+
 function focusMapOnDistrict(districtId){
   const scroll=$('#cityBoardScroll'),svg=$('.city-board');
   if(!scroll||!svg)return;
@@ -232,9 +251,10 @@ function deliveryRemaining(){
 }
 function startDeliveryFlow(playerId){
   if(!canUseFreeAction(state,playerId)){showToast('Доставка доступна только во время вашей активации');return;}
-  deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],route:[],drops:[]};
+  deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],route:[],drops:[],listOpen:false};
   state.pendingConstruction=null;state.pendingWorkerAction=null;state.view='city';
   closeDrawers();closeMobileContext();render();
+  focusDeliveryMap({detail:false});
 }
 function cancelDeliveryFlow(){deliveryDraft=null;document.body.classList.remove('delivery-active');render();}
 function chooseDeliverySource(source){
@@ -263,14 +283,15 @@ function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.car
 function beginDeliveryRoute(){
   if(!deliveryDraft?.haulerId||!deliveryDraft.cargo.length){showToast('Выберите перевозчика и груз');return;}
   const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);if(!src)return;
-  deliveryDraft.step='route';deliveryDraft.route=[src.districtId];deliveryDraft.drops=[];render();
+  deliveryDraft.step='route';deliveryDraft.route=[src.districtId];deliveryDraft.drops=[];deliveryDraft.listOpen=false;render();
+  if(isMobile())focusMapOnDistrict(src.districtId);
 }
 function addDeliveryRouteDistrict(id){
   if(deliveryDraft?.step!=='route')return false;
   const last=deliveryDraft.route[deliveryDraft.route.length-1];
   if(id===last){showToast('Вы уже в этом районе — выберите точку разгрузки в панели доставки');return true;}
   if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Чтобы ехать дальше, выберите соседний район');return true;}
-  deliveryDraft.route.push(id);render();return true;
+  deliveryDraft.route.push(id);render();if(isMobile())focusMapOnDistrict(id);return true;
 }
 function undoDeliveryRoute(){
   if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
@@ -406,7 +427,7 @@ function renderDeliveryRouteOverlay(){
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderCityOverview();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();requestAnimationFrame(syncStickyLayout);
+  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();requestAnimationFrame(syncStickyLayout);
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -432,12 +453,6 @@ function renderPlayers(){
     pill.innerHTML=`<span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Вл ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span></span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
     pill.onclick=()=>{
       if(state.phase==='draft'){showToast('Стартовые руки скрыты до завершения драфта');return;}
-      if(state.view==='city'){
-        overviewPlayerId=dev===i?null:i;
-        renderPlayers();
-        renderCityOverview();
-        return;
-      }
       inspectedOffice=i;openDrawer('officeDrawer');renderOffice();
     };
     el.appendChild(pill);
@@ -486,6 +501,35 @@ function renderCityOverview(){
   $('#overviewBackActive')?.addEventListener('click',()=>{overviewPlayerId=null;renderPlayers();renderCityOverview();});
   $('#overviewOpenOffice')?.addEventListener('click',()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();});
 }
+
+function renderMobileObjectStrip(){
+  const el=$('#mobileObjectStrip');if(!el)return;
+  if(!isMobile()||state.view!=='city'||state.phase==='draft'){
+    el.className='mobile-object-strip';el.innerHTML='';return;
+  }
+  const pid=currentOverviewPlayerId(),p=state.players[pid],activePid=currentDeveloper(state);
+  if(!p){el.className='mobile-object-strip';el.innerHTML='';return;}
+  const builds=(state.constructions||[]).filter(x=>x.playerId===pid&&x.status==='under-construction');
+  const warehouses=completedWarehouses(state,pid);
+  const viewingOpponent=activePid!=null&&pid!==activePid;
+  const items=[];
+  for(const con of builds){
+    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id),cnt=deliveryCounts(con.materialsDelivered||[]);
+    items.push('<button class="mobile-object-chip build" data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');
+  }
+  for(const wh of warehouses){
+    const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv);
+    items.push('<button class="mobile-object-chip warehouse" data-mobile-object="'+wh.id+'"><b>Склад · '+d.name+'</b><span>'+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');
+  }
+  const procurement=activePid===pid?(state.procurementRemaining||0):0;
+  if(procurement)items.unshift('<span class="mobile-effect-chip"><b>Закупка ×'+procurement+'</b><span>материалы по $0</span></span>');
+  if(!items.length)items.push('<span class="mobile-empty-chip">Нет активных строек и складов</span>');
+  el.className='mobile-object-strip active';
+  el.innerHTML='<div class="mobile-object-owner"><span class="player-dot '+p.key+'"></span><span><b>'+(viewingOpponent?'Просмотр: ':'Объекты: ')+p.name+'</b><small>'+builds.length+' стр. · '+warehouses.length+' скл.</small></span>'+(viewingOpponent?'<button id="mobileObjectsBack" aria-label="Вернуться к активному игроку">×</button>':'')+'</div><div class="mobile-object-scroll">'+items.join('')+'</div>';
+  $('[data-mobile-object]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.mobileObject));
+  $('#mobileObjectsBack')?.addEventListener('click',()=>{overviewPlayerId=null;focusedConstructionId=null;renderPlayers();renderCityOverview();renderMobileObjectStrip();});
+}
+
 
 function setView(view){state.view=view;$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
 function renderViews(){
