@@ -291,7 +291,7 @@ function addDeliveryRouteDistrict(id){
   const last=deliveryDraft.route[deliveryDraft.route.length-1];
   if(id===last){showToast('Вы уже в этом районе — выберите точку разгрузки в панели доставки');return true;}
   if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Чтобы ехать дальше, выберите соседний район');return true;}
-  deliveryDraft.route.push(id);render();if(isMobile())focusMapOnDistrict(id);return true;
+  deliveryDraft.route.push(id);deliveryDraft.listOpen=false;render();if(isMobile())focusMapOnDistrict(id);return true;
 }
 function undoDeliveryRoute(){
   if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
@@ -343,21 +343,31 @@ function renderDeliveryPanel(){
   const active=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
   document.body.classList.toggle('delivery-active',active);
   if(!active){if(deliveryDraft)deliveryDraft=null;el.className='delivery-panel';el.innerHTML='';return;}
-  el.className='delivery-panel active';
+  const mobile=isMobile(),step=deliveryDraft.step;
+  el.className='delivery-panel active'+(mobile&&step==='source'?' mobile-map-source':'')+(mobile&&step==='route'?' mobile-map-route':'')+(mobile&&deliveryDraft.listOpen?' list-open':'');
   const pid=deliveryDraft.playerId,p=state.players[pid];
   let html='<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ · ДОСТАВКА</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close">×</button></div>';
-  if(deliveryDraft.step==='source'){
-    html+='<div class="delivery-instruction">1. Выберите порт, ж/д станцию или свой склад.</div><div class="delivery-source-grid">';
-    for(const n of LOGISTICS_NODES){
-      const inv=state.logisticsSupply?.[n.id]||[],cnt=deliveryCounts(inv);
-      html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.length?'':'disabled')+'><b>'+n.shortName+'</b><span>'+districtById(n.districtId)?.name+' · '+logisticsKindLabel(n.kind)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+' · профиль: '+logisticsProfileText(n)+'</small></button>';
+
+  if(step==='source'){
+    if(mobile&&!deliveryDraft.listOpen){
+      const availableNodes=LOGISTICS_NODES.filter(n=>(state.logisticsSupply?.[n.id]||[]).length).length;
+      const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length;
+      html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник прямо на карте</b><span>Подсвечены доступные порты, ж/д станции и ваши склады с ресурсами.</span><small>'+availableNodes+' городских узлов · '+availableWarehouses+' складов</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
+    }else{
+      html+='<div class="delivery-instruction">'+(mobile?'Список — запасной способ. Нажмите источник здесь или вернитесь к выбору на карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
+      if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
+      html+='<div class="delivery-source-grid">';
+      for(const n of LOGISTICS_NODES){
+        const inv=state.logisticsSupply?.[n.id]||[],cnt=deliveryCounts(inv);
+        html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.length?'':'disabled')+'><b>'+n.shortName+'</b><span>'+districtById(n.districtId)?.name+' · '+logisticsKindLabel(n.kind)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+' · профиль: '+logisticsProfileText(n)+'</small></button>';
+      }
+      for(const w of completedWarehouses(state,pid)){
+        const inv=warehouseInventory(w),cnt=deliveryCounts(inv);
+        html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';
+      }
+      html+='</div>';
     }
-    for(const w of completedWarehouses(state,pid)){
-      const inv=warehouseInventory(w),cnt=deliveryCounts(inv);
-      html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';
-    }
-    html+='</div>';
-  }else if(deliveryDraft.step==='load'){
+  }else if(step==='load'){
     const src=deliverySourceInfo(state,pid,deliveryDraft.source),haulers=availableDeliveryHaulers(state),sel=haulers.find(h=>h.id===deliveryDraft.haulerId),have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
     html+='<div class="delivery-instruction">2. Перевозчик + груз из <b>'+src.name+'</b>.</div><div class="hauler-grid">';
     for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
@@ -382,7 +392,10 @@ function renderDeliveryPanel(){
       const kind=con.status==='under-construction'?'construction':'warehouse';
       return RESOURCE_ORDER.some(type=>deliveryCanDrop(kind,con.id,type));
     });
-    html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. Вы уже в районе с подходящей точкой разгрузки. Сначала распределите груз ниже. Ехать дальше необязательно.':'3. В текущем районе нет точки, которая может принять этот груз. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
+    const routeInstruction=mobile
+      ?(hasCurrentTarget?'3. Разгрузите нужные ресурсы ниже или выберите подсвеченный соседний район прямо на карте.':'3. Выберите подсвеченный соседний район прямо на карте (+$1 за границу).')
+      :(hasCurrentTarget?'3. Вы уже в районе с подходящей точкой разгрузки. Сначала распределите груз ниже. Ехать дальше необязательно.':'3. В текущем районе нет точки, которая может принять этот груз. Добавьте соседний район (+$1 за границу).');
+    html+='<div class="delivery-instruction">'+routeInstruction+'</div><div class="delivery-route-strip">';
     deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
     html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
     for(const con of routeTargets){
@@ -395,25 +408,37 @@ function renderDeliveryPanel(){
       html+='</div></div>';
     }
     if(!routeTargets.length)html+='<div class="delivery-target-empty">На текущем маршруте пока нет вашей стройки или склада для разгрузки.</div>';
-    html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
-    next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
-    html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
+    html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(mobile?'На карте зелёным подсвечены допустимые соседние районы.':hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div>';
+    if(mobile&&!deliveryDraft.listOpen){
+      html+='<button id="deliveryShowRouteList" class="ghost-btn delivery-route-list-toggle">Список соседних районов</button>';
+    }else{
+      if(mobile)html+='<button id="deliveryHideRouteList" class="ghost-btn delivery-route-list-toggle">← Выбирать район на карте</button>';
+      html+='<div class="route-next-list">';
+      next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
+      html+='</div>';
+    }
+    html+='<div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
     html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
   }
+
   el.innerHTML=html;
   $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
+  $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
+  $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
+  $('#deliveryShowRouteList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
+  $('#deliveryHideRouteList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
   $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
   $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
   $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
   $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
   $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
-  $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];render();});
+  $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.listOpen=false;render();focusDeliveryMap({detail:false});});
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
   $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
-  $('#deliveryUndoRoute')?.addEventListener('click',undoDeliveryRoute);
+  $('#deliveryUndoRoute')?.addEventListener('click',()=>{undoDeliveryRoute();if(isMobile()&&deliveryDraft?.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
   $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
   $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-  $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];render();});
+  $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;render();});
   $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
 }
 function renderDeliveryRouteOverlay(){
@@ -724,7 +749,7 @@ function renderSupplyNodes(){
     const selectable=selecting&&stock.length;
     return '<g class="supply-node '+nodeClass+' '+(selectable?'source-available':'')+'" transform="translate('+node.x+' '+node.y+')" data-delivery-node="'+node.id+'">'
       +'<title>'+node.name+' · '+(districtById(node.districtId)?.name||node.districtId)+' · '+logisticsKindLabel(node.kind)+' · пропускная способность '+node.throughput+' · профиль '+logisticsProfileText(node)+' · '+stockText+'</title>'
-      +'<circle class="node-pin" r="20"/><text class="node-code" y="4">'+code+'</text>'
+      +'<circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+code+'</text>'
       +pips+'<text class="node-name" y="48">'+node.shortName+'</text><text class="node-type" y="61">'+logisticsKindLabel(node.kind)+'</text></g>';
   }).join('');
   $$('[data-delivery-node]').forEach(g=>g.onclick=e=>{
@@ -1024,6 +1049,7 @@ function renderCity(){
         const complete=con.status==='complete',isWarehouse=complete&&con.projectId==='warehouse';
         const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
         const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
+        const sourceHit=whSource?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>':'';
         let content='';
         if(isWarehouse){
           const inv=warehouseInventory(con),cnt=deliveryCounts(inv);
@@ -1035,7 +1061,7 @@ function renderCity(){
         const title=complete
           ?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
           :`${pl.name}: ${pr.name} · ${prog.delivered}/${prog.required} · ${missingConstructionMaterials(con).join(', ')}`;
-        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}>${content}<title>${title}</title></g>`;
+        html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}>${sourceHit}${content}<title>${title}</title></g>`;
       });
     });
     layer.innerHTML=html;
