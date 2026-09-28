@@ -169,3 +169,15 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Active Procurement is surfaced persistently in the object overview.
 - Added desktop and mobile E2E coverage for the new HUD and navigation.
 - Phase I remains at 3 rounds in this build so the next playtest isolates UX changes from balance/duration changes.
+
+
+## v0.29.1 — mobile map-first UX
+
+- Moved the mobile construction/Warehouse overview from a bottom fixed panel into the top HUD row beside Help/Settings.
+- Player pills once again always open that player's Office.
+- Office now has an explicit “Показать объекты … на карте” action for opponent/active-player inspection.
+- Mobile Delivery source selection is map-first: highlighted ports, rail nodes and stocked Warehouses are tapped directly on the map; the list is an optional fallback.
+- Mobile route extension is map-first: legal neighboring districts are highlighted and tapped directly on the map; the list is optional.
+- Enlarged invisible touch targets for logistics nodes and Warehouse sources without enlarging visible markers.
+- Added a dedicated landscape-phone layout. Delivery docks to the right of the map, FIT mode uses vertical space, hidden context panels do not intercept taps, and route focusing centers targets in the unobstructed map area.
+- Added portrait and landscape E2E coverage at 390x844, 844x390 and 932x430.
