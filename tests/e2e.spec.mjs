@@ -580,3 +580,55 @@ test('wide landscape phone remains mobile at 932x430 without page overflow',asyn
   expect(layout.nav).toBe('fixed');
   expect(layout.strip).not.toBe('none');
 });
+
+test('exhaustive worker adjacency highlighting matches the locked graph',async({page})=>{
+  const adjacency={
+    presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
+    marina:['presidio','pacific','northbeach'],
+    northbeach:['marina','pacific','chinatown','financial'],
+    chinatown:['northbeach','financial','pacific'],
+    pacific:['presidio','marina','northbeach','chinatown','financial','civic','western'],
+    financial:['northbeach','chinatown','pacific','civic','soma'],
+    soma:['financial','civic','mission','missionbay'],
+    civic:['pacific','western','financial','soma','haight','mission'],
+    western:['presidio','innerrichmond','pacific','civic','haight','park'],
+    innerrichmond:['presidio','outerrichmond','western','park'],
+    outerrichmond:['presidio','innerrichmond','park'],
+    haight:['park','western','civic','innersunset','mission'],
+    innersunset:['park','sunset','haight','mission','noe','twinpeaks'],
+    sunset:['park','innersunset','twinpeaks'],
+    mission:['soma','civic','haight','innersunset','noe','bernal','missionbay','potrero'],
+    missionbay:['soma','mission','potrero'],
+    potrero:['missionbay','mission','bernal'],
+    noe:['innersunset','mission','bernal','twinpeaks'],
+    bernal:['mission','noe','potrero'],
+    park:['outerrichmond','innerrichmond','western','haight','innersunset','sunset'],
+    twinpeaks:['innersunset','sunset','noe']
+  };
+  const closed=new Set(['presidio','twinpeaks']);
+  await page.goto('/');
+  for(const [from,neighbors] of Object.entries(adjacency)){
+    if(closed.has(from))continue;
+    const s=makeDevState();
+    const w=s.players[0].workers[0];
+    w.districtId=from;
+    s.activeWorkerId=w.id;
+    await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
+    await page.reload();
+    await page.locator('#actionRaiseCapital').click();
+    const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
+    for(const id of Object.keys(adjacency)){
+      const district=page.locator('[data-district="'+id+'"]');
+      if(expected.has(id)){
+        await expect(district,from+' -> '+id).toHaveClass(/move-target/);
+        const visual=await district.locator('path').evaluate(el=>{
+          const s=getComputedStyle(el);
+          return {stroke:s.stroke,strokeWidth:parseFloat(s.strokeWidth),fill:s.fill};
+        });
+        expect(visual.strokeWidth,from+' -> '+id+' visible stroke').toBeGreaterThanOrEqual(6);
+      }else{
+        await expect(district,from+' x '+id).not.toHaveClass(/move-target/);
+      }
+    }
+  }
+});
