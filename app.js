@@ -199,11 +199,15 @@ function focusMapOnDistrict(districtId){
     const pos=DISTRICT_POS[districtId];if(!pos)return;
     const rect=svg.getBoundingClientRect();
     const scale=rect.width/1536;
-    const left=Math.max(0,pos[0]*scale-scroll.clientWidth/2);
+    const landscapeMobile=isMobile()&&window.innerWidth>640&&window.innerHeight<=500;
+    const deliveryPanel=landscapeMobile&&deliveryDraft?$('#deliveryPanel'):null;
+    const overlayWidth=deliveryPanel?.getBoundingClientRect().width||0;
+    const usableWidth=Math.max(220,scroll.clientWidth-overlayWidth-(overlayWidth?14:0));
+    const left=Math.max(0,pos[0]*scale-usableWidth/2);
     scroll.scrollTo({left,behavior:'smooth'});
     const sticky=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hud-stack-h'))||0;
-    const bottomReserve=isMobile()?72:0;
-    const viewportCenter=sticky+Math.max(120,(window.innerHeight-sticky-bottomReserve)/2);
+    const bottomReserve=isMobile()?(landscapeMobile?58:72):0;
+    const viewportCenter=sticky+Math.max(95,(window.innerHeight-sticky-bottomReserve)/2);
     const targetDocumentY=window.scrollY+rect.top+pos[1]*scale;
     window.scrollTo({top:Math.max(0,targetDocumentY-viewportCenter),behavior:'smooth'});
   });
