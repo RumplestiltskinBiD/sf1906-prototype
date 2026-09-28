@@ -41,6 +41,12 @@ async function stored(page){
   return JSON.parse(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEY));
 }
 
+function assertDelivery(saved,id,materials){
+  const con=saved.constructions.find(x=>x.id===id);
+  expect(con).toBeTruthy();
+  for(const material of materials)expect(con.materialsDelivered).toContain(material);
+}
+
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
   await expect(page.locator('.version-badge')).toHaveText('v0.29.1');
