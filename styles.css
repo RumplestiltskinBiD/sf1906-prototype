@@ -1881,3 +1881,35 @@ button.city-action-card{cursor:pointer}
   .player-pill{min-height:34px!important}
   .delivery-panel.active{max-height:52vh!important}
 }
+
+
+/* v0.29.1 landscape interaction safety */
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  .city-board-scroll:not(.detail){
+    display:flex!important;justify-content:center!important;align-items:center!important;
+    overflow:hidden!important;min-height:0!important
+  }
+  .city-board-scroll:not(.detail) .city-board.full-sf-map{
+    width:auto!important;
+    height:max(150px,calc(100dvh - var(--hud-stack-h) - 64px))!important;
+    max-height:230px!important;max-width:100%!important;
+    flex:0 0 auto
+  }
+
+  .context-backdrop{display:block!important}
+  body:not(.context-open) .context-backdrop{opacity:0!important;pointer-events:none!important}
+  body.context-open .context-backdrop{opacity:1!important;pointer-events:auto!important}
+  .context-panel{
+    transform:translateX(108%)!important;opacity:0!important;pointer-events:none!important;
+    transition:transform .18s ease,opacity .18s ease!important
+  }
+  .context-panel.mobile-open{
+    transform:translateX(0)!important;opacity:1!important;pointer-events:auto!important
+  }
+  .context-close{display:block!important}
+
+  /* Keep the map's tappable band clear of fixed chrome. */
+  body.delivery-active .context-panel:not(.mobile-open){pointer-events:none!important}
+  .full-sf-map .supply-node.source-available,
+  .full-sf-map .construction-token.source-available{pointer-events:all!important}
+}
