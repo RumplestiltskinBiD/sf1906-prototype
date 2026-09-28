@@ -1913,3 +1913,47 @@ button.city-action-card{cursor:pointer}
   .full-sf-map .supply-node.source-available,
   .full-sf-map .construction-token.source-available{pointer-events:all!important}
 }
+
+
+/* v0.29.1 landscape Delivery side dock */
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  body.delivery-active .city-board-scroll:not(.detail){
+    justify-content:flex-start!important;
+    padding-left:10px!important;
+    padding-right:370px!important
+  }
+
+  .delivery-panel.active{
+    left:auto!important;right:7px!important;
+    top:calc(var(--hud-stack-h) + 6px)!important;
+    bottom:58px!important;
+    width:min(350px,40vw)!important;
+    transform:none!important;
+    max-height:none!important;
+    overflow:auto!important;
+    border-radius:12px!important
+  }
+  .delivery-panel.mobile-map-source:not(.list-open){
+    top:auto!important;
+    bottom:58px!important;
+    width:min(350px,40vw)!important;
+    max-height:none!important;
+    height:auto!important
+  }
+  .delivery-panel.mobile-map-source.list-open{
+    top:calc(var(--hud-stack-h) + 6px)!important;
+    bottom:58px!important;
+    max-height:none!important
+  }
+  .delivery-panel.mobile-map-route{
+    top:calc(var(--hud-stack-h) + 6px)!important;
+    bottom:58px!important;
+    max-height:none!important
+  }
+  .delivery-panel.mobile-map-route .delivery-targets{
+    max-height:none!important
+  }
+  .delivery-panel.mobile-map-route .delivery-footer{
+    position:sticky;bottom:0;background:#f4ead9;padding-top:5px
+  }
+}
