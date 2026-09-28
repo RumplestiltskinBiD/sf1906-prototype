@@ -43,7 +43,7 @@ async function stored(page){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.29.0');
+  await expect(page.locator('.version-badge')).toHaveText('v0.29.1');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -172,28 +172,35 @@ test('Office Begin Construction button works and creates a construction through 
   expect(saved.activationMainActionUsed).toBe(true);
 });
 
-test('mobile Delivery controls have usable touch targets',async({page})=>{
+test('mobile Delivery starts map-first and source list is only an optional fallback',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
   s.constructions=[con('C1',0,'insurance','soma')];
   await seed(page,s);
   await page.goto('/');
-  await page.locator('#actionDelivery').click();
-  await page.locator('[data-ds-node="pacificmail"]').click();
 
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-map-source/);
+  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
+  await expect(page.locator('[data-ds-node="pacificmail"]')).toHaveCount(0);
+  await expect(page.locator('[data-delivery-node="pacificmail"]')).toHaveClass(/source-available/);
+
+  const promptBox=await page.locator('#deliveryPanel').boundingBox();
+  expect(promptBox).not.toBeNull();
+  expect(promptBox.height).toBeLessThan(150);
+
+  await page.locator('#deliveryShowSourceList').click();
+  await expect(page.locator('[data-ds-node="pacificmail"]')).toBeVisible();
+  await page.locator('#deliveryHideSourceList').click();
+  await expect(page.locator('[data-ds-node="pacificmail"]')).toHaveCount(0);
+
+  await page.locator('[data-delivery-node="pacificmail"]').click();
   for(const selector of ['#cancelDelivery','[data-hauler="dray2a"]']){
     const box=await page.locator(selector).boundingBox();
     expect(box).not.toBeNull();
     expect(box.height).toBeGreaterThanOrEqual(40);
   }
 });
-
-function assertDelivery(saved,id,materials){
-  const c=saved.constructions.find(x=>x.id===id);
-  expect(c).toBeTruthy();
-  for(const m of materials)expect(c.materialsDelivered).toContain(m);
-}
-
 
 test('Warehouse can be the Delivery source and stored materials are not charged again',async({page})=>{
   const s=makeDevState();
@@ -334,7 +341,7 @@ test('Delivery source cards expose Russian node type and profile without losing 
   await expect(union).toContainText('Д 20% · К 25% · С 55%');
 });
 
-test('persistent object overview shows active player construction and warehouse stock and can inspect opponents',async({page})=>{
+test('persistent object overview keeps active objects visible and player pills open Office',async({page})=>{
   const s=makeDevState();
   s.constructions=[
     con('C1',0,'insurance','soma','under-construction',['Masonry']),
@@ -348,15 +355,15 @@ test('persistent object overview shows active player construction and warehouse 
   await expect(overview).toHaveClass(/active/);
   await expect(overview).toContainText('Объекты: Синий');
   await expect(overview).toContainText('Страховая компания');
-  await expect(overview).toContainText('Нужно: Камень ×1, Сталь ×1');
   await expect(overview).toContainText('Склад');
-  await expect(overview).toContainText('Д 1');
-  await expect(overview).toContainText('С 1');
-
-  const players=page.locator('#playersBar');
-  expect(await players.evaluate(el=>getComputedStyle(el).position)).toBe('sticky');
 
   await page.locator('.player-pill[data-office="1"]').click();
+  await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
+  await expect(page.locator('#officeTitle')).toContainText('Красный');
+  await expect(page.locator('#showOfficeObjectsMap')).toBeVisible();
+  await page.locator('#showOfficeObjectsMap').click();
+
+  await expect(page.locator('#officeDrawer')).not.toHaveClass(/open/);
   await expect(overview).toContainText('Просмотр: Красный');
   await expect(overview).toContainText('Рабочий доходный дом');
   await page.locator('#overviewBackActive').click();
@@ -451,40 +458,119 @@ test('warehouse map marker always shows compact inventory without enlarging the 
   expect(rect.h).toBeLessThanOrEqual(38);
 });
 
-test('mobile overview stays usable and construction focus switches map to detail',async({page})=>{
+test('portrait mobile keeps objects in the top HUD and player taps still open Office',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
   s.constructions=[
     con('C1',0,'insurance','soma','under-construction',['Masonry']),
-    con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Lumber','Steel'])
+    con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Lumber','Steel']),
+    con('C2',1,'tenement','northbeach','under-construction',['Lumber'])
   ];
   await seed(page,s);
   await page.goto('/');
 
-  const overview=page.locator('#cityOverviewPanel');
-  await expect(overview).toBeVisible();
-  expect(await overview.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
+  await expect(page.locator('#cityOverviewPanel')).toBeHidden();
+  const strip=page.locator('#mobileObjectStrip');
+  await expect(strip).toBeVisible();
+  await expect(strip).toContainText('Объекты: Синий');
+  await expect(strip).toContainText('Страховая компания');
+  await expect(strip).toContainText('Склад · SoMa');
+
   const layout=await page.evaluate(()=>{
-    const nav=document.querySelector('.nav-rail').getBoundingClientRect();
-    const panel=document.querySelector('#cityOverviewPanel').getBoundingClientRect();
+    const strip=document.querySelector('#mobileObjectStrip').getBoundingClientRect();
+    const help=document.querySelector('#helpBtn').getBoundingClientRect();
     const players=[...document.querySelectorAll('.player-pill')].map(x=>x.getBoundingClientRect());
     return {
       pageWidth:document.documentElement.scrollWidth,
       viewport:window.innerWidth,
-      panelBottom:panel.bottom,
-      navTop:nav.top,
+      aligned:Math.abs(strip.top-help.top)<=2&&Math.abs(strip.bottom-help.bottom)<=2,
       playersInside:players.every(r=>r.left>=-1&&r.right<=window.innerWidth+1)
     };
   });
   expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
-  expect(layout.panelBottom).toBeLessThanOrEqual(layout.navTop+2);
+  expect(layout.aligned).toBe(true);
   expect(layout.playersInside).toBe(true);
-  const card=page.locator('[data-overview-construction="C1"]');
-  const box=await card.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box.height).toBeGreaterThanOrEqual(44);
 
-  await card.click();
+  await page.locator('.player-pill[data-office="1"]').click();
+  await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
+  await expect(page.locator('#officeTitle')).toContainText('Красный');
+  await page.locator('#showOfficeObjectsMap').click();
+  await expect(strip).toContainText('Просмотр: Красный');
+  await expect(strip).toContainText('Рабочий доходный дом');
+  await page.locator('#mobileObjectsBack').click();
+  await expect(strip).toContainText('Объекты: Синий');
+
+  await page.locator('[data-mobile-object="C1"]').click();
   await expect(page.locator('#cityBoardScroll')).toHaveClass(/detail/);
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  await expect(page.locator('.focused-object-detail')).toContainText('Страховая компания');
+});
+
+
+
+test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>{
+  await page.setViewportSize({width:844,height:390});
+  const s=makeDevState();
+  s.constructions=[
+    con('C1',0,'tenement','pacific','under-construction',[]),
+    con('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Steel'])
+  ];
+  await seed(page,s);
+  await page.goto('/');
+
+  const strip=page.locator('#mobileObjectStrip');
+  await expect(strip).toBeVisible();
+  const before=await page.evaluate(()=>{
+    const nav=document.querySelector('.nav-rail').getBoundingClientRect();
+    const top=document.querySelector('.topbar').getBoundingClientRect();
+    const players=document.querySelector('#playersBar').getBoundingClientRect();
+    return {
+      pageWidth:document.documentElement.scrollWidth,
+      viewport:window.innerWidth,
+      navPosition:getComputedStyle(document.querySelector('.nav-rail')).position,
+      topHeight:top.height,
+      playersHeight:players.height,
+      navTop:nav.top
+    };
+  });
+  expect(before.pageWidth).toBeLessThanOrEqual(before.viewport+1);
+  expect(before.navPosition).toBe('fixed');
+  expect(before.topHeight+before.playersHeight).toBeLessThan(150);
+  expect(before.navTop).toBeGreaterThan(300);
+
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
+  await expect(page.locator('[data-ds-node="broadway"]')).toHaveCount(0);
+  const sourcePanel=await page.locator('#deliveryPanel').boundingBox();
+  expect(sourcePanel.height).toBeLessThan(135);
+
+  await page.locator('[data-delivery-node="broadway"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Lumber"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-map-route/);
+  await expect(page.locator('[data-route-next="pacific"]')).toHaveCount(0);
+  await expect(page.locator('[data-district="pacific"]')).toHaveClass(/delivery-next/);
+  await page.locator('[data-district="pacific"]').click();
+  await expect(page.locator('.delivery-route-strip')).toContainText('Pacific');
+});
+
+test('wide landscape phone remains mobile at 932x430 without page overflow',async({page})=>{
+  await page.setViewportSize({width:932,height:430});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma','under-construction',['Masonry'])];
+  await seed(page,s);
+  await page.goto('/');
+
+  await expect(page.locator('#mobileObjectStrip')).toBeVisible();
+  const layout=await page.evaluate(()=>({
+    pageWidth:document.documentElement.scrollWidth,
+    viewport:window.innerWidth,
+    nav:getComputedStyle(document.querySelector('.nav-rail')).position,
+    strip:getComputedStyle(document.querySelector('#mobileObjectStrip')).display
+  }));
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.nav).toBe('fixed');
+  expect(layout.strip).not.toBe('none');
 });
