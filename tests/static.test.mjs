@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\.29\.0/);
-  assert.match(html,/app\.js\?v=0290/);
-  assert.match(html,/styles\.css\?v=0290/);
+  assert.match(html,/Prototype v0\.29\.1/);
+  assert.match(html,/app\.js\?v=0291/);
+  assert.match(html,/styles\.css\?v=0291/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -47,5 +47,18 @@ test('persistent city overview hooks are present',async()=>{
     'action-available',
     'build-dim',
     'data-construction-token'
+  ]) assert.ok(app.includes(needle),needle);
+});
+
+
+test('mobile map-first hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  for(const needle of [
+    'function renderMobileObjectStrip()',
+    'function showObjectsOnMap(',
+    'deliveryShowSourceList',
+    'deliveryShowRouteList',
+    'node-hit',
+    'showOfficeObjectsMap'
   ]) assert.ok(app.includes(needle),needle);
 });
