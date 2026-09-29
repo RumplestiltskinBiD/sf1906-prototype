@@ -651,7 +651,7 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
 
   // Cancel, switch to the worker in Pacific Heights, then choose Raise Capital.
   await page.locator('#cancelConstruction').click();
-  await page.locator('[data-worker="'+near.id+'"]').click();
+  await page.locator('[data-worker-token="'+near.id+'"]').click();
   await page.locator('#actionRaiseCapital').click();
 
   const north=page.locator('[data-district="northbeach"]');
