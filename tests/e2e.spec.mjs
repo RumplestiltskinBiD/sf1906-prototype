@@ -641,6 +641,7 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   far.districtId='mission';
   near.districtId='pacific';
   s.activeWorkerId=far.id;
+  const beforeCapital=s.players[0].capital;
   await seed(page,s);
   await page.goto('/');
 
@@ -668,5 +669,5 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   const saved=await stored(page);
   const moved=saved.players[0].workers.find(w=>w.id===near.id);
   expect(moved.districtId).toBe('northbeach');
-  expect(saved.players[0].capital).toBe(17);
+  expect(saved.players[0].capital).toBe(beforeCapital+3);
 });
