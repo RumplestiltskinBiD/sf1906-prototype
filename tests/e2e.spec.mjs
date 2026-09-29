@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.29.1');
+  await expect(page.locator('.version-badge')).toHaveText('v0.29.2');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -631,4 +631,42 @@ test('exhaustive worker adjacency highlighting matches the locked graph',async({
       }
     }
   }
+});
+
+
+test('stale build-dim never hides a later legal move target',async({page})=>{
+  const s=makeDevState();
+  s.players[0].portfolio=['tenement'];
+  const [far,near]=s.players[0].workers;
+  far.districtId='mission';
+  near.districtId='pacific';
+  s.activeWorkerId=far.id;
+  await seed(page,s);
+  await page.goto('/');
+
+  // First put North Beach into the old dimmed state: from Mission it is outside build range.
+  await page.locator('#officeBtn').click();
+  await page.locator('[data-start-project="tenement"]').click();
+  await expect(page.locator('[data-district="northbeach"]')).toHaveClass(/build-dim/);
+
+  // Cancel, switch to the worker in Pacific Heights, then choose Raise Capital.
+  await page.locator('#cancelConstruction').click();
+  await page.locator('[data-worker="'+near.id+'"]').click();
+  await page.locator('#actionRaiseCapital').click();
+
+  const north=page.locator('[data-district="northbeach"]');
+  await expect(north).toHaveClass(/move-target/);
+  await expect(north).not.toHaveClass(/build-dim/);
+  const visual=await north.locator('path').evaluate(el=>({
+    stroke:getComputedStyle(el).stroke,
+    strokeWidth:parseFloat(getComputedStyle(el).strokeWidth)
+  }));
+  expect(visual.strokeWidth).toBeGreaterThanOrEqual(6);
+
+  // Clicking the visually highlighted district still performs the legal move/action.
+  await north.click();
+  const saved=await stored(page);
+  const moved=saved.players[0].workers.find(w=>w.id===near.id);
+  expect(moved.districtId).toBe('northbeach');
+  expect(saved.players[0].capital).toBe(17);
 });
