@@ -977,7 +977,7 @@ function renderCity(){
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked');
+    g.classList.remove('build-ok','build-blocked','build-dim','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked');
     if(deliveryMode?.step==='route'){
       const route=deliveryMode.route||[],last=route[route.length-1],next=new Set(deliveryNeighbors(last));
       if(route.includes(id))g.classList.add('delivery-route');
