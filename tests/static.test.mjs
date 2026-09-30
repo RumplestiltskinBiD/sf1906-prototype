@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\.29\.2/);
-  assert.match(html,/app\.js\?v=0292/);
-  assert.match(html,/styles\.css\?v=0292/);
+  assert.match(html,/Prototype v0\.30A/);
+  assert.match(html,/app\.js\?v=030a/);
+  assert.match(html,/styles\.css\?v=030a/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -60,5 +60,17 @@ test('mobile map-first hooks are present',async()=>{
     'deliveryShowRouteList',
     'node-hit',
     'showOfficeObjectsMap'
+  ]) assert.ok(app.includes(needle),needle);
+});
+
+
+test('v0.30A risk UI hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  for(const needle of [
+    'function districtRiskPanelHtml(',
+    'function constructionRiskPreviewHtml(',
+    'riskViewActive',
+    'riskViewBtn',
+    'risk-preview-box'
   ]) assert.ok(app.includes(needle),needle);
 });

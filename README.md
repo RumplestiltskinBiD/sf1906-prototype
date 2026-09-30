@@ -181,3 +181,16 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Enlarged invisible touch targets for logistics nodes and Warehouse sources without enlarging visible markers.
 - Added a dedicated landscape-phone layout. Delivery docks to the right of the map, FIT mode uses vertical space, hidden context panels do not intercept taps, and route focusing centers targets in the unobstructed map area.
 - Added portrait and landscape E2E coverage at 390x844, 844x390 and 932x430.
+
+
+## v0.30A — District Risk Core
+
+- Каждый строительный район получил открытые базовые значения **Earthquake (Q)** и **Fire (F)**.
+- Риск хранится как **raw value без верхнего cap**; отображаемые уровни 0 / I / II / III являются качественной оболочкой. Значения выше III продолжают накапливаться, поэтому опасную застройку нельзя «спрятать» за потолком шкалы.
+- Завершённые проекты детерминированно меняют Q / F района; незавершённые стройки пока не меняют текущий риск.
+- Карты проектов показывают своё влияние на Q / F.
+- Перед подтверждением новой стройки контекст района показывает **прогноз риска после завершения**.
+- На карте добавлен компактный Q / F индикатор и отдельный режим **РИСК** для аналитического просмотра.
+- Контекст района показывает источник каждого изменения риска.
+- Исторические стартовые значения в этой версии являются **тестовыми балансировочными значениями** и не считаются окончательной исторической реконструкцией.
+- Сам Disaster Simulator (Earthquake → Fire cascade → aftermath) остаётся задачей v0.30B.

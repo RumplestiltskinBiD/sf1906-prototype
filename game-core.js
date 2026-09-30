@@ -57,45 +57,45 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
-  {prestige:1,income:2,id:'tenement',name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Уличная сеть',accessAll:['road'],effect:'Доход +2 · много жителей · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Уличная сеть.'},
-  {prestige:0,income:3,id:'speculative',name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Стоимость земли ≤2',effect:'Доход +3 · очень много жителей · высокий риск',landMax:2,benefit:'Доход +3 / раунд · Престиж 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Стоимость земли ≤2. Высокий риск в будущей катастрофе.'},
-  {prestige:3,income:3,id:'luxury',name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3 · Престиж +3',landMin:3,benefit:'Доход +3 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
-  {prestige:1,income:2,id:'shops',name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Уличная сеть · Стоимость земли 1+',accessAll:['road'],effect:'Доход +2 · Действие «Закупка» · Престиж +1',landMin:1,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации.',limits:'Нужна незавершённая стройка · 1 использование / здание / раунд · при чужом использовании $1 получает владелец.'},
-  {prestige:3,income:4,id:'hotel',name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4 · Престиж +3',landMin:3,benefit:'Доход +4 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
-  {prestige:1,income:2,id:'bank',name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+ · Уличная сеть',accessAll:['road'],effect:'Доход +2 · Действие «Банковский кредит» · Престиж +1',landMin:2,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
-  {prestige:2,income:2,id:'club',name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Престиж +2',landMin:2,benefit:'Доход +2 / раунд · Престиж +2',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние.',limits:'1 использование / здание / раунд · если использует соперник, его $1 получает владелец.'},
-  {prestige:1,income:2,id:'warehouse',name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Masonry','Steel'],requires:'Порт, ж/д или уличная сеть',accessAny:['port','rail','road'],effect:'Доход +2 · Хранение 5 · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · хранит до 5 ресурсов и снабжает стройки в этом районе',actionName:'—',actionText:'Может быть источником и точкой разгрузки Доставка.',limits:'Нужен Порт, ж/д или уличная сеть. Хранение 5 ресурсов.'},
-  {prestige:0,income:5,id:'factory',name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Доступ к ж/д или порту',accessAny:['rail','port'],effect:'Доход +5 · Стоимость земли −1',benefit:'Доход +5 / раунд · Престиж 0 · после завершения Стоимость земли района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Доступ к ж/д или порту. Стоимость земли не падает ниже 0.'},
-  {prestige:1,income:0,id:'bureau',name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Строительный контракт · −$2 к Стоимость земли · Престиж +1',benefit:'Престиж +1 · Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
-  {prestige:1,income:3,id:'insurance',name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · Престиж +1 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд · Престиж +1',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
-  {prestige:3,income:0,id:'firehouse',name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть · муниципальный участок',accessAll:['road'],effect:'Пожарная защита (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Пожарная защита действует в своём и соседнем районе через развитую уличную сеть. Municipal site пока не проверяется.'},
-  {prestige:3,income:0,id:'clinic',name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Уличная сеть',accessAll:['road'],effect:'Доступ к клинике (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Доступ к клинике действует в своём и соседнем районе через развитую уличную сеть.'},
-  {prestige:3,income:0,id:'publicworks',name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Уличная сеть. Полные воды / газа / ремонта правила будут добавлены позже.'},
-  {prestige:3,income:0,id:'streetcar',name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть или соседний район с Уличная сеть',streetcarExtension:true,effect:'Открывает Уличная сеть в районе · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · открывает Уличная сеть',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Уличная сеть в районе или в одном из соседних районов.'}
+  {prestige:1,income:2,id:'tenement',risk:{earthquake:0,fire:1},name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Уличная сеть',accessAll:['road'],effect:'Доход +2 · много жителей · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нужен Уличная сеть.'},
+  {prestige:0,income:3,id:'speculative',risk:{earthquake:1,fire:1},name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Стоимость земли ≤2',effect:'Доход +3 · очень много жителей · высокий риск',landMax:2,benefit:'Доход +3 / раунд · Престиж 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Стоимость земли ≤2. Высокий риск в будущей катастрофе.'},
+  {prestige:3,income:3,id:'luxury',risk:{earthquake:0,fire:0},name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3 · Престиж +3',landMin:3,benefit:'Доход +3 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
+  {prestige:1,income:2,id:'shops',risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Уличная сеть · Стоимость земли 1+',accessAll:['road'],effect:'Доход +2 · Действие «Закупка» · Престиж +1',landMin:1,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации.',limits:'Нужна незавершённая стройка · 1 использование / здание / раунд · при чужом использовании $1 получает владелец.'},
+  {prestige:3,income:4,id:'hotel',risk:{earthquake:0,fire:0},name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4 · Престиж +3',landMin:3,benefit:'Доход +4 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
+  {prestige:1,income:2,id:'bank',risk:{earthquake:0,fire:0},name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+ · Уличная сеть',accessAll:['road'],effect:'Доход +2 · Действие «Банковский кредит» · Престиж +1',landMin:2,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
+  {prestige:2,income:2,id:'club',risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Престиж +2',landMin:2,benefit:'Доход +2 / раунд · Престиж +2',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние.',limits:'1 использование / здание / раунд · если использует соперник, его $1 получает владелец.'},
+  {prestige:1,income:2,id:'warehouse',risk:{earthquake:0,fire:1},name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Masonry','Steel'],requires:'Порт, ж/д или уличная сеть',accessAny:['port','rail','road'],effect:'Доход +2 · Хранение 5 · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · хранит до 5 ресурсов и снабжает стройки в этом районе',actionName:'—',actionText:'Может быть источником и точкой разгрузки Доставка.',limits:'Нужен Порт, ж/д или уличная сеть. Хранение 5 ресурсов.'},
+  {prestige:0,income:5,id:'factory',risk:{earthquake:1,fire:2},name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Доступ к ж/д или порту',accessAny:['rail','port'],effect:'Доход +5 · Стоимость земли −1',benefit:'Доход +5 / раунд · Престиж 0 · после завершения Стоимость земли района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Доступ к ж/д или порту. Стоимость земли не падает ниже 0.'},
+  {prestige:1,income:0,id:'bureau',risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Строительный контракт · −$2 к Стоимость земли · Престиж +1',benefit:'Престиж +1 · Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
+  {prestige:1,income:3,id:'insurance',risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · Престиж +1 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд · Престиж +1',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
+  {prestige:3,income:0,id:'firehouse',risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть · муниципальный участок',accessAll:['road'],effect:'Пожарная защита (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Пожарная защита действует в своём и соседнем районе через развитую уличную сеть. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'clinic',risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Уличная сеть',accessAll:['road'],effect:'Доступ к клинике (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Доступ к клинике действует в своём и соседнем районе через развитую уличную сеть.'},
+  {prestige:3,income:0,id:'publicworks',risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Уличная сеть. Полные воды / газа / ремонта правила будут добавлены позже.'},
+  {prestige:3,income:0,id:'streetcar',risk:{earthquake:0,fire:0},name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть или соседний район с Уличная сеть',streetcarExtension:true,effect:'Открывает Уличная сеть в районе · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · открывает Уличная сеть',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Уличная сеть в районе или в одном из соседних районов.'}
 ]
 
 export const DISTRICTS = [
-  {id:'presidio',name:'Presidio',hint:'Федеральная территория · закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false},
-  {id:'marina',name:'Marina',hint:'Северная набережная · дорогая земля · Порт',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
-  {id:'northbeach',name:'North Beach',hint:'Плотная северо-восточная застройка · Порт',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
-  {id:'chinatown',name:'Chinatown',hint:'Плотный центральный район',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'pacific',name:'Pacific Heights',hint:'Самая дорогая жилая земля',landValue:4,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'financial',name:'Financial District',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
-  {id:'soma',name:'SoMa',hint:'Промышленный район · Ж/д + порт',landValue:2,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
-  {id:'civic',name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'western',name:'Western Addition',hint:'Средняя стоимость · развитая уличная сеть',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'innerrichmond',name:'Inner Richmond',hint:'Западный жилой район рядом с Golden Gate Park',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'outerrichmond',name:'Outer Richmond',hint:'Доступная западная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'haight',name:'Haight-Ashbury',hint:'Средняя стоимость · центрально-западный узел',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'innersunset',name:'Inner Sunset',hint:'Доступная земля к югу от Golden Gate Park',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'sunset',name:'Outer Sunset',hint:'Самая дешёвая периферия · Уличная сеть ещё не развит',landValue:0,sites:5,road:false,rail:false,port:false,buildable:true,passable:true},
-  {id:'mission',name:'Mission',hint:'Доступная плотная застройка · доступ к ж/д',landValue:1,sites:5,road:true,rail:true,port:false,buildable:true,passable:true},
-  {id:'missionbay',name:'Mission Bay',hint:'Дешёвая земля · Ж/д + порт · насыпной грунт',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
-  {id:'potrero',name:'Potrero',hint:'Доступная промышленная земля · Ж/д + порт',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
-  {id:'noe',name:'Noe Valley',hint:'Средняя стоимость · южный жилой район',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'bernal',name:'Bernal Heights',hint:'Доступная южная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
-  {id:'park',name:'Golden Gate Park',hint:'Строительство запрещено · рабочие могут проходить через парк',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:true},
-  {id:'twinpeaks',name:'Twin Peaks',hint:'Закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false}
+  {id:'presidio',earthquakeBase:0,fireBase:0,name:'Presidio',hint:'Федеральная территория · закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false},
+  {id:'marina',earthquakeBase:0,fireBase:0,name:'Marina',hint:'Северная набережная · дорогая земля · Порт',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'northbeach',earthquakeBase:0,fireBase:1,name:'North Beach',hint:'Плотная северо-восточная застройка · Порт',landValue:3,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'chinatown',earthquakeBase:0,fireBase:1,name:'Chinatown',hint:'Плотный центральный район',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'pacific',earthquakeBase:0,fireBase:0,name:'Pacific Heights',hint:'Самая дорогая жилая земля',landValue:4,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'financial',earthquakeBase:1,fireBase:1,name:'Financial District',hint:'Дорогой финансовый и портовый узел',landValue:4,sites:5,road:true,rail:false,port:true,buildable:true,passable:true},
+  {id:'soma',earthquakeBase:1,fireBase:1,name:'SoMa',hint:'Промышленный район · Ж/д + порт',landValue:2,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'civic',earthquakeBase:0,fireBase:0,name:'Civic Center',hint:'Административный центр и городские службы',landValue:3,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'western',earthquakeBase:0,fireBase:0,name:'Western Addition',hint:'Средняя стоимость · развитая уличная сеть',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'innerrichmond',earthquakeBase:0,fireBase:0,name:'Inner Richmond',hint:'Западный жилой район рядом с Golden Gate Park',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'outerrichmond',earthquakeBase:0,fireBase:0,name:'Outer Richmond',hint:'Доступная западная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'haight',earthquakeBase:0,fireBase:0,name:'Haight-Ashbury',hint:'Средняя стоимость · центрально-западный узел',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'innersunset',earthquakeBase:0,fireBase:0,name:'Inner Sunset',hint:'Доступная земля к югу от Golden Gate Park',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'sunset',earthquakeBase:0,fireBase:0,name:'Outer Sunset',hint:'Самая дешёвая периферия · Уличная сеть ещё не развит',landValue:0,sites:5,road:false,rail:false,port:false,buildable:true,passable:true},
+  {id:'mission',earthquakeBase:1,fireBase:1,name:'Mission',hint:'Доступная плотная застройка · доступ к ж/д',landValue:1,sites:5,road:true,rail:true,port:false,buildable:true,passable:true},
+  {id:'missionbay',earthquakeBase:2,fireBase:0,name:'Mission Bay',hint:'Дешёвая земля · Ж/д + порт · насыпной грунт',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'potrero',earthquakeBase:1,fireBase:0,name:'Potrero',hint:'Доступная промышленная земля · Ж/д + порт',landValue:1,sites:5,road:true,rail:true,port:true,buildable:true,passable:true},
+  {id:'noe',earthquakeBase:0,fireBase:0,name:'Noe Valley',hint:'Средняя стоимость · южный жилой район',landValue:2,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'bernal',earthquakeBase:0,fireBase:0,name:'Bernal Heights',hint:'Доступная южная земля',landValue:1,sites:5,road:true,rail:false,port:false,buildable:true,passable:true},
+  {id:'park',earthquakeBase:0,fireBase:0,name:'Golden Gate Park',hint:'Строительство запрещено · рабочие могут проходить через парк',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:true},
+  {id:'twinpeaks',earthquakeBase:0,fireBase:0,name:'Twin Peaks',hint:'Закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false}
 ];
 
 export const DISTRICT_ADJACENCY = {
@@ -131,6 +131,45 @@ export function shuffle(items, rng=Math.random){
 export function projectById(id){return PROJECTS.find(p=>p.id===id) || null;}
 export function districtById(id){return DISTRICTS.find(d=>d.id===id) || null;}
 export function districtNeighbors(id){return [...(DISTRICT_ADJACENCY[id]||[])];}
+
+export function projectRisk(projectId){
+  const project=projectById(projectId);
+  return {
+    earthquake:Number(project?.risk?.earthquake)||0,
+    fire:Number(project?.risk?.fire)||0
+  };
+}
+export function riskLevel(value){
+  const raw=Math.max(0,Math.floor(Number(value)||0));
+  return raw===0?0:raw===1?1:raw===2?2:3;
+}
+export function districtRisk(state,districtId){
+  const district=districtById(districtId);
+  if(!district)return null;
+  const earthquakeBase=Math.max(0,Math.floor(Number(district.earthquakeBase)||0));
+  const fireBase=Math.max(0,Math.floor(Number(district.fireBase)||0));
+  const sources=[];
+  if(earthquakeBase||fireBase)sources.push({kind:'base',label:'Старт района',earthquake:earthquakeBase,fire:fireBase});
+  for(const construction of state?.constructions||[]){
+    if(construction.districtId!==districtId||construction.status!=='complete')continue;
+    const delta=projectRisk(construction.projectId);
+    if(!delta.earthquake&&!delta.fire)continue;
+    const project=projectById(construction.projectId);
+    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:project?.name||construction.projectId,earthquake:delta.earthquake,fire:delta.fire});
+  }
+  const projectSources=sources.filter(x=>x.kind==='project');
+  const earthquakeRaw=Math.max(0,earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0));
+  const fireRaw=Math.max(0,fireBase+projectSources.reduce((sum,x)=>sum+x.fire,0));
+  return {districtId,earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw),base:earthquakeBase},fire:{raw:fireRaw,level:riskLevel(fireRaw),base:fireBase},sources};
+}
+export function districtRiskPreview(state,districtId,projectId){
+  const before=districtRisk(state,districtId);
+  if(!before)return null;
+  const delta=projectRisk(projectId);
+  const earthquakeRaw=Math.max(0,before.earthquake.raw+delta.earthquake);
+  const fireRaw=Math.max(0,before.fire.raw+delta.fire);
+  return {before,delta,after:{earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw)},fire:{raw:fireRaw,level:riskLevel(fireRaw)}}};
+}
 
 export function createWorkers(playerId,{districtId=STARTING_WORKER_DISTRICT}={}){
   return Array.from({length:WORKERS_PER_PLAYER},(_,i)=>({
@@ -326,7 +365,7 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
   return {
-    version:'0.28',
+    version:'0.30a',
     round:1,
     firstPlayer:0,
     phase:'draft',
@@ -363,7 +402,7 @@ export function createInitialState({rng=Math.random}={}){
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
     logisticsSupply:generateLogisticsSupply({rng}),
     haulersUsed:[],
-    log:[{msg:'Началась тестовая партия Phase I Map Test v0.28. V8 используется как development map; gameplay geometry зафиксирована ручными контурами. Пять логистических узлов получают новую случайную поставку каждый раунд; у каждого узла свой профиль ресурсов. Golden Gate Park открыт для передвижения; Presidio и Twin Peaks закрыты для входа.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия v0.30A Risk Core. V8 остаётся development map; у районов есть открытые Earthquake / Fire risk, а завершённые здания меняют эти значения без верхнего cap. Логистика и movement rules сохранены.','cls':'accent'}],
     finished:false
   };
 }
@@ -679,6 +718,7 @@ export function completeConstruction(state,construction){
   if(check.warehouseUse>0&&!consumeWarehouseMaterials(state,construction.playerId,construction.districtId,check.missing)){
     return {ok:false,reason:'warehouse-materials'};
   }
+  const riskBefore=districtRisk(state,construction.districtId);
   construction.materialsDelivered=[...(project.materials||[])];
   construction.status='complete';
   construction.completedRound=state.round;
@@ -708,6 +748,10 @@ export function completeConstruction(state,construction){
       const verb=landChange>0?'повышает':'снижает';
       logEvent(state,`${project.name} ${verb} Land Value района ${districtById(construction.districtId).name}: $${before} → $${after}.`,'accent');
     }
+  }
+  const riskAfter=districtRisk(state,construction.districtId);
+  if(riskBefore&&riskAfter&&(riskBefore.earthquake.raw!==riskAfter.earthquake.raw||riskBefore.fire.raw!==riskAfter.fire.raw)){
+    logEvent(state,`Риск ${districtById(construction.districtId).name}: Q ${riskBefore.earthquake.raw}→${riskAfter.earthquake.raw} · F ${riskBefore.fire.raw}→${riskAfter.fire.raw}.`,'accent');
   }
   return {ok:true,prestige:vp,landChange,roadOpened,warehouseUse:check.warehouseUse||0};
 }

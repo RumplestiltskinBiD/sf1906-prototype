@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {createInitialState} from '../game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v028';
+const STORAGE_KEY='sf1906_phase1_ui_v030a';
 
 test.beforeEach(async({page})=>{
   page.on('pageerror',error=>{throw error;});
@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.29.2');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -670,4 +670,36 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   const moved=saved.players[0].workers.find(w=>w.id===near.id);
   expect(moved.districtId).toBe('northbeach');
   expect(saved.players[0].capital).toBe(beforeCapital+3);
+});
+
+test('Risk view exposes district Q/F levels without replacing the map',async({page})=>{
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+  await expect(page.locator('#riskViewBtn')).toBeVisible();
+  await page.locator('#riskViewBtn').click();
+  await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
+  await page.locator('[data-district="missionbay"]').click();
+  await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('EARTHQUAKE');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+});
+
+test('construction preview shows the district risk change before confirmation',async({page})=>{
+  const s=makeDevState();
+  s.players[0].portfolio=['tenement'];
+  const w=s.players[0].workers[0];
+  w.districtId='civic';
+  s.activeWorkerId=w.id;
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#officeBtn').click();
+  await page.locator('[data-start-project="tenement"]').click();
+  await page.locator('[data-district="civic"]').click();
+  const preview=page.locator('#contextPanel .risk-preview-box');
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText('ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ');
+  await expect(preview).toContainText('Q');
+  await expect(preview).toContainText('F');
 });

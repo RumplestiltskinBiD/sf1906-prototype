@@ -1957,3 +1957,53 @@ button.city-action-card{cursor:pointer}
     position:sticky;bottom:0;background:#f4ead9;padding-top:5px
   }
 }
+
+
+/* v0.30A — District Risk Core */
+.card-section-label.risk-label{margin-top:8px}
+.card-risk-row{display:flex;gap:6px;align-items:center;min-height:28px;margin:4px 0 8px}
+.risk-change,.risk-neutral{display:inline-flex;align-items:center;justify-content:center;min-width:50px;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.04em;border:1px solid #c8bba8;background:#f7f0e5;color:#514a43}
+.risk-change.quake.bad{border-color:#b79b75;background:#f1e3cf;color:#62472f}
+.risk-change.fire.bad{border-color:#c18d79;background:#f5ded4;color:#6f362b}
+.risk-change.good{border-color:#86a88b;background:#e4f0e2;color:#315c3a}
+.risk-neutral{opacity:.7;font-weight:800}
+.map-risk-controls{display:inline-flex;margin-left:auto}
+.map-risk-controls button,.map-zoom-controls button{min-height:32px}
+#riskViewBtn{border:1px solid #a9967d;background:#fff7e8;color:#5a4e40;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:900;letter-spacing:.08em;cursor:pointer}
+#riskViewBtn.active{background:#40352f;color:#fff3df;border-color:#40352f;box-shadow:0 0 0 2px rgba(64,53,47,.16)}
+.full-sf-map.risk-mode .dev-map-image{filter:saturate(.62) brightness(.92);opacity:.82}
+.full-sf-map .district-meta.risk-safe{fill:#315d40!important}
+.full-sf-map .district-meta.risk-watch{fill:#78632d!important}
+.full-sf-map .district-meta.risk-warning{fill:#8a4d2e!important}
+.full-sf-map .district-meta.risk-critical{fill:#7a2727!important;font-weight:900}
+.district-risk-panel{margin:10px 0 12px;border:1px solid #bda990;border-radius:11px;background:#f8efe1;overflow:hidden}
+.district-risk-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#e6dac8;border-bottom:1px solid #cdbcaa}
+.district-risk-head b{font-size:9px;letter-spacing:.1em}
+.district-risk-head span{font-size:9px;color:#776b5f}
+.district-risk-values{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#d5c6b3}
+.district-risk-values>div{background:#fff9ef;padding:10px}
+.district-risk-values span{display:block;font-size:8px;letter-spacing:.08em;font-weight:900;color:#85786b}
+.district-risk-values strong{display:block;margin-top:4px;font-size:13px}
+.district-risk-values .quake strong{color:#62472f}
+.district-risk-values .fire strong{color:#78392e}
+.risk-sources{border-top:1px solid #d2c3b0;padding:0 10px}
+.risk-sources summary{cursor:pointer;padding:8px 0;font-size:10px;font-weight:800;color:#665d54}
+.risk-source-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed #ddcfbc;font-size:10px}
+.risk-source-row span{min-width:0}
+.risk-source-row b{white-space:nowrap}
+.risk-source-empty{padding:6px 0 9px;font-size:10px;color:#877b6e}
+.risk-preview-box{margin:9px 0;padding:9px;border:1px solid #c9bba5;border-radius:9px;background:#fff9ee}
+.risk-preview-box.crosses-level{border-color:#b87555;background:#fff0e5}
+.risk-preview-title{font-size:8px;font-weight:900;letter-spacing:.1em;color:#7c6d60;margin-bottom:6px}
+.risk-preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.risk-preview-grid>span{display:grid;grid-template-columns:auto auto auto auto;align-items:center;gap:4px;padding:6px;border-radius:7px;background:#eee4d6;font-size:11px}
+.risk-preview-grid em{font-style:normal;color:#988a7b}
+.risk-preview-grid small{grid-column:1/-1;font-size:8px;color:#7a6f64}
+.risk-preview-warning{margin-top:7px;padding:7px 8px;border-radius:7px;background:#efd7c5;color:#633f31;font-size:9px;line-height:1.35;font-weight:700}
+@media(max-width:640px){
+  .map-risk-controls{margin-left:0}
+  #riskViewBtn{min-height:36px;padding:6px 11px}
+  .district-risk-panel{margin:8px 0 10px}
+  .risk-preview-grid{grid-template-columns:1fr}
+  .card-risk-row{margin-bottom:6px}
+}

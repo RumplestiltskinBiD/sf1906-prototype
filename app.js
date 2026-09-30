@@ -1,7 +1,7 @@
 import {
   PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
   LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-  projectById,districtById,districtAccess,districtNeighbors,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
+  projectById,districtById,districtAccess,districtNeighbors,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
@@ -11,8 +11,8 @@ import {
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 
-const STORAGE_KEY='sf1906_phase1_ui_v028';
-const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
+const STORAGE_KEY='sf1906_phase1_ui_v030a';
+const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
 let pendingBidReveal=false;
@@ -21,6 +21,7 @@ let mobileMapDetail=false;
 let deliveryDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
+let riskViewActive=false;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -33,14 +34,14 @@ function loadState(){
     }
     if(raw){
       const parsed=JSON.parse(raw);
-      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28'].includes(parsed?.version))return migrateState(parsed);
+      if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a'].includes(parsed?.version))return migrateState(parsed);
     }
   }catch(e){}
   return createInitialState();
 }
 function migrateState(parsed){
   const originalVersion=parsed.version;
-  parsed.version='0.28';
+  parsed.version='0.30a';
   parsed.players=(parsed.players||[]).map(p=>{
     let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
       id:w.id||`P${p.id+1}W${i+1}`,
@@ -105,7 +106,7 @@ function migrateState(parsed){
     parsed.developmentPlayer=null;
     parsed.developmentComplete=false;
   }
-  if(!['0.22','0.23','0.24','0.25'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+  if(!['0.22','0.23','0.24','0.25','0.28','0.30a'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
   return parsed;
 }
 function isMobile(){return window.matchMedia('(max-width:640px), (max-height:500px) and (max-width:960px)').matches;}
@@ -163,6 +164,57 @@ function requirementParts(project){
 }
 function requirementChips(project){
   return requirementParts(project).map(x=>'<span class="requirement-chip">'+x+'</span>').join('');
+}
+function riskRoman(level){return ['0','I','II','III'][Math.max(0,Math.min(3,level||0))];}
+function riskDisplay(raw,{compact=false}={}){
+  const value=Math.max(0,Math.floor(Number(raw)||0)),level=riskLevel(value),overflow=Math.max(0,value-3);
+  if(compact)return level===0?'0':riskRoman(level)+(overflow?'+':'');
+  return level===0?'0 · SAFE':`${value} · LEVEL ${riskRoman(level)}${overflow?` +${overflow} OVERFLOW`:''}`;
+}
+function signedRisk(value){const n=Number(value)||0;return n>0?`+${n}`:String(n);}
+function projectRiskChips(projectOrId){
+  const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id,r=projectRisk(id);
+  const chips=[];
+  if(r.earthquake)chips.push(`<span class="risk-change quake ${r.earthquake<0?'good':'bad'}">Q ${signedRisk(r.earthquake)}</span>`);
+  if(r.fire)chips.push(`<span class="risk-change fire ${r.fire<0?'good':'bad'}">F ${signedRisk(r.fire)}</span>`);
+  return `<div class="card-risk-row ${chips.length?'':'neutral'}">${chips.length?chips.join(''):'<span class="risk-neutral">Q 0 · F 0</span>'}</div>`;
+}
+function riskSourceRows(risk){
+  const rows=(risk?.sources||[]).filter(x=>x.earthquake||x.fire);
+  if(!rows.length)return '<div class="risk-source-empty">Нет активных источников риска.</div>';
+  return rows.map(src=>{
+    const owner=src.ownerId!=null?state.players[src.ownerId]?.name:null;
+    const parts=[];
+    if(src.earthquake)parts.push(`Q ${signedRisk(src.earthquake)}`);
+    if(src.fire)parts.push(`F ${signedRisk(src.fire)}`);
+    return `<div class="risk-source-row"><span>${owner?owner+' · ':''}${src.label}</span><b>${parts.join(' · ')}</b></div>`;
+  }).join('');
+}
+function districtRiskPanelHtml(districtId){
+  const r=districtRisk(state,districtId);if(!r)return '';
+  return `<div class="district-risk-panel">
+    <div class="district-risk-head"><b>РИСК РАЙОНА</b><span>без верхнего лимита</span></div>
+    <div class="district-risk-values">
+      <div class="quake"><span>EARTHQUAKE</span><strong>Q ${riskDisplay(r.earthquake.raw)}</strong></div>
+      <div class="fire"><span>FIRE</span><strong>F ${riskDisplay(r.fire.raw)}</strong></div>
+    </div>
+    <details class="risk-sources"><summary>Почему такие значения</summary>${riskSourceRows(r)}</details>
+  </div>`;
+}
+function constructionRiskPreviewHtml(districtId,projectId){
+  const p=districtRiskPreview(state,districtId,projectId);if(!p)return '';
+  const qCross=p.before.earthquake.level!==p.after.earthquake.level,fCross=p.before.fire.level!==p.after.fire.level;
+  const overflow=p.after.earthquake.raw>3||p.after.fire.raw>3;
+  const warning=qCross||fCross
+    ?'<div class="risk-preview-warning">⚠ После завершения проект переводит район на другой уровень риска.</div>'
+    :overflow?'<div class="risk-preview-warning">Риск продолжает накапливаться выше Level III: последующие улучшения сначала должны убрать overflow.</div>':'';
+  return `<div class="risk-preview-box ${qCross||fCross?'crosses-level':''}">
+    <div class="risk-preview-title">ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ</div>
+    <div class="risk-preview-grid">
+      <span>Q <b>${p.before.earthquake.raw}</b> <em>→</em> <b>${p.after.earthquake.raw}</b> <small>${riskRoman(p.before.earthquake.level)} → ${riskRoman(p.after.earthquake.level)}</small></span>
+      <span>F <b>${p.before.fire.raw}</b> <em>→</em> <b>${p.after.fire.raw}</b> <small>${riskRoman(p.before.fire.level)} → ${riskRoman(p.after.fire.level)}</small></span>
+    </div>${warning}
+  </div>`;
 }
 function syncStickyLayout(){
   const top=$('.topbar'),players=$('#playersBar');
@@ -593,6 +645,8 @@ function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',price
       <div class="card-value-row"><div class="opening-price">$${price}<small>${priceLabel}</small></div><span class="prestige-chip">VP ${p.prestige||0}</span></div>
       <div class="card-section-label">МАТЕРИАЛЫ</div>
       <div class="card-resource-row">${resourcePills(p.materials)}</div>
+      <div class="card-section-label risk-label">РИСК РАЙОНА ПОСЛЕ ЗАВЕРШЕНИЯ</div>
+      ${projectRiskChips(p)}
       <div class="card-requirement-band"><b>ТРЕБОВАНИЯ</b><div class="requirement-chip-row">${requirementChips(p)}</div></div>
       ${projectCardRules(p)}
       ${footer}
@@ -943,6 +997,8 @@ function renderCityActions(){
 }
 
 function renderCity(){
+  const board=$('.city-board');if(board)board.classList.toggle('risk-mode',riskViewActive);
+  const riskBtn=$('#riskViewBtn');if(riskBtn){riskBtn.classList.toggle('active',riskViewActive);riskBtn.setAttribute('aria-pressed',riskViewActive?'true':'false');}
   const pending=state.pendingConstruction;
   const workerAction=state.pendingWorkerAction;
   const devPid=currentDeveloper(state);
@@ -977,7 +1033,7 @@ function renderCity(){
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
     g.classList.toggle('selected',state.selectedDistrictId===id);
-    g.classList.remove('build-ok','build-blocked','build-dim','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked');
+    g.classList.remove('build-ok','build-blocked','build-dim','worker-reachable','worker-unreachable','worker-origin','move-target','delivery-route','delivery-current','delivery-next','delivery-blocked','risk-watch','risk-warning','risk-critical');
     if(deliveryMode?.step==='route'){
       const route=deliveryMode.route||[],last=route[route.length-1],next=new Set(deliveryNeighbors(last));
       if(route.includes(id))g.classList.add('delivery-route');
@@ -998,6 +1054,13 @@ function renderCity(){
         g.classList.add('build-dim');
       }
     }
+    if(riskViewActive){
+      const risk=districtRisk(state,id);
+      const maxLevel=Math.max(risk?.earthquake?.level||0,risk?.fire?.level||0);
+      if(maxLevel===3)g.classList.add('risk-critical');
+      else if(maxLevel===2)g.classList.add('risk-warning');
+      else if(maxLevel===1)g.classList.add('risk-watch');
+    }
   });
 
   const meta=$('#districtMetaLayer');
@@ -1006,12 +1069,16 @@ function renderCity(){
       const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_META_POS[d.id]||DISTRICT_POS[d.id],a=districtAccess(state,d.id);
       const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
       const movementLegal=workerAction?.type==='raiseCapital'?reachableIds.has(d.id):null;
+      const risk=d.buildable===false?null:districtRisk(state,d.id);
+      const maxLevel=Math.max(risk?.earthquake?.level||0,risk?.fire?.level||0);
+      const riskClass=riskViewActive?(maxLevel===3?' risk-critical':maxLevel===2?' risk-warning':maxLevel===1?' risk-watch':' risk-safe'):'';
       const klass=(d.passable===false?'district-meta special closed':d.buildable===false?'district-meta special passage':
         pending?(reachableIds.has(d.id)?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta dimmed')
         :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
-        :'district-meta');
+        :'district-meta')+riskClass;
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
-      const label=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
+      const normal=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''} · Q${riskDisplay(risk.earthquake.raw,{compact:true})} F${riskDisplay(risk.fire.raw,{compact:true})}`;
+      const label=riskViewActive&&risk?`Q ${risk.earthquake.raw} [${riskRoman(risk.earthquake.level)}] · F ${risk.fire.raw} [${riskRoman(risk.fire.level)}]`:normal;
       return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
     }).join('');
   }
@@ -1131,7 +1198,7 @@ function renderContext(){
     const m=state.market.find(x=>x&&x.uid===state.selectedMarketUid)||state.market.find(Boolean);
     if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
     const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+    panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Влияние на риск района</div>${projectRiskChips(p)}</div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
   }else{
     const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
     const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
@@ -1164,7 +1231,7 @@ function renderContext(){
     if(state.pendingConstruction){
       const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
       const priceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.cost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.cost}</b></span><span>Представитель <b>1</b></span>`;
-      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong><div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div><div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
+      constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong><div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div>${constructionRiskPreviewHtml(d.id,pr.id)}<div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
     }
 
     const objects=builtHere.length?builtHere.map(x=>{
@@ -1177,7 +1244,8 @@ function renderContext(){
     const statsHtml=d.buildable===false
       ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
       :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
-    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
+    const riskPanelHtml=d.buildable===false?'':districtRiskPanelHtml(d.id);
+    panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
     const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
     const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
     $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -1266,20 +1334,21 @@ function renderDebug(){
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.29.1: на телефоне источник и маршрут доставки выбираются прямо на карте; список остаётся запасным способом.');};
+$('#helpBtn').onclick=()=>{showToast('v0.30A: Q / F показывают открытый риск района; РИСК включает аналитический слой. Значения выше III продолжают накапливаться.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
 $('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
+const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: Q / F по всем районам':'Обычный вид карты');};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
 $$('[data-district]').forEach(g=>g.onclick=()=>{

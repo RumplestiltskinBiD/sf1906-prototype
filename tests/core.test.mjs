@@ -20,7 +20,7 @@ function construction(id,playerId,projectId,districtId,status='under-constructio
 
 test('initial state is internally consistent',()=>{
   const s=G.createInitialState({rng:()=>0.1});
-  assert.equal(s.version,'0.28');
+  assert.equal(s.version,'0.30a');
   assert.equal(s.players.length,3);
   assert.equal(s.market.length,5);
   assert.equal(s.starterDraftHands.length,3);
@@ -446,4 +446,45 @@ test('node-specific random resource thresholds work at profile boundaries',()=>{
   assert.equal(G.randomLogisticsResource(()=>.61,node('broadway').weights),'Masonry');
   assert.equal(G.randomLogisticsResource(()=>.95,node('broadway').weights),'Steel');
   assert.equal(G.randomLogisticsResource(()=>.54,node('unioniron').weights),'Steel');
+});
+
+test('district risk keeps raw values above Level III instead of capping at 3',()=>{
+  const s=devState();
+  s.constructions=[
+    construction('F1',0,'factory','soma','complete'),
+    construction('F2',0,'factory','soma','complete'),
+    construction('F3',1,'factory','soma','complete'),
+    construction('F4',2,'factory','soma','complete'),
+    construction('H1',0,'firehouse','soma','complete'),
+    construction('H2',1,'firehouse','soma','complete')
+  ];
+  const risk=G.districtRisk(s,'soma');
+  assert.equal(risk.earthquake.raw,5);
+  assert.equal(risk.earthquake.level,3);
+  assert.equal(risk.fire.raw,7);
+  assert.equal(risk.fire.level,3);
+  assert.equal(G.riskLevel(99),3);
+});
+
+test('district risk preview is deterministic and does not mutate current city risk',()=>{
+  const s=devState();
+  const before=G.districtRisk(s,'missionbay');
+  assert.equal(before.earthquake.raw,2);
+  assert.equal(before.fire.raw,0);
+  const preview=G.districtRiskPreview(s,'missionbay','factory');
+  assert.equal(preview.after.earthquake.raw,3);
+  assert.equal(preview.after.fire.raw,2);
+  const unchanged=G.districtRisk(s,'missionbay');
+  assert.deepEqual(unchanged,before);
+});
+
+test('risk from a project enters the district only after construction is completed',()=>{
+  const s=devState();
+  const c=construction('T1',0,'tenement','civic','under-construction',['Lumber','Lumber','Masonry']);
+  s.constructions=[c];
+  assert.equal(G.districtRisk(s,'civic').fire.raw,0);
+  const r=G.completeConstruction(s,c);
+  assert.equal(r.ok,true);
+  assert.equal(G.districtRisk(s,'civic').fire.raw,1);
+  assert.ok(s.log.some(x=>x.msg.includes('Риск Civic Center:')&&x.msg.includes('F 0→1')));
 });
