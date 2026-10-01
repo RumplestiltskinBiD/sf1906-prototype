@@ -201,3 +201,15 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Risk preview now uses the full signed safety/risk balance, so previously built safety is preserved when previewing later dangerous construction.
 - The normal city layer stays cleaner; full Q/F comparison is emphasized in the dedicated **РИСК** view and district details.
 - Added portrait and wide-landscape mobile QA for the Risk view and construction preview.
+
+
+## v0.30A-UX — prototype usability pass
+
+- Added a tester-first global **Undo** history (30 gameplay snapshots). UI-only navigation/inspection changes do not consume Undo steps.
+- Added a compact mobile **Quick Action Dock** after representative selection, while keeping the full action catalogue available for explanations and secondary action spaces.
+- Added a mobile **Market Overview** that compares all five projects by price, materials and Q/F change before opening full cards.
+- Simplified the map toolbar to task controls only: Risk / Overview / Details; development diagnostics moved out of the map chrome.
+- Increased the size of key mobile HUD/object-strip information instead of solving density with 6–8 px critical text.
+- Landscape phone now exposes the same three-representative dock used in portrait.
+- Stabilized Risk-panel landscape QA by waiting for the actual 180 ms slide-in transition before asserting viewport bounds.
+- No balance or gameplay-rule changes are included in this pass.
