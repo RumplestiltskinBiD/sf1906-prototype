@@ -786,3 +786,51 @@ test('wide landscape phone Risk view stays map-first and creates no page overflo
   expect(layout.toolbarLeft).toBeGreaterThanOrEqual(-1);
   expect(layout.toolbarRight).toBeLessThanOrEqual(layout.viewport+1);
 });
+
+
+test('mobile Risk view stays usable in portrait',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+
+  const riskBtn=page.locator('#riskViewBtn');
+  await expect(riskBtn).toBeVisible();
+  const riskBox=await riskBtn.boundingBox();
+  expect(riskBox).not.toBeNull();
+  expect(riskBox.height).toBeGreaterThanOrEqual(34);
+
+  await riskBtn.click();
+  await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
+  await page.locator('[data-district="missionbay"]').click();
+  await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('mobile Risk view stays usable in landscape without horizontal page overflow',async({page})=>{
+  await page.setViewportSize({width:932,height:430});
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+
+  await expect(page.locator('#riskViewBtn')).toBeVisible();
+  await page.locator('#riskViewBtn').click();
+  await page.locator('[data-district="missionbay"]').click();
+  await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+
+  const result=await page.evaluate(()=>({
+    overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    panel:document.querySelector('#contextPanel')?.getBoundingClientRect(),
+    viewport:{w:innerWidth,h:innerHeight}
+  }));
+  expect(result.overflow).toBeLessThanOrEqual(1);
+  expect(result.panel).not.toBeNull();
+  expect(result.panel.right).toBeLessThanOrEqual(result.viewport.w+1);
+  expect(result.panel.bottom).toBeLessThanOrEqual(result.viewport.h+1);
+});
