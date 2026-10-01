@@ -158,16 +158,18 @@ export function districtRisk(state,districtId){
     sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:project?.name||construction.projectId,earthquake:delta.earthquake,fire:delta.fire});
   }
   const projectSources=sources.filter(x=>x.kind==='project');
-  const earthquakeRaw=Math.max(0,earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0));
-  const fireRaw=Math.max(0,fireBase+projectSources.reduce((sum,x)=>sum+x.fire,0));
-  return {districtId,earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw),base:earthquakeBase},fire:{raw:fireRaw,level:riskLevel(fireRaw),base:fireBase},sources};
+  const earthquakeNet=earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0);
+  const fireNet=fireBase+projectSources.reduce((sum,x)=>sum+x.fire,0);
+  const earthquakeRaw=Math.max(0,earthquakeNet);
+  const fireRaw=Math.max(0,fireNet);
+  return {districtId,earthquake:{raw:earthquakeRaw,net:earthquakeNet,level:riskLevel(earthquakeRaw),base:earthquakeBase},fire:{raw:fireRaw,net:fireNet,level:riskLevel(fireRaw),base:fireBase},sources};
 }
 export function districtRiskPreview(state,districtId,projectId){
   const before=districtRisk(state,districtId);
   if(!before)return null;
   const delta=projectRisk(projectId);
-  const earthquakeRaw=Math.max(0,before.earthquake.raw+delta.earthquake);
-  const fireRaw=Math.max(0,before.fire.raw+delta.fire);
+  const earthquakeRaw=Math.max(0,(before.earthquake.net??before.earthquake.raw)+delta.earthquake);
+  const fireRaw=Math.max(0,(before.fire.net??before.fire.raw)+delta.fire);
   return {before,delta,after:{earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw)},fire:{raw:fireRaw,level:riskLevel(fireRaw)}}};
 }
 

@@ -488,3 +488,16 @@ test('risk from a project enters the district only after construction is complet
   assert.equal(G.districtRisk(s,'civic').fire.raw,1);
   assert.ok(s.log.some(x=>x.msg.includes('Риск Civic Center:')&&x.msg.includes('F 0→1')));
 });
+
+
+test('risk preview respects safety already built below zero instead of overstating the next project',()=>{
+  const s=devState();
+  s.constructions=[construction('H1',0,'firehouse','civic','complete')];
+  const before=G.districtRisk(s,'civic');
+  assert.equal(before.fire.raw,0);
+  assert.equal(before.fire.net,-1);
+  const preview=G.districtRiskPreview(s,'civic','factory');
+  assert.equal(preview.after.fire.raw,1);
+  s.constructions.push(construction('F1',0,'factory','civic','complete'));
+  assert.equal(G.districtRisk(s,'civic').fire.raw,1);
+});

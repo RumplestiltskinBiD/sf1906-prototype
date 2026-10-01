@@ -194,3 +194,10 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Контекст района показывает источник каждого изменения риска.
 - Исторические стартовые значения в этой версии являются **тестовыми балансировочными значениями** и не считаются окончательной исторической реконструкцией.
 - Сам Disaster Simulator (Earthquake → Fire cascade → aftermath) остаётся задачей v0.30B.
+
+
+### v0.30A QA follow-up
+
+- Risk preview now uses the full signed safety/risk balance, so previously built safety is preserved when previewing later dangerous construction.
+- The normal city layer stays cleaner; full Q/F comparison is emphasized in the dedicated **РИСК** view and district details.
+- Added portrait and wide-landscape mobile QA for the Risk view and construction preview.

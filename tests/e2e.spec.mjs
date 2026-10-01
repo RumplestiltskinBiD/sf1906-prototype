@@ -703,3 +703,83 @@ test('construction preview shows the district risk change before confirmation',a
   await expect(preview).toContainText('Q');
   await expect(preview).toContainText('F');
 });
+
+
+test('portrait mobile Risk view and construction preview stay inside the usable viewport',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.players[0].portfolio=['tenement'];
+  const w=s.players[0].workers[0];
+  w.districtId='civic';
+  s.activeWorkerId=w.id;
+  await seed(page,s);
+  await page.goto('/');
+
+  const riskBtn=page.locator('#riskViewBtn');
+  await expect(riskBtn).toBeVisible();
+  await riskBtn.click();
+  await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
+  await page.locator('[data-district="civic"]').click();
+  await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+
+  let layout=await page.evaluate(()=>{
+    const panel=document.querySelector('#contextPanel').getBoundingClientRect();
+    const nav=document.querySelector('.nav-rail').getBoundingClientRect();
+    const button=document.querySelector('#riskViewBtn').getBoundingClientRect();
+    return {
+      pageWidth:document.documentElement.scrollWidth,
+      viewport:window.innerWidth,
+      panelLeft:panel.left,panelRight:panel.right,panelBottom:panel.bottom,
+      navTop:nav.top,buttonHeight:button.height
+    };
+  });
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
+  expect(layout.panelRight).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.panelBottom).toBeLessThanOrEqual(layout.navTop+1);
+  expect(layout.buttonHeight).toBeGreaterThanOrEqual(34);
+
+  await page.locator('#contextClose').click();
+  await page.locator('#officeBtn').click();
+  await page.locator('[data-start-project="tenement"]').click();
+  await page.locator('[data-district="civic"]').click();
+  const preview=page.locator('#contextPanel .risk-preview-box');
+  await expect(preview).toBeVisible();
+  const previewBox=await preview.boundingBox();
+  const panelBox=await page.locator('#contextPanel').boundingBox();
+  expect(previewBox).not.toBeNull();
+  expect(panelBox).not.toBeNull();
+  expect(previewBox.left).toBeGreaterThanOrEqual(panelBox.left-1);
+  expect(previewBox.right).toBeLessThanOrEqual(panelBox.right+1);
+});
+
+test('wide landscape phone Risk view stays map-first and creates no page overflow',async({page})=>{
+  await page.setViewportSize({width:932,height:430});
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#riskViewBtn').click();
+  await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
+  await page.locator('[data-district="missionbay"]').click();
+  await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  const layout=await page.evaluate(()=>{
+    const panel=document.querySelector('#contextPanel').getBoundingClientRect();
+    const nav=document.querySelector('.nav-rail').getBoundingClientRect();
+    const toolbar=document.querySelector('.city-board-toolbar').getBoundingClientRect();
+    return {
+      pageWidth:document.documentElement.scrollWidth,
+      viewport:window.innerWidth,
+      panelLeft:panel.left,panelRight:panel.right,panelTop:panel.top,panelBottom:panel.bottom,
+      navTop:nav.top,toolbarLeft:toolbar.left,toolbarRight:toolbar.right
+    };
+  });
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
+  expect(layout.panelRight).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.panelTop).toBeGreaterThanOrEqual(-1);
+  expect(layout.panelBottom).toBeLessThanOrEqual(layout.navTop+1);
+  expect(layout.toolbarLeft).toBeGreaterThanOrEqual(-1);
+  expect(layout.toolbarRight).toBeLessThanOrEqual(layout.viewport+1);
+});

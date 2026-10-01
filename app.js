@@ -192,8 +192,11 @@ function riskSourceRows(risk){
 }
 function districtRiskPanelHtml(districtId){
   const r=districtRisk(state,districtId);if(!r)return '';
+  const reserve=[];
+  if((r.earthquake.net??r.earthquake.raw)<0)reserve.push(`Q запас ${Math.abs(r.earthquake.net)}`);
+  if((r.fire.net??r.fire.raw)<0)reserve.push(`F запас ${Math.abs(r.fire.net)}`);
   return `<div class="district-risk-panel">
-    <div class="district-risk-head"><b>РИСК РАЙОНА</b><span>без верхнего лимита</span></div>
+    <div class="district-risk-head"><b>РИСК РАЙОНА</b><span>${reserve.length?reserve.join(' · '):'без верхнего лимита'}</span></div>
     <div class="district-risk-values">
       <div class="quake"><span>EARTHQUAKE</span><strong>Q ${riskDisplay(r.earthquake.raw)}</strong></div>
       <div class="fire"><span>FIRE</span><strong>F ${riskDisplay(r.fire.raw)}</strong></div>
@@ -1077,7 +1080,7 @@ function renderCity(){
         :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
         :'district-meta')+riskClass;
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
-      const normal=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''} · Q${riskDisplay(risk.earthquake.raw,{compact:true})} F${riskDisplay(risk.fire.raw,{compact:true})}`;
+      const normal=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
       const label=riskViewActive&&risk?`Q ${risk.earthquake.raw} [${riskRoman(risk.earthquake.level)}] · F ${risk.fire.raw} [${riskRoman(risk.fire.level)}]`:normal;
       return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
     }).join('');
