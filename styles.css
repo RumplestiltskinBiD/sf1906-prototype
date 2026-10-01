@@ -2007,3 +2007,14 @@ button.city-action-card{cursor:pointer}
   .risk-preview-grid{grid-template-columns:1fr}
   .card-risk-row{margin-bottom:6px}
 }
+
+
+/* v0.30A mobile landscape: anchor context drawer to the viewport, not wide map content. */
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  .context-panel{
+    left:max(7px,calc(100vw - 347px))!important;
+    right:auto!important;
+    width:min(340px,calc(100vw - 14px))!important;
+    box-sizing:border-box!important;
+  }
+}
