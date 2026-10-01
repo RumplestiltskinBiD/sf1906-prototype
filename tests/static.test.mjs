@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\\.30A-UX/);
-  assert.match(html,/app\\.js\\?v=030aux/);
-  assert.match(html,/styles\\.css\\?v=030aux/);
+  assert.match(html,/Prototype v0\.30A-UX/);
+  assert.match(html,/app\.js\?v=030aux/);
+  assert.match(html,/styles\.css\?v=030aux/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
