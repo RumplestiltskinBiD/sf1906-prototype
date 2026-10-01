@@ -22,6 +22,10 @@ let deliveryDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
 let riskViewActive=false;
+let undoHistory=[];
+let undoApplying=false;
+let lastSavedSnapshot=JSON.stringify(state);
+let lastSavedFingerprint=gameplayFingerprint(state);
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -116,7 +120,49 @@ function syncMobileContext(){
   $('#contextPanel')?.classList.toggle('mobile-open',open);
   document.body.classList.toggle('context-open',open);
 }
-function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+function gameplayFingerprint(source){
+  const {
+    view,selectedDistrictId,selectedProjectId,selectedMarketUid,
+    pendingConstruction,pendingWorkerAction,activeWorkerId,
+    ...gameplay
+  }=source||{};
+  return JSON.stringify(gameplay);
+}
+function syncUndoButton(){
+  const btn=$('#undoBtn');if(!btn)return;
+  btn.disabled=undoHistory.length===0;
+  btn.title=undoHistory.length?'Отменить последнее игровое действие':'Нет действий для отмены';
+}
+function saveState(){
+  const serialized=JSON.stringify(state);
+  const fingerprint=gameplayFingerprint(state);
+  if(!undoApplying&&fingerprint!==lastSavedFingerprint){
+    undoHistory.push(lastSavedSnapshot);
+    if(undoHistory.length>30)undoHistory.shift();
+  }
+  localStorage.setItem(STORAGE_KEY,serialized);
+  lastSavedSnapshot=serialized;
+  lastSavedFingerprint=fingerprint;
+  syncUndoButton();
+}
+function undoLastGameAction(){
+  if(!undoHistory.length){showToast('Нет игровых действий для отмены');return;}
+  const snapshot=undoHistory.pop();
+  undoApplying=true;
+  state=JSON.parse(snapshot);
+  deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;
+  mobileContextOpen=false;pendingBidReveal=false;
+  lastSavedSnapshot=snapshot;
+  lastSavedFingerprint=gameplayFingerprint(state);
+  localStorage.setItem(STORAGE_KEY,snapshot);
+  closeDrawers();closeMobileContext();
+  $('#privacyModal')?.classList.remove('open');
+  $('#modalBackdrop')?.classList.remove('open');
+  render();
+  undoApplying=false;
+  syncUndoButton();
+  showToast('Последнее игровое действие отменено');
+}
 function playerColor(pid){return state.players[pid].key;}
 function preferredOfficePlayer(){
   if(state.phase==='development'&&currentDeveloper(state)!=null)return currentDeveloper(state);
@@ -511,7 +557,7 @@ function renderDeliveryRouteOverlay(){
 
 function render(){
   saveState();
-  renderTop();renderPlayers();renderViews();renderMarket();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();requestAnimationFrame(syncStickyLayout);
+  renderTop();renderPlayers();renderViews();renderMarket();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
   if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 
@@ -655,6 +701,40 @@ function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',price
       ${footer}
     </div>
   </article>`;
+}
+
+function compactMarketMaterials(project){
+  const counts=deliveryCounts(project?.materials||[]);
+  return RESOURCE_ORDER.filter(t=>counts[t]).map(t=>materialShort(t)+(counts[t]>1?counts[t]:'')).join(' ')||'—';
+}
+function compactMarketRisk(project){
+  const r=projectRisk(project?.id);
+  const q=r.earthquake?signedRisk(r.earthquake):'0';
+  const f=r.fire?signedRisk(r.fire):'0';
+  return 'Q'+q+' · F'+f;
+}
+function renderMarketOverview(){
+  const el=$('#marketOverview');if(!el)return;
+  if(!isMobile()||state.view!=='hall'){
+    el.className='market-overview';el.innerHTML='';return;
+  }
+  const rows=(state.market||[]).map((m,slot)=>{
+    if(!m)return '<div class="market-overview-item empty"><b>'+(slot+1)+'</b><span>Пусто</span></div>';
+    const p=projectById(m.id),price=openingPrice(m),selected=state.selectedMarketUid===m.uid;
+    return '<button class="market-overview-item '+(selected?'selected ':'')+(m.age===1?'old ':'')+(m.sold?'sold':'')+'" data-market-overview-slot="'+slot+'">'
+      +'<b>'+(slot+1)+'</b><span class="market-overview-name">'+p.name+'</span><strong>$'+price+'</strong>'
+      +'<span class="market-overview-mats">'+compactMarketMaterials(p)+'</span>'
+      +'<span class="market-overview-risk">'+compactMarketRisk(p)+'</span>'
+      +'</button>';
+  }).join('');
+  el.className='market-overview active';
+  el.innerHTML='<div class="market-overview-head"><b>СРАВНИТЬ РЫНОК</b><span>цена · материалы · изменение риска</span></div>'+rows;
+  $$('[data-market-overview-slot]').forEach(b=>b.onclick=()=>{
+    const slot=+b.dataset.marketOverviewSlot,m=state.market[slot];if(!m)return;
+    state.selectedMarketUid=m.uid;state.selectedProjectId=m.id;
+    render();
+    requestAnimationFrame(()=>$('#projectMarket')?.children?.[slot]?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));
+  });
 }
 
 function renderMarket(){
@@ -999,6 +1079,42 @@ function renderCityActions(){
   });
 }
 
+function renderMobileActionDock(){
+  const el=$('#mobileActionDock');if(!el)return;
+  const pid=currentDeveloper(state),selected=pid!=null?activeWorker(state,pid):null;
+  const blocked=!isMobile()||state.view!=='city'||state.phase!=='development'||state.developmentComplete
+    ||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||!selected;
+  if(blocked){el.className='mobile-action-dock';el.innerHTML='';return;}
+  const mainUsed=!!state.activationMainActionUsed;
+  const build=$('#actionBuild'),capital=$('#actionRaiseCapital'),delivery=$('#actionDelivery'),end=$('#actionEndActivation');
+  const extraCount=$$('#cityActions .action-space-btn.available-action').length;
+  const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
+  let html='';
+  if(mainUsed){
+    html+=button('delivery','🚚 Доставка',!!delivery?.disabled,'free');
+    html+=button('end','Завершить ход',!end,'primary');
+  }else{
+    html+=button('build','🏗 Стройка',!!build?.disabled,'primary');
+    html+=button('capital','+$3 Капитал',!!capital?.disabled);
+    html+=button('delivery','🚚 Доставка',!!delivery?.disabled,'free');
+  }
+  html+=button('more',extraCount?('Ещё · '+extraCount):'Все действия',false,extraCount?'has-more':'');
+  el.className='mobile-action-dock active';
+  el.innerHTML='<span class="mobile-action-caption">БЫСТРЫЙ ХОД</span><div class="mobile-action-buttons">'+html+'</div>';
+  $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
+    const action=b.dataset.mobileAction;
+    if(action==='build')$('#actionBuild')?.click();
+    else if(action==='capital')$('#actionRaiseCapital')?.click();
+    else if(action==='delivery')$('#actionDelivery')?.click();
+    else if(action==='end')$('#actionEndActivation')?.click();
+    else{
+      $('#cityActions')?.scrollIntoView({behavior:'smooth',block:'start'});
+      $('#cityActions')?.classList.add('ux-focus');
+      setTimeout(()=>$('#cityActions')?.classList.remove('ux-focus'),900);
+    }
+  });
+}
+
 function renderCity(){
   const board=$('.city-board');if(board)board.classList.toggle('risk-mode',riskViewActive);
   const riskBtn=$('#riskViewBtn');if(riskBtn){riskBtn.classList.toggle('active',riskViewActive);riskBtn.setAttribute('aria-pressed',riskViewActive?'true':'false');}
@@ -1337,14 +1453,15 @@ function renderDebug(){
 
 function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;state=createInitialState();inspectedOffice=0;localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#helpBtn').onclick=()=>{showToast('v0.30A: Q / F показывают открытый риск района; РИСК включает аналитический слой. Значения выше III продолжают накапливаться.');};
+$('#undoBtn').onclick=undoLastGameAction;
+$('#helpBtn').onclick=()=>{showToast('v0.30A-UX: ↶ отменяет последнее игровое действие; Q / F показывают открытый риск района.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
