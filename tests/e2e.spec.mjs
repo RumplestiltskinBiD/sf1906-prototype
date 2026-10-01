@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.30A');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -812,6 +812,75 @@ test('mobile Risk view stays usable in portrait',async({page})=>{
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+
+
+test('tester Undo restores the previous gameplay state without undoing UI selection first',async({page})=>{
+  const s=makeDevState();
+  const w=s.players[0].workers[0];
+  w.districtId='civic';
+  s.activeWorkerId=w.id;
+  await seed(page,s);
+  await page.goto('/');
+
+  await expect(page.locator('#undoBtn')).toBeDisabled();
+  await page.locator('#actionRaiseCapital').click();
+  await page.locator('[data-district="civic"]').click();
+  let saved=await stored(page);
+  expect(saved.players[0].capital).toBe(53);
+  await expect(page.locator('#undoBtn')).toBeEnabled();
+
+  await page.locator('#undoBtn').click();
+  saved=await stored(page);
+  expect(saved.players[0].capital).toBe(50);
+  expect(saved.activationMainActionUsed).toBe(false);
+  expect(saved.activeWorkerId).toBe(w.id);
+});
+
+test('mobile market overview compares all five projects before card browsing',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const overview=page.locator('#marketOverview');
+  await expect(overview).toBeVisible();
+  await expect(overview.locator('[data-market-overview-slot]')).toHaveCount(5);
+  await expect(overview).toContainText('СРАВНИТЬ РЫНОК');
+  const first=overview.locator('[data-market-overview-slot]').first();
+  await expect(first).toContainText('$');
+  await expect(first).toContainText('Q');
+  await first.click();
+  await expect(first).toHaveClass(/selected/);
+});
+
+test('mobile quick action dock appears after worker selection and keeps full actions available',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  const w=s.players[0].workers[0];
+  w.districtId='civic';
+  s.activeWorkerId=w.id;
+  await seed(page,s);
+  await page.goto('/');
+
+  const dock=page.locator('#mobileActionDock');
+  await expect(dock).toBeVisible();
+  await expect(dock).toContainText('Стройка');
+  await expect(dock).toContainText('Капитал');
+  await expect(dock).toContainText('Доставка');
+  await dock.locator('[data-mobile-action="capital"]').click();
+  await expect(page.locator('#constructionMode')).toContainText('Привлечь капитал');
+});
+
+test('mobile map toolbar contains only task controls, not developer diagnostics',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  await seed(page,s);
+  await page.goto('/');
+  const toolbar=page.locator('.city-board-toolbar');
+  await expect(toolbar).toContainText('КАРТА');
+  await expect(toolbar).toContainText('РИСК');
+  await expect(toolbar).toContainText('ОБЗОР');
+  await expect(toolbar).toContainText('ДЕТАЛИ');
+  await expect(toolbar.locator('.soft-chip')).toHaveCount(0);
+});
+
 test('mobile Risk view stays usable in landscape without horizontal page overflow',async({page})=>{
   await page.setViewportSize({width:932,height:430});
   const s=makeDevState();
@@ -823,6 +892,7 @@ test('mobile Risk view stays usable in landscape without horizontal page overflo
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+  await page.waitForFunction(()=>document.querySelector('#contextPanel')?.getBoundingClientRect().right<=innerWidth+1);
 
   const result=await page.evaluate(()=>({
     overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
