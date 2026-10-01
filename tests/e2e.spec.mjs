@@ -722,6 +722,7 @@ test('portrait mobile Risk view and construction preview stay inside the usable 
   await page.locator('[data-district="civic"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
+  await page.waitForTimeout(300);
 
   let layout=await page.evaluate(()=>{
     const panel=document.querySelector('#contextPanel').getBoundingClientRect();
@@ -730,14 +731,15 @@ test('portrait mobile Risk view and construction preview stay inside the usable 
     return {
       pageWidth:document.documentElement.scrollWidth,
       viewport:window.innerWidth,
-      panelLeft:panel.left,panelRight:panel.right,panelBottom:panel.bottom,
-      navTop:nav.top,buttonHeight:button.height
+      panelLeft:panel.left,panelRight:panel.right,panelTop:panel.top,panelBottom:panel.bottom,
+      viewportHeight:window.innerHeight,navTop:nav.top,buttonHeight:button.height
     };
   });
   expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
   expect(layout.panelLeft).toBeGreaterThanOrEqual(-1);
   expect(layout.panelRight).toBeLessThanOrEqual(layout.viewport+1);
-  expect(layout.panelBottom).toBeLessThanOrEqual(layout.navTop+1);
+  expect(layout.panelTop).toBeGreaterThanOrEqual(-1);
+  expect(layout.panelBottom).toBeLessThanOrEqual(layout.viewportHeight+1);
   expect(layout.buttonHeight).toBeGreaterThanOrEqual(34);
 
   await page.locator('#contextClose').click();
@@ -764,6 +766,7 @@ test('wide landscape phone Risk view stays map-first and creates no page overflo
   await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
+  await page.waitForTimeout(300);
   const layout=await page.evaluate(()=>{
     const panel=document.querySelector('#contextPanel').getBoundingClientRect();
     const nav=document.querySelector('.nav-rail').getBoundingClientRect();

@@ -168,7 +168,7 @@ function requirementChips(project){
 function riskRoman(level){return ['0','I','II','III'][Math.max(0,Math.min(3,level||0))];}
 function riskDisplay(raw,{compact=false}={}){
   const value=Math.max(0,Math.floor(Number(raw)||0)),level=riskLevel(value),overflow=Math.max(0,value-3);
-  if(compact)return level===0?'0':riskRoman(level)+(overflow?'+':'');
+  if(compact)return level===0?'0':riskRoman(level)+(overflow?`+${overflow}`:'');
   return level===0?'0 · SAFE':`${value} · LEVEL ${riskRoman(level)}${overflow?` +${overflow} OVERFLOW`:''}`;
 }
 function signedRisk(value){const n=Number(value)||0;return n>0?`+${n}`:String(n);}
@@ -1081,7 +1081,7 @@ function renderCity(){
         :'district-meta')+riskClass;
       const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
       const normal=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
-      const label=riskViewActive&&risk?`Q ${risk.earthquake.raw} [${riskRoman(risk.earthquake.level)}] · F ${risk.fire.raw} [${riskRoman(risk.fire.level)}]`:normal;
+      const label=riskViewActive&&risk?`Q ${riskDisplay(risk.earthquake.raw,{compact:true})} · F ${riskDisplay(risk.fire.raw,{compact:true})}`:normal;
       return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
     }).join('');
   }
