@@ -137,7 +137,10 @@ function saveState(){
   const serialized=JSON.stringify(state);
   const fingerprint=gameplayFingerprint(state);
   if(!undoApplying&&fingerprint!==lastSavedFingerprint){
-    undoHistory.push(lastSavedSnapshot);
+    const undoState=JSON.parse(lastSavedSnapshot);
+    undoState.pendingConstruction=null;
+    undoState.pendingWorkerAction=null;
+    undoHistory.push(JSON.stringify(undoState));
     if(undoHistory.length>30)undoHistory.shift();
   }
   localStorage.setItem(STORAGE_KEY,serialized);
