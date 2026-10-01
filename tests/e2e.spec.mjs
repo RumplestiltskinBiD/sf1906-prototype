@@ -752,8 +752,8 @@ test('portrait mobile Risk view and construction preview stay inside the usable 
   const panelBox=await page.locator('#contextPanel').boundingBox();
   expect(previewBox).not.toBeNull();
   expect(panelBox).not.toBeNull();
-  expect(previewBox.left).toBeGreaterThanOrEqual(panelBox.left-1);
-  expect(previewBox.right).toBeLessThanOrEqual(panelBox.right+1);
+  expect(previewBox.x).toBeGreaterThanOrEqual(panelBox.x-1);
+  expect(previewBox.x+previewBox.width).toBeLessThanOrEqual(panelBox.x+panelBox.width+1);
 });
 
 test('wide landscape phone Risk view stays map-first and creates no page overflow',async({page})=>{
