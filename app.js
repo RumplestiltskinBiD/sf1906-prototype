@@ -962,7 +962,7 @@ el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВ�
 +'<span class="supply-resource city-throughput"><b>'+total+'</b><span>кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов</strong></span></div>';
 }
 function renderSupplyNodes(){
-const layer=$('#supplyNodeLayer');if(!layer)return,supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
+const layer=$('#supplyNodeLayer');if(!layer)return;const supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
 const nodes=LOGISTICS_NODES.map(n=>{const stock=supply[n.id]||[],start=-((stock.length-1)*7),pips=stock.map((t,i)=>'<circle class="node-resource '+materialClass(t)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join(''),ok=selecting&&stock.length;
 return '<g class="supply-node node-'+n.kind+' '+(ok?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-node="'+n.id+'"><title>'+n.name+'</title><circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+logisticsKindCode(n.kind)+'</text>'+pips+'<text class="node-name" y="48">'+n.shortName+'</text><text class="node-type" y="61">'+logisticsKindLabel(n.kind)+'</text></g>';}).join('');
 const yp=deliveryDraft?.playerId??pid??0,yi=freightYardInventory(state,yp),src=selecting&&yi.length,target=deliveryDropPhase()&&deliveryDraft?.route?.includes('western')&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryTargetAcceptsAny(freightYardTarget());
