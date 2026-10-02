@@ -236,3 +236,13 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Persistent dock exposes Delivery, access to other free actions, main-action navigation / End Activation, and a compact main-action status.
 - The oversized disabled “use all representatives” button becomes a compact round progress indicator on mobile.
 - No logistics prices, route costs, hauler capacities, staging limits, project balance or other gameplay values changed.
+
+
+## v0.30A-UX3.1 — Construction Needs + Delivery Peek
+
+- Mobile unfinished-construction chips now show remaining requirements such as `ОСТ: Д1 · К2` instead of zero-filled delivered inventory.
+- Delivery hauler/cargo step shows every active construction, its district, progress and exact remaining material needs.
+- Resource load buttons also show aggregate demand across the player's active constructions.
+- During Delivery, unfinished construction tokens on the map show compact remaining-material badges.
+- Opening Office, Log or Settings temporarily hides the Delivery overlay without cancelling or modifying the active Delivery draft; closing the drawer restores the exact previous Delivery state.
+- No project requirements, logistics costs, capacities, staging limits or other gameplay values changed.

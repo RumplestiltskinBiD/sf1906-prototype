@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX3');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX3.1');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -948,6 +948,67 @@ test('persistent mobile turn dock keeps free actions visible before and after th
   expect(box.y+box.height).toBeLessThanOrEqual(844-55);
 });
 
+test('mobile construction strip shows remaining needs instead of delivered zero counts',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'club','soma','under-construction',['Masonry'])];
+  await seed(page,s);await page.goto('/');
+  const chip=page.locator('[data-mobile-object="C1"]');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('ОСТ:');
+  await expect(chip).toContainText('Д1');
+  await expect(chip).toContainText('К1');
+  await expect(chip).not.toContainText('С0');
+});
+
+test('Delivery load panel shows active construction material needs before cargo choice',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'club','soma','under-construction',[])];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  const needs=page.locator('.delivery-needs-panel');
+  await expect(needs).toBeVisible();
+  await expect(needs).toContainText('НУЖНО НА СТРОЙКАХ');
+  await expect(needs).toContainText('Ресторан и клуб');
+  await expect(needs).toContainText('Д1');
+  await expect(needs).toContainText('К2');
+});
+
+test('opening Office during Delivery hides overlay without cancelling the draft',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'club','soma','under-construction',[])];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await expect(page.locator('#deliveryPanel')).toBeVisible();
+  await page.locator('#officeBtn').click();
+  await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
+  await expect(page.locator('#deliveryPanel')).not.toBeVisible();
+  await page.locator('#officeDrawer [data-close-drawer]').click();
+  await expect(page.locator('#officeDrawer')).not.toHaveClass(/open/);
+  await expect(page.locator('#deliveryPanel')).toBeVisible();
+  await expect(page.locator('.cargo-box')).toContainText('Груз 1/2');
+  await expect(page.locator('.cargo-box')).toContainText('К');
+});
+
+test('Delivery map token shows compact remaining material needs',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'club','soma','under-construction',[])];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  const need=page.locator('[data-construction-token="C1"] .construction-need-text');
+  await expect(need).toHaveText(/Д1.*К2/);
+});
 test('mobile map toolbar contains only task controls, not developer diagnostics',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();

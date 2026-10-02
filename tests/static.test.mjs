@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\.30A-UX3/);
-  assert.match(html,/app\.js\?v=030aux3/);
-  assert.match(html,/styles\.css\?v=030aux3/);
+  assert.match(html,/Prototype v0\.30A-UX3\.1/);
+  assert.match(html,/app\.js\?v=030aux31/);
+  assert.match(html,/styles\.css\?v=030aux31/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -92,4 +92,10 @@ test('v0.30A-UX friction-reduction hooks are present',async()=>{
 test('v0.30A-UX3 mobile turn flow hooks are present',async()=>{
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
   for(const needle of ['function confirmDeliveryRoute()','step=\'unload\'','persistent-turn-dock','function openActiveFreeActions()','Подтвердить маршрут','Подтвердить доставку'])assert.ok(app.includes(needle),needle);
+});
+
+
+test('v0.30A-UX3.1 construction-needs and drawer-peek hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  for(const needle of ['function compactConstructionNeed(','function deliveryConstructionNeedsHtml(','construction-need-text','drawer-open','НУЖНО НА СТРОЙКАХ'])assert.ok(app.includes(needle),needle);
 });
