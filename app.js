@@ -542,15 +542,20 @@ function confirmDelivery(){
 }
 function renderDeliveryPanel(){
   const el=$('#deliveryPanel');if(!el)return;
-  const active=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
-  const mobile=active&&isMobile(),step=deliveryDraft?.step;
-  document.body.classList.toggle('delivery-active',active);
+  const valid=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
+  const visible=valid&&state.view==='city';
+  const mobile=visible&&isMobile(),step=deliveryDraft?.step;
+  document.body.classList.toggle('delivery-active',visible);
   document.body.classList.toggle('delivery-route-build',!!(mobile&&step==='route'));
   document.body.classList.toggle('delivery-unload-mode',!!(mobile&&step==='unload'));
   document.body.classList.remove('delivery-route-compact','delivery-route-expanded');
-  if(!active){
+  if(!valid){
     document.body.classList.remove('delivery-route-build','delivery-unload-mode');
     if(deliveryDraft)deliveryDraft=null;
+    el.className='delivery-panel';el.innerHTML='';return;
+  }
+  if(!visible){
+    document.body.classList.remove('delivery-route-build','delivery-unload-mode');
     el.className='delivery-panel';el.innerHTML='';return;
   }
 
