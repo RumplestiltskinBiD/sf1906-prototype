@@ -47,30 +47,6 @@ function assertDelivery(saved,id,materials){
   for(const material of materials)expect(con.materialsDelivered).toContain(material);
 }
 
-test.only('temporary Delivery layout diagnostic',async({page})=>{
-  const s=makeDevState();
-  s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
-  await page.locator('#actionDelivery').click();
-  const inspect=selector=>page.locator(selector).evaluate((el,selector)=>{
-    const r=el.getBoundingClientRect(),cs=getComputedStyle(el);
-    const parents=[];
-    let p=el.parentElement;
-    while(p&&parents.length<5){
-      const pr=p.getBoundingClientRect(),ps=getComputedStyle(p);
-      parents.push({tag:p.tagName,id:p.id,cls:p.className,display:ps.display,visibility:ps.visibility,overflow:ps.overflow,height:pr.height,width:pr.width,top:pr.top,bottom:pr.bottom});
-      p=p.parentElement;
-    }
-    return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,position:cs.position,overflow:cs.overflow,parents};
-  },selector);
-  console.log('DIAG_SOURCE_PANEL',JSON.stringify(await inspect('#deliveryPanel')));
-  console.log('DIAG_SOURCE_BUTTON',JSON.stringify(await inspect('[data-ds-node="pacificmail"]')));
-  await page.locator('[data-ds-node="pacificmail"]').evaluate(el=>el.click());
-  console.log('DIAG_LOAD_PANEL',JSON.stringify(await inspect('#deliveryPanel')));
-  console.log('DIAG_HAULER',JSON.stringify(await inspect('[data-hauler="dray2a"]')));
-});
-
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
   await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX2');
