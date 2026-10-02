@@ -208,6 +208,38 @@ function missingConstructionMaterials(con){
   }
   return missing;
 }
+function constructionNeedCounts(con){
+  const pr=projectById(con?.projectId);
+  const need=deliveryCounts(pr?.materials||[]);
+  const have=deliveryCounts(con?.materialsDelivered||[]);
+  return Object.fromEntries(RESOURCE_ORDER.map(type=>[type,Math.max(0,(need[type]||0)-(have[type]||0))]));
+}
+function compactConstructionNeed(con,{prefix=false}={}){
+  const counts=constructionNeedCounts(con);
+  const parts=RESOURCE_ORDER.filter(type=>counts[type]>0).map(type=>materialShort(type)+counts[type]);
+  const value=parts.join(' · ')||'КОМПЛЕКТ';
+  return prefix?'ОСТ: '+value:value;
+}
+function playerConstructionNeeds(playerId){
+  return (state.constructions||[]).filter(con=>con.playerId===playerId&&con.status==='under-construction');
+}
+function aggregateConstructionNeeds(playerId){
+  const total={Lumber:0,Masonry:0,Steel:0};
+  for(const con of playerConstructionNeeds(playerId)){
+    const counts=constructionNeedCounts(con);
+    for(const type of RESOURCE_ORDER)total[type]+=counts[type]||0;
+  }
+  return total;
+}
+function deliveryConstructionNeedsHtml(playerId){
+  const builds=playerConstructionNeeds(playerId);
+  if(!builds.length)return '<div class="delivery-needs-panel empty"><div class="delivery-needs-head"><b>НУЖНО НА СТРОЙКАХ</b></div><span>Активных строек нет.</span></div>';
+  const rows=builds.map(con=>{
+    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
+    return '<div class="delivery-need-row"><span><b>'+pr.name+'</b><small>'+d.name+' · '+prog.delivered+'/'+prog.required+'</small></span><strong>'+compactConstructionNeed(con)+'</strong></div>';
+  }).join('');
+  return '<div class="delivery-needs-panel"><div class="delivery-needs-head"><b>НУЖНО НА СТРОЙКАХ</b><span>остаток материалов</span></div><div class="delivery-needs-list">'+rows+'</div></div>';
+}
 function requirementParts(project){
   return String(project?.requires||'Нет дополнительных требований').split('·').map(x=>x.trim()).filter(Boolean);
 }
@@ -552,12 +584,13 @@ function renderDeliveryPanel(){
     }
   }else if(step==='load'){
     const src=deliverySourceInfo(state,pid,deliveryDraft.source),haulers=availableDeliveryHaulers(state),sel=haulers.find(h=>h.id===deliveryDraft.haulerId),have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
+    const totalNeeds=aggregateConstructionNeeds(pid);
     html+='<div class="delivery-instruction">2. Перевозчик + груз из <b>'+src.name+'</b>.</div><div class="hauler-grid">';
     for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
-    html+='</div><div class="load-resource-grid">';
+    html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-grid">';
     for(const t of RESOURCE_ORDER){
       const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity;
-      html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+(deliveryDraft.source.kind==='node'?'$'+RESOURCE_PRICES[t]:'ОПЛАЧЕНО')+'</strong><small>'+left+' ост.</small></button>';
+      html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+(deliveryDraft.source.kind==='node'?'$'+RESOURCE_PRICES[t]:'ОПЛАЧЕНО')+'</strong><small>'+left+' ост. · нужно '+(totalNeeds[t]||0)+'</small></button>';
     }
     html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
     const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
@@ -736,8 +769,8 @@ function renderMobileObjectStrip(){
   const viewingOpponent=activePid!=null&&pid!==activePid;
   const items=[];
   for(const con of builds){
-    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id),cnt=deliveryCounts(con.materialsDelivered||[]);
-    items.push('<button class="mobile-object-chip build" data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');
+    const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
+    items.push('<button class="mobile-object-chip build construction-needs-chip" data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong></span></button>');
   }
   for(const wh of warehouses){
     const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv);
@@ -1346,7 +1379,11 @@ function renderCity(){
           content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/><text class="warehouse-token-title" y="-4">СКЛ ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
         }else{
           const label=complete?'✓':`${prog.delivered}/${prog.required}`;
-          content=`<rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text>`;
+          const showNeed=!!deliveryMode&&!complete;
+          const needText=showNeed?compactConstructionNeed(con):'';
+          content=showNeed
+            ?`<rect x="-36" y="-21" width="72" height="44" rx="10"/><text y="-2">${label}</text><text class="construction-need-text" y="13">${needText}</text>`
+            :`<rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text>`;
         }
         const title=complete
           ?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
@@ -1554,8 +1591,8 @@ function renderDebug(){
   $$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
 }
 
-function openDrawer(id){closeMobileContext();closeDrawers();$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
-function closeDrawers(){$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
+function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
+function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$('.drawer').forEach(d=>d.classList.remove('open'));}
 function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -1564,7 +1601,7 @@ $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы о�
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
 $('#undoBtn').onclick=undoLastGameAction;
-$('#helpBtn').onclick=()=>{showToast('v0.30A-UX3: маршрут Delivery подтверждается до разгрузки; свободные действия закреплены над нижней навигацией.');};
+$('#helpBtn').onclick=()=>{showToast('v0.30A-UX3.1: стройки показывают оставшиеся материалы; Delivery можно временно скрыть, открыв Офис или Лог.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
