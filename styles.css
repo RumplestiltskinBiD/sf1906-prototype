@@ -2214,8 +2214,9 @@ button.city-action-card{cursor:pointer}
 
 @media(orientation:landscape) and (max-height:500px) and (max-width:960px){
   .delivery-panel.mobile-map-route.route-compact{
-    left:50%!important;right:auto!important;width:min(720px,88vw)!important;transform:translateX(-50%)!important;
-    bottom:58px!important;max-height:none!important;padding:6px!important;overflow:visible!important
+    left:50%!important;right:auto!important;top:auto!important;bottom:58px!important;
+    width:min(720px,88vw)!important;height:auto!important;min-height:0!important;max-height:none!important;
+    transform:translateX(-50%)!important;padding:6px!important;overflow:visible!important
   }
   .delivery-route-compact{grid-template-columns:minmax(0,1fr) 40px 40px}
   .delivery-compact-main{min-height:38px}
