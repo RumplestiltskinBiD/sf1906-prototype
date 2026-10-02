@@ -597,7 +597,8 @@ function renderDeliveryPanel(){
     if(mobile&&!deliveryDraft.listOpen){
       const availableNodes=LOGISTICS_NODES.filter(n=>(state.logisticsSupply?.[n.id]||[]).length).length;
       const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length;
-      html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д станция или ваш склад с ресурсами.</span><small>'+availableNodes+' городских узлов · '+availableWarehouses+' складов</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
+      const yardCount=freightYardInventory(state,pid).length;
+      html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д, свой склад или Городской грузовой двор.</span><small>'+availableNodes+' узлов · '+availableWarehouses+' складов · двор '+yardCount+'/'+FREIGHT_YARD.capacityPerPlayer+'</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
     }else{
       html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
       if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
@@ -610,6 +611,8 @@ function renderDeliveryPanel(){
         const inv=warehouseInventory(w),cnt=deliveryCounts(inv);
         html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';
       }
+      const yardInv=freightYardInventory(state,pid),yardCnt=deliveryCounts(yardInv);
+      html+='<button class="delivery-source-card freight-yard-source" data-ds-yard="'+FREIGHT_YARD.id+'" '+(yardInv.length?'':'disabled')+'><b>'+FREIGHT_YARD.name+'</b><span>Western Addition · ваша секция '+yardInv.length+'/'+FREIGHT_YARD.capacityPerPlayer+'</span><small>Д '+(yardCnt.Lumber||0)+' · К '+(yardCnt.Masonry||0)+' · С '+(yardCnt.Steel||0)+' · материалы уже оплачены</small></button>';
       html+='</div>';
     }
   }else if(step==='load'){
@@ -685,7 +688,8 @@ function renderDeliveryPanel(){
   $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
   $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
   $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
-  $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
+  $('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
+  $('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
   $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
   $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
   $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
