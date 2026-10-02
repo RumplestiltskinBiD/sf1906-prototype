@@ -944,7 +944,8 @@ test('persistent mobile turn dock keeps free actions visible before and after th
   await expect(dock).toContainText('Доставка');
   await expect(dock).toContainText('Завершить');
   const box=await dock.boundingBox();
-  expect(box.bottom).toBeLessThanOrEqual(844-55);
+  expect(box).not.toBeNull();
+  expect(box.y+box.height).toBeLessThanOrEqual(844-55);
 });
 
 test('mobile map toolbar contains only task controls, not developer diagnostics',async({page})=>{
