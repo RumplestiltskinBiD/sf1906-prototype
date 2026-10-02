@@ -225,3 +225,14 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Secondary route actions live behind a compact menu; the neighbor list remains available as an accessibility/fallback path.
 - Map centering reserves space for the compact route dock in portrait and landscape.
 - No logistics prices, capacities, staging rules, Warehouse rules or balance values changed.
+
+
+## v0.30A-UX3 — Mobile Turn Flow
+
+- Mobile Delivery is now explicitly staged: source → hauler/cargo → route → confirm route → unload → confirm delivery.
+- During route building the map is the primary workspace. Unload targets are not interactive until the route is confirmed.
+- After route confirmation only eligible constructions / Warehouses along that fixed route are highlighted for unloading.
+- The mobile turn dock is fixed above bottom navigation for the whole activation, including before worker selection and after the main action.
+- Persistent dock exposes Delivery, access to other free actions, main-action navigation / End Activation, and a compact main-action status.
+- The oversized disabled “use all representatives” button becomes a compact round progress indicator on mobile.
+- No logistics prices, route costs, hauler capacities, staging limits, project balance or other gameplay values changed.

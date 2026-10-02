@@ -308,7 +308,7 @@ function focusMapOnDistrict(districtId){
     const left=Math.max(0,pos[0]*scale-usableWidth/2);
     scroll.scrollTo({left,behavior:'smooth'});
     const sticky=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hud-stack-h'))||0;
-    const deliveryPanel=isMobile()&&deliveryDraft?.step==='route'?$('#deliveryPanel'):null;
+    const deliveryPanel=isMobile()&&['route','unload'].includes(deliveryDraft?.step)?$('#deliveryPanel'):null;
     const routeReserve=deliveryPanel?.getBoundingClientRect().height||0;
     const bottomReserve=isMobile()?(landscapeMobile?58:72)+Math.min(routeReserve+8,deliveryDraft?.panelExpanded?210:130):0;
     const viewportCenter=sticky+Math.max(95,(window.innerHeight-sticky-bottomReserve)/2);
@@ -417,8 +417,11 @@ function undoDeliveryRoute(){
 function deliveryTarget(kind,id){
   return (deliveryDraft?.drops||[]).find(d=>d.kind===kind&&d.id===id);
 }
+function deliveryDropPhase(){
+  return deliveryDraft?.step==='unload'||(!isMobile()&&deliveryDraft?.step==='route');
+}
 function deliveryCanDrop(kind,id,type){
-  if(deliveryDraft?.step!=='route'||(deliveryRemaining()[type]||0)<=0)return false;
+  if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
   const con=(state.constructions||[]).find(x=>x.id===id);
   if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
   const assigned=deliveryTarget(kind,id)?.materials||[];
@@ -434,23 +437,36 @@ function deliveryCanDrop(kind,id,type){
   }
   return false;
 }
-function deliveryTargetKind(con){
-  if(!con||deliveryDraft?.step!=='route'||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return null;
+function deliveryRouteTargetKind(con){
+  if(!con||!deliveryDraft||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return null;
   if(con.status==='under-construction')return 'construction';
   if(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id))return 'warehouse';
   return null;
+}
+function deliveryTargetKind(con){
+  if(!deliveryDropPhase())return null;
+  return deliveryRouteTargetKind(con);
+}
+function deliveryRouteTargets(){
+  return (state.constructions||[]).filter(con=>!!deliveryRouteTargetKind(con));
+}
+function deliveryRouteTargetCanAcceptAny(con){
+  const kind=deliveryRouteTargetKind(con);if(!kind)return false;
+  if(kind==='warehouse')return warehouseInventory(con).length<WAREHOUSE_STORAGE_CAPACITY&&deliveryDraft.cargo.length>0;
+  if((con.materialsDelivered||[]).length>=CONSTRUCTION_STAGING_CAPACITY)return false;
+  const req=deliveryCounts(projectById(con.projectId)?.materials||[]);
+  const have=deliveryCounts(con.materialsDelivered||[]);
+  const cargo=deliveryCounts(deliveryDraft.cargo||[]);
+  return RESOURCE_ORDER.some(type=>(cargo[type]||0)>0&&(have[type]||0)<(req[type]||0));
 }
 function deliveryTargetAcceptsAny(con){
   const kind=deliveryTargetKind(con);
   return !!kind&&RESOURCE_ORDER.some(type=>deliveryCanDrop(kind,con.id,type));
 }
 function openDeliveryTargetFromMap(id){
-  if(!isMobile()||deliveryDraft?.step!=='route')return;
+  if(!isMobile()||deliveryDraft?.step!=='unload')return;
   const con=(state.constructions||[]).find(x=>x.id===id);
   if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}
-  deliveryDraft.panelExpanded=true;
-  deliveryDraft.menuOpen=false;
-  deliveryDraft.listOpen=false;
   deliveryDraft.focusTargetId=id;
   render();
 }
@@ -458,46 +474,70 @@ function addDeliveryDrop(kind,id,type){
   if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
   let d=deliveryTarget(kind,id);if(!d){d={kind,id,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
 }
-function clearDeliveryDrops(){if(deliveryDraft?.step==='route'){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}}
+function clearDeliveryDrops(){
+  if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
+}
 function deliveryPlan(){
   return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,materials:[...d.materials]}))};
+}
+function confirmDeliveryRoute(){
+  if(!isMobile()||deliveryDraft?.step!=='route')return;
+  const targets=deliveryRouteTargets().filter(deliveryRouteTargetCanAcceptAny);
+  if(!targets.length){showToast('Маршрут должен проходить через объект, который может принять груз');return;}
+  const cost=deliveryPlanCost(state,deliveryDraft);
+  if(!cost){showToast('Маршрут недопустим');return;}
+  if(state.players[deliveryDraft.playerId].capital<cost.total){showToast('Недостаточно Капитал для этой доставки');return;}
+  deliveryDraft.step='unload';
+  deliveryDraft.drops=[];
+  deliveryDraft.focusTargetId=null;
+  deliveryDraft.listOpen=false;
+  deliveryDraft.panelExpanded=false;
+  deliveryDraft.menuOpen=false;
+  render();
+  focusDeliveryMap({detail:false});
+}
+function backToDeliveryRoute(){
+  if(deliveryDraft?.step!=='unload')return;
+  deliveryDraft.step='route';deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();
+  if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 }
 function confirmDelivery(){
   if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
   if(!check.ok){showToast(check.reason==='unassigned'?'Разгрузите весь груз':check.reason==='capital'?'Недостаточно Капитал':'План доставки недопустим');return;}
   const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена');return;}
-  deliveryDraft=null;document.body.classList.remove('delivery-active');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
+  deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
   render();
 }
 function renderDeliveryPanel(){
   const el=$('#deliveryPanel');if(!el)return;
   const active=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
-  document.body.classList.toggle('delivery-active',active);
   const mobile=active&&isMobile(),step=deliveryDraft?.step;
-  document.body.classList.toggle('delivery-route-compact',!!(mobile&&step==='route'&&!deliveryDraft.panelExpanded));
-  document.body.classList.toggle('delivery-route-expanded',!!(mobile&&step==='route'&&deliveryDraft.panelExpanded));
+  document.body.classList.toggle('delivery-active',active);
+  document.body.classList.toggle('delivery-route-build',!!(mobile&&step==='route'));
+  document.body.classList.toggle('delivery-unload-mode',!!(mobile&&step==='unload'));
+  document.body.classList.remove('delivery-route-compact','delivery-route-expanded');
   if(!active){
-    document.body.classList.remove('delivery-route-compact','delivery-route-expanded');
+    document.body.classList.remove('delivery-route-build','delivery-unload-mode');
     if(deliveryDraft)deliveryDraft=null;
     el.className='delivery-panel';el.innerHTML='';return;
   }
 
   el.className='delivery-panel active'
     +(mobile&&step==='source'?' mobile-map-source':'')
-    +(mobile&&step==='route'?' mobile-map-route':'')
-    +(mobile&&step==='route'?(deliveryDraft.panelExpanded?' route-expanded':' route-compact'):'')
-    +(mobile&&deliveryDraft.listOpen?' list-open':'')
-    +(mobile&&deliveryDraft.menuOpen?' menu-open':'');
+    +(mobile&&step==='route'?' mobile-route-build':'')
+    +(mobile&&step==='unload'?' mobile-unload':'')
+    +(mobile&&step==='unload'&&deliveryDraft.focusTargetId?' unload-target-open':'')
+    +(mobile&&deliveryDraft.listOpen?' list-open':'');
   const pid=deliveryDraft.playerId,p=state.players[pid];
-  let html=mobile&&step==='route'?'':'<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ · ДОСТАВКА</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>';
+  let html=(mobile&&(step==='route'||step==='unload'))?'':'<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ · ДОСТАВКА</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>';
 
   if(step==='source'){
     if(mobile&&!deliveryDraft.listOpen){
       const availableNodes=LOGISTICS_NODES.filter(n=>(state.logisticsSupply?.[n.id]||[]).length).length;
       const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length;
-      html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник прямо на карте</b><span>Подсвечены доступные порты, ж/д станции и ваши склады с ресурсами.</span><small>'+availableNodes+' городских узлов · '+availableWarehouses+' складов</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
+      html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д станция или ваш склад с ресурсами.</span><small>'+availableNodes+' городских узлов · '+availableWarehouses+' складов</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
     }else{
-      html+='<div class="delivery-instruction">'+(mobile?'Список — запасной способ. Нажмите источник здесь или вернитесь к выбору на карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
+      html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
       if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
       html+='<div class="delivery-source-grid">';
       for(const n of LOGISTICS_NODES){
@@ -521,109 +561,86 @@ function renderDeliveryPanel(){
     }
     html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
     const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
-    html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>Маршрут →</button></div>';
+    html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>К маршруту →</button></div>';
+  }else if(step==='route'&&mobile){
+    const cost=deliveryPlanCost(state,deliveryDraft),routeText=deliveryDraft.route.map(shortDistrictName).join(' → ');
+    const targets=deliveryRouteTargets().filter(deliveryRouteTargetCanAcceptAny);
+    const canLock=!!cost&&targets.length>0&&p.capital>=cost.total;
+    html+='<div class="ux3-route-dock">'
+      +'<div class="ux3-route-copy"><small>🚚 МАРШРУТ</small><strong>'+routeText+'</strong><span>Тапайте зелёные соседние районы на карте</span></div>'
+      +'<button id="deliveryUndoRoute" class="ux3-route-undo" '+(deliveryDraft.route.length>1?'':'disabled')+'>↶</button>'
+      +'<div class="ux3-route-price"><small>ИТОГО</small><strong>$'+(cost?.total||0)+'</strong></div>'
+      +'<button id="deliveryLockRoute" class="primary-btn ux3-route-confirm" '+(canLock?'':'disabled')+'>Подтвердить маршрут</button>'
+      +'<button id="cancelDelivery" class="ux3-route-cancel">Отмена</button>'
+      +'</div>';
+  }else if(step==='unload'&&mobile){
+    const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0);
+    const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?routeTargets.find(x=>x.id===deliveryDraft.focusTargetId):null;
+    const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
+    html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
+    if(!focus){
+      html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</strong><span>Тапните подсвеченную стройку или склад на карте.</span></div>'
+        +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
+    }else{
+      let kind=deliveryRouteTargetKind(focus),label='',cap='';
+      if(kind==='construction'){label=projectById(focus.projectId).name;cap='На стройке '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+CONSTRUCTION_STAGING_CAPACITY;}
+      else {label='Склад';cap='На складе '+(warehouseInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+      const assigned=deliveryTarget(kind,focus.id)?.materials||[];
+      html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
+      for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,focus.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
+      html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button></div>';
+    }
+    html+='<div class="ux3-unload-footer"><span>Итого <b>$'+(cost?.total||0)+'</b></span><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить доставку · $'+(cost?.total||0)+'</button><button id="cancelDelivery" class="ux3-route-cancel">Отмена</button></div></div>';
   }else{
+    // Desktop keeps the proven combined route + unload workflow.
     const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0),last=deliveryDraft.route.at(-1),next=deliveryNeighbors(last);
-    const routeSet=new Set(deliveryDraft.route);
-    const routeTargets=(state.constructions||[]).filter(con=>{
-      if(con.playerId!==pid||!routeSet.has(con.districtId))return false;
-      if(con.status==='under-construction')return true;
-      return con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source.kind==='warehouse'&&deliveryDraft.source.id===con.id);
-    });
+    const routeTargets=deliveryRouteTargets();
     const actionableTargets=routeTargets.filter(deliveryTargetAcceptsAny);
     const hasCurrentTarget=actionableTargets.some(con=>con.districtId===last);
     const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
-    const routeText=deliveryDraft.route.map(shortDistrictName).join(' → ');
-    const remainingText='Д'+(left.Lumber||0)+' К'+(left.Masonry||0)+' С'+(left.Steel||0);
-
-    if(mobile&&!deliveryDraft.panelExpanded){
-      const hint=hasCurrentTarget
-        ?'Тапните подсвеченную стройку / склад для разгрузки'
-        :actionableTargets.length?'Можно разгрузить в подсвеченном объекте на уже пройденном маршруте':'Выберите зелёный соседний район на карте';
-      html+='<div class="delivery-route-compact">'
-        +'<button id="deliveryExpandRoute" class="delivery-compact-main"><span>🚚 '+p.name+' · маршрут</span><strong>'+routeText+'</strong><small>'+hint+'</small></button>'
-        +'<button id="deliveryUndoRoute" class="delivery-compact-icon" aria-label="Вернуться на район назад" '+(deliveryDraft.route.length>1?'':'disabled')+'>↶</button>'
-        +'<button id="deliveryRouteMenu" class="delivery-compact-icon" aria-label="Дополнительные действия">•••</button>'
-        +'<div class="delivery-compact-cost"><span>Осталось <b>'+remainingText+'</b></span><span>Мат $'+(cost?.materialCost||0)+' · Пер $'+(cost?.haulerCost||0)+' · Путь $'+(cost?.routeCost||0)+'</span><strong>$'+(cost?.total||0)+'</strong></div>'
-        +'<button id="deliveryConfirm" class="primary-btn delivery-compact-confirm" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button>'
-        +'</div>';
-      if(deliveryDraft.menuOpen){
-        html+='<div class="delivery-route-menu">'
-          +'<button id="deliveryMenuExpand" class="ghost-btn">Разгрузка и детали</button>'
-          +'<button id="deliveryMenuRouteList" class="ghost-btn">Список соседних районов</button>'
-          +'<button id="deliveryBackLoad" class="ghost-btn">← Изменить груз</button>'
-          +'<button id="clearDrops" class="ghost-btn" '+((deliveryDraft.drops||[]).length?'':'disabled')+'>Сбросить разгрузку</button>'
-          +'<button id="cancelDelivery" class="ghost-btn danger">Отменить доставку</button>'
-          +'</div>';
-      }
-    }else{
-      const focus=mobile&&deliveryDraft.focusTargetId?routeTargets.find(x=>x.id===deliveryDraft.focusTargetId):null;
-      const shownTargets=focus?[focus]:routeTargets;
-      const routeInstruction=mobile
-        ?(focus?'Разгрузите груз в выбранный объект. Сверните панель, чтобы продолжить маршрут по карте.':hasCurrentTarget?'Тапните подсвеченный объект на карте или распределите груз здесь.':'Выберите зелёный соседний район на карте.')
-        :(hasCurrentTarget?'3. Вы уже в районе с подходящей точкой разгрузки. Сначала распределите груз ниже. Ехать дальше необязательно.':'3. В текущем районе нет точки, которая может принять этот груз. Добавьте соседний район (+$1 за границу).');
-      if(mobile){
-        html+='<div class="delivery-head delivery-route-expanded-head"><div><small>ДОСТАВКА · МАРШРУТ</small><strong>'+p.name+'</strong></div><button id="deliveryCollapseRoute" class="delivery-collapse" aria-label="Свернуть доставку">⌄</button></div>';
-      }
-      html+='<div class="delivery-instruction">'+routeInstruction+'</div><div class="delivery-route-strip">';
-      deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-      html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
-      for(const con of shownTargets){
-        let kind=null,label='',cap='';
-        if(con.status==='under-construction'){kind='construction';label=projectById(con.projectId).name;cap='На стройке '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+CONSTRUCTION_STAGING_CAPACITY;}
-        else {kind='warehouse';label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
-        const assigned=deliveryTarget(kind,con.id)?.materials||[];
-        html+='<div class="delivery-target-card '+(focus?.id===con.id?'focused':'')+'"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
-        for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
-        html+='</div></div>';
-      }
-      if(!shownTargets.length)html+='<div class="delivery-target-empty">На текущем маршруте пока нет вашей стройки или склада для разгрузки.</div>';
-      html+='</div>';
-      if(mobile&&focus&&routeTargets.length>1)html+='<button id="deliveryShowAllTargets" class="ghost-btn delivery-show-all-targets">Все точки разгрузки на маршруте</button>';
-      html+='<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(mobile?'Сверните панель — на карте зелёным подсвечены допустимые соседние районы.':hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div>';
-      if(mobile&&!deliveryDraft.listOpen){
-        html+='<button id="deliveryShowRouteList" class="ghost-btn delivery-route-list-toggle">Список соседних районов</button>';
-      }else{
-        if(mobile)html+='<button id="deliveryHideRouteList" class="ghost-btn delivery-route-list-toggle">← Выбирать район на карте</button>';
-        html+='<div class="route-next-list">';
-        next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
-        html+='</div>';
-      }
-      html+='<div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
-      html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
-      if(mobile)html+='<button id="cancelDelivery" class="delivery-cancel-route">Отменить всю доставку</button>';
+    html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. В районе есть подходящая точка разгрузки.':'3. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
+    deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
+    html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
+    for(const con of routeTargets){
+      let kind=null,label='',cap='';
+      if(con.status==='under-construction'){kind='construction';label=projectById(con.projectId).name;cap='На стройке '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+CONSTRUCTION_STAGING_CAPACITY;}
+      else {kind='warehouse';label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+      const assigned=deliveryTarget(kind,con.id)?.materials||[];
+      html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
+      for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
+      html+='</div></div>';
     }
+    if(!routeTargets.length)html+='<div class="delivery-target-empty">На маршруте пока нет вашей стройки или склада.</div>';
+    html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
+    next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
+    html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
+    html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
   }
 
   el.innerHTML=html;
   $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
   $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
   $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
-  $('#deliveryShowRouteList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;deliveryDraft.panelExpanded=true;renderDeliveryPanel();});
-  $('#deliveryHideRouteList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
-  $('#deliveryExpandRoute')?.addEventListener('click',()=>{deliveryDraft.panelExpanded=true;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();});
-  $('#deliveryCollapseRoute')?.addEventListener('click',()=>{deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.listOpen=false;deliveryDraft.focusTargetId=null;render();if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
-  $('#deliveryRouteMenu')?.addEventListener('click',()=>{deliveryDraft.menuOpen=!deliveryDraft.menuOpen;renderDeliveryPanel();});
-  $('#deliveryMenuExpand')?.addEventListener('click',()=>{deliveryDraft.panelExpanded=true;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();});
-  $('#deliveryMenuRouteList')?.addEventListener('click',()=>{deliveryDraft.panelExpanded=true;deliveryDraft.menuOpen=false;deliveryDraft.listOpen=true;deliveryDraft.focusTargetId=null;render();});
-  $('#deliveryShowAllTargets')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;renderDeliveryPanel();});
   $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
   $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
   $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
   $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
   $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
-  $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();focusDeliveryMap({detail:false});});
+  $('#deliveryBackSource')?.addEventListener('click',()=>{deliveryDraft.step='source';deliveryDraft.source=null;deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.listOpen=false;deliveryDraft.focusTargetId=null;render();focusDeliveryMap({detail:false});});
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
   $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
   $('#deliveryUndoRoute')?.addEventListener('click',()=>{undoDeliveryRoute();if(isMobile()&&deliveryDraft?.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
+  $('#deliveryLockRoute')?.addEventListener('click',confirmDeliveryRoute);
+  $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
+  $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
   $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
   $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-  $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();});
+  $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.focusTargetId=null;render();});
   $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
 }
 function renderDeliveryRouteOverlay(){
   const layer=$('#deliveryRouteLayer');if(!layer)return;
-  if(deliveryDraft?.step!=='route'||!deliveryDraft.route?.length){layer.innerHTML='';return;}
+  if(!['route','unload'].includes(deliveryDraft?.step)||!deliveryDraft.route?.length){layer.innerHTML='';return;}
   const pts=deliveryDraft.route.map(id=>DISTRICT_POS[id]).filter(Boolean);let html='';
   for(let i=1;i<pts.length;i++)html+='<line class="delivery-route-line" x1="'+pts[i-1][0]+'" y1="'+pts[i-1][1]+'" x2="'+pts[i][0]+'" y2="'+pts[i][1]+'"/>';
   pts.forEach((p,i)=>html+='<g class="delivery-route-stop '+(i===pts.length-1?'current':'')+'" transform="translate('+p[0]+' '+p[1]+')"><circle r="17"/><text y="4">'+i+'</text></g>');
@@ -739,8 +756,12 @@ function renderMobileObjectStrip(){
 function setView(view){state.view=view;$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
 function renderViews(){
   setViewSilently(state.view||'hall');
-  $('#endRoundBtn').disabled=state.phase!=='development'||state.finished||!state.developmentComplete;
-  $('#endRoundBtn').textContent=state.phase==='development'&&!state.developmentComplete?'Используйте всех представителей':'Завершить тестовый раунд';
+  const btn=$('#endRoundBtn');
+  btn.disabled=state.phase!=='development'||state.finished||!state.developmentComplete;
+  const used=(state.players||[]).flatMap(p=>p.workers||[]).filter(w=>w.used).length;
+  const progress=state.phase==='development'&&!state.developmentComplete;
+  btn.classList.toggle('round-progress-only',progress);
+  btn.textContent=progress?'Представители '+used+'/'+(state.players.length*WORKERS_PER_PLAYER):'Завершить тестовый раунд';
 }
 function setViewSilently(view){$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');}
 
@@ -1154,33 +1175,30 @@ function renderCityActions(){
   });
 }
 
+function openActiveFreeActions(){
+  const pid=currentDeveloper(state);if(pid==null)return;
+  inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();
+  requestAnimationFrame(()=>$('#officeContent .office-activation')?.scrollIntoView({block:'start'}));
+}
 function renderMobileActionDock(){
   const el=$('#mobileActionDock');if(!el)return;
-  const pid=currentDeveloper(state),selected=pid!=null?activeWorker(state,pid):null;
+  const pid=currentDeveloper(state);
+  const selected=pid!=null?activeWorker(state,pid):null;
   const blocked=!isMobile()||state.view!=='city'||state.phase!=='development'||state.developmentComplete
-    ||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||!selected;
+    ||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||pid==null;
+  document.body.classList.toggle('mobile-turn-dock-active',!blocked);
   if(blocked){el.className='mobile-action-dock';el.innerHTML='';return;}
-  const mainUsed=!!state.activationMainActionUsed;
-  const build=$('#actionBuild'),capital=$('#actionRaiseCapital'),delivery=$('#actionDelivery'),end=$('#actionEndActivation');
-  const extraCount=$$('#cityActions .action-space-btn.available-action').length;
+  const p=state.players[pid],mainUsed=!!state.activationMainActionUsed;
   const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
-  let html='';
-  if(mainUsed){
-    html+=button('delivery','🚚 Доставка',!!delivery?.disabled,'free');
-    html+=button('end','Завершить ход',!end,'primary');
-  }else{
-    html+=button('build','🏗 Стройка',!!build?.disabled,'primary');
-    html+=button('capital','+$3 Капитал',!!capital?.disabled);
-    html+=button('delivery','🚚 Доставка',!!delivery?.disabled,'free');
-  }
-  html+=button('more',extraCount?('Ещё · '+extraCount):'Все действия',false,extraCount?'has-more':'');
-  el.className='mobile-action-dock active';
-  el.innerHTML='<span class="mobile-action-caption">БЫСТРЫЙ ХОД</span><div class="mobile-action-buttons">'+html+'</div>';
+  let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
+    +button('free','Свободные',false,'secondary')
+    +(mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
+  el.className='mobile-action-dock active persistent-turn-dock';
+  el.innerHTML='<div class="mobile-turn-status"><span class="player-dot '+p.key+'"></span><span><b>'+p.name+' · активация</b><small>'+(mainUsed?'Основное ✓ использовано':selected?'Основное доступно · #'+selected.number:'Выберите представителя для основного')+'</small></span></div><div class="mobile-action-buttons">'+html+'</div>';
   $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
     const action=b.dataset.mobileAction;
-    if(action==='build')$('#actionBuild')?.click();
-    else if(action==='capital')$('#actionRaiseCapital')?.click();
-    else if(action==='delivery')$('#actionDelivery')?.click();
+    if(action==='delivery')startDeliveryFlow(pid);
+    else if(action==='free')openActiveFreeActions();
     else if(action==='end')$('#actionEndActivation')?.click();
     else{
       $('#cityActions')?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1234,6 +1252,9 @@ function renderCity(){
       if(id===last)g.classList.add('delivery-current');
       if(next.has(id))g.classList.add('delivery-next');
       else if(!route.includes(id))g.classList.add('delivery-blocked');
+    }else if(deliveryMode?.step==='unload'){
+      if((deliveryMode.route||[]).includes(id))g.classList.add('delivery-route');
+      else g.classList.add('delivery-blocked');
     }else if(!deliveryMode&&selectedWorker&&!state.activationMainActionUsed){
       if(id===selectedWorker.districtId)g.classList.add('worker-origin');
       if(reachableIds.has(id))g.classList.add('worker-reachable');
@@ -1314,7 +1335,7 @@ function renderCity(){
         const complete=con.status==='complete',isWarehouse=complete&&con.projectId==='warehouse';
         const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
         const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
-        const dropAvailable=deliveryMode?.step==='route'&&isMobile()&&deliveryTargetAcceptsAny(con);
+        const dropAvailable=deliveryMode?.step==='unload'&&isMobile()&&deliveryTargetAcceptsAny(con);
         const dropAttr=dropAvailable?` data-delivery-drop-target="${con.id}"`:``;
         const interactionHit=whSource
           ?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>'
@@ -1335,7 +1356,7 @@ function renderCity(){
     });
     layer.innerHTML=html;
     $$('[data-construction-token]').forEach(g=>g.onclick=e=>{
-      if(deliveryDraft?.step==='route'&&g.dataset.deliveryDropTarget){
+      if(deliveryDraft?.step==='unload'&&g.dataset.deliveryDropTarget){
         e.stopPropagation();openDeliveryTargetFromMap(g.dataset.deliveryDropTarget);return;
       }
       if(deliveryDraft)return;
@@ -1543,7 +1564,7 @@ $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы о�
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
 $('#undoBtn').onclick=undoLastGameAction;
-$('#helpBtn').onclick=()=>{showToast('v0.30A-UX2: Delivery на телефоне использует компактный маршрутный dock; ↶ отменяет последнее игровое действие.');};
+$('#helpBtn').onclick=()=>{showToast('v0.30A-UX3: маршрут Delivery подтверждается до разгрузки; свободные действия закреплены над нижней навигацией.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
