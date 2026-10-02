@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX2');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX3');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -209,12 +209,11 @@ test('mobile Delivery starts map-first and source list is only an optional fallb
 });
 
 
-test('mobile Delivery UX 2.0 collapses route into a compact dock and collapse never cancels',async({page})=>{
+test('mobile Delivery UX3 separates route building from unloading',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
   s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
+  await seed(page,s);await page.goto('/');
 
   await page.locator('#actionDelivery').click();
   await page.locator('[data-delivery-node="pacificmail"]').click();
@@ -223,93 +222,63 @@ test('mobile Delivery UX 2.0 collapses route into a compact dock and collapse ne
   await page.locator('#deliveryBeginRoute').click();
 
   const panel=page.locator('#deliveryPanel');
-  await expect(panel).toHaveClass(/route-compact/);
+  await expect(panel).toHaveClass(/mobile-route-build/);
   await expect(page.locator('#deliveryTargets')).toHaveCount(0);
-  const compactBox=await panel.boundingBox();
-  expect(compactBox).not.toBeNull();
-  expect(compactBox.height).toBeLessThanOrEqual(135);
+  await expect(page.locator('[data-construction-token="C1"]')).not.toHaveClass(/delivery-drop-available/);
+  await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
 
-  await page.locator('#deliveryExpandRoute').click();
-  await expect(panel).toHaveClass(/route-expanded/);
-  await expect(page.locator('#deliveryTargets')).toBeVisible();
-  await page.locator('#deliveryCollapseRoute').click();
-  await expect(panel).toHaveClass(/route-compact/);
-  await expect(page.locator('#deliveryConfirm')).toBeVisible();
-  await expect(panel).toHaveClass(/active/);
-  await expect(page.locator('#deliveryRouteMenu')).toBeVisible();
+  await page.locator('#deliveryLockRoute').click();
+  await expect(panel).toHaveClass(/mobile-unload/);
+  await expect(page.locator('[data-construction-token="C1"]')).toHaveClass(/delivery-drop-available/);
 });
 
-test('mobile Delivery route uses map construction tokens as unload targets',async({page})=>{
+test('mobile UX3 unloads by tapping a highlighted map object after route confirmation',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  const s=makeDevState();
-  s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
-
+  const s=makeDevState();s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await page.locator('[data-delivery-node="pacificmail"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await page.locator('#deliveryBeginRoute').click();
+  await page.locator('#deliveryLockRoute').click();
 
-  const token=page.locator('[data-construction-token="C1"]');
-  await expect(token).toHaveClass(/delivery-drop-available/);
-  await token.click();
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-expanded/);
-  await expect(page.locator('#deliveryTargets .delivery-target-card')).toHaveCount(1);
+  await page.locator('[data-construction-token="C1"]').click();
+  await expect(page.locator('.ux3-unload-target')).toContainText('Страховая компания');
   await page.locator('[data-drop-id="C1"][data-drop-type="Masonry"]').click();
   await expect(page.locator('#deliveryConfirm')).toBeEnabled();
-  await page.locator('#deliveryCollapseRoute').click();
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
-  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
   await page.locator('#deliveryConfirm').click();
-
   const saved=await stored(page);
   expect(saved.constructions.find(c=>c.id==='C1').materialsDelivered).toEqual(['Masonry']);
 });
 
-test('mobile Delivery separates collapse from destructive cancel',async({page})=>{
+test('mobile route confirmation fixes the route before unload and can return safely',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  const s=makeDevState();
-  s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
-
+  const s=makeDevState();s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await page.locator('[data-delivery-node="pacificmail"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await page.locator('#deliveryBeginRoute').click();
-
-  await expect(page.locator('#cancelDelivery')).toHaveCount(0);
-  await page.locator('#deliveryRouteMenu').click();
-  await expect(page.locator('#cancelDelivery')).toHaveText('Отменить доставку');
-  await page.locator('#deliveryRouteMenu').click();
-  await expect(page.locator('#cancelDelivery')).toHaveCount(0);
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
+  await page.locator('#deliveryLockRoute').click();
+  await expect(page.locator('[data-district="mission"]')).not.toHaveClass(/delivery-next/);
+  await page.locator('#deliveryBackRoute').click();
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-route-build/);
+  await expect(page.locator('[data-district="mission"]')).toHaveClass(/delivery-next/);
 });
 
-test('landscape Delivery route dock stays compact and inside the viewport',async({page})=>{
+test('landscape UX3 route dock stays compact and inside the viewport',async({page})=>{
   await page.setViewportSize({width:932,height:430});
-  const s=makeDevState();
-  s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
-
+  const s=makeDevState();s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await page.locator('[data-delivery-node="pacificmail"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await page.locator('#deliveryBeginRoute').click();
-
-  const result=await page.locator('#deliveryPanel').evaluate(el=>{
-    const r=el.getBoundingClientRect();
-    return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,w:innerWidth,h:innerHeight};
-  });
-  expect(result.left).toBeGreaterThanOrEqual(-1);
-  expect(result.right).toBeLessThanOrEqual(result.w+1);
-  expect(result.bottom).toBeLessThanOrEqual(result.h+1);
-  expect(result.height).toBeLessThanOrEqual(115);
+  const result=await page.locator('#deliveryPanel').evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,height:r.height,w:innerWidth,h:innerHeight};});
+  expect(result.left).toBeGreaterThanOrEqual(-1);expect(result.right).toBeLessThanOrEqual(result.w+1);expect(result.bottom).toBeLessThanOrEqual(result.h+1);expect(result.height).toBeLessThanOrEqual(90);
 });
 
 test('Warehouse can be the Delivery source and stored materials are not charged again',async({page})=>{
@@ -659,7 +628,7 @@ test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>
   await page.locator('[data-load="Lumber"]').click();
   await page.locator('#deliveryBeginRoute').click();
 
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-map-route/);
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-route-build/);
   await expect(page.locator('[data-route-next="pacific"]')).toHaveCount(0);
   await expect(page.locator('[data-district="pacific"]')).toHaveClass(/delivery-next/);
   await page.locator('[data-district="pacific"]').click();
@@ -955,22 +924,27 @@ test('mobile market overview compares all five projects before card browsing',as
   await expect(first).toHaveClass(/selected/);
 });
 
-test('mobile quick action dock appears after worker selection and keeps full actions available',async({page})=>{
+test('persistent mobile turn dock keeps free actions visible before and after the main action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
-  const w=s.players[0].workers[0];
-  w.districtId='civic';
-  s.activeWorkerId=w.id;
-  await seed(page,s);
-  await page.goto('/');
-
+  await seed(page,s);await page.goto('/');
   const dock=page.locator('#mobileActionDock');
   await expect(dock).toBeVisible();
-  await expect(dock).toContainText('Стройка');
-  await expect(dock).toContainText('Капитал');
   await expect(dock).toContainText('Доставка');
-  await dock.locator('[data-mobile-action="capital"]').click();
-  await expect(page.locator('#constructionMode')).toContainText('Привлечь капитал');
+  await expect(dock).toContainText('Основные');
+  await expect(dock).toContainText('Выберите представителя');
+
+  const w=s.players[0].workers[0];
+  await page.locator('[data-dock-worker="'+w.id+'"]').click();
+  await page.locator('#actionRaiseCapital').click();
+  await page.locator('[data-district="civic"]').click();
+
+  await expect(dock).toBeVisible();
+  await expect(dock).toContainText('Основное ✓ использовано');
+  await expect(dock).toContainText('Доставка');
+  await expect(dock).toContainText('Завершить');
+  const box=await dock.boundingBox();
+  expect(box.bottom).toBeLessThanOrEqual(844-55);
 });
 
 test('mobile map toolbar contains only task controls, not developer diagnostics',async({page})=>{
