@@ -235,7 +235,8 @@ test('mobile Delivery UX 2.0 collapses route into a compact dock and collapse ne
   await page.locator('#deliveryCollapseRoute').click();
   await expect(panel).toHaveClass(/route-compact/);
   await expect(page.locator('#deliveryConfirm')).toBeVisible();
-  await expect(page.locator('#actionDelivery')).toBeDisabled();
+  await expect(panel).toHaveClass(/active/);
+  await expect(page.locator('#deliveryRouteMenu')).toBeVisible();
 });
 
 test('mobile Delivery route uses map construction tokens as unload targets',async({page})=>{
