@@ -458,7 +458,7 @@ function addDeliveryDrop(kind,id,type){
   if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
   let d=deliveryTarget(kind,id);if(!d){d={kind,id,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
 }
-function clearDeliveryDrops(){if(deliveryDraft?.step==='route'){deliveryDraft.drops=[];render();}}
+function clearDeliveryDrops(){if(deliveryDraft?.step==='route'){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}}
 function deliveryPlan(){
   return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,materials:[...d.materials]}))};
 }
@@ -616,7 +616,7 @@ function renderDeliveryPanel(){
   $('#deliveryBeginRoute')?.addEventListener('click',beginDeliveryRoute);
   $$('[data-route-next]').forEach(b=>b.onclick=()=>addDeliveryRouteDistrict(b.dataset.routeNext));
   $('#deliveryUndoRoute')?.addEventListener('click',()=>{undoDeliveryRoute();if(isMobile()&&deliveryDraft?.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));});
-  $('#clearDrops')?.addEventListener('click',()=>{clearDeliveryDrops();if(deliveryDraft){deliveryDraft.focusTargetId=null;}});
+  $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
   $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
   $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();});
   $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
