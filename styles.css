@@ -2326,3 +2326,46 @@ button.city-action-card{cursor:pointer}
   .ux3-unload-dock{grid-template-columns:minmax(0,1fr)}
   .ux3-unload-footer .primary-btn{min-height:34px!important}
 }
+
+
+/* UX3 route/unload focus: remove nonessential chrome while the map is the task surface. */
+@media(max-width:640px){
+  body.delivery-active #workerDock,
+  body.delivery-active #cityActions,
+  body.delivery-active #resourceSupply,
+  body.delivery-active #endRoundBtn{display:none!important}
+  body.delivery-route-build .mobile-object-strip,
+  body.delivery-unload-mode .mobile-object-strip{display:none!important}
+}
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  body.delivery-active #workerDock,
+  body.delivery-active #cityActions,
+  body.delivery-active #resourceSupply,
+  body.delivery-active #endRoundBtn{display:none!important}
+  body.delivery-route-build .mobile-object-strip,
+  body.delivery-unload-mode .mobile-object-strip{display:none!important}
+
+  .delivery-panel.mobile-route-build,
+  .delivery-panel.mobile-unload{
+    top:auto!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important
+  }
+  .ux3-route-dock{
+    display:grid!important;grid-template-columns:minmax(0,1fr) 38px 50px minmax(145px,.7fr) 58px!important;
+    gap:4px!important;align-items:stretch!important
+  }
+  .ux3-route-copy{
+    min-width:0!important;min-height:34px!important;display:flex!important;flex-direction:column!important;
+    justify-content:center!important;padding:3px 6px!important;border-radius:7px!important;background:#eee2cf!important
+  }
+  .ux3-route-copy small,.ux3-route-copy strong,.ux3-route-copy span{
+    display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important
+  }
+  .ux3-route-copy small{font-size:7px!important}.ux3-route-copy strong{font-size:9px!important}.ux3-route-copy span{font-size:7px!important}
+  .ux3-route-undo{min-width:38px!important;min-height:34px!important}
+  .ux3-route-price{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important}
+  .ux3-route-price small{font-size:6.5px!important}.ux3-route-price strong{font-size:13px!important}
+  .ux3-route-confirm{grid-column:auto!important;min-height:34px!important;padding:3px 6px!important;font-size:8.5px!important}
+  .ux3-route-cancel{min-height:34px!important;font-size:8px!important}
+  .ux3-unload-dock{display:grid!important;gap:4px!important}
+  .ux3-unload-footer{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:4px!important;align-items:center!important}
+}
