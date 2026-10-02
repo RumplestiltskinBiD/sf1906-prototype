@@ -1335,7 +1335,7 @@ function renderCity(){
         const complete=con.status==='complete',isWarehouse=complete&&con.projectId==='warehouse';
         const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
         const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
-        const dropAvailable=deliveryMode?.step==='route'&&isMobile()&&deliveryTargetAcceptsAny(con);
+        const dropAvailable=deliveryMode?.step==='unload'&&isMobile()&&deliveryTargetAcceptsAny(con);
         const dropAttr=dropAvailable?` data-delivery-drop-target="${con.id}"`:``;
         const interactionHit=whSource
           ?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>'
@@ -1356,7 +1356,7 @@ function renderCity(){
     });
     layer.innerHTML=html;
     $$('[data-construction-token]').forEach(g=>g.onclick=e=>{
-      if(deliveryDraft?.step==='route'&&g.dataset.deliveryDropTarget){
+      if(deliveryDraft?.step==='unload'&&g.dataset.deliveryDropTarget){
         e.stopPropagation();openDeliveryTargetFromMap(g.dataset.deliveryDropTarget);return;
       }
       if(deliveryDraft)return;
