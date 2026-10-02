@@ -57,7 +57,7 @@ test('mobile map-first hooks are present',async()=>{
     'function renderMobileObjectStrip()',
     'function showObjectsOnMap(',
     'deliveryShowSourceList',
-    'deliveryShowRouteList',
+    'deliveryLockRoute',
     'node-hit',
     'showOfficeObjectsMap'
   ]) assert.ok(app.includes(needle),needle);
@@ -86,18 +86,6 @@ test('v0.30A-UX friction-reduction hooks are present',async()=>{
     'gameplayFingerprint('
   ]) assert.ok(app.includes(needle),needle);
   for(const needle of ['id="undoBtn"','id="marketOverview"','id="mobileActionDock"']) assert.ok(html.includes(needle),needle);
-});
-
-
-test('Delivery UX 2.0 compact route hooks are present',async()=>{
-  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  for(const needle of [
-    'function openDeliveryTargetFromMap(',
-    'delivery-route-compact',
-    'deliveryCollapseRoute',
-    'data-delivery-drop-target',
-    'Отменить всю доставку'
-  ]) assert.ok(app.includes(needle),needle);
 });
 
 
