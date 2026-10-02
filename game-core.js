@@ -18,6 +18,7 @@ export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,pub
 export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
 export const CONSTRUCTION_STAGING_CAPACITY = 3;
 export const WAREHOUSE_STORAGE_CAPACITY = 5;
+export const FREIGHT_YARD = {id:'freightyard',name:'Городской грузовой двор',shortName:'Грузовой двор',districtId:'western',capacityPerPlayer:2,rentCost:2,x:646,y:352};
 export const DELIVERY_EDGE_COST = 1;
 export const DELIVERY_HAULERS = [
   {id:'dray2a',name:'Малая подвода A',capacity:2,baseCost:0,limited:true},
@@ -403,6 +404,7 @@ export function createInitialState({rng=Math.random}={}){
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}])),
     logisticsSupply:generateLogisticsSupply({rng}),
+    freightYardInventories:[[],[],[]],
     haulersUsed:[],
     log:[{msg:'Началась тестовая партия v0.30A Risk Core. V8 остаётся development map; у районов есть открытые Earthquake / Fire risk, а завершённые здания меняют эти значения без верхнего cap. Логистика и movement rules сохранены.','cls':'accent'}],
     finished:false
@@ -557,10 +559,6 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(project?.streetcarExtension&&!canPlaceStreetcar(state,districtId)){
     reasons.push('Streetcar Extension требует Street Network в этом или соседнем районе.');
   }
-  if(project&&player&&project.materials.length>CONSTRUCTION_STAGING_CAPACITY&&completedWarehouseCount(state,playerId,districtId)<1){
-    reasons.push('Для проекта на 4+ ресурса нужен ваш завершённый Warehouse в этом районе.');
-  }
-
   const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?Math.max(0,ds.landValue-bureauDiscount):0;
   if(player&&ds&&player.capital<landCost) reasons.push(`Не хватает капитала на землю ($${landCost}).`);
@@ -637,6 +635,13 @@ export function warehouseInventory(construction){
   if(!construction||construction.projectId!=='warehouse'||construction.status!=='complete')return [];
   if(!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   return construction.warehouseInventory;
+}
+
+export function freightYardInventory(state,playerId){
+  if(!Array.isArray(state.freightYardInventories))state.freightYardInventories=[[],[],[]];
+  while(state.freightYardInventories.length<PLAYER_NAMES.length)state.freightYardInventories.push([]);
+  if(!Array.isArray(state.freightYardInventories[playerId]))state.freightYardInventories[playerId]=[];
+  return state.freightYardInventories[playerId];
 }
 
 export function warehouseCapacityBonus(){return 0;}
@@ -793,6 +798,11 @@ export function deliverySourceInfo(state,playerId,source){
     if(!wh)return null;
     return {kind:'warehouse',id:wh.id,name:`Warehouse · ${districtById(wh.districtId)?.name||wh.districtId}`,districtId:wh.districtId,inventory:warehouseInventory(wh)};
   }
+  if(source.kind==='freight-yard'&&source.id===FREIGHT_YARD.id){
+    const inventory=freightYardInventory(state,playerId);
+    if(!inventory.length)return null;
+    return {kind:'freight-yard',id:FREIGHT_YARD.id,name:FREIGHT_YARD.name,districtId:FREIGHT_YARD.districtId,inventory};
+  }
   return null;
 }
 
@@ -830,12 +840,19 @@ export function deliveryMaterialCost(state,source,cargo){
   return {gross,discount,cost:gross-discount,procurementUsed};
 }
 
+export function freightYardRentCost(state,plan){
+  const deposits=(plan?.drops||[]).filter(d=>d?.kind==='freight-yard'&&Array.isArray(d.materials)&&d.materials.length);
+  if(!deposits.length)return 0;
+  return freightYardInventory(state,plan.playerId).length===0?FREIGHT_YARD.rentCost:0;
+}
+
 export function deliveryPlanCost(state,plan){
   const hauler=DELIVERY_HAULERS.find(h=>h.id===plan?.haulerId);
   if(!hauler)return null;
   const route=plan.route||[];
   const material=deliveryMaterialCost(state,plan.source,plan.cargo||[]);
   const routeCost=Math.max(0,route.length-1)*DELIVERY_EDGE_COST;
+  const yardRentCost=freightYardRentCost(state,plan);
   return {
     materialGross:material.gross,
     procurementDiscount:material.discount,
@@ -843,7 +860,8 @@ export function deliveryPlanCost(state,plan){
     materialCost:material.cost,
     haulerCost:hauler.baseCost,
     routeCost,
-    total:material.cost+hauler.baseCost+routeCost
+    yardRentCost,
+    total:material.cost+hauler.baseCost+routeCost+yardRentCost
   };
 }
 
@@ -863,6 +881,7 @@ function targetDistrictId(state,target){
   if(target.kind==='warehouse'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
+  if(target.kind==='freight-yard'&&target.id===FREIGHT_YARD.id)return FREIGHT_YARD.districtId;
   return null;
 }
 
@@ -891,6 +910,7 @@ export function validateDeliveryPlan(state,plan){
 
   const constructionDraft=new Map();
   const warehouseDraft=new Map();
+  let freightYardDraft=[...freightYardInventory(state,plan.playerId)];
   for(const drop of drops){
     if(!drop||!Array.isArray(drop.materials)||!drop.materials.length)continue;
     const districtId=targetDistrictId(state,drop);
@@ -899,10 +919,12 @@ export function validateDeliveryPlan(state,plan){
       const con=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!con||con.playerId!==plan.playerId||con.status!=='under-construction')return {ok:false,reason:'target'};
       const staged=[...(constructionDraft.get(con.id)||con.materialsDelivered||[]),...drop.materials];
-      if(staged.length>CONSTRUCTION_STAGING_CAPACITY)return {ok:false,reason:'target-capacity'};
-      const required=materialCounts(projectById(con.projectId)?.materials||[]);
+      const projectMaterials=projectById(con.projectId)?.materials||[];
+      const required=materialCounts(projectMaterials);
       const counts=materialCounts(staged);
       if(Object.entries(counts).some(([type,count])=>count>(required[type]||0)))return {ok:false,reason:'target-material'};
+      const completesProject=multisetEquals(staged,projectMaterials);
+      if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!completesProject)return {ok:false,reason:'target-capacity'};
       constructionDraft.set(con.id,staged);
     }else if(drop.kind==='warehouse'){
       const wh=(state.constructions||[]).find(c=>c.id===drop.id);
@@ -911,6 +933,11 @@ export function validateDeliveryPlan(state,plan){
       const stored=[...(warehouseDraft.get(wh.id)||warehouseInventory(wh)),...drop.materials];
       if(stored.length>WAREHOUSE_STORAGE_CAPACITY)return {ok:false,reason:'target-capacity'};
       warehouseDraft.set(wh.id,stored);
+    }else if(drop.kind==='freight-yard'){
+      if(drop.id!==FREIGHT_YARD.id)return {ok:false,reason:'target'};
+      if(plan.source.kind==='freight-yard')return {ok:false,reason:'same-freight-yard'};
+      freightYardDraft=[...freightYardDraft,...drop.materials];
+      if(freightYardDraft.length>FREIGHT_YARD.capacityPerPlayer)return {ok:false,reason:'target-capacity'};
     }else return {ok:false,reason:'target'};
   }
 
@@ -926,7 +953,9 @@ export function executeDelivery(state,plan){
   const {source,hauler,cost}=check;
   const sourceInventory=source.kind==='node'
     ?state.logisticsSupply[source.id]
-    :warehouseInventory((state.constructions||[]).find(c=>c.id===source.id));
+    :source.kind==='warehouse'
+      ?warehouseInventory((state.constructions||[]).find(c=>c.id===source.id))
+      :freightYardInventory(state,plan.playerId);
   if(!removeMaterials(sourceInventory,plan.cargo))return {ok:false,reason:'source-stock'};
 
   const player=state.players[plan.playerId];
@@ -946,24 +975,31 @@ export function executeDelivery(state,plan){
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
       if(!directConstructionIds.includes(con.id))directConstructionIds.push(con.id);
-    }else{
+    }else if(drop.kind==='warehouse'){
       const wh=state.constructions.find(c=>c.id===drop.id);
       warehouseInventory(wh).push(...drop.materials);
+    }else if(drop.kind==='freight-yard'){
+      freightYardInventory(state,plan.playerId).push(...drop.materials);
     }
   }
 
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
   const dropText=(plan.drops||[]).filter(d=>Array.isArray(d.materials)&&d.materials.length).map(drop=>{
-    const con=state.constructions.find(c=>c.id===drop.id);
-    const districtName=districtById(con?.districtId)?.name||con?.districtId||'?';
-    const targetName=drop.kind==='warehouse'
-      ?`Warehouse (${districtName})`
-      :`«${projectById(con?.projectId)?.name||con?.projectId||'стройка'}» (${districtName})`;
+    const con=drop.kind==='freight-yard'?null:state.constructions.find(c=>c.id===drop.id);
+    const districtName=drop.kind==='freight-yard'
+      ?districtById(FREIGHT_YARD.districtId)?.name
+      :(districtById(con?.districtId)?.name||con?.districtId||'?');
+    const targetName=drop.kind==='freight-yard'
+      ?`${FREIGHT_YARD.name} (${districtName})`
+      :drop.kind==='warehouse'
+        ?`Warehouse (${districtName})`
+        :`«${projectById(con?.projectId)?.name||con?.projectId||'стройка'}» (${districtName})`;
     const counts=materialCounts(drop.materials);
     const materials=Object.entries(counts).map(([type,count])=>`${materialNameRu(type)} ×${count}`).join(', ');
     return `${targetName}: ${materials}`;
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; разгрузка: ${dropText||'—'}; материалы ${cost.materialCost} + перевозчик ${cost.haulerCost} + дорога ${cost.routeCost} = ${cost.total}.`,'accent');
+  const rentText=cost.yardRentCost?` + аренда ${cost.yardRentCost}`:'';
+  logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; разгрузка: ${dropText||'—'}; материалы ${cost.materialCost} + перевозчик ${cost.haulerCost} + дорога ${cost.routeCost}${rentText} = ${cost.total}.`,'accent');
 
   const completed=[];
   for(const id of directConstructionIds){
