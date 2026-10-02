@@ -2134,3 +2134,99 @@ button.city-action-card{cursor:pointer}
   .market-overview-item>strong{font-size:11px}.market-overview-mats,.market-overview-risk{font-size:7.5px;white-space:nowrap}
   .market-overview-item.selected{border-color:#487267;background:#edf3eb}
 }
+
+
+/* v0.30A-UX2 — Delivery UX 2.0 */
+.delivery-cancel-text{
+  width:auto!important;min-width:64px;padding:0 10px;border-radius:999px!important;
+  font-size:9px!important;font-weight:900;color:#685848
+}
+.construction-drop-hit{fill:rgba(255,255,255,.001);stroke:none;pointer-events:all}
+.full-sf-map .construction-token.delivery-drop-available rect:not(.construction-drop-hit){
+  stroke:#e0bd50!important;stroke-width:7!important;
+  filter:drop-shadow(0 0 9px rgba(244,209,91,.92))
+}
+.full-sf-map .construction-token.delivery-drop-focused rect:not(.construction-drop-hit){
+  stroke:#fff1a2!important;stroke-width:9!important;
+  filter:drop-shadow(0 0 14px rgba(255,224,107,1))
+}
+.delivery-target-card.focused{border-color:#b78d32;box-shadow:inset 3px 0 0 #c59c3e;background:#fff3d4}
+.delivery-show-all-targets{width:100%;margin-top:6px}
+.delivery-collapse{
+  flex:0 0 44px;width:44px;height:44px;border:1px solid #b9a98e;border-radius:50%;
+  background:#e6d8c1;color:#51483e;font-size:22px;font-weight:900
+}
+.delivery-cancel-route{
+  width:100%;margin-top:8px;min-height:40px;border:0;border-radius:8px;background:transparent;
+  color:#88564e;font-size:9px;font-weight:900;text-decoration:underline;text-underline-offset:3px
+}
+.delivery-route-menu{display:none}
+
+@media(max-width:640px){
+  .delivery-panel.mobile-map-route.route-compact{
+    left:7px!important;right:7px!important;bottom:calc(66px + env(safe-area-inset-bottom))!important;
+    max-height:none!important;padding:7px!important;overflow:visible!important;border-radius:13px!important
+  }
+  .delivery-route-compact{
+    display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;gap:5px;align-items:stretch
+  }
+  .delivery-compact-main{
+    min-width:0;min-height:44px;padding:4px 7px;border:0;border-radius:8px;background:#eee2cf;
+    color:#413a32;text-align:left
+  }
+  .delivery-compact-main span,.delivery-compact-main strong,.delivery-compact-main small{
+    display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .delivery-compact-main span{font-size:8px;font-weight:900;letter-spacing:.04em;color:#766858}
+  .delivery-compact-main strong{margin-top:1px;font-size:10px}
+  .delivery-compact-main small{margin-top:2px;font-size:8.5px;color:#5e6e5c}
+  .delivery-compact-icon{
+    min-width:42px;min-height:44px;border:1px solid #b8aa93;border-radius:8px;background:#fff7e9;
+    color:#51483e;font-size:18px;font-weight:900
+  }
+  .delivery-compact-icon:disabled{opacity:.32}
+  .delivery-compact-cost{
+    grid-column:1/2;min-width:0;display:grid;grid-template-columns:auto 1fr auto;gap:5px;align-items:center;
+    padding:5px 7px;border-radius:8px;background:#dcd0bb;color:#51493f
+  }
+  .delivery-compact-cost span{min-width:0;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .delivery-compact-cost strong{font-size:13px}
+  .delivery-compact-confirm{grid-column:2/4;min-height:42px!important;padding:5px 8px!important;font-size:10px!important}
+  .delivery-route-menu{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:6px;padding-top:6px;
+    border-top:1px solid #cdbda4
+  }
+  .delivery-route-menu button{min-height:40px;font-size:9px}
+  .delivery-route-menu .danger{grid-column:1/-1;color:#855046;border-color:#c7a39a;background:#f6e8e3}
+  .delivery-panel.mobile-map-route.route-expanded{
+    max-height:44vh!important;padding:8px 9px!important;overflow:auto!important
+  }
+  .delivery-route-expanded-head{
+    position:sticky!important;top:-8px!important;z-index:4!important;margin:0 0 5px!important;padding:5px 0!important;
+    background:#f4ead9!important
+  }
+  .delivery-route-expanded-head small{font-size:8px!important}
+  .delivery-route-expanded-head strong{font-size:14px!important}
+  .delivery-panel.mobile-map-route.route-expanded .delivery-targets{max-height:150px!important}
+  body.delivery-route-compact .toast{bottom:178px!important}
+  body.delivery-route-expanded .toast{bottom:47vh!important}
+}
+
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  .delivery-panel.mobile-map-route.route-compact{
+    left:50%!important;right:auto!important;top:auto!important;bottom:58px!important;
+    width:min(720px,88vw)!important;height:auto!important;min-height:0!important;max-height:none!important;
+    transform:translateX(-50%)!important;padding:5px 6px!important;overflow:visible!important
+  }
+  .delivery-route-compact{grid-template-columns:minmax(0,1fr) 40px 40px}
+  .delivery-compact-main{min-height:38px}
+  .delivery-compact-icon{min-width:40px;min-height:38px}
+  .delivery-compact-cost{padding:4px 7px}
+  .delivery-compact-confirm{min-height:36px!important}
+  .delivery-panel.mobile-map-route.route-expanded{
+    width:min(620px,82vw)!important;max-height:56vh!important;bottom:58px!important
+  }
+  .delivery-panel.mobile-map-route.route-expanded .delivery-targets{max-height:105px!important}
+  body.delivery-route-compact .toast{bottom:155px!important}
+  body.delivery-route-expanded .toast{bottom:60px!important}
+}

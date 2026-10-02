@@ -213,3 +213,15 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Landscape phone now exposes the same three-representative dock used in portrait.
 - Stabilized Risk-panel landscape QA by waiting for the actual 180 ms slide-in transition before asserting viewport bounds.
 - No balance or gameplay-rule changes are included in this pass.
+
+
+## v0.30A-UX2 — Delivery UX 2.0
+
+- Mobile Delivery now switches automatically to a compact route dock after cargo selection; the map remains the main interaction surface.
+- Compact route dock shows route, unassigned cargo, live material / hauler / road cost and Confirm without occupying half the screen.
+- Construction and Warehouse tokens that can accept the remaining cargo are highlighted directly on the map and can be tapped to open focused unloading controls.
+- Route details are explicitly expandable/collapsible. Collapsing never cancels Delivery.
+- Destructive cancellation is separated from collapse and is labelled **Отменить доставку / Отменить всю доставку** instead of using the close icon ambiguously.
+- Secondary route actions live behind a compact menu; the neighbor list remains available as an accessibility/fallback path.
+- Map centering reserves space for the compact route dock in portrait and landscape.
+- No logistics prices, capacities, staging rules, Warehouse rules or balance values changed.

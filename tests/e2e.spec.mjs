@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX2');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -206,6 +206,110 @@ test('mobile Delivery starts map-first and source list is only an optional fallb
     expect(box).not.toBeNull();
     expect(box.height).toBeGreaterThanOrEqual(40);
   }
+});
+
+
+test('mobile Delivery UX 2.0 collapses route into a compact dock and collapse never cancels',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+
+  const panel=page.locator('#deliveryPanel');
+  await expect(panel).toHaveClass(/route-compact/);
+  await expect(page.locator('#deliveryTargets')).toHaveCount(0);
+  const compactBox=await panel.boundingBox();
+  expect(compactBox).not.toBeNull();
+  expect(compactBox.height).toBeLessThanOrEqual(135);
+
+  await page.locator('#deliveryExpandRoute').click();
+  await expect(panel).toHaveClass(/route-expanded/);
+  await expect(page.locator('#deliveryTargets')).toBeVisible();
+  await page.locator('#deliveryCollapseRoute').click();
+  await expect(panel).toHaveClass(/route-compact/);
+  await expect(page.locator('#deliveryConfirm')).toBeVisible();
+  await expect(panel).toHaveClass(/active/);
+  await expect(page.locator('#deliveryRouteMenu')).toBeVisible();
+});
+
+test('mobile Delivery route uses map construction tokens as unload targets',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+
+  const token=page.locator('[data-construction-token="C1"]');
+  await expect(token).toHaveClass(/delivery-drop-available/);
+  await token.click();
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-expanded/);
+  await expect(page.locator('#deliveryTargets .delivery-target-card')).toHaveCount(1);
+  await page.locator('[data-drop-id="C1"][data-drop-type="Masonry"]').click();
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryCollapseRoute').click();
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryConfirm').click();
+
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='C1').materialsDelivered).toEqual(['Masonry']);
+});
+
+test('mobile Delivery separates collapse from destructive cancel',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+
+  await expect(page.locator('#cancelDelivery')).toHaveCount(0);
+  await page.locator('#deliveryRouteMenu').click();
+  await expect(page.locator('#cancelDelivery')).toHaveText('Отменить доставку');
+  await page.locator('#deliveryRouteMenu').click();
+  await expect(page.locator('#cancelDelivery')).toHaveCount(0);
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
+});
+
+test('landscape Delivery route dock stays compact and inside the viewport',async({page})=>{
+  await page.setViewportSize({width:932,height:430});
+  const s=makeDevState();
+  s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);
+  await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+
+  const result=await page.locator('#deliveryPanel').evaluate(el=>{
+    const r=el.getBoundingClientRect();
+    return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,w:innerWidth,h:innerHeight};
+  });
+  expect(result.left).toBeGreaterThanOrEqual(-1);
+  expect(result.right).toBeLessThanOrEqual(result.w+1);
+  expect(result.bottom).toBeLessThanOrEqual(result.h+1);
+  expect(result.height).toBeLessThanOrEqual(115);
 });
 
 test('Warehouse can be the Delivery source and stored materials are not charged again',async({page})=>{
@@ -559,7 +663,8 @@ test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>
   await expect(page.locator('[data-route-next="pacific"]')).toHaveCount(0);
   await expect(page.locator('[data-district="pacific"]')).toHaveClass(/delivery-next/);
   await page.locator('[data-district="pacific"]').click();
-  await expect(page.locator('.delivery-route-strip')).toContainText('Pacific');
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
+  await expect(page.locator('#deliveryPanel')).toContainText('Pacific');
 });
 
 test('wide landscape phone remains mobile at 932x430 without page overflow',async({page})=>{
