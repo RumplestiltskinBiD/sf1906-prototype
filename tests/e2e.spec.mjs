@@ -53,7 +53,7 @@ test.only('temporary Delivery layout diagnostic',async({page})=>{
   await seed(page,s);
   await page.goto('/');
   await page.locator('#actionDelivery').click();
-  const inspect=selector=>page.locator(selector).evaluate(el=>{
+  const inspect=selector=>page.locator(selector).evaluate((el,selector)=>{
     const r=el.getBoundingClientRect(),cs=getComputedStyle(el);
     const parents=[];
     let p=el.parentElement;
@@ -63,7 +63,7 @@ test.only('temporary Delivery layout diagnostic',async({page})=>{
       p=p.parentElement;
     }
     return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,position:cs.position,overflow:cs.overflow,parents};
-  });
+  },selector);
   console.log('DIAG_SOURCE_PANEL',JSON.stringify(await inspect('#deliveryPanel')));
   console.log('DIAG_SOURCE_BUTTON',JSON.stringify(await inspect('[data-ds-node="pacificmail"]')));
   await page.locator('[data-ds-node="pacificmail"]').evaluate(el=>el.click());
