@@ -104,19 +104,33 @@ test('Warehouse recipe is exactly Lumber + Masonry + Steel',()=>{
   assert.equal(G.WAREHOUSE_STORAGE_CAPACITY,5);
 });
 
-test('4+ resource construction needs completed own Warehouse in the same district',()=>{
+test('4+ resource construction can begin without a Warehouse',()=>{
   const s=devState();
-  const w=G.playerWorkers(s,0)[0];
-  w.districtId='soma';
+  const w=G.playerWorkers(s,0)[0];w.districtId='soma';
   G.selectWorker(s,0,w.id);
   s.players[0].portfolio=['factory'];
-  let e=G.constructionEligibility(s,0,'factory','soma');
-  assert.equal(e.ok,false);
-  assert.ok(e.reasons.some(x=>x.includes('Warehouse')));
-
-  s.constructions=[construction('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],[])];
-  e=G.constructionEligibility(s,0,'factory','soma');
+  const e=G.constructionEligibility(s,0,'factory','soma');
   assert.equal(e.ok,true,e.reasons.join(' | '));
+  assert.equal(e.reasons.some(x=>x.includes('Warehouse')),false);
+});
+
+test('final Delivery may exceed staging 3 only when it completes the project exactly',()=>{
+  const s=devState();
+  s.logisticsSupply.pacificmail=['Steel','Steel'];
+  s.constructions=[construction('F1',0,'factory','soma','under-construction',['Lumber','Masonry','Masonry'])];
+  const finalPlan={playerId:0,source:{kind:'node',id:'pacificmail'},haulerId:'dray2a',cargo:['Steel','Steel'],route:['soma'],drops:[{kind:'construction',id:'F1',materials:['Steel','Steel']}]};
+  const valid=G.validateDeliveryPlan(s,finalPlan);
+  assert.equal(valid.ok,true,JSON.stringify(valid));
+  assert.equal(G.executeDelivery(s,finalPlan).ok,true);
+  assert.equal(s.constructions[0].status,'complete');
+
+  const s2=devState();
+  s2.logisticsSupply.pacificmail=['Steel'];
+  s2.constructions=[construction('F2',0,'factory','soma','under-construction',['Lumber','Masonry','Masonry'])];
+  const partial={playerId:0,source:{kind:'node',id:'pacificmail'},haulerId:'dray2a',cargo:['Steel'],route:['soma'],drops:[{kind:'construction',id:'F2',materials:['Steel']}]};
+  const invalid=G.validateDeliveryPlan(s2,partial);
+  assert.equal(invalid.ok,false);
+  assert.equal(invalid.reason,'target-capacity');
 });
 
 test('same-district Delivery is valid and has zero road cost',()=>{
@@ -192,6 +206,64 @@ test('limited haulers are shared once per round; Standard Hauler is reusable',()
   assert.equal(G.executeDelivery(s,standard2).ok,true);
 });
 
+
+test('Public Freight Yard has private 2-slot sections and charges $2 only when an empty section is occupied',()=>{
+  const s=devState();
+  assert.equal(G.FREIGHT_YARD.districtId,'western');
+  assert.equal(G.FREIGHT_YARD.capacityPerPlayer,2);
+  assert.equal(G.FREIGHT_YARD.rentCost,2);
+  assert.deepEqual(G.freightYardInventory(s,0),[]);
+  assert.deepEqual(G.freightYardInventory(s,1),[]);
+
+  s.logisticsSupply.broadway=['Lumber','Masonry','Steel'];
+  const first={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2a',cargo:['Lumber'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
+  let v=G.validateDeliveryPlan(s,first);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(v.cost.materialCost,1);
+  assert.equal(v.cost.routeCost,2);
+  assert.equal(v.cost.yardRentCost,2);
+  assert.equal(v.cost.total,5);
+  assert.equal(G.executeDelivery(s,first).ok,true);
+  assert.deepEqual(G.freightYardInventory(s,0),['Lumber']);
+  assert.deepEqual(G.freightYardInventory(s,1),[]);
+
+  const second={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2b',cargo:['Masonry'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Masonry']}]};
+  v=G.validateDeliveryPlan(s,second);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(v.cost.yardRentCost,0);
+  assert.equal(v.cost.total,3);
+  assert.equal(G.executeDelivery(s,second).ok,true);
+  assert.deepEqual(G.freightYardInventory(s,0),['Lumber','Masonry']);
+
+  const overflow={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Steel'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Steel']}]};
+  assert.equal(G.validateDeliveryPlan(s,overflow).reason,'target-capacity');
+});
+
+test('Freight Yard is a paid-storage source; emptying it resets the next $2 occupancy fee',()=>{
+  const s=devState();
+  s.freightYardInventories=[['Lumber','Masonry'],[],[]];
+  s.constructions=[
+    construction('C1',0,'tenement','western'),
+    construction('C2',0,'shops','western')
+  ];
+  const first={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Lumber'],route:['western'],drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
+  let v=G.validateDeliveryPlan(s,first);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(v.cost.materialCost,0);
+  assert.equal(v.cost.yardRentCost,0);
+  assert.equal(G.executeDelivery(s,first).ok,true);
+
+  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry'],route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
+  assert.equal(G.executeDelivery(s,second).ok,true);
+  assert.deepEqual(G.freightYardInventory(s,0),[]);
+
+  s.logisticsSupply.broadway=['Lumber'];
+  const reoccupy={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Lumber'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
+  v=G.validateDeliveryPlan(s,reoccupy);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(v.cost.yardRentCost,2);
+});
+
 test('Warehouse stores max 5 and can supply missing resources in same district',()=>{
   const s=devState();
   s.constructions=[
@@ -245,6 +317,7 @@ test('round cleanup refreshes city supply and haulers but preserves staged and W
   const s=devState();
   s.developmentComplete=true;
   s.haulersUsed=['dray2a','freight5'];
+  s.freightYardInventories=[['Masonry'],[],[]];
   s.constructions=[
     construction('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Steel','Lumber']),
     construction('C1',0,'insurance','soma','under-construction',['Masonry'])
@@ -254,6 +327,7 @@ test('round cleanup refreshes city supply and haulers but preserves staged and W
   assert.deepEqual(s.haulersUsed,[]);
   assert.ok(Object.values(s.logisticsSupply).flat().every(x=>x==='Steel'));
   assert.deepEqual(G.warehouseInventory(s.constructions[0]),['Steel','Lumber']);
+  assert.deepEqual(G.freightYardInventory(s,0),['Masonry']);
   assert.deepEqual(s.constructions[1].materialsDelivered,['Masonry']);
   assert.equal(s.firstPlayer,1);
   assert.ok(s.players.every(p=>p.workersLeft===3));

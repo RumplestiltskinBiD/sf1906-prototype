@@ -2418,3 +2418,22 @@ body.drawer-open .mobile-action-dock{
   .delivery-needs-list{grid-template-columns:repeat(2,minmax(0,1fr));max-height:74px}
   .delivery-need-row{padding:4px 5px}
 }
+
+
+/* v0.30A-L1 — Western Addition public Freight Yard */
+.full-sf-map .freight-yard-node .node-hit{fill:transparent;pointer-events:all;cursor:pointer}
+.full-sf-map .freight-yard-pin{fill:#efe3ca;stroke:#4e463b;stroke-width:3;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+.full-sf-map .freight-yard-code{font:900 10px/1 ui-sans-serif,system-ui,sans-serif;text-anchor:middle;fill:#40382f;paint-order:stroke;stroke:#fff4db;stroke-width:1.5px}
+.full-sf-map .yard-player-dot{stroke:#f8efd9;stroke-width:1.5}
+.full-sf-map .yard-player-dot.blue{fill:var(--blue)}.full-sf-map .yard-player-dot.red{fill:var(--red)}.full-sf-map .yard-player-dot.green{fill:var(--green)}
+.full-sf-map .yard-count{font:900 7px/1 ui-sans-serif,system-ui,sans-serif;text-anchor:middle;fill:white;pointer-events:none}
+.full-sf-map .freight-yard-node.source-available .freight-yard-pin{stroke:#46b86a;stroke-width:6;filter:drop-shadow(0 0 10px rgba(70,184,106,.85))}
+.full-sf-map .freight-yard-node.delivery-drop-available .freight-yard-pin{stroke:#f2c447;stroke-width:7;filter:drop-shadow(0 0 11px rgba(242,196,71,.92))}
+.freight-yard-source{border-style:dashed;background:#f1eadb}
+.mobile-object-chip.freight-yard{border-style:dashed;background:#eee5d5}
+.ux3-unload-footer>span small{display:block;font-size:7px;color:#8a6940}
+@media(max-width:640px){
+  .full-sf-map .freight-yard-code{font-size:11px}
+  .full-sf-map .freight-yard-node .node-name{font-size:11px}
+  .full-sf-map .freight-yard-node .node-type{font-size:8px}
+}

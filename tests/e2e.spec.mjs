@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.30A-UX3.1');
+  await expect(page.locator('.version-badge')).toHaveText('v0.30A-L1');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -67,6 +67,102 @@ test('fresh game UI can complete draft handoff and reach Development without dea
   await page.locator('#resolveTender').click();
   await expect(page.locator('#cityView')).toHaveClass(/active/);
   await expect(page.locator('#actionDelivery')).toBeEnabled();
+});
+
+
+test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
+  const s=makeDevState();
+  s.freightYardInventories=[['Lumber'],[],['Steel','Masonry']];
+  await seed(page,s);await page.goto('/');
+  const yard=page.locator('[data-delivery-freight-yard="freightyard"]');
+  await expect(yard).toBeVisible();
+  await expect(yard.locator('.yard-count')).toHaveCount(3);
+  await expect(yard.locator('.yard-count').nth(0)).toHaveText('1');
+  await expect(yard.locator('.yard-count').nth(2)).toHaveText('2');
+  const inside=await page.evaluate(()=>{
+    const path=document.querySelector('[data-district="western"] path');
+    return path.isPointInFill(new DOMPoint(570,375));
+  });
+  expect(inside).toBe(true);
+});
+
+test('mobile Delivery can rent the Western Freight Yard and shows the $2 fee before confirmation',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('[data-district="civic"]').click();
+  await page.locator('[data-district="western"]').click();
+  await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
+  await page.locator('#deliveryLockRoute').click();
+
+  const yard=page.locator('[data-delivery-freight-yard="freightyard"]');
+  await expect(yard).toHaveClass(/delivery-drop-available/);
+  await yard.click();
+  await expect(page.locator('.ux3-unload-target')).toContainText('Городской грузовой двор');
+  await expect(page.locator('.ux3-unload-target')).toContainText('занять +$2');
+  await page.locator('[data-drop-kind="freight-yard"][data-drop-type="Masonry"]').click();
+  await expect(page.locator('#deliveryConfirm')).toContainText('$5');
+  await page.locator('#deliveryConfirm').click();
+
+  const saved=await stored(page);
+  expect(saved.freightYardInventories[0]).toEqual(['Masonry']);
+  expect(saved.players[0].capital).toBe(45);
+});
+
+test('stored Freight Yard materials are selectable as an already-paid Delivery source',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();s.freightYardInventories=[['Masonry'],[],[]];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toHaveClass(/source-available/);
+  await page.locator('#deliveryShowSourceList').click();
+  const yardSource=page.locator('[data-ds-yard="freightyard"]');
+  await expect(yardSource).toBeEnabled();
+  await yardSource.click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await expect(page.locator('[data-load="Masonry"]')).toContainText('ОПЛАЧЕНО');
+});
+
+test('mobile final Delivery completes a five-resource Factory from staging 3 without a Warehouse',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.logisticsSupply.pacificmail=['Steel','Steel'];
+  s.constructions=[con('F1',0,'factory','soma','under-construction',['Lumber','Masonry','Masonry'])];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-node="pacificmail"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Steel"]').click();
+  await page.locator('[data-load="Steel"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
+  await page.locator('#deliveryLockRoute').click();
+  const token=page.locator('[data-construction-token="F1"]');
+  await expect(token).toHaveClass(/delivery-drop-available/);
+  await token.click();
+  const addSteel=page.locator('[data-drop-id="F1"][data-drop-type="Steel"]');
+  await addSteel.click();
+  await page.locator('[data-drop-id="F1"][data-drop-type="Steel"]').click();
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryConfirm').click();
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='F1').status).toBe('complete');
+});
+
+test('mobile object strip keeps the Freight Yard capacity and rent state visible',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();s.freightYardInventories=[['Steel'],[],[]];
+  await seed(page,s);await page.goto('/');
+  const chip=page.locator('.mobile-object-chip.freight-yard');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('1/2');
+  await expect(chip).toContainText('С1');
+  await expect(chip).toContainText('аренда активна');
 });
 
 test('same-district Delivery works end-to-end with $0 road cost and live unload buttons',async({page})=>{

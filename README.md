@@ -246,3 +246,15 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - During Delivery, unfinished construction tokens on the map show compact remaining-material badges.
 - Opening Office, Log or Settings temporarily hides the Delivery overlay without cancelling or modifying the active Delivery draft; closing the drawer restores the exact previous Delivery state.
 - No project requirements, logistics costs, capacities, staging limits or other gameplay values changed.
+
+
+## v0.30A-L1 — Logistics fallback
+
+- Added a permanent neutral **Городской грузовой двор** in Western Addition.
+- Each player has a private 2-resource section; opponents cannot use those materials.
+- First deposit into an empty section adds **$2 rent** to that Delivery. Further deposits while the section is non-empty add no rent. Once emptied, the next occupation costs $2 again.
+- Stored yard materials are already paid and can later be used as a Delivery source.
+- The yard is visible on the map with per-player occupancy counts and in the mobile object strip.
+- Removed the requirement to own a completed Warehouse in the same district before starting 4–5 material projects.
+- Construction staging remains 3. A Delivery may exceed 3 only when that same Delivery supplies the exact remaining recipe and completes the project immediately.
+- No recurring round rent was added. Own Warehouses retain capacity 5, no rental fee, income and Prestige benefits.
