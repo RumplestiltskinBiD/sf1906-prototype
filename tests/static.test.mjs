@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Prototype v0\.30A-UX/);
-  assert.match(html,/app\.js\?v=030aux/);
-  assert.match(html,/styles\.css\?v=030aux/);
+  assert.match(html,/Prototype v0\.30A-UX2/);
+  assert.match(html,/app\.js\?v=030aux2/);
+  assert.match(html,/styles\.css\?v=030aux2/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -86,4 +86,16 @@ test('v0.30A-UX friction-reduction hooks are present',async()=>{
     'gameplayFingerprint('
   ]) assert.ok(app.includes(needle),needle);
   for(const needle of ['id="undoBtn"','id="marketOverview"','id="mobileActionDock"']) assert.ok(html.includes(needle),needle);
+});
+
+
+test('Delivery UX 2.0 compact route hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  for(const needle of [
+    'function openDeliveryTargetFromMap(',
+    'delivery-route-compact',
+    'deliveryCollapseRoute',
+    'data-delivery-drop-target',
+    'Отменить всю доставку'
+  ]) assert.ok(app.includes(needle),needle);
 });
