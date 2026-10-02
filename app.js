@@ -1,11 +1,11 @@
 import {
   PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-  LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
+  LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
   projectById,districtById,districtAccess,districtNeighbors,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
   createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
   createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
   resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
-  constructionProgress,completedWarehouses,warehouseInventory,canCompleteConstruction,completeConstructionFromStorage,
+  constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
   availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
   roundIncome,grossRoundIncome,buildingIncome,
   activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
@@ -85,6 +85,7 @@ function migrateState(parsed){
     }
   });
   parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
+  parsed.freightYardInventories=Array.from({length:3},(_,pid)=>Array.isArray(parsed.freightYardInventories?.[pid])?parsed.freightYardInventories[pid].slice(0,FREIGHT_YARD.capacityPerPlayer):[]);
   parsed.haulersUsed=Array.isArray(parsed.haulersUsed)?parsed.haulersUsed:[];
   parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
   parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
@@ -438,6 +439,7 @@ function undoDeliveryRoute(){
   deliveryDraft.route.pop();
   const routeSet=new Set(deliveryDraft.route);
   deliveryDraft.drops=(deliveryDraft.drops||[]).filter(d=>{
+    if(d.kind==='freight-yard')return routeSet.has(FREIGHT_YARD.districtId);
     const con=(state.constructions||[]).find(x=>x.id===d.id);
     return con&&routeSet.has(con.districtId);
   });
@@ -452,15 +454,30 @@ function deliveryTarget(kind,id){
 function deliveryDropPhase(){
   return deliveryDraft?.step==='unload'||(!isMobile()&&deliveryDraft?.step==='route');
 }
+function freightYardTarget(){
+  return {id:FREIGHT_YARD.id,playerId:deliveryDraft?.playerId,districtId:FREIGHT_YARD.districtId,status:'freight-yard',neutral:true};
+}
 function deliveryCanDrop(kind,id,type){
   if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
+  const assigned=deliveryTarget(kind,id)?.materials||[];
+  if(kind==='freight-yard'){
+    if(id!==FREIGHT_YARD.id||deliveryDraft.source?.kind==='freight-yard'||!deliveryDraft.route.includes(FREIGHT_YARD.districtId))return false;
+    return freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
+  }
   const con=(state.constructions||[]).find(x=>x.id===id);
   if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
-  const assigned=deliveryTarget(kind,id)?.materials||[];
   if(kind==='construction'){
-    if(con.status!=='under-construction'||(con.materialsDelivered||[]).length+assigned.length>=CONSTRUCTION_STAGING_CAPACITY)return false;
-    const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts([...(con.materialsDelivered||[]),...assigned]);
-    return (have[type]||0)<(req[type]||0);
+    if(con.status!=='under-construction')return false;
+    const project=projectById(con.projectId),req=deliveryCounts(project?.materials||[]);
+    const staged=[...(con.materialsDelivered||[]),...assigned];
+    const have=deliveryCounts(staged);
+    if((have[type]||0)>=(req[type]||0))return false;
+    const candidate=[...staged,type];
+    if(candidate.length<=CONSTRUCTION_STAGING_CAPACITY)return true;
+    const candidateCounts=deliveryCounts(candidate);
+    const remainingAfter={...deliveryRemaining()};
+    remainingAfter[type]=Math.max(0,(remainingAfter[type]||0)-1);
+    return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(candidateCounts[t]||0))<=(remainingAfter[t]||0));
   }
   if(kind==='warehouse'){
     if(con.projectId!=='warehouse'||con.status!=='complete')return false;
@@ -470,7 +487,9 @@ function deliveryCanDrop(kind,id,type){
   return false;
 }
 function deliveryRouteTargetKind(con){
-  if(!con||!deliveryDraft||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return null;
+  if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
+  if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
+  if(con.playerId!==deliveryDraft.playerId)return null;
   if(con.status==='under-construction')return 'construction';
   if(con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id))return 'warehouse';
   return null;
@@ -480,16 +499,22 @@ function deliveryTargetKind(con){
   return deliveryRouteTargetKind(con);
 }
 function deliveryRouteTargets(){
-  return (state.constructions||[]).filter(con=>!!deliveryRouteTargetKind(con));
+  const targets=(state.constructions||[]).filter(con=>!!deliveryRouteTargetKind(con));
+  if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')targets.push(freightYardTarget());
+  return targets;
 }
 function deliveryRouteTargetCanAcceptAny(con){
   const kind=deliveryRouteTargetKind(con);if(!kind)return false;
+  if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer&&deliveryDraft.cargo.length>0;
   if(kind==='warehouse')return warehouseInventory(con).length<WAREHOUSE_STORAGE_CAPACITY&&deliveryDraft.cargo.length>0;
-  if((con.materialsDelivered||[]).length>=CONSTRUCTION_STAGING_CAPACITY)return false;
   const req=deliveryCounts(projectById(con.projectId)?.materials||[]);
   const have=deliveryCounts(con.materialsDelivered||[]);
   const cargo=deliveryCounts(deliveryDraft.cargo||[]);
-  return RESOURCE_ORDER.some(type=>(cargo[type]||0)>0&&(have[type]||0)<(req[type]||0));
+  const missing=Object.fromEntries(RESOURCE_ORDER.map(t=>[t,Math.max(0,(req[t]||0)-(have[t]||0))]));
+  const hasMatch=RESOURCE_ORDER.some(t=>(cargo[t]||0)>0&&(missing[t]||0)>0);
+  if(!hasMatch)return false;
+  if((con.materialsDelivered||[]).length<CONSTRUCTION_STAGING_CAPACITY)return true;
+  return RESOURCE_ORDER.every(t=>(cargo[t]||0)>=(missing[t]||0));
 }
 function deliveryTargetAcceptsAny(con){
   const kind=deliveryTargetKind(con);
@@ -497,7 +522,7 @@ function deliveryTargetAcceptsAny(con){
 }
 function openDeliveryTargetFromMap(id){
   if(!isMobile()||deliveryDraft?.step!=='unload')return;
-  const con=(state.constructions||[]).find(x=>x.id===id);
+  const con=deliveryRouteTargets().find(x=>x.id===id);
   if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}
   deliveryDraft.focusTargetId=id;
   render();
