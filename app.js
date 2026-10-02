@@ -485,7 +485,7 @@ function renderDeliveryPanel(){
   el.className='delivery-panel active'
     +(mobile&&step==='source'?' mobile-map-source':'')
     +(mobile&&step==='route'?' mobile-map-route':'')
-    +(mobile&&step==='route'&&(deliveryDraft.panelExpanded?' route-expanded':' route-compact'))
+    +(mobile&&step==='route'?(deliveryDraft.panelExpanded?' route-expanded':' route-compact'):'')
     +(mobile&&deliveryDraft.listOpen?' list-open':'')
     +(mobile&&deliveryDraft.menuOpen?' menu-open':'');
   const pid=deliveryDraft.playerId,p=state.players[pid];
