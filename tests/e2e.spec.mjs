@@ -632,7 +632,7 @@ test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>
   await expect(page.locator('[data-route-next="pacific"]')).toHaveCount(0);
   await expect(page.locator('[data-district="pacific"]')).toHaveClass(/delivery-next/);
   await page.locator('[data-district="pacific"]').click();
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/route-compact/);
+  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-route-build/);
   await expect(page.locator('#deliveryPanel')).toContainText('Pacific');
 });
 
