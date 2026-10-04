@@ -102,7 +102,7 @@ $('loadSaved').addEventListener('click',()=>{
 });
 $('quake').addEventListener('click',()=>{
   if(sim||playing)return;
-  sim=begin(values,{ignition:riskValue($('igniteAt').value),spread:riskValue($('spreadBy').value)});$('history').replaceChildren();
+  sim=begin(values,{ignition:Math.max(1,riskValue($('igniteAt').value)),spread:Math.max(1,riskValue($('spreadBy').value))});$('history').replaceChildren();
   $('message').textContent=sim.starts.length
     ?'Землетрясение! Начальные очаги: '+sim.starts.map(name).join(', ')+'.'
     :'Землетрясение: нет разрушенных районов, источники пожара отсутствуют.';
