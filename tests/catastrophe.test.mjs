@@ -9,7 +9,7 @@ test('unbounded risk: III is only a label, 7 minus one is 6',()=>{
 });
 test('uses live base game risks and geographic adjacency',()=>{
   const data=fromGame();
-  assert.equal(DISTRICT_IDS.length,19);
+  assert.equal(DISTRICT_IDS.length,18);
   assert.equal(data.missionbay.z,2);
   assert.equal(data.soma.z,1);
   assert.equal(data.chinatown.p,1);
@@ -62,7 +62,7 @@ test('scenario matrix reported for design review',()=>{
   for(const key of ['base','one','three','five','low-fire','high-risk']){
     const s=run(begin(preset(key))),st=stats(s);
     assert.equal(st.sourcesProcessed,st.burning);
-    assert.ok(st.burning>=st.destroyed&&st.burning<=19);
+    assert.ok(st.burning>=st.destroyed&&st.burning<=18);
     console.log('CATASTROPHE-SCENARIO',key,JSON.stringify(st));
   }
 });
