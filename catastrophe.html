@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141b1d">
+<title>Сан-Франциско, 1906 — лаборатория катастрофы</title>
+<style>
+:root{--bg:#131a1d;--panel:#20292c;--ink:#f3eee1;--sub:#b8c4c3;--line:#46585c;--aqua:#4acbdd;--orange:#e9ba64;--red:#e67a6c}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Arial,sans-serif}
+h1{font:700 clamp(23px,3vw,30px) Georgia,serif;margin:2px 0}h2{font:700 20px Georgia,serif;margin:0 0 10px}
+button,input,select{font:inherit}button,select,input{color:var(--ink);background:#2b383b;border:1px solid var(--line);border-radius:8px;min-height:42px;padding:7px 10px}
+button{cursor:pointer;font-weight:700}button:hover:not(:disabled){border-color:var(--aqua)}button:disabled{opacity:.46;cursor:not-allowed}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--aqua)}input,select{width:100%}
+header{padding:12px 18px;background:#111718;border-bottom:1px solid #39494d;display:flex;justify-content:space-between;gap:16px;align-items:center}
+header a{color:#8be2e6}header small{display:block;font-size:11px;color:var(--sub);letter-spacing:.07em}
+main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:13px;padding:13px;align-items:start}
+.panel{background:var(--panel);border:1px solid #3e5054;border-radius:12px;padding:13px;min-width:0}
+.map-window{overflow:auto;max-height:75vh;background:#172326;border-radius:8px;overscroll-behavior:contain}
+.city-board{display:block;width:100%;height:auto;min-width:790px}
+.city-board .district path{fill:rgba(21,74,66,.11);stroke:rgba(249,250,238,.54);stroke-width:2.5;cursor:pointer;vector-effect:non-scaling-stroke}
+.city-board .district.is-damaged path{fill:#d9a446;fill-opacity:.38}
+.city-board .district.is-destroyed path{fill:#a43232;fill-opacity:.57}
+.city-board .district.is-burning path{fill:#da302a;fill-opacity:.70}
+.city-board .district.is-selected path{stroke:#54fbec;stroke-width:5;stroke-opacity:1}
+.city-board .special-zone path{fill:#253f3b;fill-opacity:.16;stroke-dasharray:6 5;cursor:default}
+.city-board .district-name{font-size:17px;fill:#fffbd7;stroke:#122329;stroke-width:5px;paint-order:stroke;font-weight:900;pointer-events:none}
+.city-board .district-risk{font-size:15px;fill:#81fbf6}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+.primary{background:#20696f;border-color:#378e96}.danger{background:#703d39}
+.tiny{font-size:12px;color:var(--sub)}.hint{color:#c5d5d2;font-size:13px}
+hr{border:0;border-top:1px solid #405054;margin:13px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid label{font-size:12px;color:var(--sub);display:block;margin-bottom:5px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}
+.stats>div{background:#172326;border:1px solid #3b5156;border-radius:8px;padding:9px 5px;text-align:center}
+.stats b{display:block;font-size:23px;font-variant-numeric:tabular-nums}.stats small{font-size:11px;color:var(--sub)}
+.key{display:flex;gap:12px;flex-wrap:wrap;margin:9px 0;font-size:12px;color:var(--sub)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px}
+#history{list-style:none;margin:9px 0 0;padding:0;max-height:360px;overflow:auto}
+#history li{font-size:13px;padding:8px 0;border-top:1px solid #3b4c50}
+#message{min-height:42px;color:#bef5db;font-weight:650}
+#queue{font-size:12px;color:var(--sub)}
+#selectionInfo{font-size:12px;line-height:1.5;color:#dce9e3}
+footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
+@media(max-width:1000px){main{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.side .panel{height:fit-content}}
+@media(max-width:650px){main{padding:7px;gap:8px}.panel{padding:10px}.side{display:block}.side .panel{margin-bottom:9px}header{display:block;padding:10px}header a{display:block;margin-top:5px}.toolbar button{flex:1}.map-window{max-height:48vh}.stats{gap:4px}.stats b{font-size:19px}}
+</style></head><body>
+<header><div><small>ФАЗА II · ИЗОЛИРОВАННЫЙ ТЕСТ 0.1 · НЕ ОСНОВНАЯ ИГРА</small>
+<h1>Катастрофа 1906 года</h1><small>Землетрясение по районам и непрерывная цепная реакция пожаров</small></div>
+<a href="./index.html">← Основная игра</a></header>
+<main>
+<section class="panel">
+<div class="toolbar"><button id="reset" class="danger">Сбросить расчёт</button><button id="loadSaved">Загрузить риски из партии</button></div>
+<div class="map-window" id="mapWindow" aria-label="Карта катастрофы"><p>Загружается настоящая карта районов…</p></div>
+<div class="key">
+<span><span class="dot" style="background:#48896e"></span>Цел</span>
+<span><span class="dot" style="background:#c99840"></span>Повреждён</span>
+<span><span class="dot" style="background:#a43232"></span>Разрушен</span>
+<span><span class="dot" style="background:#e44c30"></span>Пожар</span></div>
+<div class="stats" id="stats"></div><p id="message" aria-live="polite">Выберите сценарий, затем запустите землетрясение.</p>
+<div class="hint">Тестовые пороги: З0–1 — цел; З2 — повреждён (+1 П); З3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+ (тестовые числа можно изменять справа). Распространение без ограничения волн.</div>
+</section>
+<div class="side">
+<section class="panel">
+<h2>Настройка сценария</h2>
+<label class="tiny" for="preset">Начальные условия</label><select id="preset">
+<option value="three">3 очага: SoMa, Mission, Chinatown</option>
+<option value="one">1 очаг: SoMa</option>
+<option value="five">5 очагов</option>
+<option value="low-fire">3 очага, низкий риск пожара</option>
+<option value="high-risk">З7 / З5 / З4 — проверка абуза</option>
+<option value="base">Исходные значения без изменений</option>
+</select>
+<p class="tiny">До землетрясения коснитесь района на карте и измените его риски. Полные значения З и П никогда не обрезаются до III.</p>
+<hr><h2>Параметры пожара (эксперимент)</h2><div class="grid"><div><label for="igniteAt">Порог возгорания П</label><input id="igniteAt" type="number" min="1" step="1" inputmode="numeric" value="3"></div><div><label for="spreadBy">Передача от очага +П</label><input id="spreadBy" type="number" min="1" step="1" inputmode="numeric" value="2"></div></div><p class="tiny">Исходные значения: порог П3 и передача +2. Можно проверить более мягкую цепную реакцию, не переписывая правила.</p><hr><h2 id="selectedTitle">SoMa</h2><p id="selectionInfo"></p>
+<div class="grid">
+<div><label for="z">Землетрясение (З)</label><input id="z" type="number" inputmode="numeric" min="0" step="1"></div>
+<div><label for="p">Пожар (П)</label><input id="p" type="number" inputmode="numeric" min="0" step="1"></div>
+</div>
+<div class="actions" style="margin:8px 0 12px">
+<button id="zminus">З −1</button><button id="zplus">З +1</button><button id="pminus">П −1</button><button id="pplus">П +1</button>
+</div><hr>
+<div class="actions"><button id="quake" class="primary">Землетрясение!</button></div>
+<div class="actions" style="margin-top:8px"><button id="step">Следующий очаг</button><button id="all" class="primary">Вся цепная реакция</button></div>
+</section>
+<section class="panel"><h2>Ход пожара</h2><div id="queue">Начальных очагов пока нет.</div><ol id="history"></ol></section>
+<section class="panel"><h2>Пока не участвуют</h2>
+<p class="tiny">Пожарные части, водопровод, исследования, политика, полиция, военные, гражданские, эвакуация и окончательная потеря ПО — будущие слои катастрофы. Golden Gate Park, Presidio и Twin Peaks сейчас условно исключены из распространения пожара.</p></section>
+</div></main>
+<footer>Ветер влияет только на визуальный порядок обработки (с востока на запад), но не на силу огня. Численные пороги и специальные препятствия пока экспериментальные. Основная партия не изменяется.</footer>
+<script type="module" src="./catastrophe-ui.js?v=1"></script>
+</body></html>
