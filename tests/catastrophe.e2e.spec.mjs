@@ -98,3 +98,43 @@ test('mobile copy supports high raw risk and partial playback',async({page,conte
   expect(text).toContain('Осталось в очереди:');
   expect(text).toContain('Шаг 1. Источник:');
 });
+
+test('one local station saves Financial and stops large fire chain',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.goto('/catastrophe.html');
+  await page.locator('#preset').selectOption('five');
+  await page.locator('#spreadBy').fill('1');
+  await page.locator('[data-district="financial"] path').click();
+  await expect(page.locator('#selectedTitle')).toContainText('Financial');
+  await page.locator('#firehouse').check();
+  await expect(page.locator('#selectionInfo')).toContainText('П с пожарной частью 0');
+  await page.locator('#quake').click();
+  await expect(page.locator('#firehouse')).toBeDisabled();
+  await page.locator('#all').click();
+  await expect(page.locator('#message')).toContainText('сгорели 6 из 18');
+  await expect(page.locator('#selectionInfo')).toContainText('работает');
+  await page.locator('#copyReport').click();
+  await expect(page.locator('#copyFeedback')).toContainText('Скопировано');
+  const report=await page.evaluate(()=>navigator.clipboard.readText());
+  expect(report).toContain('Financial District: З1 П1; пожарная часть: есть');
+  expect(report).toContain('пожарных частей построено: 1');
+  expect(report).toContain('действуют: 1');
+});
+test('mobile damaged station stays active and copied log records it',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write']);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/catastrophe.html');
+  await page.locator('#preset').selectOption('base');
+  await page.locator('[data-district="missionbay"] path').click();
+  await expect(page.locator('#selectedTitle')).toContainText('Mission Bay');
+  await page.locator('#firehouse').check();
+  await page.locator('#quake').click();
+  await expect(page.locator('#selectionInfo')).toContainText('повреждён');
+  await expect(page.locator('#selectionInfo')).toContainText('работает');
+  await page.locator('#copyReport').click();
+  const report=await page.evaluate(()=>navigator.clipboard.readText());
+  expect(report).toContain('Mission Bay: З2 П0; пожарная часть: есть');
+  await page.locator('#reset').click();
+  await expect(page.locator('#firehouse')).toBeEnabled();
+  await expect(page.locator('#firehouse')).toBeChecked();
+});
