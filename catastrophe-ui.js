@@ -43,7 +43,7 @@ function draw(){
     ?'З'+n.z+'; П'+n.baseP+' → '+n.p+'; землетрясение: '+({intact:'цел',damaged:'повреждён',destroyed:'разрушен'}[n.quake])
        +(n.burning?'; горит':'')+'. От соседей: '+(n.received.map(c=>name(c.source)+' +'+c.amount).join(', ')||'нет')
     :'Полные значения: З'+values[selection].z+', П'+values[selection].p+'. На карте III — только индикатор.';
-  for(const id of ['z','p','zminus','zplus','pminus','pplus','quake','preset','loadSaved'])$(id).disabled=playing||!!sim;
+  for(const id of ['z','p','zminus','zplus','pminus','pplus','quake','preset','loadSaved','igniteAt','spreadBy'])$(id).disabled=playing||!!sim;
   $('step').disabled=playing||!sim||sim.done;
   $('all').disabled=playing||!sim||sim.done;
   $('reset').disabled=playing;
@@ -102,7 +102,7 @@ $('loadSaved').addEventListener('click',()=>{
 });
 $('quake').addEventListener('click',()=>{
   if(sim||playing)return;
-  sim=begin(values);$('history').replaceChildren();
+  sim=begin(values,{ignition:riskValue($('igniteAt').value),spread:riskValue($('spreadBy').value)});$('history').replaceChildren();
   $('message').textContent=sim.starts.length
     ?'Землетрясение! Начальные очаги: '+sim.starts.map(name).join(', ')+'.'
     :'Землетрясение: нет разрушенных районов, источники пожара отсутствуют.';
