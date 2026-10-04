@@ -24,11 +24,14 @@ function draw(){
       t.setAttribute('x',String(x));t.setAttribute('y',String(y));
       t.setAttribute('text-anchor','middle');t.setAttribute('class','district-name');
       const title=document.createElementNS('http://www.w3.org/2000/svg','tspan');
-      title.textContent=(n?.burning?'●':n?.quake==='damaged'?'!':'')+' '+(name(id).length>15?name(id).replace('Western Addition','Western').replace('Pacific Heights','Pacific').replace('Inner Richmond','I.Richmond').replace('Outer Richmond','O.Richmond'):name(id));
+      const stationIcon=n
+        ?(n.firehouseActive?'🚒 ':n.firehouseDestroyed?'×🚒 ':'')
+        :(r.firehouse?'🚒 ':'');
+      title.textContent=stationIcon+(n?.burning?'●':n?.quake==='damaged'?'!':'')+' '+(name(id).length>15?name(id).replace('Western Addition','Western').replace('Pacific Heights','Pacific').replace('Inner Richmond','I.Richmond').replace('Outer Richmond','O.Richmond'):name(id));
       title.setAttribute('x',String(x));
       const risk=document.createElementNS('http://www.w3.org/2000/svg','tspan');
       risk.setAttribute('x',String(x));risk.setAttribute('dy','20');risk.setAttribute('class','district-risk');
-      risk.textContent='З'+format(n?.z??r.z)+' П'+format(n?.p??r.p);
+      risk.textContent='З'+format(n?.z??r.z)+' П'+format(n?.p??Math.max(0,r.p-(r.firehouse?1:0)));
       t.append(title,risk);labels.append(t);
     }
   }
@@ -39,12 +42,18 @@ function draw(){
   ].map(([label,count])=>'<div><b>'+count+'</b><small>'+label+'</small></div>').join('');
   $('selectedTitle').textContent=name(selection);
   $('z').value=values[selection].z;$('p').value=values[selection].p;
+  $('firehouse').checked=!!values[selection].firehouse;
   const n=sim?.nodes[selection];
   $('selectionInfo').textContent=n
-    ?'З'+n.z+'; П'+n.baseP+' → '+n.p+'; землетрясение: '+({intact:'цел',damaged:'повреждён',destroyed:'разрушен'}[n.quake])
-       +(n.burning?'; горит':'')+'. От соседей: '+(n.received.map(c=>name(c.source)+' +'+c.amount).join(', ')||'нет')
-    :'Полные значения: З'+values[selection].z+', П'+values[selection].p+'. На карте III — только индикатор.';
-  for(const id of ['z','p','zminus','zplus','pminus','pplus','quake','preset','loadSaved','igniteAt','spreadBy'])$(id).disabled=playing||!!sim;
+    ?'З'+n.z+'; П исходная '+n.baseP+' → после землетрясения '+n.initialAfterQuakeP+' → сейчас '+n.p+
+      '; состояние: '+({intact:'цел',damaged:'повреждён',destroyed:'разрушен'}[n.quake])+
+      (n.burning?'; горит':'')+
+      '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.firehouseDestroyed?'УНИЧТОЖЕНА':'работает')+
+      '. От соседей: '+(n.received.map(c=>name(c.source)+' +'+c.amount).join(', ')||'нет')
+    :'Полные значения: З'+values[selection].z+', П до защиты '+values[selection].p+
+      ', П с пожарной частью '+Math.max(0,values[selection].p-(values[selection].firehouse?1:0))+
+      '. На карте III — только индикатор.';
+  for(const id of ['z','p','firehouse','zminus','zplus','pminus','pplus','quake','preset','loadSaved','igniteAt','spreadBy'])$(id).disabled=playing||!!sim;
   $('step').disabled=playing||!sim||sim.done;
   $('all').disabled=playing||!sim||sim.done;
   $('reset').disabled=playing;
@@ -80,6 +89,10 @@ for(const [id,key,delta] of [['zminus','z',-1],['zplus','z',1],['pminus','p',-1]
 }
 $('z').addEventListener('change',()=>setRisk('z',$('z').value));
 $('p').addEventListener('change',()=>setRisk('p',$('p').value));
+$('firehouse').addEventListener('change',()=>{
+  if(sim||playing)return;
+  values[selection].firehouse=$('firehouse').checked;draw();
+});
 $('preset').addEventListener('change',()=>{
   values=preset($('preset').value);scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
   $('message').textContent='Риски загружены. Запустите землетрясение.';draw();
@@ -113,7 +126,8 @@ function oneStep(){
   if(!sim||sim.done)return;
   const event=next(sim);const st=stats(sim);
   const li=document.createElement('li');
-  const changes=event.hits.map(h=>name(h.id)+' П'+h.before+'→'+h.after+(h.newlyBurning?' 🔥':'')).join('; ');
+  const changes=event.hits.map(h=>name(h.id)+' П'+h.before+'→'+h.after+
+    (h.newlyBurning?' 🔥':'')+(h.stationDestroyed?' (пожарная часть уничтожена)':'')).join('; ');
   const head=document.createElement('strong');
   head.textContent=event.index+'. '+name(event.source)+' → '+event.hits.length+' соседей';
   const details=document.createElement('div');
@@ -160,6 +174,6 @@ async function copyFullReport(){
     field.remove();
     if(!success){feedback.textContent='Не получилось скопировать. Разрешите доступ к буферу обмена.';return;}
   }
-  feedback.textContent='Скопировано: сценарий, все З/П, шаги и результаты. Вставьте отчёт в чат.';
+  feedback.textContent='Скопировано: З/П, пожарные части, шаги и результаты. Вставьте отчёт в чат.';
 }
 $('copyReport').addEventListener('click',copyFullReport);
