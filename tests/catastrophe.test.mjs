@@ -66,3 +66,11 @@ test('scenario matrix reported for design review',()=>{
     console.log('CATASTROPHE-SCENARIO',key,JSON.stringify(st));
   }
 });
+
+test('tuning fire strength and ignition changes outcome without touching Phase I',()=>{
+  const strong=stats(run(begin(preset('one')))).burning;
+  const mild=stats(run(begin(preset('one'),{spread:1,ignition:4})).burning;
+  console.log('CATASTROPHE-SENSITIVITY',JSON.stringify({oneOriginStrong:strong,oneOriginMild:mild}));
+  assert.ok(strong>mild);
+  assert.equal(mild,1);
+});
