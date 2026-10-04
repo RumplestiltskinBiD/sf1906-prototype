@@ -49,3 +49,13 @@ test('mobile portrait stays map-scrollable and risks editable by tapping distric
   await page.locator('#step').click();
   await expect(page.locator('#history li')).toHaveCount(1);
 });
+
+test('tuning the fire makes a one-source catastrophe local',async({page})=>{
+  await page.goto('/catastrophe.html');
+  await page.locator('#preset').selectOption('one');
+  await page.locator('#igniteAt').fill('4');
+  await page.locator('#spreadBy').fill('1');
+  await page.locator('#quake').click();
+  await page.locator('#all').click();
+  await expect(page.locator('#message')).toContainText('сгорели 1 из 18');
+});
