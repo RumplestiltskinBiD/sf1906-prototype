@@ -1,10 +1,11 @@
 import {DISTRICTS} from './game-core.js';
-import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats} from './catastrophe-core.js';
+import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport} from './catastrophe-core.js';
 const $=id=>document.getElementById(id);
 const known=new Map(DISTRICTS.map(d=>[d.id,d]));
 const savedKey='sf1906_phase1_ui_v030a';
 const name=id=>known.get(id)?.name||id;
 let values=preset('three'),sim=null,selection='soma',playing=false,svg=null,labels=null;
+let scenarioLabel='3 очага: SoMa, Mission, Chinatown';
 const format=r=>{const x=indicator(r);return x.raw>3?'III('+x.raw+')':String(x.raw);};
 const safeText=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function draw(){
@@ -80,12 +81,12 @@ for(const [id,key,delta] of [['zminus','z',-1],['zplus','z',1],['pminus','p',-1]
 $('z').addEventListener('change',()=>setRisk('z',$('z').value));
 $('p').addEventListener('change',()=>setRisk('p',$('p').value));
 $('preset').addEventListener('change',()=>{
-  values=preset($('preset').value);sim=null;$('history').replaceChildren();
+  values=preset($('preset').value);scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
   $('message').textContent='Риски загружены. Запустите землетрясение.';draw();
 });
 $('reset').addEventListener('click',()=>{
   if(sim){sim=null;$('history').replaceChildren();$('message').textContent='Расчёт сброшен, значения рисков сохранены.';}
-  else{values=preset($('preset').value);$('message').textContent='Сценарий восстановлен.';}
+  else{values=preset($('preset').value);scenarioLabel=$('preset').selectedOptions[0].textContent;$('message').textContent='Сценарий восстановлен.';}
   draw();
 });
 $('loadSaved').addEventListener('click',()=>{
@@ -94,7 +95,7 @@ $('loadSaved').addEventListener('click',()=>{
     if(!raw)throw Error('Нет сохранённой партии.');
     const game=JSON.parse(raw);
     if(!game||!Array.isArray(game.constructions)||!game.districts)throw Error('Неизвестный формат.');
-    values=fromGame(game);sim=null;
+    values=fromGame(game);sim=null;scenarioLabel='Риски из сохранённой партии';
     $('preset').value='base';$('history').replaceChildren();
     $('message').textContent='Загружены реальные риски партии. Сохранение не изменено.';
     draw();
@@ -134,3 +135,31 @@ $('all').addEventListener('click',async()=>{
   playing=false;draw();
 });
 draw();loadMap();
+
+async function copyFullReport(){
+  // No intermediate modal, export, share sheet or file download is needed.
+  const text=formatReport({
+    input:values,simulation:sim,scenario:scenarioLabel,
+    config:{ignition:Math.max(1,riskValue($('igniteAt').value)),
+      spread:Math.max(1,riskValue($('spreadBy').value))}
+  });
+  const feedback=$('copyFeedback');
+  try{
+    if(!navigator.clipboard?.writeText)throw new Error('Clipboard API unavailable');
+    await navigator.clipboard.writeText(text);
+  }catch{
+    // iOS Safari compatibility fallback when Clipboard API is unavailable.
+    const field=document.createElement('textarea');
+    field.value=text;
+    field.setAttribute('readonly','');
+    field.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;z-index:-1';
+    document.body.append(field);
+    field.focus();field.select();field.setSelectionRange(0,field.value.length);
+    let success=false;
+    try{success=document.execCommand('copy');}catch{}
+    field.remove();
+    if(!success){feedback.textContent='Не получилось скопировать. Разрешите доступ к буферу обмена.';return;}
+  }
+  feedback.textContent='Скопировано: сценарий, все З/П, шаги и результаты. Вставьте отчёт в чат.';
+}
+$('copyReport').addEventListener('click',copyFullReport);

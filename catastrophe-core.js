@@ -89,3 +89,67 @@ export function stats(sim){
     newFires:list.filter(n=>n.origin==='spread').length,
     sourcesProcessed:sim.events.length,total:list.length};
 }
+
+// A reproducible, complete plain-text snapshot for sharing game-design tests.
+// Data comes from the simulation history, never from transient DOM log entries.
+export function formatReport({input,simulation=null,config=RULES,scenario='Не указан'}={}){
+  const c=simulation?.config||{...RULES,...config};
+  const names=Object.fromEntries(DISTRICTS.map(d=>[d.id,d.name]));
+  const name=id=>names[id]||id;
+  const quakeName={intact:'Цел',damaged:'Повреждён',destroyed:'Разрушен'};
+  const lines=[
+    'SAN FRANCISCO 1906 | ОТЧЁТ СИМУЛЯТОРА КАТАСТРОФЫ',
+    'Сценарий: '+scenario,
+    'Статус: '+(!simulation?'Не запущено':simulation.done?'Расчёт завершён':'Частичный расчёт'),
+    'Правила: З повреждение от '+c.damage+'; З разрушение от '+c.collapse+
+      '; повреждённый район +'+c.damageFire+' П; возгорание от П'+c.ignition+
+      '; передача очага +'+c.spread+' П соседям.',
+    'Реальные З и П без верхнего лимита; III — только индикатор.',
+    'Граф: обычные застраиваемые районы; парк, Presidio и Twin Peaks исключены. Каждый источник передаёт огонь один раз.',
+    '',
+    '=== ИСХОДНЫЕ ЗНАЧЕНИЯ ВСЕХ РАЙОНОВ (до землетрясения) ==='
+  ];
+  for(const id of DISTRICT_IDS){
+    const n=simulation?.nodes[id],r=input?.[id]||{};
+    lines.push(name(id)+': З'+(n?.z??riskValue(r.z))+' П'+(n?.baseP??riskValue(r.p)));
+  }
+  if(!simulation){
+    lines.push('','=== РАСЧЁТ ЕЩЁ НЕ ЗАПУЩЕН ===');
+    return lines.join('\n');
+  }
+  lines.push('','=== РЕЗУЛЬТАТ ЗЕМЛЕТРЯСЕНИЯ ===');
+  for(const id of DISTRICT_IDS){
+    const n=simulation.nodes[id];
+    lines.push(name(id)+': '+quakeName[n.quake]+
+      '; П'+n.baseP+' → П'+(n.baseP+(n.quake==='damaged'?c.damageFire:0))+
+      (n.origin==='earthquake'?'; первоначальный очаг':''));
+  }
+  lines.push('Первоначальные очаги (порядок): '+(simulation.starts.map(name).join(' → ')||'нет'));
+  lines.push('','=== ПОШАГОВОЕ РАСПРОСТРАНЕНИЕ ПОЖАРА ===');
+  if(!simulation.events.length)lines.push('Обработанных очагов пока нет.');
+  for(const step of simulation.events){
+    lines.push('Шаг '+step.index+'. Источник: '+name(step.source));
+    if(!step.hits.length)lines.push('  Нет соседей для передачи.');
+    for(const h of step.hits){
+      lines.push('  → '+name(h.id)+': П'+h.before+' +'+(h.after-h.before)+' = П'+h.after+
+        (h.newlyBurning?' — НОВЫЙ ОЧАГ':''));
+    }
+    lines.push('  Новые очаги: '+(step.ignited.map(name).join(', ')||'нет'));
+  }
+  const summary=stats(simulation);
+  lines.push('','=== ИТОГ И ТЕКУЩИЕ СОСТОЯНИЯ ===');
+  lines.push('Всего районов: '+summary.total+'; целых после З: '+summary.intact+
+    '; повреждены: '+summary.damaged+'; разрушены землетрясением: '+summary.destroyed+
+    '; всего загорелось: '+summary.burning+'; новых очагов: '+summary.newFires+
+    '; обработано источников: '+summary.sourcesProcessed+'.');
+  lines.push('Осталось в очереди: '+(simulation.queue.map(name).join(' → ')||'нет')+'.');
+  for(const id of DISTRICT_IDS){
+    const n=simulation.nodes[id];
+    lines.push(name(id)+': '+quakeName[n.quake]+'; П нач='+n.baseP+
+      ', П тек='+n.p+'; огонь='+
+      (n.burning?(n.origin==='earthquake'?'от землетрясения':'от соседей'):'нет')+
+      '; передал='+ (n.spreadDone?'да':'нет')+
+      '; получено: '+(n.received.map(x=>name(x.source)+' +'+x.amount).join(', ')||'нет'));
+  }
+  return lines.join('\n');
+}

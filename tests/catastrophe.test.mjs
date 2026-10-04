@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {districtNeighbors} from '../game-core.js';
-import {DISTRICT_IDS,indicator,riskValue,fromGame,preset,begin,next,run,stats} from '../catastrophe-core.js';
+import {DISTRICT_IDS,indicator,riskValue,fromGame,preset,begin,next,run,stats,formatReport} from '../catastrophe-core.js';
 test('unbounded risk: III is only a label, 7 minus one is 6',()=>{
   assert.deepEqual(indicator(7),{raw:7,level:3});
   assert.equal(riskValue(7-1),6);
@@ -73,4 +73,36 @@ test('tuning fire strength and ignition changes outcome without touching Phase I
   console.log('CATASTROPHE-SENSITIVITY',JSON.stringify({oneOriginStrong:strong,oneOriginMild:mild}));
   assert.ok(strong>mild);
   assert.equal(mild,1);
+});
+
+test('full report contains raw risks, thresholds, stacked sources and all steps',()=>{
+  const p=preset('three');
+  p.soma.z=7;p.mission.p=8;
+  const s=run(begin(p,{ignition:5,spread:2}));
+  const report=formatReport({input:p,simulation:s,scenario:'Тест трёх очагов'});
+  assert.match(report,/Сценарий: Тест трёх очагов/);
+  assert.match(report,/Статус: Расчёт завершён/);
+  assert.match(report,/З разрушение от 3/);
+  assert.match(report,/возгорание от П5/);
+  assert.match(report,/SoMa: З7 П1/);
+  assert.match(report,/Mission: З3 П8/);
+  assert.match(report,/Первоначальные очаги/);
+  assert.match(report,/Шаг 1\. Источник:/);
+  assert.match(report,/Mission Bay.*П\d+ \+2 = П\d+/);
+  assert.match(report,/Civic Center.*П\d+ \+2 = П\d+/);
+  assert.match(report,/П тек=/);
+  assert.match(report,/Осталось в очереди: нет/);
+  assert.match(report,/Всего районов: 18/);
+});
+test('partial and pre-quake reports are explicit and reproducible',()=>{
+  const p=preset('one');
+  const before=formatReport({input:p,scenario:'Один очаг',config:{ignition:9,spread:1}});
+  assert.match(before,/Расчёт ещё не запущен/i);
+  assert.match(before,/возгорание от П9/);
+  const sim=begin(p);next(sim);
+  const partial=formatReport({input:p,simulation:sim,scenario:'Один очаг'});
+  assert.match(partial,/Частичный расчёт/);
+  assert.match(partial,/Осталось в очереди:/);
+  assert.match(partial,/Шаг 1\. Источник:/);
+  assert.ok(partial.length>before.length);
 });
