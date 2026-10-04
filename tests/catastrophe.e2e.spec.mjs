@@ -68,6 +68,7 @@ test('one-click complete report copies full configuration and results on desktop
   await page.locator('#spreadBy').fill('1');
   await page.locator('#quake').click();
   await page.locator('#all').click();
+  await expect(page.locator('#message')).toContainText('Готово');
   await page.locator('#copyReport').click();
   await expect(page.locator('#copyFeedback')).toContainText('Скопировано');
   const text=await page.evaluate(()=>navigator.clipboard.readText());
