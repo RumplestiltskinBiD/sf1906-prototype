@@ -10,6 +10,8 @@ h1{font:700 clamp(23px,3vw,30px) Georgia,serif;margin:2px 0}h2{font:700 20px Geo
 button,input,select{font:inherit}button,select,input{color:var(--ink);background:#2b383b;border:1px solid var(--line);border-radius:8px;min-height:42px;padding:7px 10px}
 button{cursor:pointer;font-weight:700}button:hover:not(:disabled){border-color:var(--aqua)}button:disabled{opacity:.46;cursor:not-allowed}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--aqua)}input,select{width:100%}
+#firehouse{width:22px;height:22px;min-height:22px;accent-color:#56bca4;margin:0;flex-shrink:0}
+.station-toggle{display:flex;gap:10px;align-items:center;cursor:pointer;margin:12px 0;padding:11px 12px;background:#18343a;border:1px solid #3f7575;border-radius:8px;font-size:14px}
 header{padding:12px 18px;background:#111718;border-bottom:1px solid #39494d;display:flex;justify-content:space-between;gap:16px;align-items:center}
 header a{color:#8be2e6}header small{display:block;font-size:11px;color:var(--sub);letter-spacing:.07em}
 main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:13px;padding:13px;align-items:start}
@@ -57,6 +59,7 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <span><span class="dot" style="background:#a43232"></span>Разрушен</span>
 <span><span class="dot" style="background:#e44c30"></span>Пожар</span></div>
 <div class="stats" id="stats"></div><p id="message" aria-live="polite">Выберите сценарий, затем запустите землетрясение.</p>
+<div class="hint">Разместите пожарную часть в выбранном на карте районе с помощью галочки справа. При загрузке партии готовые части подтягиваются автоматически.</div>
 <div class="hint">Тестовые пороги: З0–1 — цел; З2 — повреждён (+1 П); З3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+ (тестовые числа можно изменять справа). Распространение без ограничения волн.</div>
 </section>
 <div class="side">
@@ -76,6 +79,8 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <div><label for="z">Землетрясение (З)</label><input id="z" type="number" inputmode="numeric" min="0" step="1"></div>
 <div><label for="p">Пожар (П)</label><input id="p" type="number" inputmode="numeric" min="0" step="1"></div>
 </div>
+<label class="station-toggle" for="firehouse"><input id="firehouse" type="checkbox"><span>🚒 Пожарная часть в районе <strong>−1 П</strong></span></label>
+<div class="tiny">Защищает только свой район. Повреждённая работает; при разрушении или пожаре уничтожается. Прибавки +1 от соседей не блокирует.</div>
 <div class="actions" style="margin:8px 0 12px">
 <button id="zminus">З −1</button><button id="zplus">З +1</button><button id="pminus">П −1</button><button id="pplus">П +1</button>
 </div><hr>
@@ -87,5 +92,5 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <p class="tiny">Пожарные части, водопровод, исследования, политика, полиция, военные, гражданские, эвакуация и окончательная потеря ПО — будущие слои катастрофы. Golden Gate Park, Presidio и Twin Peaks сейчас условно исключены из распространения пожара.</p></section>
 </div></main>
 <footer>Ветер влияет только на визуальный порядок обработки (с востока на запад), но не на силу огня. Численные пороги и специальные препятствия пока экспериментальные. Основная партия не изменяется.</footer>
-<script type="module" src="./catastrophe-ui.js?v=2"></script>
+<script type="module" src="./catastrophe-ui.js?v=3"></script>
 </body></html>

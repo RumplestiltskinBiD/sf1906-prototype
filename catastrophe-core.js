@@ -20,7 +20,13 @@ export const eastToWest=(a,b)=>(CENTERS[b]?.[0]||0)-(CENTERS[a]?.[0]||0)
 export function fromGame(game=createInitialState({rng:()=>0.5})){
   return Object.fromEntries(DISTRICT_IDS.map(id=>{
     const r=districtRisk(game,id);
-    return [id,{z:riskValue(r.earthquake.raw),p:riskValue(r.fire.raw)}];
+    // Base engine has already applied -1 P for a completed station.
+    // Recover risk before stations so this lab never deducts it twice.
+    const stations=(game?.constructions||[]).filter(c=>c.districtId===id
+      &&c.status==='complete'&&c.projectId==='firehouse').length;
+    return [id,{z:riskValue(r.earthquake.raw),
+      p:riskValue((r.fire.net??r.fire.raw)+stations),
+      firehouse:stations>0}];
   }));
 }
 export function preset(key='three'){
@@ -45,7 +51,15 @@ export function begin(input,custom={}){
     const z=riskValue(input[id]?.z),baseP=riskValue(input[id]?.p);
     const quake=z>=config.collapse?'destroyed':z>=config.damage?'damaged':'intact';
     const burning=quake==='destroyed';
-    nodes[id]={id,z,baseP,quake,p:baseP+(quake==='damaged'?config.damageFire:0),
+    const firehouseBuilt=!!input[id]?.firehouse;
+    const firehouseActive=firehouseBuilt&&!burning;
+    const firehouseDestroyed=firehouseBuilt&&burning;
+    const quakeFireBonus=quake==='damaged'?config.damageFire:0;
+    // Apply once after quake; +P from each neighbour is NOT blocked.
+    // Cap at P0 so there is no invisible negative buffer.
+    const initialAfterQuakeP=Math.max(0,baseP+quakeFireBonus-(firehouseActive?1:0));
+    nodes[id]={id,z,baseP,quake,quakeFireBonus,initialAfterQuakeP,
+      p:initialAfterQuakeP,firehouseBuilt,firehouseActive,firehouseDestroyed,
       burning,origin:burning?'earthquake':null,spreadDone:false,received:[]};
     if(burning)starts.push(id);
   }
@@ -66,11 +80,18 @@ export function next(sim){
     to.p+=sim.config.spread;
     to.received.push({source,amount:sim.config.spread});
     let newlyBurning=false;
+    let stationDestroyed=false;
     if(!to.burning&&to.p>=sim.config.ignition){
       to.burning=true;to.origin='spread';newlyBurning=true;
+      if(to.firehouseActive){
+        to.firehouseActive=false;to.firehouseDestroyed=true;
+        stationDestroyed=true;
+      }
+      // Past -1 is not undone in the historical P counter after ignition.
+      // The district is already irreversibly burning.
       ignited.push(id);sim.queue.push(id);
     }
-    hits.push({id,before,after:to.p,newlyBurning});
+    hits.push({id,before,after:to.p,newlyBurning,stationDestroyed});
   }
   const event={source,hits,ignited,index:sim.events.length+1};
   sim.events.push(event);sim.done=!sim.queue.length;return event;
@@ -87,6 +108,9 @@ export function stats(sim){
     destroyed:list.filter(n=>n.quake==='destroyed').length,
     burning:list.filter(n=>n.burning).length,
     newFires:list.filter(n=>n.origin==='spread').length,
+    firehousesBuilt:list.filter(n=>n.firehouseBuilt).length,
+    firehousesActive:list.filter(n=>n.firehouseActive).length,
+    firehousesDestroyed:list.filter(n=>n.firehouseDestroyed).length,
     sourcesProcessed:sim.events.length,total:list.length};
 }
 
@@ -106,12 +130,14 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
       '; передача очага +'+c.spread+' П соседям.',
     'Реальные З и П без верхнего лимита; III — только индикатор.',
     'Граф: обычные застраиваемые районы; парк, Presidio и Twin Peaks исключены. Каждый источник передаёт огонь один раз.',
+    'Пожарная часть: только свой район, −1 П однократно после землетрясения (не ниже П0); повреждённая работает; разрушенная/сгоревшая уничтожена. Входящий огонь не блокируется.',
     '',
     '=== ИСХОДНЫЕ ЗНАЧЕНИЯ ВСЕХ РАЙОНОВ (до землетрясения) ==='
   ];
   for(const id of DISTRICT_IDS){
     const n=simulation?.nodes[id],r=input?.[id]||{};
-    lines.push(name(id)+': З'+(n?.z??riskValue(r.z))+' П'+(n?.baseP??riskValue(r.p)));
+    lines.push(name(id)+': З'+(n?.z??riskValue(r.z))+' П'+(n?.baseP??riskValue(r.p))+
+      '; пожарная часть: '+((n?.firehouseBuilt??!!r.firehouse)?'есть':'нет'));
   }
   if(!simulation){
     lines.push('','=== РАСЧЁТ ЕЩЁ НЕ ЗАПУЩЕН ===');
@@ -121,7 +147,11 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
   for(const id of DISTRICT_IDS){
     const n=simulation.nodes[id];
     lines.push(name(id)+': '+quakeName[n.quake]+
-      '; П'+n.baseP+' → П'+(n.baseP+(n.quake==='damaged'?c.damageFire:0))+
+      '; П'+n.baseP+
+      (n.quakeFireBonus?' +'+n.quakeFireBonus+' (повреждение)':'')+
+      (n.firehouseBuilt&&n.quake!=='destroyed'?' −1 (пожарная часть)':'')+
+      ' → П'+n.initialAfterQuakeP+
+      '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.quake==='destroyed'?'уничтожена землетрясением':'работает')+
       (n.origin==='earthquake'?'; первоначальный очаг':''));
   }
   lines.push('Первоначальные очаги (порядок): '+(simulation.starts.map(name).join(' → ')||'нет'));
@@ -132,7 +162,8 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
     if(!step.hits.length)lines.push('  Нет соседей для передачи.');
     for(const h of step.hits){
       lines.push('  → '+name(h.id)+': П'+h.before+' +'+(h.after-h.before)+' = П'+h.after+
-        (h.newlyBurning?' — НОВЫЙ ОЧАГ':''));
+        (h.newlyBurning?' — НОВЫЙ ОЧАГ':'')+
+        (h.stationDestroyed?' — ПОЖАРНАЯ ЧАСТЬ УНИЧТОЖЕНА':''));
     }
     lines.push('  Новые очаги: '+(step.ignited.map(name).join(', ')||'нет'));
   }
@@ -141,6 +172,9 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
   lines.push('Всего районов: '+summary.total+'; целых после З: '+summary.intact+
     '; повреждены: '+summary.damaged+'; разрушены землетрясением: '+summary.destroyed+
     '; всего загорелось: '+summary.burning+'; новых очагов: '+summary.newFires+
+    '; пожарных частей построено: '+summary.firehousesBuilt+
+    '; действуют: '+summary.firehousesActive+
+    '; уничтожены: '+summary.firehousesDestroyed+
     '; обработано источников: '+summary.sourcesProcessed+'.');
   lines.push('Осталось в очереди: '+(simulation.queue.map(name).join(' → ')||'нет')+'.');
   for(const id of DISTRICT_IDS){
@@ -149,6 +183,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
       ', П тек='+n.p+'; огонь='+
       (n.burning?(n.origin==='earthquake'?'от землетрясения':'от соседей'):'нет')+
       '; передал='+ (n.spreadDone?'да':'нет')+
+      '; пожарная часть='+(!n.firehouseBuilt?'нет':n.firehouseDestroyed?'уничтожена':'работает')+
       '; получено: '+(n.received.map(x=>name(x.source)+' +'+x.amount).join(', ')||'нет'));
   }
   return lines.join('\n');
