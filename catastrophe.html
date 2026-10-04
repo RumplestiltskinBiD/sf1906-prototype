@@ -57,7 +57,7 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <span><span class="dot" style="background:#a43232"></span>Разрушен</span>
 <span><span class="dot" style="background:#e44c30"></span>Пожар</span></div>
 <div class="stats" id="stats"></div><p id="message" aria-live="polite">Выберите сценарий, затем запустите землетрясение.</p>
-<div class="hint">Тестовые пороги: З0–1 — цел; З2 — повреждён (+1 П); З3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+. Распространение без ограничения волн.</div>
+<div class="hint">Тестовые пороги: З0–1 — цел; З2 — повреждён (+1 П); З3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+ (тестовые числа можно изменять справа). Распространение без ограничения волн.</div>
 </section>
 <div class="side">
 <section class="panel">
@@ -71,7 +71,7 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <option value="base">Исходные значения без изменений</option>
 </select>
 <p class="tiny">До землетрясения коснитесь района на карте и измените его риски. Полные значения З и П никогда не обрезаются до III.</p>
-<hr><h2 id="selectedTitle">SoMa</h2><p id="selectionInfo"></p>
+<hr><h2>Параметры пожара (эксперимент)</h2><div class="grid"><div><label for="igniteAt">Порог возгорания П</label><input id="igniteAt" type="number" min="1" step="1" inputmode="numeric" value="3"></div><div><label for="spreadBy">Передача от очага +П</label><input id="spreadBy" type="number" min="1" step="1" inputmode="numeric" value="2"></div></div><p class="tiny">Исходные значения: порог П3 и передача +2. Можно проверить более мягкую цепную реакцию, не переписывая правила.</p><hr><h2 id="selectedTitle">SoMa</h2><p id="selectionInfo"></p>
 <div class="grid">
 <div><label for="z">Землетрясение (З)</label><input id="z" type="number" inputmode="numeric" min="0" step="1"></div>
 <div><label for="p">Пожар (П)</label><input id="p" type="number" inputmode="numeric" min="0" step="1"></div>
