@@ -32,7 +32,7 @@ test('newspaper is visible across market and map; issue opens on demand',async({
   await page.locator('#newsOpenBtn').click();
   await expect(page.locator('#newsSheet')).toBeVisible();
   await expect(page.locator('#newsSheetContent .news-headline')).toBeVisible();
-  await expect(page.locator('#newsSheetContent .news-forecast')).toContainText('конец года');
+  await expect(page.locator('#newsSheetContent .news-forecast')).toContainText(/конец года/i);
   await page.locator('#newsCloseBtn').click();
   await expect(page.locator('#newsSheet')).toBeHidden();
   await page.locator('.nav-btn[data-view="city"]').click();
@@ -75,6 +75,7 @@ test('news settles once on end of year, next issue and archive remain accessible
   await seededGame(page,{news:'E02',constructions:[{projectId:'shops',districtId:'financial',playerId:0}]});
   await page.evaluate(storage=>{
     const s=JSON.parse(localStorage.getItem(storage));
+    s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
     s.developmentComplete=true;s.developmentPlayer=null;
     localStorage.setItem(storage,JSON.stringify(s));
   },storage);
