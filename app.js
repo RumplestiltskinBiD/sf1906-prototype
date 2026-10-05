@@ -4,12 +4,13 @@ LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOU
 projectById,districtById,districtAccess,districtNeighbors,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -21,6 +22,10 @@ let deliveryDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
 let riskViewActive=false;
+let newsSheetOpen=false;
+let newsArchiveIndex=null;
+let newsMapVisible=false;
+let newsEmergencyMode=false;
 let undoHistory=[];
 let undoApplying=false;
 let lastSavedSnapshot=JSON.stringify(state);
@@ -109,6 +114,7 @@ parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
 }
 if(!['0.22','0.23','0.24','0.25','0.28','0.30a'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+ensureNewspaper(parsed);
 return parsed;
 }
 function isMobile(){return window.matchMedia('(max-width:640px), (max-height:500px) and (max-width:960px)').matches;}
@@ -298,12 +304,14 @@ return `<div class="risk-preview-box ${qCross||fCross?'crosses-level':''}">
 </div>`;
 }
 function syncStickyLayout(){
-const top=$('.topbar'),players=$('#playersBar');
+const top=$('.topbar'),players=$('#playersBar'),news=$('#newsStrip');
 if(!top||!players)return;
 const topH=Math.ceil(top.getBoundingClientRect().height);
 const playersH=Math.ceil(players.getBoundingClientRect().height);
+const newsH=Math.ceil(news?.getBoundingClientRect().height||0);
 document.documentElement.style.setProperty('--topbar-h',topH+'px');
-document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH)+'px');
+document.documentElement.style.setProperty('--news-top-h',(topH+playersH)+'px');
+document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH+newsH)+'px');
 }
 function showObjectsOnMap(playerId){
 overviewPlayerId=playerId===currentDeveloper(state)?null:playerId;
@@ -657,9 +665,166 @@ for(let i=1;i<pts.length;i++)html+='<line class="delivery-route-line" x1="'+pts[
 pts.forEach((p,i)=>html+='<g class="delivery-route-stop '+(i===pts.length-1?'current':'')+'" transform="translate('+p[0]+' '+p[1]+')"><circle r="17"/><text y="4">'+i+'</text></g>');
 layer.innerHTML=html;
 }
+
+function newspaperEffectShort(card){
+  if(!card)return 'Выпуск отсутствует';
+  const unit=card.resource==='capital'?'$':card.resource==='influence'?'Влияние ':'ПО ';
+  const sign=card.delta>0?'+':'−';
+  return sign+(unit==='$'?unit+Math.abs(card.delta):Math.abs(card.delta)+' '+unit.trim())+
+    (card.frequency==='perDistrict'?' / район':' / игрока');
+}
+function newsArchiveText(report){
+  return (report?.entries||[]).map(e=>{
+    const names=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ')||'—';
+    const player=state.players[e.playerId]?.name||'Игрок '+e.playerId;
+    return player+' · '+names+': '+(e.defended?'предотвращено':e.actual===0?'без финансовых изменений':
+      (e.actual>0?'+':'')+e.actual+' '+(report.cardId==='E05'?'Влияние/ПО/$':'ед.'));
+  }).join('\n');
+}
+function openNewspaper(index=null){
+  newsArchiveIndex=index;newsSheetOpen=true;
+  renderNewspaper();
+  $('#newsCloseBtn')?.focus();
+}
+function closeNewspaper(){
+  newsSheetOpen=false;newsArchiveIndex=null;
+  $('#newsSheet').hidden=true;$('#newsBackdrop').hidden=true;
+  document.body.classList.remove('news-sheet-open');
+  $('#newsOpenBtn')?.focus();
+}
+function startNewsEmergency(){
+  const news=activeNewspaper(state);
+  if(!news||news.delta>=0){showToast('Сегодня экстренная защита не нужна');return;}
+  if(state.phase!=='development'||state.developmentComplete){showToast('Экстренные меры доступны в фазе развития');return;}
+  if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction){showToast('Сначала завершите или отмените текущую операцию');return;}
+  newsEmergencyMode=true;newsMapVisible=true;
+  state.view='city';
+  closeNewspaper();
+  render();
+  showToast('Выберите представителя, затем район на карте · $1 и основное действие');
+  requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
+}
+function renderNewspaper(){
+  const card=activeNewspaper(state),forecast=newsPreview(state);
+  const year=1899+state.round;
+  const latest=state.newsArchive?.[state.newsArchive.length-1];
+  const event=card||((state.finished&&latest)?null:null);
+  const stripLabel=$('#newsStripLabel');
+  stripLabel.textContent=event
+    ?year+' · '+event.category.toUpperCase()+' · '+event.title+' · '+newspaperEffectShort(event)
+    :latest?'1906 близко · '+latest.year+' · Итоги: '+latest.title:'Нет выпуска';
+  $('#newsMapBtn').setAttribute('aria-pressed',newsMapVisible?'true':'false');
+  $('#newsEmergencyCancel').hidden=!newsEmergencyMode;
+  if(newsEmergencyMode)$('#newsStripLabel').textContent='ЭКСТРЕННЫЕ МЕРЫ: выберите район на карте · $1 + действие';
+  const board=$('.city-board');
+  board?.classList.toggle('news-map',newsMapVisible);
+  const affected=new Set(forecast.threatened),protectedSet=new Set(forecast.protected);
+  $$('[data-district]').forEach(g=>{
+    const id=g.dataset.district;
+    g.classList.toggle('news-threat',newsMapVisible&&affected.has(id));
+    g.classList.toggle('news-protected',newsMapVisible&&protectedSet.has(id));
+  });
+  $('#newsSheet').hidden=!newsSheetOpen;
+  $('#newsBackdrop').hidden=!newsSheetOpen;
+  document.body.classList.toggle('news-sheet-open',newsSheetOpen);
+  if(!newsSheetOpen)return;
+  const archive=state.newsArchive||[];
+  const archived=newsArchiveIndex==null
+    ?(!card&&archive.length?archive[archive.length-1]:null)
+    :archive[newsArchiveIndex];
+  const issue=archived?null:card;
+  const displayed=archived||issue;
+  if(!displayed){$('#newsSheetContent').textContent='Выпусков пока нет';return;}
+  const historical=archived?newsCardByHistory(archived.cardId):null;
+  const record=archived?(historical||archived):displayed;
+  const outcomeRows=archived?(archived.entries||[]).map(e=>{
+    const p=state.players[e.playerId]?.name||'Игрок';
+    const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
+    const delta=archived.changes?.[e.playerId];
+    const status=e.defended?'Предотвращено':e.actual>0?'Прибыль':e.actual<0?'Потери':'Без изменений';
+    return '<li>'+escapeHtml(p)+' · '+escapeHtml(loc)+': <b>'+escapeHtml(status)+'</b>'+
+      (e.actual?' ('+(e.actual>0?'+':'')+e.actual+')':'')+'</li>';
+  }).join(''):'';
+  const remaining=archive.map((r,i)=>'<button type="button" class="'+(archived===r?'active':'')+
+    '" data-news-archive="'+i+'">'+r.year+'</button>').join('');
+  const group=archived?null:forecast.summary;
+  const projections=issue&&forecast.entries.length
+    ?forecast.entries.map(e=>{
+      const place=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
+      const name=state.players[e.playerId]?.name||'Игрок';
+      const status=e.defended?'ЗАЩИЩЕНО':e.exposedDistrictIds?.length?'ПОД УГРОЗОЙ':issue.delta>=0?'БОНУС':'—';
+      return '<li>'+escapeHtml(place)+' · '+escapeHtml(name)+' · <strong>'+
+        status+'</strong></li>';
+    }).join('')
+    :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
+  const isEmergencyPossible=!!issue&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const targetDescription={
+    housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
+    'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
+    'bank-insurance-hotel':'Банки, страховые компании и отели',
+    'tenement-speculative':'Рабочие и спекулятивные дома',
+    'hotel-club-shops':'Отели, клубы, торговые ряды',
+    'shops-club-hotel':'Торговые ряды, клубы и отели',
+    'port-freight':'Фабрики и склады при портах или ж/д',
+    'high-fire':'Здания в районах с П2+',
+    service:'Городские службы'
+  };
+  const defenseDescription={
+    firehouse:'Пожарная часть в этом же районе',
+    clinic:'Клиника в этом районе или смежном с уличной сетью',
+    police:'Полиция в этом районе или смежном с уличной сетью',
+    emergency:'Экстренные меры',
+  };
+  $('#newsSheetContent').innerHTML=
+    '<div class="news-issue-year">Сан-Франциско · '+(archived?archived.year:year)+
+    ' · '+escapeHtml(record.category||archived?.category||'Газета')+'</div>'+
+    '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
+    '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
+    '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
+    '<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>'+
+    '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
+    escapeHtml(newspaperEffectShort(record))+'</strong></p>'+
+    (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
+    '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
+    '</div>'+
+    (archived?
+      '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
+      (outcomeRows||'<li>В этом году никто не пострадал.</li>')+'</ul>'+
+      '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
+      '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
+      :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
+      '<small>Районов под угрозой: '+group?.exposed+
+      ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>'+
+      '<ul class="news-protection-details">'+projections+'</ul></div>'+
+      (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
+       'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
+    )+
+    '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
+    '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
+    '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
+  $('#newsEmergencyStart')?.addEventListener('click',startNewsEmergency);
+  $('#newsCopyOutcome')?.addEventListener('click',async()=>{
+    const txt='THE SAN FRANCISCO CALL · '+archived.year+' · '+archived.title+'\n'+
+      JSON.stringify(archived,null,2);
+    try{await navigator.clipboard.writeText(txt);showToast('Итоги газеты скопированы');}
+    catch{prompt('Скопируйте итоги газеты:',txt);}
+  });
+  $$('#newsSheetContent [data-news-archive]').forEach(button=>button.onclick=()=>{
+    newsArchiveIndex=Number(button.dataset.newsArchive);renderNewspaper();
+  });
+  $('#newsSheetContent [data-news-current]')?.addEventListener('click',()=>{
+    newsArchiveIndex=null;renderNewspaper();
+  });
+}
+function newsCardByHistory(id){
+  // Historical cards are in an independent no-side-effect data module.
+  return NEWS_CARDS.find(c=>c.id===id)||null;
+}
+
 function render(){
+if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
@@ -1502,12 +1667,30 @@ $$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue
 }
 function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;newsMapVisible=false;newsEmergencyMode=false;newsSheetOpen=false;newsArchiveIndex=null;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
+$('#newsOpenBtn').onclick=()=>openNewspaper();
+$('#newsCloseBtn').onclick=closeNewspaper;
+$('#newsBackdrop').onclick=closeNewspaper;
+$('#newsMapBtn').onclick=()=>{newsMapVisible=!newsMapVisible;if(newsMapVisible)state.view='city';render();
+  if(newsMapVisible)requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
+};
+$('#newsEmergencyCancel').onclick=()=>{newsEmergencyMode=false;render();};
+const callNode=$('#callBuildingNode');
+if(callNode){
+  callNode.addEventListener('click',()=>openNewspaper());
+  callNode.addEventListener('keydown',event=>{
+    if(event.key==='Enter'||event.key===' '){event.preventDefault();openNewspaper();}
+  });
+}
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&newsSheetOpen)closeNewspaper();
+  else if(event.key==='Escape'&&newsEmergencyMode){newsEmergencyMode=false;render();}
+});
 $('#undoBtn').onclick=undoLastGameAction;
 $('#helpBtn').onclick=()=>{showToast('v0.30A-L1: нейтральный Грузовой двор в Western Addition и финальная доставка для проектов на 4–5 ресурсов.');};
 $('#drawerBackdrop').onclick=closeDrawers;
@@ -1515,12 +1698,30 @@ $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEa
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}state.view=r.finished?'city':'hall';render();};
+$('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}newsEmergencyMode=false;newsArchiveIndex=null;state.view=r.finished?'city':'hall';render();showToast(r.finished?'Итоговый выпуск газеты готов':'Вышел свежий выпуск The San Francisco Call');};
 const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: Q / F по всем районам':'Обычный вид карты');};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
 $$('[data-district]').forEach(g=>g.onclick=()=>{
 const id=g.dataset.district;
+if(newsEmergencyMode){
+  const pid=currentDeveloper(state);
+  if(pid==null){newsEmergencyMode=false;showToast('Экстренные меры доступны только во время развития города');render();return;}
+  const r=takeNewspaperEmergency(state,pid,id);
+  if(!r.ok){
+    const errors={'worker-range':'Действуйте в районе представителя или соседнем',
+      'select-active-worker':'Сначала выберите действующего представителя',
+      'district-not-buildable':'В этой зоне нет городской застройки',
+      'already-protected':'Здесь уже приняты экстренные меры',
+      'need-$1':'Не хватает $1'};
+    showToast(errors[r.reason]||'Нельзя применить экстренные меры: '+r.reason);
+    return;
+  }
+  newsEmergencyMode=false;
+  state.selectedDistrictId=id;
+  showToast('Экстренные меры выполнены: '+(districtById(id)?.name||id)+' · −$1');
+  render();return;
+}
 if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
 if(deliveryDraft)return;
 state.selectedDistrictId=id;

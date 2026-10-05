@@ -366,7 +366,7 @@ test('Fire House and Clinic service reach own and adjacent road districts only',
 });
 
 
-test('complete three-round Phase I lifecycle reaches finished state with workers resetting between rounds',()=>{
+test('complete six-year Phase I lifecycle reaches finished state with workers resetting between years',()=>{
   const s=G.createInitialState({rng:()=>0.42});
   for(let pid=0;pid<3;pid++){
     G.revealStarterDraft(s);
@@ -376,7 +376,7 @@ test('complete three-round Phase I lifecycle reaches finished state with workers
     assert.equal(G.confirmStarterDraft(s).ok,true);
   }
 
-  for(let round=1;round<=3;round++){
+  for(let round=1;round<=6;round++){
     assert.equal(s.phase,'declare');
     for(let i=0;i<3;i++)assert.equal(G.passDeclaration(s).ok,true);
     assert.equal(G.beginBidding(s).ok,true);
@@ -400,7 +400,7 @@ test('complete three-round Phase I lifecycle reaches finished state with workers
 
     const cleaned=G.cleanupMarket(s,{rng:()=>0.7});
     assert.equal(cleaned.ok,true);
-    if(round<3){
+    if(round<6){
       assert.equal(cleaned.finished,false);
       assert.equal(s.round,round+1);
       assert.equal(s.phase,'declare');

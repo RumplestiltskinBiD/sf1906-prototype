@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:core": "node --test tests/core.test.mjs tests/static.test.mjs tests/catastrophe.test.mjs",
+    "test:core": "node --test tests/core.test.mjs tests/static.test.mjs tests/catastrophe.test.mjs tests/newspaper.test.mjs",
     "test:e2e": "playwright test",
     "test": "npm run test:core && npm run test:e2e"
   },

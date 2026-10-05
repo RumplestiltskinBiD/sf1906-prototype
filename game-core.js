@@ -1,6 +1,8 @@
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js';
+
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
-export const MAX_ROUNDS = 3;
+export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const BASE_ROUND_INCOME = 3;
 export const RAISE_CAPITAL_AMOUNT = 3;
@@ -13,7 +15,7 @@ export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
-export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,publicworks:1,streetcar:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,streetcar:1};
 
 export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
 export const CONSTRUCTION_STAGING_CAPACITY = 3;
@@ -70,6 +72,7 @@ export const PROJECTS = [
   {prestige:1,income:0,id:'bureau',risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Строительный контракт · −$2 к Стоимость земли · Престиж +1',benefit:'Престиж +1 · Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'insurance',risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · Престиж +1 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд · Престиж +1',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
   {prestige:3,income:0,id:'firehouse',risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть · муниципальный участок',accessAll:['road'],effect:'Пожарная защита (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Пожарная защита действует в своём и соседнем районе через развитую уличную сеть. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'police',risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Обеспечивает общественный порядок в районе и соседних районах с уличной сетью · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах с уличной сетью',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Нужна Уличная сеть. Не суммируется с защитой другого участка, не защищает от землетрясения.'},
   {prestige:3,income:0,id:'clinic',risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Уличная сеть',accessAll:['road'],effect:'Доступ к клинике (район + соседний район с уличной сетью) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Нужен Уличная сеть. Доступ к клинике действует в своём и соседнем районе через развитую уличную сеть.'},
   {prestige:3,income:0,id:'publicworks',risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Уличная сеть',accessAll:['road'],effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Нужен Уличная сеть. Полные воды / газа / ремонта правила будут добавлены позже.'},
   {prestige:3,income:0,id:'streetcar',risk:{earthquake:0,fire:0},name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Уличная сеть или соседний район с Уличная сеть',streetcarExtension:true,effect:'Открывает Уличная сеть в районе · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · открывает Уличная сеть',actionName:'—',actionText:'Транспортное действие ещё не активно.',limits:'Можно строить при Уличная сеть в районе или в одном из соседних районов.'}
@@ -239,17 +242,20 @@ export function serviceSources(state,districtId,serviceProjectId){
 }
 export function districtAccess(state,districtId){
   const d=districtById(districtId);
-  if(!d)return {road:false,rail:false,port:false,fire:false,clinic:false,fireSources:[],clinicSources:[]};
+  if(!d)return {road:false,rail:false,port:false,fire:false,clinic:false,police:false,fireSources:[],clinicSources:[],policeSources:[]};
   const fireSources=serviceSources(state,districtId,'firehouse');
   const clinicSources=serviceSources(state,districtId,'clinic');
+  const policeSources=serviceSources(state,districtId,'police');
   return {
     road:districtRoadAccess(state,districtId),
     rail:!!d.rail,
     port:!!d.port,
     fire:fireSources.length>0,
     clinic:clinicSources.length>0,
+    police:policeSources.length>0,
     fireSources,
-    clinicSources
+    clinicSources,
+    policeSources
   };
 }
 export function canPlaceStreetcar(state,districtId){
@@ -367,9 +373,17 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE),
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
+  // Keep Phase I project market/draft seed stable for existing QA scenarios.
+  const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
+  const newsCurrentIds=[newsDeck.shift()];
   return {
     version:'0.30a',
     round:1,
+    newsDeck,
+    newsCurrentIds,
+    newsArchive:[],
+    newsEmergency:{},
+    newsLastResolvedRound:0,
     firstPlayer:0,
     phase:'draft',
     view:'hall',
@@ -1169,6 +1183,11 @@ export function setLandValue(state,districtId,value){
 export function cleanupMarket(state,{rng=Math.random}={}){
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
+  // Every newspaper is announced at the beginning of its year and
+  // settled only after every representative has taken their actions.
+  // Calling cleanup while Development is unfinished has no side effects.
+  ensureNewspaper(state,{rng});
+  resolveNewspaper(state);
   const remaining=state.market.filter(m=>m&&!m.sold);
   const old=remaining.filter(m=>m.age===1);
   old.forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
@@ -1183,7 +1202,7 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     state.procurementRemaining=0;state.procurementSource=null;
     const score=state.players.map(p=>`${p.name}: ${p.prestige||0} VP`).join(' · ');
     logEvent(state,`Prestige после Phase I — ${score}.`,'accent');
-    logEvent(state,'Тест Phase I завершён после 3 раундов.','accent');
+    logEvent(state,'Phase I завершена после '+MAX_ROUNDS+' лет (1900–1905).','accent');
     return {ok:true,finished:true};
   }
 
@@ -1203,6 +1222,10 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   const blanks=Array(Math.max(0,5-incoming.length-survivors.length)).fill(null);
   state.market=[...incoming,...blanks,...survivors];
   state.round++;
+  state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
+  state.newsEmergency={};
+  const forthcoming=newsCard(state.newsCurrentIds[0]);
+  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
   state.haulersUsed=[];
   state.firstPlayer=(state.firstPlayer+1)%3;
@@ -1231,4 +1254,165 @@ export function tenderSummary(state){
     sold:m.sold,
     result:m.result
   }));
+}
+
+
+
+// The newspaper is public information: no hidden end-of-year random draws.
+// News decks have unique ids per party and preserve their sequence in saves.
+// The array-valued active slot allows a later optional 2 articles/year.
+export function ensureNewspaper(state,{rng=Math.random}={}){
+  if(!Array.isArray(state.newsDeck)||!Array.isArray(state.newsCurrentIds)||!Array.isArray(state.newsArchive)){
+    const previous=new Set((state.newsArchive||[]).flatMap(x=>x.ids||[x.cardId]));
+    const deck=shuffle(NEWS_CARDS.map(c=>c.id).filter(id=>!previous.has(id)),rng);
+    state.newsCurrentIds=[deck.shift()].filter(Boolean);
+    state.newsDeck=deck;
+    state.newsArchive=state.newsArchive||[];
+    state.newsEmergency={};
+    state.newsLastResolvedRound=0;
+    logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
+  }
+  if(!state.newsEmergency||typeof state.newsEmergency!=='object')state.newsEmergency={};
+  if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
+  return state;
+}
+export function activeNewspaper(state){
+  return newsCard(state.newsCurrentIds?.[0])||null;
+}
+function newspaperTargets(state,card,construction){
+  const project=projectById(construction.projectId);
+  if(!project||construction.status!=='complete')return false;
+  const id=project.id,type=project.type;
+  switch(card.target){
+    case 'housing':return type==='Жильё';
+    case 'commerce':return type==='Коммерция';
+    case 'industry-logistics':return type==='Промышленность'||type==='Логистика';
+    case 'factory':return id==='factory';
+    case 'shops-club':return ['shops','club'].includes(id);
+    case 'warehouse-factory':return ['warehouse','factory'].includes(id);
+    case 'bank-insurance-hotel':return ['bank','insurance','hotel'].includes(id);
+    case 'tenement-speculative':return ['tenement','speculative'].includes(id);
+    case 'hotel-club-shops':return ['hotel','club','shops'].includes(id);
+    case 'shops-club-hotel':return ['shops','club','hotel'].includes(id);
+    case 'port-freight':{
+      const district=districtById(construction.districtId);
+      return ['warehouse','factory'].includes(id)&&!!(district?.port||district?.rail);
+    }
+    case 'high-fire':return (districtRisk(state,construction.districtId)?.fire.raw||0)>=2;
+    case 'service':return ['firehouse','clinic','police'].includes(id);
+    default:return false;
+  }
+}
+function newsServiceSources(state,districtId,kind){
+  if(!kind||kind==='emergency')return [];
+  // Unlike access requirements for Phase I projects, real fire protection
+  // was agreed to apply only to the station's own district.
+  if(kind==='firehouse')return completedActionSpaces(state,'firehouse').filter(c=>c.districtId===districtId);
+  if(kind==='clinic'||kind==='police')return serviceSources(state,districtId,kind);
+  return [];
+}
+export function newsPreview(state){
+  const card=activeNewspaper(state);
+  if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  const candidates=(state.constructions||[]).filter(c=>newspaperTargets(state,card,c));
+  // Multiple properties from one owner in one district count once.
+  const groups=new Map();
+  for(const c of candidates){
+    const key=card.frequency==='oncePerPlayer'||card.target==='service'
+      ? String(c.playerId)
+      : c.playerId+'|'+c.districtId;
+    if(!groups.has(key))groups.set(key,{playerId:c.playerId,districtIds:[],projectIds:[],kind:card.target});
+    const g=groups.get(key);
+    if(!g.districtIds.includes(c.districtId))g.districtIds.push(c.districtId);
+    if(!g.projectIds.includes(c.projectId))g.projectIds.push(c.projectId);
+  }
+  const entries=[];
+  for(const g of groups.values()){
+    if(card.target==='service'){
+      entries.push({...g,districtId:g.districtIds[0],defended:false,stationOwners:[],temporary:false,delta:card.delta});
+      continue;
+    }
+    // A once-per-player consequence is prevented only if ALL matching
+    // completed properties of that owner are defended.
+    const coverage=g.districtIds.map(id=>({
+      id,sources:newsServiceSources(state,id,card.defense),
+      temporary:!!state.newsEmergency?.[id]
+    }));
+    const exposed=coverage.filter(x=>!x.sources.length&&!x.temporary);
+    const prevented=coverage.filter(x=>x.sources.length||x.temporary);
+    const protectedGroup=exposed.length===0;
+    const stationOwners=[...new Set(prevented.flatMap(x=>x.sources.map(c=>c.playerId)))];
+    entries.push({...g,districtId:g.districtIds[0],defended:card.delta<0&&protectedGroup,
+      exposedDistrictIds:exposed.map(x=>x.id),preventedDistrictIds:prevented.map(x=>x.id),
+      stationOwners,temporary:coverage.some(x=>x.temporary),
+      delta:card.delta});
+  }
+  const threatened=[...new Set(entries.flatMap(e=>e.exposedDistrictIds||[]))];
+  const protectedIds=[...new Set(entries.flatMap(e=>e.preventedDistrictIds||[]))];
+  return {card,entries,threatened,protected:protectedIds,
+    summary:{districts:[...new Set(candidates.map(c=>c.districtId))].length,
+      exposed:threatened.length,safe:protectedIds.length}};
+}
+export function takeNewspaperEmergency(state,playerId,districtId){
+  const card=activeNewspaper(state),player=state.players?.[playerId];
+  if(!card||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
+  if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
+  if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
+  const can=canTakeMainAction(state,playerId);
+  if(!can)return {ok:false,reason:'select-active-worker'};
+  // The ordinary worker's range and main action restrictions also apply.
+  const action=consumeMainAction(state,playerId,districtId);
+  if(!action.ok)return action;
+  player.capital-=1;
+  state.newsEmergency[districtId]={playerId,round:state.round,cardId:card.id};
+  logEvent(state,player.name+' тратит $1 и действие представителя на экстренные меры в '+districtById(districtId).name+
+    ' против «'+card.title+'».','good');
+  return {ok:true,action};
+}
+export function resolveNewspaper(state){
+  ensureNewspaper(state);
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  const forecast=newsPreview(state);
+  const {card,entries}=forecast;
+  if(!card)return {ok:false,reason:'no-card'};
+  const changes=new Map();
+  const write=(pid,key,amount)=>{
+    const p=state.players?.[pid];if(!p)return 0;
+    const actual=amount<0?Math.max(-Math.max(0,p[key]||0),amount):amount;
+    p[key]=Math.max(0,(p[key]||0)+actual);
+    const result=changes.get(pid)||{capital:0,influence:0,prestige:0};
+    result[key]+=actual;
+    changes.set(pid,result);
+    return actual;
+  };
+  const protectedByService=new Set();
+  const results=[];
+  for(const e of entries){
+    if(card.delta<0&&e.stationOwners?.length){
+      for(const pid of e.stationOwners)protectedByService.add(pid);
+    }
+    if(card.delta<0&&e.defended){
+      results.push({...e,actual:0});
+      continue;
+    }
+    const actual=write(e.playerId,card.resource,card.delta);
+    results.push({...e,actual});
+  }
+  // Once per issue, not per protected building/region. Any service owner
+  // that prevented actual eligibility for a penalty receives recognition.
+  if(card.delta<0)for(const pid of protectedByService)write(pid,'influence',1);
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:results,changes:Object.fromEntries(changes),
+    serviceRecognition:[...protectedByService],emergency:{...state.newsEmergency}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  const message=[...changes].map(([pid,d])=>{
+    const player=state.players[pid];
+    return player.name+' ('+Object.entries(d).filter(([,n])=>n!==0).map(([k,n])=>
+      (k==='capital'?'$':k==='influence'?'Влияние ':'ПО ')+(n>0?'+':'')+n).join(', ')+')';
+  }).join('; ')||'изменений нет';
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+'». '+message+'.','accent');
+  return {ok:true,report};
 }
