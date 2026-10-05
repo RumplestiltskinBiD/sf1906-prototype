@@ -2513,3 +2513,6 @@ body.drawer-open .mobile-action-dock{
   .news-sheet-close{height:36px;width:36px}
   .news-sheet-content{padding:8px 12px}
 }
+
+/* Explicitly override local class displays when semantic [hidden] is set. */
+.news-sheet[hidden],.news-backdrop[hidden],.news-strip-cancel[hidden]{display:none!important}
