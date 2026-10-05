@@ -109,3 +109,22 @@ test('phone landscape news sheet fits screen, closes on Escape, never causes pag
   await page.keyboard.press('Escape');
   await expect(page.locator('#newsSheet')).toBeHidden();
 });
+
+test('old saved projects receive extra cards only once on migration',async({page})=>{
+  await page.goto('/');
+  await page.evaluate(async()=>{
+    const G=await import('/game-core.js');
+    const s=G.createInitialState({rng:()=>0.39});
+    delete s.marketExtendedForSixYears;
+    s.deck=s.deck.slice(0,12); // same scarcity as v0.30a before six-year patch
+    localStorage.setItem('sf1906_phase1_ui_v030a',JSON.stringify(s));
+  });
+  await page.reload();
+  const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('sf1906_phase1_ui_v030a')));
+  expect(first.marketExtendedForSixYears).toBe(true);
+  expect(first.deck).toHaveLength(12+16);
+  await page.reload();
+  const second=await page.evaluate(()=>JSON.parse(localStorage.getItem('sf1906_phase1_ui_v030a')));
+  expect(second.deck).toHaveLength(first.deck.length);
+  expect(second.players.map(p=>p.capital)).toEqual(first.players.map(p=>p.capital));
+});
