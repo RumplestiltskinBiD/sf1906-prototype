@@ -73,6 +73,14 @@ prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.s
 parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],completedRound:x.completedRound??null}));
 parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
 parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-${i}-${card}`,id:card}:card);
+if(!parsed.marketExtendedForSixYears){
+  // Saved three-year games originally had two copies of each project.
+  // Add one to the available deck once, retaining all acquired projects.
+  for(const p of PROJECTS){
+    parsed.deck.push({uid:'V042-'+p.id,id:p.id});
+  }
+  parsed.marketExtendedForSixYears=true;
+}
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
 parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);

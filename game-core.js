@@ -14,7 +14,7 @@ export const STARTER_DRAFT_SIZE = 5;
 export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
-export const PROJECT_COPIES = 2;
+export const PROJECT_COPIES = 3;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,streetcar:1};
 
 export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
@@ -381,6 +381,7 @@ export function createInitialState({rng=Math.random}={}){
     round:1,
     newsDeck,
     newsCurrentIds,
+    marketExtendedForSixYears:true,
     newsArchive:[],
     newsEmergency:{},
     newsLastResolvedRound:0,
