@@ -1702,7 +1702,7 @@ $('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedC
 const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: Q / F по всем районам':'Обычный вид карты');};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$('[data-district]').forEach(g=>g.onclick=()=>{
+$$('[data-district]').forEach(g=>g.onclick=()=>{
 const id=g.dataset.district;
 if(newsEmergencyMode){
   const pid=currentDeveloper(state);
