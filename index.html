@@ -4,18 +4,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Prototype v0.30A-L1</title>
-  <link rel="stylesheet" href="./styles.css?v=030al1" />
+  <title>San Francisco 1906 — Newspaper v0.42</title>
+  <link rel="stylesheet" href="./styles.css?v=042" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.30A-L1</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.42</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
-      <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 3</strong></div>
+      <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 6</strong></div>
       <div class="hud-item phase"><span>Фаза</span><strong id="phaseStat">City Hall</strong></div>
       <div class="hud-item"><span>Первый</span><strong id="firstStat">Синий</strong></div>
     </div>
@@ -28,6 +28,16 @@
   </header>
 
   <section class="players-bar" id="playersBar" aria-label="Игроки"></section>
+
+  <section class="news-strip" id="newsStrip" aria-label="Текущий выпуск газеты">
+    <button type="button" class="news-strip-main" id="newsOpenBtn" aria-label="Открыть газету">
+      <span class="news-strip-brand">THE SF CALL</span>
+      <span id="newsStripLabel" class="news-strip-headline">Загружается городской прогноз…</span>
+      <span class="news-strip-action">ЧИТАТЬ ↗</span>
+    </button>
+    <button type="button" class="news-strip-map" id="newsMapBtn" aria-pressed="false">НА КАРТЕ</button>
+    <button type="button" class="news-strip-cancel" id="newsEmergencyCancel" hidden>ОТМЕНА МЕР</button>
+  </section>
 
   <div class="workspace">
     <nav class="nav-rail" aria-label="Основная навигация">
@@ -116,6 +126,11 @@
             <g id="deliveryRouteLayer" transform="translate(0 -11)"></g>
             <g id="constructionLayer" transform="translate(0 -11)"></g>
             <g id="workerLayer" transform="translate(0 -11)"></g>
+            <!-- Neutral newspaper landmark (non-destructive overlay; location provisional). -->
+            <g id="callBuildingNode" class="call-building-node" role="button" tabindex="0" aria-label="Открыть The San Francisco Call" transform="translate(1065 365)">
+              <rect class="call-building-pin" x="-24" y="-14" width="48" height="28" rx="5"></rect>
+              <text class="call-building-text" y="4" text-anchor="middle">CALL</text>
+            </g>
           </svg>
           </div>
         </div>
@@ -148,12 +163,20 @@
   </div>
 </aside>
 
+<div class="news-backdrop" id="newsBackdrop" hidden></div>
+<section class="news-sheet" id="newsSheet" role="dialog" aria-modal="true" aria-label="The San Francisco Call" hidden>
+  <div class="news-sheet-top">
+    <div><small>ИСТОРИЧЕСКАЯ ГАЗЕТА · ИГРОВЫЕ СОБЫТИЯ</small><h2>THE SAN FRANCISCO CALL</h2></div>
+    <button type="button" id="newsCloseBtn" class="news-sheet-close" aria-label="Закрыть газету">×</button>
+  </div>
+  <div id="newsSheetContent" class="news-sheet-content"></div>
+</section>
 <div class="modal-backdrop" id="modalBackdrop"></div>
 <div class="privacy-modal" id="privacyModal" role="dialog" aria-modal="true" aria-label="Закрытая ставка">
   <div class="privacy-card" id="privacyCard"></div>
 </div>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=030al1"></script>
+<script type="module" src="./app.js?v=042"></script>
 </body>
 </html>
