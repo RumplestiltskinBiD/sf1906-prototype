@@ -366,8 +366,6 @@ export function confirmStarterDraft(state){
 }
 
 export function createInitialState({rng=Math.random}={}){
-  const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
-  const newsCurrentIds=[newsDeck.shift()];
   const pool=createProjectCardPool({rng});
   const market=pool.splice(0,5).map(emptyMarketCard);
   const starterDraftHands=[
@@ -375,6 +373,9 @@ export function createInitialState({rng=Math.random}={}){
     pool.splice(0,STARTER_DRAFT_SIZE),
     pool.splice(0,STARTER_DRAFT_SIZE)
   ];
+  // Keep Phase I project market/draft seed stable for existing QA scenarios.
+  const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
+  const newsCurrentIds=[newsDeck.shift()];
   return {
     version:'0.30a',
     round:1,
