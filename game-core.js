@@ -5,6 +5,8 @@ export const PLAYER_KEYS = ['blue','red','green'];
 export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const BASE_ROUND_INCOME = 3;
+export const CONSTRUCTION_UPKEEP_COST = 1;
+export const INFLUENCE_START_POSITIONS = Object.freeze([2,3,4]);
 export const RAISE_CAPITAL_AMOUNT = 3;
 export const LOAN_PRINCIPAL = 6;
 export const MAX_ACTIVE_LOANS = 2;
@@ -274,7 +276,60 @@ export function districtAccess(state,districtId){
 export function canPlaceStreetcar(state,districtId){
   return districtById(districtId)?.buildable!==false;
 }
-export function turnOrder(state){return [0,1,2].map((_,i)=>(state.firstPlayer+i)%3);}
+export function influenceOrder(state){
+  const previous=Array.isArray(state?.yearTurnOrder)?state.yearTurnOrder:[];
+  const fallbackIndex=id=>{const i=previous.indexOf(id);return i>=0?i:id;};
+  return (state?.players||[]).map(p=>p.id).sort((a,b)=>
+    (Number(state.players[b]?.influence)||0)-(Number(state.players[a]?.influence)||0)
+    ||fallbackIndex(a)-fallbackIndex(b)
+  );
+}
+export function setYearTurnOrderFromInfluence(state){
+  const order=influenceOrder(state);
+  state.yearTurnOrder=order;
+  state.firstPlayer=order[0]??0;
+  return [...order];
+}
+export function normalizeInfluenceTrack(state,{rng=Math.random,fresh=false}={}){
+  if(!Array.isArray(state?.players)||!state.players.length)return [];
+  if(fresh){
+    const positions=shuffle(INFLUENCE_START_POSITIONS,rng);
+    state.players.forEach((p,i)=>{p.influence=positions[i%positions.length];});
+  }else{
+    state.players.forEach(p=>{p.influence=Math.max(0,Math.floor(Number(p.influence)||0));});
+    const values=state.players.map(p=>p.influence);
+    if(new Set(values).size!==values.length){
+      const prior=Array.isArray(state.yearTurnOrder)&&state.yearTurnOrder.length===state.players.length
+        ?[...state.yearTurnOrder]
+        :[0,1,2].map((_,i)=>((Number(state.firstPlayer)||0)+i)%state.players.length);
+      const rank=[...state.players].sort((a,b)=>b.influence-a.influence||prior.indexOf(a.id)-prior.indexOf(b.id));
+      let pos=Math.max(4,...rank.map(p=>p.influence));
+      rank.forEach(p=>{p.influence=pos--;});
+    }
+  }
+  return setYearTurnOrderFromInfluence(state);
+}
+export function moveInfluence(state,playerId,steps){
+  const player=state?.players?.[playerId];
+  let remaining=Math.abs(Math.trunc(Number(steps)||0));
+  const sign=Math.sign(Number(steps)||0);
+  const from=Number(player?.influence)||0;
+  if(!player||!sign||!remaining)return {ok:!!player,from,to:from,steps:0,delta:0};
+  const occupied=new Set(state.players.filter(p=>p.id!==playerId).map(p=>Math.max(0,Math.floor(Number(p.influence)||0))));
+  let current=Math.max(0,Math.floor(from)),moved=0;
+  while(remaining>0){
+    let candidate=current+sign;
+    while(candidate>=0&&occupied.has(candidate))candidate+=sign;
+    if(candidate<0)break;
+    current=candidate;moved+=sign;remaining--;
+  }
+  player.influence=current;
+  return {ok:true,from,to:current,steps:moved,delta:current-from};
+}
+export function turnOrder(state){
+  const stored=Array.isArray(state?.yearTurnOrder)?state.yearTurnOrder.filter(id=>state.players?.[id]):[];
+  return stored.length===state.players?.length?[...stored]:setYearTurnOrderFromInfluence(state);
+}
 export function currentDeclarer(state){return state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
 export function currentDeveloper(state){return state.phase==='development'&&!state.developmentComplete?state.developmentPlayer:null;}
 export function activeLoans(state,playerId){return state.players[playerId]?.loans||[];}
@@ -324,8 +379,9 @@ export function endActivation(state,playerId){
     logEvent(state,'Все представители использованы. Development Phase можно завершить.','accent');
     return {ok:true,complete:true,nextPlayer:null};
   }
-  for(let step=1;step<=state.players.length;step++){
-    const pid=(playerId+step)%state.players.length;
+  const order=turnOrder(state),at=Math.max(0,order.indexOf(playerId));
+  for(let step=1;step<=order.length;step++){
+    const pid=order[(at+step)%order.length];
     if((state.players[pid].workersLeft??0)>0){
       state.developmentPlayer=pid;
       state.activationMainActionUsed=false;
@@ -388,8 +444,11 @@ export function createInitialState({rng=Math.random}={}){
   // Keep Phase I project market/draft seed stable for existing QA scenarios.
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
+  const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0}));
+  const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   return {
-    version:'0.43a',
+    version:'0.43b',
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -397,11 +456,12 @@ export function createInitialState({rng=Math.random}={}){
     newsArchive:[],
     newsEmergency:{},
     newsLastResolvedRound:0,
-    firstPlayer:0,
+    firstPlayer:yearTurnOrder[0],
+    yearTurnOrder,
     phase:'draft',
     view:'hall',
     declarationIndex:0,
-    players:PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:2,prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0})),
+    players,
     market,
     deck:pool,
     expired:[],
@@ -420,6 +480,7 @@ export function createInitialState({rng=Math.random}={}){
     nextConstructionId:1,
     nextLoanId:1,
     developmentPlayer:null,
+    yearTransition:null,
     developmentComplete:false,
     activationMainActionUsed:false,
     activeWorkerId:null,
@@ -433,7 +494,7 @@ export function createInitialState({rng=Math.random}={}){
     logisticsSupply:generateLogisticsSupply({rng}),
     freightYardInventories:[[],[],[]],
     haulersUsed:[],
-    log:[{msg:'Началась тестовая партия v0.43A Foundation. Western Addition получил нейтральный Грузовой двор: 2 личных места каждому, новое занятие секции $2. Финальная доставка может завершить проект сверх staging 3.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия v0.43B. Influence занимает уникальные позиции; порядок года фиксируется в начале года. Незавершённая стройка стоит $1 простоя при переходе года.','cls':'accent'}],
     finished:false
   };
 }
@@ -539,7 +600,13 @@ function award(state,m,pid,price,reason){
 }
 
 export function districtConstructionCount(state,districtId){
-  return (state.constructions||[]).filter(c=>c.districtId===districtId).length;
+  return (state.constructions||[]).filter(c=>c.districtId===districtId&&c.status!=='abandoned').length;
+}
+export function unfinishedConstructions(state,playerId=null){
+  return (state.constructions||[]).filter(c=>c.status==='under-construction'&&(playerId==null||c.playerId===playerId));
+}
+export function constructionUpkeepDue(state,playerId){
+  return unfinishedConstructions(state,playerId).length*CONSTRUCTION_UPKEEP_COST;
 }
 
 export function constructionEligibility(state,playerId,projectId,districtId){
