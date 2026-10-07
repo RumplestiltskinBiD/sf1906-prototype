@@ -50,17 +50,21 @@ export function begin(input,custom={}){
   for(const id of DISTRICT_IDS){
     const z=riskValue(input[id]?.z),baseP=riskValue(input[id]?.p);
     const quake=z>=config.collapse?'destroyed':z>=config.damage?'damaged':'intact';
-    const burning=quake==='destroyed';
+    const quakeBurning=quake==='destroyed';
     const firehouseBuilt=!!input[id]?.firehouse;
-    const firehouseActive=firehouseBuilt&&!burning;
-    const firehouseDestroyed=firehouseBuilt&&burning;
+    const survivesQuake=firehouseBuilt&&!quakeBurning;
     const quakeFireBonus=quake==='damaged'?config.damageFire:0;
     // Apply once after quake; +P from each neighbour is NOT blocked.
     // Cap at P0 so there is no invisible negative buffer.
-    const initialAfterQuakeP=Math.max(0,baseP+quakeFireBonus-(firehouseActive?1:0));
+    const initialAfterQuakeP=Math.max(0,baseP+quakeFireBonus-(survivesQuake?1:0));
+    const fireRiskBurning=!quakeBurning&&initialAfterQuakeP>=config.ignition;
+    const burning=quakeBurning||fireRiskBurning;
+    const firehouseDestroyed=firehouseBuilt&&burning;
+    const firehouseActive=firehouseBuilt&&!firehouseDestroyed;
+    const origin=quakeBurning?'earthquake':fireRiskBurning?'fire-risk':null;
     nodes[id]={id,z,baseP,quake,quakeFireBonus,initialAfterQuakeP,
       p:initialAfterQuakeP,firehouseBuilt,firehouseActive,firehouseDestroyed,
-      burning,origin:burning?'earthquake':null,spreadDone:false,received:[]};
+      burning,origin,spreadDone:false,received:[]};
     if(burning)starts.push(id);
   }
   starts.sort(eastToWest);
@@ -152,9 +156,10 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
       (n.firehouseBuilt&&n.quake!=='destroyed'?' −1 (пожарная часть)':'')+
       ' → П'+n.initialAfterQuakeP+
       '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.quake==='destroyed'?'уничтожена землетрясением':'работает')+
-      (n.origin==='earthquake'?'; первоначальный очаг':''));
+      (n.origin==='earthquake'?'; первоначальный очаг от разрушения':
+        n.origin==='fire-risk'?'; первоначальный очаг по П':''));
   }
-  lines.push('Первоначальные очаги (порядок): '+(simulation.starts.map(name).join(' → ')||'нет'));
+  lines.push('Первоначальные очаги (У3+ или П'+c.ignition+'+, порядок): '+(simulation.starts.map(name).join(' → ')||'нет'));
   lines.push('','=== ПОШАГОВОЕ РАСПРОСТРАНЕНИЕ ПОЖАРА ===');
   if(!simulation.events.length)lines.push('Обработанных очагов пока нет.');
   for(const step of simulation.events){
@@ -181,7 +186,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
     const n=simulation.nodes[id];
     lines.push(name(id)+': '+quakeName[n.quake]+'; П нач='+n.baseP+
       ', П тек='+n.p+'; огонь='+
-      (n.burning?(n.origin==='earthquake'?'от землетрясения':'от соседей'):'нет')+
+      (n.burning?(n.origin==='earthquake'?'от разрушения':n.origin==='fire-risk'?'по исходной П':'от соседей'):'нет')+
       '; передал='+ (n.spreadDone?'да':'нет')+
       '; пожарная часть='+(!n.firehouseBuilt?'нет':n.firehouseDestroyed?'уничтожена':'работает')+
       '; получено: '+(n.received.map(x=>name(x.source)+' +'+x.amount).join(', ')||'нет'));
