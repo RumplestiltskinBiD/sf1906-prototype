@@ -20,7 +20,7 @@ function construction(id,playerId,projectId,districtId,status='under-constructio
 
 test('initial state is internally consistent',()=>{
   const s=G.createInitialState({rng:()=>0.1});
-  assert.equal(s.version,'0.43a');
+  assert.equal(s.version,'0.43b');
   assert.equal(s.players.length,3);
   assert.equal(s.market.length,5);
   assert.equal(s.starterDraftHands.length,3);
@@ -31,6 +31,36 @@ test('initial state is internally consistent',()=>{
   assert.equal(G.DELIVERY_HAULERS.find(h=>h.id==='standard').baseCost,3);
   assert.equal(G.LOGISTICS_NODES.find(n=>n.id==='pacificmail').kind,'rail-port');
   assert.equal(G.LOGISTICS_NODES.find(n=>n.id==='unioniron').kind,'industrial-rail-port');
+});
+
+
+test('Influence starts on unique 2/3/4 spaces and freezes annual order',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  assert.deepEqual([...s.players.map(p=>p.influence)].sort((a,b)=>a-b),[2,3,4]);
+  assert.equal(new Set(s.players.map(p=>p.influence)).size,3);
+  const frozen=[...G.turnOrder(s)];
+  assert.equal(s.firstPlayer,frozen[0]);
+  const last=frozen.at(-1);
+  const before=s.players[last].influence;
+  const move=G.moveInfluence(s,last,1);
+  assert.equal(move.ok,true);
+  assert.ok(s.players[last].influence>before);
+  assert.deepEqual(G.turnOrder(s),frozen,'mid-year Influence must not reorder the year');
+});
+
+test('Influence skips occupied spaces both forward and backward',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  s.players[0].influence=2;
+  s.players[1].influence=3;
+  s.players[2].influence=4;
+  s.yearTurnOrder=[2,1,0];
+  s.firstPlayer=2;
+  const up=G.moveInfluence(s,0,1);
+  assert.deepEqual({from:up.from,to:up.to,steps:up.steps},{from:2,to:5,steps:1});
+  const down=G.moveInfluence(s,0,-1);
+  assert.deepEqual({from:down.from,to:down.to,steps:down.steps},{from:5,to:2,steps:-1});
+  assert.deepEqual(G.turnOrder(s),[2,1,0]);
+  assert.deepEqual(G.setYearTurnOrderFromInfluence(s),[2,1,0]);
 });
 
 test('district adjacency is symmetric and references valid districts',()=>{
@@ -357,6 +387,122 @@ test('round cleanup refreshes city supply and haulers but preserves staged and W
   assert.ok(s.players.every(p=>p.workersLeft===3));
 });
 
+
+test('year transition pays income first, then $1 upkeep per unfinished construction',()=>{
+  const s=devState();
+  s.developmentComplete=true;
+  s.newsCurrentIds=['E05'];
+  s.newsLastResolvedRound=0;
+  s.players[0].capital=0;
+  s.constructions=[
+    construction('C1',0,'tenement','civic','under-construction',['Lumber']),
+    construction('C2',0,'warehouse','civic','under-construction',[])
+  ];
+  assert.equal(G.constructionUpkeepDue(s,0),2);
+  const r=G.cleanupMarket(s,{rng:()=>0.99});
+  assert.equal(r.ok,true);
+  assert.equal(s.round,2);
+  assert.equal(s.phase,'declare');
+  assert.equal(s.players[0].capital,1,'base income 3 then upkeep 2');
+  assert.equal(G.constructionUpkeepDue(s,0),2);
+});
+
+test('insufficient upkeep pauses after income and player closure frees the site and loses staged materials',()=>{
+  const s=devState();
+  s.developmentComplete=true;
+  s.newsCurrentIds=['E05'];
+  s.newsLastResolvedRound=0;
+  s.players[0].capital=0;
+  s.yearTurnOrder=[0,1,2];
+  s.firstPlayer=0;
+  s.constructions=[
+    construction('C1',0,'tenement','civic','under-construction',['Lumber']),
+    construction('C2',0,'warehouse','civic'),
+    construction('C3',0,'insurance','civic'),
+    construction('C4',0,'bureau','civic')
+  ];
+  const r=G.cleanupMarket(s,{rng:()=>0.99});
+  assert.equal(r.ok,false);
+  assert.equal(r.reason,'upkeep-choice');
+  assert.equal(s.phase,'upkeep');
+  assert.equal(s.players[0].capital,3,'income is credited before upkeep choice');
+  assert.equal(r.due,4);
+  const portfolioBefore=[...s.players[0].portfolio];
+  const sitesBefore=G.districtConstructionCount(s,'civic');
+  const close=G.closeConstructionForUpkeep(s,0,'C1',{rng:()=>0.99});
+  assert.equal(close.ok,true);
+  assert.equal(s.round,2);
+  assert.equal(s.phase,'declare');
+  assert.equal(s.players[0].capital,0,'remaining 3 unfinished projects cost $3');
+  const closed=s.constructions.find(c=>c.id==='C1');
+  assert.equal(closed.status,'abandoned');
+  assert.deepEqual(closed.lostMaterials,['Lumber']);
+  assert.deepEqual(closed.materialsDelivered,[]);
+  assert.equal(G.districtConstructionCount(s,'civic'),sitesBefore-1);
+  assert.deepEqual(s.players[0].portfolio,portfolioBefore,'closed project never returns to hand');
+});
+
+test('upkeep can require several closures before the remaining sites are affordable',()=>{
+  const s=devState();
+  s.developmentComplete=true;
+  s.newsCurrentIds=['E05'];
+  s.newsLastResolvedRound=0;
+  s.players[0].capital=0;
+  s.yearTurnOrder=[0,1,2];
+  s.firstPlayer=0;
+  const districts=['civic','western','mission','soma','financial','pacific'];
+  s.constructions=districts.map((district,i)=>construction('X'+i,0,'bureau',district));
+  let r=G.cleanupMarket(s,{rng:()=>0.99});
+  assert.equal(r.reason,'upkeep-choice');
+  assert.equal(s.players[0].capital,3);
+  r=G.closeConstructionForUpkeep(s,0,'X0',{rng:()=>0.99});
+  assert.equal(r.reason,'upkeep-choice');
+  r=G.closeConstructionForUpkeep(s,0,'X1',{rng:()=>0.99});
+  assert.equal(r.reason,'upkeep-choice');
+  r=G.closeConstructionForUpkeep(s,0,'X2',{rng:()=>0.99});
+  assert.equal(r.ok,true);
+  assert.equal(s.players[0].capital,0);
+  assert.equal(s.constructions.filter(c=>c.status==='abandoned').length,3);
+  assert.equal(G.unfinishedConstructions(s,0).length,3);
+});
+
+test('one player can start multiple constructions in the same year using separate representatives',()=>{
+  const s=devState();
+  s.yearTurnOrder=[0,1,2];s.firstPlayer=0;s.developmentPlayer=0;
+  s.players[0].portfolio=['tenement','warehouse'];
+  let w=G.playerWorkers(s,0)[0];w.districtId='civic';
+  assert.equal(G.selectWorker(s,0,w.id).ok,true);
+  assert.equal(G.beginConstruction(s,0,'tenement','civic').ok,true);
+  assert.equal(G.endActivation(s,0).nextPlayer,1);
+  for(const pid of [1,2]){
+    const other=G.playerWorkers(s,pid)[0];other.districtId='civic';
+    assert.equal(G.selectWorker(s,pid,other.id).ok,true);
+    assert.equal(G.raiseCapital(s,pid,'civic').ok,true);
+    assert.equal(G.endActivation(s,pid).ok,true);
+  }
+  assert.equal(G.currentDeveloper(s),0);
+  w=G.playerWorkers(s,0).find(x=>!x.used);w.districtId='civic';
+  assert.equal(G.selectWorker(s,0,w.id).ok,true);
+  const second=G.beginConstruction(s,0,'warehouse','civic');
+  assert.equal(second.ok,true);
+  assert.equal(s.round,1);
+  assert.equal(G.unfinishedConstructions(s,0).length,2);
+});
+
+test('next year recomputes order from current Influence only after upkeep is resolved',()=>{
+  const s=devState();
+  s.developmentComplete=true;
+  s.newsCurrentIds=['E05'];
+  s.newsLastResolvedRound=0;
+  s.players[0].influence=5;s.players[1].influence=4;s.players[2].influence=3;
+  s.yearTurnOrder=[2,1,0];s.firstPlayer=2;
+  assert.deepEqual(G.turnOrder(s),[2,1,0]);
+  const r=G.cleanupMarket(s,{rng:()=>0.99});
+  assert.equal(r.ok,true);
+  assert.deepEqual(G.turnOrder(s),[0,1,2]);
+  assert.equal(s.firstPlayer,0);
+});
+
 test('Bank loan action occupies the bank and repayment requires an Income phase',()=>{
   const s=devState();
   const w=G.playerWorkers(s,0)[0];
@@ -476,7 +622,8 @@ test('Social Club pays owner on opponent use and grants Influence to visitor',()
   assert.equal(r.ok,true);
   assert.equal(s.players[0].capital,visitorMoney-1);
   assert.equal(s.players[1].capital,ownerMoney+1);
-  assert.equal(s.players[0].influence,visitorInf+1);
+  assert.ok(s.players[0].influence>visitorInf);
+  assert.equal(new Set(s.players.map(p=>p.influence)).size,3);
 });
 
 
