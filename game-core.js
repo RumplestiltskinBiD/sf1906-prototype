@@ -1145,8 +1145,8 @@ export function takeBankLoan(state,playerId,bankConstructionId){
   if(bank.playerId!==playerId&&!state.bankOwnerRewarded?.[bank.playerId]){
     state.bankOwnerRewarded=state.bankOwnerRewarded||{};
     state.bankOwnerRewarded[bank.playerId]=true;
-    owner.influence+=1;
-    logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank.`,'good');
+    const influenceMove=moveInfluence(state,owner.id,1);
+    logEvent(state,`${owner.name} получает +1 Influence: другой игрок использовал его Bank. Позиция ${influenceMove.from}→${influenceMove.to}.`,'good');
   }
   logEvent(state,`${player.name} берёт Bank Loan: +$${received}, долг $${LOAN_PRINCIPAL}, будущий Income −$1.${workerMovementText(consumed)}`,'accent');
   return {ok:true,received,loan,worker:consumed.worker};
@@ -1232,13 +1232,13 @@ export function useSocialClub(state,playerId,clubConstructionId){
   player.capital-=1;
   const owner=state.players[club.playerId];
   if(club.playerId!==playerId)owner.capital+=1;
-  player.influence+=1;
+  const influenceMove=moveInfluence(state,playerId,1);
   state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
   state.actionSpaceOccupancy[clubConstructionId]=playerId;
   if(club.playerId!==playerId){
-    logEvent(state,`${player.name} ужинает и заводит связи в клубе игрока ${owner.name}: −$1, +1 Influence; $1 получает владелец заведения.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} ужинает и заводит связи в клубе игрока ${owner.name}: −$1, +1 Influence (${influenceMove.from}→${influenceMove.to}); $1 получает владелец заведения.${workerMovementText(consumed)}`,'accent');
   }else{
-    logEvent(state,`${player.name} тратит $1 на ужин и приём состоятельных горожан в своём клубе: +1 Influence.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} тратит $1 на ужин и приём состоятельных горожан в своём клубе: +1 Influence (${influenceMove.from}→${influenceMove.to}).${workerMovementText(consumed)}`,'accent');
   }
   return {ok:true,cost:1,influence:1,worker:consumed.worker};
 }
@@ -1451,8 +1451,13 @@ export function resolveNewspaper(state){
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
-    const actual=amount<0?Math.max(-Math.max(0,p[key]||0),amount):amount;
-    p[key]=Math.max(0,(p[key]||0)+actual);
+    let actual=0;
+    if(key==='influence'){
+      actual=moveInfluence(state,pid,amount).steps;
+    }else{
+      actual=amount<0?Math.max(-Math.max(0,p[key]||0),amount):amount;
+      p[key]=Math.max(0,(p[key]||0)+actual);
+    }
     const result=changes.get(pid)||{capital:0,influence:0,prestige:0};
     result[key]+=actual;
     changes.set(pid,result);
