@@ -1,10 +1,10 @@
 import {
-PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
@@ -26,6 +26,7 @@ let newsSheetOpen=false;
 let newsArchiveIndex=null;
 let newsMapVisible=false;
 let newsEmergencyMode=false;
+let upkeepSelectedConstructionId=null;
 let undoHistory=[];
 let undoApplying=false;
 let lastSavedSnapshot=JSON.stringify(state);
@@ -40,14 +41,14 @@ for(const key of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(key);if(raw)break
 }
 if(raw){
 const parsed=JSON.parse(raw);
-if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a'].includes(parsed?.version))return migrateState(parsed);
+if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a','0.43b'].includes(parsed?.version))return migrateState(parsed);
 }
 }catch(e){}
 return createInitialState();
 }
 function migrateState(parsed){
 const originalVersion=parsed.version;
-parsed.version='0.43a';
+parsed.version='0.43b';
 parsed.players=(parsed.players||[]).map(p=>{
 let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
@@ -70,7 +71,12 @@ bureauContracts:p.bureauContracts||0,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
 };
 });
-parsed.constructions=(parsed.constructions||[]).map(x=>({...x,materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],completedRound:x.completedRound??null}));
+parsed.constructions=(parsed.constructions||[]).map(x=>({...x,
+materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),
+warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
+completedRound:x.completedRound??null,
+lostMaterials:Array.isArray(x.lostMaterials)?x.lostMaterials:[]
+}));
 parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
 parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-${i}-${card}`,id:card}:card);
 if(!parsed.marketExtendedForSixYears){
@@ -110,8 +116,12 @@ parsed.draftSelection=parsed.draftSelection||[];
 parsed.draftRevealed=parsed.phase==='draft'?!!parsed.draftRevealed:false;
 parsed.selectedMarketUid=parsed.selectedMarketUid||parsed.market.find(m=>m&&m.id===parsed.selectedProjectId)?.uid||parsed.market.find(Boolean)?.uid||null;
 parsed.pendingConstruction=null;
+parsed.yearTransition=parsed.yearTransition||null;
+if(originalVersion!=='0.43b'||!Array.isArray(parsed.yearTurnOrder)||parsed.yearTurnOrder.length!==parsed.players.length){
+  normalizeInfluenceTrack(parsed);
+}
 if(parsed.phase==='development'){
-const order=[0,1,2].map((_,i)=>(parsed.firstPlayer+i)%3);
+const order=turnOrder(parsed);
 const candidate=order.find(pid=>(parsed.players[pid]?.workersLeft??0)>0);
 parsed.developmentComplete=candidate==null;
 parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlayer!=null&&(parsed.players[parsed.developmentPlayer]?.workersLeft??0)>0?parsed.developmentPlayer:candidate);
@@ -119,7 +129,7 @@ parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlay
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
 }
-if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
 ensureNewspaper(parsed);
 return parsed;
 }
