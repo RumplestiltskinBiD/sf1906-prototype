@@ -82,10 +82,10 @@ test('full report contains raw risks, thresholds, stacked sources and all steps'
   const report=formatReport({input:p,simulation:s,scenario:'Тест трёх очагов'});
   assert.match(report,/Сценарий: Тест трёх очагов/);
   assert.match(report,/Статус: Расчёт завершён/);
-  assert.match(report,/З разрушение от 3/);
+  assert.match(report,/У разрушение от 3/);
   assert.match(report,/возгорание от П5/);
-  assert.match(report,/SoMa: З7 П1/);
-  assert.match(report,/Mission: З3 П8/);
+  assert.match(report,/SoMa: У7 П1/);
+  assert.match(report,/Mission: У3 П8/);
   assert.match(report,/Первоначальные очаги/);
   assert.match(report,/Шаг 1\. Источник:/);
   assert.match(report,/Mission Bay.*П\d+ \+2 = П\d+/);
@@ -190,7 +190,7 @@ test('full copied report contains firehouse placement, loss, quake and final sta
   const s=run(begin(d,{spread:2}));
   const report=formatReport({input:d,simulation:s,scenario:'Station test'});
   assert.match(report,/Пожарная часть: только свой район/);
-  assert.match(report,/SoMa: З3 П3; пожарная часть: есть/);
+  assert.match(report,/SoMa: У3 П3; пожарная часть: есть/);
   assert.match(report,/уничтожена землетрясением/);
   assert.match(report,/пожарных частей построено: 2/);
   assert.match(report,/пожарная часть=/);
