@@ -751,7 +751,7 @@ test('wide landscape phone remains mobile at 932x430 without page overflow',asyn
   expect(layout.strip).not.toBe('none');
 });
 
-test('exhaustive worker adjacency highlighting matches the locked graph',async({page})=>{
+test('exhaustive worker highlighting matches adjacency plus Market Street',async({page})=>{
   const adjacency={
     presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
     marina:['presidio','pacific','northbeach'],
@@ -786,7 +786,9 @@ test('exhaustive worker adjacency highlighting matches the locked graph',async({
     await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
     await page.reload();
     await page.locator('#actionRaiseCapital').click();
+    const market=new Set(['noe','mission','civic','soma','financial']);
     const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
+    if(market.has(from))for(const id of market)expected.add(id);
     for(const id of Object.keys(adjacency)){
       const district=page.locator('[data-district="'+id+'"]');
       if(expected.has(id)){
@@ -842,7 +844,7 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   expect(saved.players[0].capital).toBe(beforeCapital+3);
 });
 
-test('Risk view exposes district Q/F levels without replacing the map',async({page})=>{
+test('Risk view exposes district У/П levels without replacing the map',async({page})=>{
   const s=makeDevState();
   await seed(page,s);
   await page.goto('/');
@@ -851,9 +853,9 @@ test('Risk view exposes district Q/F levels without replacing the map',async({pa
   await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('EARTHQUAKE');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('УЯЗВИМОСТЬ');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('У 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('П 0');
 });
 
 test('construction preview shows the district risk change before confirmation',async({page})=>{
@@ -975,8 +977,8 @@ test('mobile Risk view stays usable in portrait',async({page})=>{
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('У 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('П 0');
 
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
