@@ -43,6 +43,7 @@ async function stored(page){
 
 function makeUpkeepState({count=4,capital=0}={}){
   const s=makeDevState();
+  s.players.forEach(p=>{p.workers.forEach(w=>{w.used=true;});p.workersLeft=0;});
   s.developmentComplete=true;
   s.developmentPlayer=null;
   s.activeWorkerId=null;
