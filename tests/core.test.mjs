@@ -20,7 +20,7 @@ function construction(id,playerId,projectId,districtId,status='under-constructio
 
 test('initial state is internally consistent',()=>{
   const s=G.createInitialState({rng:()=>0.1});
-  assert.equal(s.version,'0.30a');
+  assert.equal(s.version,'0.43a');
   assert.equal(s.players.length,3);
   assert.equal(s.market.length,5);
   assert.equal(s.starterDraftHands.length,3);
@@ -53,6 +53,30 @@ test('worker movement allows Golden Gate Park but blocks Presidio and Twin Peaks
   assert.equal(G.workerCanReachDistrict(s,0,'presidio',w.id),false);
   w.districtId='innersunset';
   assert.equal(G.workerCanReachDistrict(s,0,'twinpeaks',w.id),false);
+});
+
+test('Market Street connects its five districts for representative actions without changing freight adjacency',()=>{
+  const s=devState();
+  const w=G.playerWorkers(s,0)[0];
+  w.districtId='noe';
+  assert.deepEqual(G.MARKET_STREET_DISTRICTS,['noe','mission','civic','soma','financial']);
+  assert.equal(G.workerCanReachDistrict(s,0,'financial',w.id),true);
+  assert.equal(G.workerCanReachDistrict(s,0,'civic',w.id),true);
+  assert.equal(G.workerCanReachDistrict(s,0,'northbeach',w.id),false);
+  assert.ok(G.workerReachableDistricts(s,0,w.id).includes('soma'));
+  assert.equal(G.deliveryNeighbors('noe').includes('financial'),false);
+});
+
+test('v0.43A exposes canonical building types and historical ground classes',()=>{
+  assert.deepEqual(G.projectTypes('tenement'),['Жилое']);
+  assert.deepEqual(G.projectTypes('club'),['Бизнес','Торговое']);
+  assert.deepEqual(G.projectTypes('factory'),['Промышленное']);
+  assert.deepEqual(G.projectTypes('firehouse'),['Общественное']);
+  assert.equal(G.districtById('marina').earthquakeBase,2);
+  assert.deepEqual(G.POOR_GROUND_DISTRICTS,['marina','financial','soma','mission','missionbay']);
+  assert.deepEqual(G.STABLE_GROUND_DISTRICTS,['pacific','chinatown']);
+  assert.equal(G.districtSoilClass('pacific'),'stable');
+  assert.equal(G.districtSoilClass('western'),'normal');
 });
 
 test('starter draft completes for all players and transitions to declarations',()=>{
@@ -348,7 +372,7 @@ test('Bank loan action occupies the bank and repayment requires an Income phase'
   assert.equal(G.repayLoan(s,0).reason,'not-seasoned');
 });
 
-test('Fire House and Clinic service reach own and adjacent road districts only',()=>{
+test('Fire House and Clinic service reach own and adjacent districts without a Street Network gate',()=>{
   const s=devState();
   s.constructions=[
     construction('FIRE',0,'firehouse','civic','complete',['Lumber','Masonry','Steel']),
