@@ -41,10 +41,42 @@ test('SoMa+Mission contributions add +4 to Mission Bay and Civic, even after fir
     assert.equal(s.nodes[id].received.filter(x=>['soma','mission'].includes(x.source)).length,2);
   }
 });
-test('no spontaneous fire at P7 if there are no earthquake sources',()=>{
+test('P3+ is an initial fire source even without earthquake collapse',()=>{
   const data=preset('base');
-  for(const id of DISTRICT_IDS)data[id]={z:0,p:7};
-  assert.equal(stats(run(begin(data))).burning,0);
+  for(const id of DISTRICT_IDS)data[id]={z:0,p:0,firehouse:false};
+  data.civic={z:0,p:3,firehouse:false};
+  data.soma={z:1,p:2,firehouse:false};
+  const sim=begin(data);
+  assert.equal(sim.nodes.civic.quake,'intact');
+  assert.equal(sim.nodes.civic.burning,true);
+  assert.equal(sim.nodes.civic.origin,'fire-risk');
+  assert.equal(sim.nodes.soma.burning,false);
+  assert.deepEqual(sim.starts,['civic']);
+});
+
+test('high P can ignite every district without any U3 collapse',()=>{
+  const data=preset('base');
+  for(const id of DISTRICT_IDS)data[id]={z:0,p:7,firehouse:false};
+  const sim=run(begin(data));
+  assert.equal(stats(sim).destroyed,0);
+  assert.equal(stats(sim).burning,DISTRICT_IDS.length);
+  assert.equal(sim.starts.length,DISTRICT_IDS.length);
+  assert.ok(Object.values(sim.nodes).every(n=>n.origin==='fire-risk'));
+});
+
+test('firehouse protection is applied before P-threshold initial ignition',()=>{
+  const data=preset('base');
+  for(const id of DISTRICT_IDS)data[id]={z:0,p:0,firehouse:false};
+  data.civic={z:0,p:3,firehouse:true};
+  data.soma={z:0,p:4,firehouse:true};
+  const sim=begin(data);
+  assert.equal(sim.nodes.civic.initialAfterQuakeP,2);
+  assert.equal(sim.nodes.civic.burning,false);
+  assert.equal(sim.nodes.civic.firehouseActive,true);
+  assert.equal(sim.nodes.soma.initialAfterQuakeP,3);
+  assert.equal(sim.nodes.soma.burning,true);
+  assert.equal(sim.nodes.soma.origin,'fire-risk');
+  assert.equal(sim.nodes.soma.firehouseDestroyed,true);
 });
 test('every burning district processed once, closed zones not in graph',()=>{
   const s=run(begin(preset('five')));
@@ -86,7 +118,7 @@ test('full report contains raw risks, thresholds, stacked sources and all steps'
   assert.match(report,/возгорание от П5/);
   assert.match(report,/SoMa: У7 П1/);
   assert.match(report,/Mission: У3 П8/);
-  assert.match(report,/Первоначальные очаги/);
+  assert.match(report,/Первоначальные очаги \(У3\+ или П5\+/);
   assert.match(report,/Шаг 1\. Источник:/);
   assert.match(report,/Mission Bay.*П\d+ \+2 = П\d+/);
   assert.match(report,/Civic Center.*П\d+ \+2 = П\d+/);

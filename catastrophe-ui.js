@@ -58,7 +58,7 @@ function draw(){
   $('all').disabled=playing||!sim||sim.done;
   $('reset').disabled=playing;
   $('queue').textContent=sim
-    ?'Очаги землетрясения: '+(sim.starts.map(name).join(', ')||'нет')+'. В очереди: '+(sim.queue.map(name).join(' → ')||'пусто')+'. Обработано: '+sim.events.length+'.'
+    ?'Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+(sim.starts.map(name).join(', ')||'нет')+'. В очереди: '+(sim.queue.map(name).join(' → ')||'пусто')+'. Обработано: '+sim.events.length+'.'
     :'Сначала запустите землетрясение.';
 }
 async function loadMap(){
@@ -118,8 +118,8 @@ $('quake').addEventListener('click',()=>{
   if(sim||playing)return;
   sim=begin(values,{ignition:Math.max(1,riskValue($('igniteAt').value)),spread:Math.max(1,riskValue($('spreadBy').value))});$('history').replaceChildren();
   $('message').textContent=sim.starts.length
-    ?'Землетрясение! Начальные очаги: '+sim.starts.map(name).join(', ')+'.'
-    :'Землетрясение: нет разрушенных районов, источники пожара отсутствуют.';
+    ?'Катастрофа началась. Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+sim.starts.map(name).join(', ')+'.'
+    :'Землетрясение прошло: нет районов У3+ и ни один район не достиг порога П'+sim.config.ignition+'.';
   draw();
 });
 function oneStep(){
