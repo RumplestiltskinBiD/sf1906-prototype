@@ -121,9 +121,10 @@ test('firehouse subtracts a single initial P; five origins can be blocked in Fin
   console.log('FIREHOUSE-SCENARIO',JSON.stringify({
     baseline,guarded:stats(result).burning,saved
   }));
-  assert.equal(baseline,12);
+  // Marina is now historically vulnerable (У2), so the unprotected baseline burns one extra district.
+  assert.equal(baseline,13);
   assert.equal(stats(result).burning,6);
-  assert.equal(saved,6);
+  assert.equal(saved,7);
 });
 test('station at zero does not intercept incoming P1',()=>{
   const d=preset('base');
