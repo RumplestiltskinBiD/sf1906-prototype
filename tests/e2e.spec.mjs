@@ -70,6 +70,38 @@ test('fresh game UI can complete draft handoff and reach Development without dea
 });
 
 
+
+test('v0.30a save migrates to v0.43A without losing player state and removes the old street gate',async({page})=>{
+  const s=makeDevState();
+  s.version='0.30a';
+  s.players[0].capital=37;
+  s.districts.sunset.roadAccess=false;
+  s.constructions=[con('C1',0,'tenement','civic','complete',['Lumber','Lumber','Masonry'])];
+  await seed(page,s);
+  await page.goto('/');
+  const saved=await stored(page);
+  expect(saved.version).toBe('0.43a');
+  expect(saved.players[0].capital).toBe(37);
+  expect(saved.constructions.find(x=>x.id==='C1')?.status).toBe('complete');
+  expect(saved.districts.sunset.roadAccess).toBe(true);
+});
+
+test('Market Street performs a real long representative move from Noe Valley to Financial District',async({page})=>{
+  const s=makeDevState();
+  const w=s.players[0].workers[0];
+  w.districtId='noe';
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('[data-worker-token="'+w.id+'"]').click();
+  await page.locator('#actionRaiseCapital').click();
+  const financial=page.locator('[data-district="financial"]');
+  await expect(financial).toHaveClass(/move-target/);
+  await financial.click();
+  const saved=await stored(page);
+  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('financial');
+  expect(saved.players[0].capital).toBe(53);
+});
+
 test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
   const s=makeDevState();
   s.freightYardInventories=[['Lumber'],[],['Steel','Masonry']];
