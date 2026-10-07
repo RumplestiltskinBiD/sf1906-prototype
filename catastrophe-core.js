@@ -125,10 +125,10 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
     'SAN FRANCISCO 1906 | ОТЧЁТ СИМУЛЯТОРА КАТАСТРОФЫ',
     'Сценарий: '+scenario,
     'Статус: '+(!simulation?'Не запущено':simulation.done?'Расчёт завершён':'Частичный расчёт'),
-    'Правила: З повреждение от '+c.damage+'; З разрушение от '+c.collapse+
+    'Правила: У повреждение от '+c.damage+'; У разрушение от '+c.collapse+
       '; повреждённый район +'+c.damageFire+' П; возгорание от П'+c.ignition+
       '; передача очага +'+c.spread+' П соседям.',
-    'Реальные З и П без верхнего лимита; III — только индикатор.',
+    'Реальные У и П без верхнего лимита; III — только индикатор.',
     'Граф: обычные застраиваемые районы; парк, Presidio и Twin Peaks исключены. Каждый источник передаёт огонь один раз.',
     'Пожарная часть: только свой район, −1 П однократно после землетрясения (не ниже П0); повреждённая работает; разрушенная/сгоревшая уничтожена. Входящий огонь не блокируется.',
     '',
@@ -136,7 +136,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
   ];
   for(const id of DISTRICT_IDS){
     const n=simulation?.nodes[id],r=input?.[id]||{};
-    lines.push(name(id)+': З'+(n?.z??riskValue(r.z))+' П'+(n?.baseP??riskValue(r.p))+
+    lines.push(name(id)+': У'+(n?.z??riskValue(r.z))+' П'+(n?.baseP??riskValue(r.p))+
       '; пожарная часть: '+((n?.firehouseBuilt??!!r.firehouse)?'есть':'нет'));
   }
   if(!simulation){
@@ -169,7 +169,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
   }
   const summary=stats(simulation);
   lines.push('','=== ИТОГ И ТЕКУЩИЕ СОСТОЯНИЯ ===');
-  lines.push('Всего районов: '+summary.total+'; целых после З: '+summary.intact+
+  lines.push('Всего районов: '+summary.total+'; целых после У: '+summary.intact+
     '; повреждены: '+summary.damaged+'; разрушены землетрясением: '+summary.destroyed+
     '; всего загорелось: '+summary.burning+'; новых очагов: '+summary.newFires+
     '; пожарных частей построено: '+summary.firehousesBuilt+

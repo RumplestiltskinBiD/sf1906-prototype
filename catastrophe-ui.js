@@ -31,26 +31,26 @@ function draw(){
       title.setAttribute('x',String(x));
       const risk=document.createElementNS('http://www.w3.org/2000/svg','tspan');
       risk.setAttribute('x',String(x));risk.setAttribute('dy','20');risk.setAttribute('class','district-risk');
-      risk.textContent='З'+format(n?.z??r.z)+' П'+format(n?.p??Math.max(0,r.p-(r.firehouse?1:0)));
+      risk.textContent='У'+format(n?.z??r.z)+' П'+format(n?.p??Math.max(0,r.p-(r.firehouse?1:0)));
       t.append(title,risk);labels.append(t);
     }
   }
   const st=sim?stats(sim):null;
   $('stats').innerHTML=[
     ['Целые',st?.intact??'—'],['Повреждены',st?.damaged??'—'],
-    ['Разрушены З',st?.destroyed??'—'],['Все очаги',st?.burning??'—']
+    ['Разрушены У',st?.destroyed??'—'],['Все очаги',st?.burning??'—']
   ].map(([label,count])=>'<div><b>'+count+'</b><small>'+label+'</small></div>').join('');
   $('selectedTitle').textContent=name(selection);
   $('z').value=values[selection].z;$('p').value=values[selection].p;
   $('firehouse').checked=!!values[selection].firehouse;
   const n=sim?.nodes[selection];
   $('selectionInfo').textContent=n
-    ?'З'+n.z+'; П исходная '+n.baseP+' → после землетрясения '+n.initialAfterQuakeP+' → сейчас '+n.p+
+    ?'У'+n.z+'; П исходная '+n.baseP+' → после землетрясения '+n.initialAfterQuakeP+' → сейчас '+n.p+
       '; состояние: '+({intact:'цел',damaged:'повреждён',destroyed:'разрушен'}[n.quake])+
       (n.burning?'; горит':'')+
       '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.firehouseDestroyed?'УНИЧТОЖЕНА':'работает')+
       '. От соседей: '+(n.received.map(c=>name(c.source)+' +'+c.amount).join(', ')||'нет')
-    :'Полные значения: З'+values[selection].z+', П до защиты '+values[selection].p+
+    :'Полные значения: У'+values[selection].z+', П до защиты '+values[selection].p+
       ', П с пожарной частью '+Math.max(0,values[selection].p-(values[selection].firehouse?1:0))+
       '. На карте III — только индикатор.';
   for(const id of ['z','p','firehouse','zminus','zplus','pminus','pplus','quake','preset','loadSaved','igniteAt','spreadBy'])$(id).disabled=playing||!!sim;
@@ -174,6 +174,6 @@ async function copyFullReport(){
     field.remove();
     if(!success){feedback.textContent='Не получилось скопировать. Разрешите доступ к буферу обмена.';return;}
   }
-  feedback.textContent='Скопировано: З/П, пожарные части, шаги и результаты. Вставьте отчёт в чат.';
+  feedback.textContent='Скопировано: У/П, пожарные части, шаги и результаты. Вставьте отчёт в чат.';
 }
 $('copyReport').addEventListener('click',copyFullReport);

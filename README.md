@@ -24,11 +24,11 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Каждый игрок управляет 3 отдельными представителями.
 - Все представители начинают в Civic Center.
 - Для main action выбирается один неиспользованный представитель.
-- Он может действовать в текущем или одном соседнем районе и после действия остаётся там.
-- Raise Capital (+$3) служит безопасным fallback: его можно выполнить в текущем или соседнем районе, поэтому плохая позиция не запирает фигурку без полезного хода.
+- Он может действовать в текущем или одном соседнем районе; если представитель находится вдоль Market Street, он также может действовать в любом другом районе базовой Market Street Network (Noe Valley, Mission, Civic Center, SoMa, Financial District). После действия фигурка остаётся в районе назначения.
+- Raise Capital (+$3) использует те же правила перемещения, включая Market Street.
 - Позиции сохраняются между раундами; в начале нового раунда сбрасывается только статус used.
 - Действия Bank / Bureau / Shopping Row / Club и начало строительства требуют физической доступности выбранного представителя.
-- Прежний Road access в интерфейсе называется Street Network: это развитая уличная сеть района, а не факт существования любой дороги.
+- Обычные улицы больше не являются отдельным игровым доступом. Rail/Port остаются свойствами карты; Market Street используется только для быстрого перемещения представителей.
 
 
 ## v0.25 mobile UX
@@ -46,7 +46,7 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - В каждом строительном районе ровно 5 building slots.
 - Golden Gate Park — отдельная проходная зона: строить нельзя, представитель может войти и затем выйти в соседний район.
 - Presidio и Twin Peaks закрыты и для строительства, и для перемещения.
-- Движение представителей идёт только по явному графу соседства, совпадающему с границами районов тестовой карты.
+- Обычное движение представителей идёт по явному графу соседства; Market Street добавляет одно дальнее транспортное соединение между пятью исторически связанными районами.
 - Земля сохраняет шкалу $0–$4: дорогие центральные/северо-восточные районы, средние центрально-западные, дешёвые южные/западные; Outer Sunset стартует с $0.
 - Карта переведена в интерактивный SVG: районы кликабельны, legal destinations подсвечиваются, а workers/buildings рисуются поверх поля.
 - Легенда оставлена на поле для тестирования ощущения физической настольной карты.
@@ -185,14 +185,14 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 
 ## v0.30A — District Risk Core
 
-- Каждый строительный район получил открытые базовые значения **Earthquake (Q)** и **Fire (F)**.
-- Риск хранится как **raw value без верхнего cap**; отображаемые уровни 0 / I / II / III являются качественной оболочкой. Значения выше III продолжают накапливаться, поэтому опасную застройку нельзя «спрятать» за потолком шкалы.
-- Завершённые проекты детерминированно меняют Q / F района; незавершённые стройки пока не меняют текущий риск.
-- Карты проектов показывают своё влияние на Q / F.
+- Каждый строительный район имеет открытые значения **Уязвимость (У)** и **Пожароопасность (П)**.
+- У/П хранятся как **raw value без верхнего cap**; отображаемые уровни 0 / I / II / III являются качественной оболочкой. Значения выше III продолжают накапливаться.
+- Завершённые проекты детерминированно меняют У / П района; незавершённые стройки пока не меняют текущие значения.
+- Карты проектов показывают своё влияние на У / П.
 - Перед подтверждением новой стройки контекст района показывает **прогноз риска после завершения**.
-- На карте добавлен компактный Q / F индикатор и отдельный режим **РИСК** для аналитического просмотра.
+- На карте есть компактный У / П индикатор и отдельный режим **РИСК** для аналитического просмотра.
 - Контекст района показывает источник каждого изменения риска.
-- Исторические стартовые значения в этой версии являются **тестовыми балансировочными значениями** и не считаются окончательной исторической реконструкцией.
+- v0.43A начинает историческую корректировку базовой Уязвимости: Marina и Mission Bay получают высокий базовый уровень; отдельные списки неблагоприятных и устойчивых грунтов сохранены для будущего исследования Lawson.
 - Сам Disaster Simulator (Earthquake → Fire cascade → aftermath) остаётся задачей v0.30B.
 
 
@@ -258,3 +258,13 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Removed the requirement to own a completed Warehouse in the same district before starting 4–5 material projects.
 - Construction staging remains 3. A Delivery may exceed 3 only when that same Delivery supplies the exact remaining recipe and completes the project immediately.
 - No recurring round rent was added. Own Warehouses retain capacity 5, no rental fee, income and Prestige benefits.
+
+
+## v0.43A — Foundation
+
+- Added canonical building types: **Жилое / Бизнес / Промышленное / Общественное / Торговое**; a project may have two types.
+- Removed Street Network as a separate construction requirement; ordinary city streets are assumed.
+- Added Market Street representative movement between **Noe Valley, Mission, Civic Center, SoMa, Financial District** without changing freight routing.
+- Added historical soil classes for future research effects: poor ground = Marina / Financial District / SoMa / Mission / Mission Bay; stable ground = Pacific Heights / Chinatown.
+- Marina base vulnerability is now **У2**; Mission Bay remains **У2**.
+- UI terminology changed from earthquake Q/Z labels to **У (Уязвимость)** and **П (Пожароопасность)**, including the catastrophe lab.

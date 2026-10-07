@@ -60,7 +60,7 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <span><span class="dot" style="background:#e44c30"></span>Пожар</span></div>
 <div class="stats" id="stats"></div><p id="message" aria-live="polite">Выберите сценарий, затем запустите землетрясение.</p>
 <div class="hint">Разместите пожарную часть в выбранном на карте районе с помощью галочки справа. При загрузке партии готовые части подтягиваются автоматически.</div>
-<div class="hint">Тестовые пороги: З0–1 — цел; З2 — повреждён (+1 П); З3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+ (тестовые числа можно изменять справа). Распространение без ограничения волн.</div>
+<div class="hint">Тестовые пороги: У0–1 — цел; У2 — повреждён (+1 П); У3+ — разрушен и горит. Каждый очаг передаёт +2 П соседям. Новый очаг при П3+ (тестовые числа можно изменять справа). Распространение без ограничения волн.</div>
 </section>
 <div class="side">
 <section class="panel">
@@ -69,25 +69,25 @@ footer{padding:0 16px 25px;color:var(--sub);font-size:12px}
 <option value="three">3 очага: SoMa, Mission, Chinatown</option>
 <option value="one">1 очаг: SoMa</option>
 <option value="five">5 очагов</option>
-<option value="low-fire">3 очага, низкий риск пожара</option>
-<option value="high-risk">З7 / З5 / З4 — проверка абуза</option>
+<option value="low-fire">3 очага, низкая пожароопасность</option>
+<option value="high-risk">У7 / У5 / У4 — проверка абуза</option>
 <option value="base">Исходные значения без изменений</option>
 </select>
-<p class="tiny">До землетрясения коснитесь района на карте и измените его риски. Полные значения З и П никогда не обрезаются до III.</p>
+<p class="tiny">До землетрясения коснитесь района на карте и измените его риски. Полные значения У и П никогда не обрезаются до III.</p>
 <hr><h2>Параметры пожара (эксперимент)</h2><div class="grid"><div><label for="igniteAt">Порог возгорания П</label><input id="igniteAt" type="number" min="1" step="1" inputmode="numeric" value="3"></div><div><label for="spreadBy">Передача от очага +П</label><input id="spreadBy" type="number" min="1" step="1" inputmode="numeric" value="2"></div></div><p class="tiny">Исходные значения: порог П3 и передача +2. Можно проверить более мягкую цепную реакцию, не переписывая правила.</p><hr><h2 id="selectedTitle">SoMa</h2><p id="selectionInfo"></p>
 <div class="grid">
-<div><label for="z">Землетрясение (З)</label><input id="z" type="number" inputmode="numeric" min="0" step="1"></div>
+<div><label for="z">Уязвимость (У)</label><input id="z" type="number" inputmode="numeric" min="0" step="1"></div>
 <div><label for="p">Пожар (П)</label><input id="p" type="number" inputmode="numeric" min="0" step="1"></div>
 </div>
 <label class="station-toggle" for="firehouse"><input id="firehouse" type="checkbox"><span>🚒 Пожарная часть в районе <strong>−1 П</strong></span></label>
 <div class="tiny">Защищает только свой район. Повреждённая работает; при разрушении или пожаре уничтожается. Прибавки +1 от соседей не блокирует.</div>
 <div class="actions" style="margin:8px 0 12px">
-<button id="zminus">З −1</button><button id="zplus">З +1</button><button id="pminus">П −1</button><button id="pplus">П +1</button>
+<button id="zminus">У −1</button><button id="zplus">У +1</button><button id="pminus">П −1</button><button id="pplus">П +1</button>
 </div><hr>
 <div class="actions"><button id="quake" class="primary">Землетрясение!</button></div>
 <div class="actions" style="margin-top:8px"><button id="step">Следующий очаг</button><button id="all" class="primary">Вся цепная реакция</button></div>
 </section>
-<section class="panel"><h2>Ход пожара</h2><button id="copyReport" class="primary" style="width:100%;margin:0 0 7px">Копировать полный отчёт</button><div id="copyFeedback" class="tiny" role="status" aria-live="polite">Одна кнопка: сценарий, З/П всех районов, параметры, шаги распространения и итог. Можно копировать и до завершения.</div><div id="queue">Начальных очагов пока нет.</div><ol id="history"></ol></section>
+<section class="panel"><h2>Ход пожара</h2><button id="copyReport" class="primary" style="width:100%;margin:0 0 7px">Копировать полный отчёт</button><div id="copyFeedback" class="tiny" role="status" aria-live="polite">Одна кнопка: сценарий, У/П всех районов, параметры, шаги распространения и итог. Можно копировать и до завершения.</div><div id="queue">Начальных очагов пока нет.</div><ol id="history"></ol></section>
 <section class="panel"><h2>Пока не участвуют</h2>
 <p class="tiny">Пожарные части, водопровод, исследования, политика, полиция, военные, гражданские, эвакуация и окончательная потеря ПО — будущие слои катастрофы. Golden Gate Park, Presidio и Twin Peaks сейчас условно исключены из распространения пожара.</p></section>
 </div></main>

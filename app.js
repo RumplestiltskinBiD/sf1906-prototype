@@ -1,7 +1,7 @@
 import {
 PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,districtById,districtAccess,districtNeighbors,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,constructionEligibility,beginConstruction,setLandValue,
@@ -40,14 +40,14 @@ for(const key of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(key);if(raw)break
 }
 if(raw){
 const parsed=JSON.parse(raw);
-if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a'].includes(parsed?.version))return migrateState(parsed);
+if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a'].includes(parsed?.version))return migrateState(parsed);
 }
 }catch(e){}
 return createInitialState();
 }
 function migrateState(parsed){
 const originalVersion=parsed.version;
-parsed.version='0.30a';
+parsed.version='0.43a';
 parsed.players=(parsed.players||[]).map(p=>{
 let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
@@ -84,15 +84,13 @@ if(!parsed.marketExtendedForSixYears){
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
 parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
-parsed.districts=parsed.districts||Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road}]));
+parsed.districts=parsed.districts||Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:d.buildable!==false}]));
 DISTRICTS.forEach(d=>{
-parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites,roadAccess:!!d.road};
+parsed.districts[d.id]=parsed.districts[d.id]||{landValue:d.landValue,sites:d.sites,roadAccess:d.buildable!==false};
 if(parsed.districts[d.id].landValue==null)parsed.districts[d.id].landValue=d.landValue;
 parsed.districts[d.id].sites=d.sites;
-if(parsed.districts[d.id].roadAccess==null){
-const completedStreetcar=(parsed.constructions||[]).some(x=>x.districtId===d.id&&x.projectId==='streetcar'&&x.status==='complete');
-parsed.districts[d.id].roadAccess=!!d.road||completedStreetcar;
-}
+// v0.43A: ordinary streets are background city infrastructure, not a gameplay gate.
+parsed.districts[d.id].roadAccess=d.buildable!==false;
 });
 parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
 parsed.freightYardInventories=Array.from({length:3},(_,i)=>Array.isArray(parsed.freightYardInventories?.[i])?parsed.freightYardInventories[i].slice(0,2):[]);
@@ -121,7 +119,7 @@ parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlay
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
 }
-if(!['0.22','0.23','0.24','0.25','0.28','0.30a'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
 ensureNewspaper(parsed);
 return parsed;
 }
@@ -184,7 +182,16 @@ if(state.phase==='development'&&currentDeveloper(state)!=null)return currentDeve
 if(state.phase==='declare'&&currentDeclarer(state)!=null)return currentDeclarer(state);
 return state.firstPlayer;
 }
-function typeClass(type){return type==='Жильё'?'type-housing':type==='Коммерция'?'type-commerce':type==='Промышленность'?'type-industry':type==='Логистика'?'type-logistics':type==='Городская служба'?'type-civic':'type-infra';}
+function projectTypeLabel(project){return projectTypes(project).join(' · ')||project?.type||'Проект';}
+function typeClass(projectOrType){
+const types=typeof projectOrType==='string'?[projectOrType]:projectTypes(projectOrType);
+const type=types[0]||projectOrType?.type||'';
+return type==='Жилое'||type==='Жильё'?'type-housing':
+type==='Бизнес'||type==='Коммерция'?'type-commerce':
+type==='Промышленное'||type==='Промышленность'?'type-industry':
+type==='Торговое'||type==='Логистика'?'type-logistics':
+type==='Общественное'||type==='Городская служба'?'type-civic':'type-infra';
+}
 const RESOURCE_ORDER=['Lumber','Masonry','Steel'];
 function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь'}[x]||x;}
 function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С'}[x]||'?';}
@@ -267,9 +274,9 @@ function signedRisk(value){const n=Number(value)||0;return n>0?`+${n}`:String(n)
 function projectRiskChips(projectOrId){
 const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id,r=projectRisk(id);
 const chips=[];
-if(r.earthquake)chips.push(`<span class="risk-change quake ${r.earthquake<0?'good':'bad'}">Q ${signedRisk(r.earthquake)}</span>`);
-if(r.fire)chips.push(`<span class="risk-change fire ${r.fire<0?'good':'bad'}">F ${signedRisk(r.fire)}</span>`);
-return `<div class="card-risk-row ${chips.length?'':'neutral'}">${chips.length?chips.join(''):'<span class="risk-neutral">Q 0 · F 0</span>'}</div>`;
+if(r.earthquake)chips.push(`<span class="risk-change quake ${r.earthquake<0?'good':'bad'}">У ${signedRisk(r.earthquake)}</span>`);
+if(r.fire)chips.push(`<span class="risk-change fire ${r.fire<0?'good':'bad'}">П ${signedRisk(r.fire)}</span>`);
+return `<div class="card-risk-row ${chips.length?'':'neutral'}">${chips.length?chips.join(''):'<span class="risk-neutral">У 0 · П 0</span>'}</div>`;
 }
 function riskSourceRows(risk){
 const rows=(risk?.sources||[]).filter(x=>x.earthquake||x.fire);
@@ -277,21 +284,21 @@ if(!rows.length)return '<div class="risk-source-empty">Нет активных �
 return rows.map(src=>{
 const owner=src.ownerId!=null?state.players[src.ownerId]?.name:null;
 const parts=[];
-if(src.earthquake)parts.push(`Q ${signedRisk(src.earthquake)}`);
-if(src.fire)parts.push(`F ${signedRisk(src.fire)}`);
+if(src.earthquake)parts.push(`У ${signedRisk(src.earthquake)}`);
+if(src.fire)parts.push(`П ${signedRisk(src.fire)}`);
 return `<div class="risk-source-row"><span>${owner?owner+' · ':''}${src.label}</span><b>${parts.join(' · ')}</b></div>`;
 }).join('');
 }
 function districtRiskPanelHtml(districtId){
 const r=districtRisk(state,districtId);if(!r)return '';
 const reserve=[];
-if((r.earthquake.net??r.earthquake.raw)<0)reserve.push(`Q запас ${Math.abs(r.earthquake.net)}`);
-if((r.fire.net??r.fire.raw)<0)reserve.push(`F запас ${Math.abs(r.fire.net)}`);
+if((r.earthquake.net??r.earthquake.raw)<0)reserve.push(`У запас ${Math.abs(r.earthquake.net)}`);
+if((r.fire.net??r.fire.raw)<0)reserve.push(`П запас ${Math.abs(r.fire.net)}`);
 return `<div class="district-risk-panel">
-<div class="district-risk-head"><b>РИСК РАЙОНА</b><span>${reserve.length?reserve.join(' · '):'без верхнего лимита'}</span></div>
+<div class="district-risk-head"><b>УЯЗВИМОСТЬ И ПОЖАРООПАСНОСТЬ</b><span>${reserve.length?reserve.join(' · '):'без верхнего лимита'}</span></div>
 <div class="district-risk-values">
-<div class="quake"><span>EARTHQUAKE</span><strong>Q ${riskDisplay(r.earthquake.raw)}</strong></div>
-<div class="fire"><span>FIRE</span><strong>F ${riskDisplay(r.fire.raw)}</strong></div>
+<div class="quake"><span>УЯЗВИМОСТЬ</span><strong>У ${riskDisplay(r.earthquake.raw)}</strong></div>
+<div class="fire"><span>ПОЖАРООПАСНОСТЬ</span><strong>П ${riskDisplay(r.fire.raw)}</strong></div>
 </div>
 <details class="risk-sources"><summary>Почему такие значения</summary>${riskSourceRows(r)}</details>
 </div>`;
@@ -306,8 +313,8 @@ const warning=qCross||fCross
 return `<div class="risk-preview-box ${qCross||fCross?'crosses-level':''}">
 <div class="risk-preview-title">ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ</div>
 <div class="risk-preview-grid">
-<span>Q <b>${p.before.earthquake.raw}</b> <em>→</em> <b>${p.after.earthquake.raw}</b> <small>${riskRoman(p.before.earthquake.level)} → ${riskRoman(p.after.earthquake.level)}</small></span>
-<span>F <b>${p.before.fire.raw}</b> <em>→</em> <b>${p.after.fire.raw}</b> <small>${riskRoman(p.before.fire.level)} → ${riskRoman(p.after.fire.level)}</small></span>
+<span>У <b>${p.before.earthquake.raw}</b> <em>→</em> <b>${p.after.earthquake.raw}</b> <small>${riskRoman(p.before.earthquake.level)} → ${riskRoman(p.after.earthquake.level)}</small></span>
+<span>П <b>${p.before.fire.raw}</b> <em>→</em> <b>${p.after.fire.raw}</b> <small>${riskRoman(p.before.fire.level)} → ${riskRoman(p.after.fire.level)}</small></span>
 </div>${warning}
 </div>`;
 }
@@ -779,8 +786,8 @@ function renderNewspaper(){
   };
   const defenseDescription={
     firehouse:'Пожарная часть в этом же районе',
-    clinic:'Клиника в этом районе или смежном с уличной сетью',
-    police:'Полиция в этом районе или смежном с уличной сетью',
+    clinic:'Клиника в этом или соседнем районе',
+    police:'Полиция в этом или соседнем районе',
     emergency:'Экстренные меры',
   };
   $('#newsSheetContent').innerHTML=
@@ -953,12 +960,12 @@ return `<div class="card-rules">
 }
 function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',priceValue=null,selected=false,extraClass='',footer=''}={}){
 const price=priceValue==null?p.open:priceValue;
-return `<article class="project-card full-info ${typeClass(p.type)} ${selected?'selected':''} ${extraClass}">
+return `<article class="project-card full-info ${typeClass(p)} ${selected?'selected':''} ${extraClass}">
 <div class="card-stripe"></div>
 <div class="project-inner">
 <div class="card-top"><span class="slot-mark">${topLeft}</span><span class="age-badge">${topRight}</span></div>
 <div class="project-title">${p.name}</div>
-<div class="project-type">${p.type}</div>
+<div class="project-type">${projectTypeLabel(p)}</div>
 <div class="card-value-row"><div class="opening-price">$${price}<small>${priceLabel}</small></div><span class="prestige-chip">VP ${p.prestige||0}</span></div>
 <div class="card-section-label">МАТЕРИАЛЫ</div>
 <div class="card-resource-row">${resourcePills(p.materials)}</div>
@@ -978,7 +985,7 @@ function compactMarketRisk(project){
 const r=projectRisk(project?.id);
 const q=r.earthquake?signedRisk(r.earthquake):'0';
 const f=r.fire?signedRisk(r.fire):'0';
-return 'Q'+q+' · F'+f;
+return 'У'+q+' · П'+f;
 }
 function renderMarketOverview(){
 const el=$('#marketOverview');if(!el)return;
@@ -1039,7 +1046,7 @@ el.classList.add('active');
 const pid=currentDraftPlayer(state),player=state.players[pid];
 const marketStrip=(state.market||[]).filter(Boolean).map((m,i)=>{
 const p=projectById(m.id);
-return `<div class="draft-market-item ${typeClass(p.type)}"><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${p.income||0} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
+return `<div class="draft-market-item ${typeClass(p)}"><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${p.income||0} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
 }).join('');
 const marketRef=`<div class="draft-market-ref"><div class="draft-market-ref-head"><b>OPEN MARKET</b><span>Публичный рынок уже открыт — учитывайте его при выборе стартовой стратегии.</span></div><div class="draft-market-strip">${marketStrip}</div></div>`;
 if(!state.draftRevealed){
@@ -1166,7 +1173,7 @@ const isSelected=selected?.id===w.id;
 return `<button class="dock-worker token-${p.key} ${isSelected?'selected':''} ${w.used?'used':''}" data-dock-worker="${w.id}" ${w.used||state.activationMainActionUsed?'disabled':''}><span>#${w.number}</span><b>${shortDistrictName(w.districtId)}</b><small>${w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН':'ГОТОВ'}</small></button>`;
 }).join('');
 const reach=selected?workerReachableDistricts(state,pid,selected.id).map(shortDistrictName).join(' · '):'Выберите представителя';
-el.innerHTML=`<div class="worker-dock-head"><span class="player-dot ${p.key}"></span><div><b>${p.name} · представители</b><small>${selected?`#${selected.number}: ${districtById(selected.districtId)?.name} · можно остаться или перейти в соседний район`:'Выберите одного из трёх. Позиции сохраняются между раундами.'}</small></div></div><div class="worker-dock-grid">${buttons}</div><div class="worker-dock-reach"><b>Доступ:</b> ${reach}</div>`;
+el.innerHTML=`<div class="worker-dock-head"><span class="player-dot ${p.key}"></span><div><b>${p.name} · представители</b><small>${selected?`#${selected.number}: ${districtById(selected.districtId)?.name} · соседний район${districtHasMarketStreet(selected.districtId)?' или любой район вдоль Market Street':''}`:'Выберите одного из трёх. Позиции сохраняются между раундами.'}</small></div></div><div class="worker-dock-grid">${buttons}</div><div class="worker-dock-reach"><b>Доступ:</b> ${reach}</div>`;
 $$('[data-dock-worker]').forEach(b=>b.onclick=()=>{
 const r=selectWorker(state,pid,b.dataset.dockWorker);
 if(!r.ok){showToast(r.reason==='used'?'Этот представитель уже использован':'Нельзя выбрать этого представителя');return;}
@@ -1368,7 +1375,7 @@ $('#cancelWorkerAction').onclick=()=>{state.pendingWorkerAction=null;mobileConte
 }else if(pending){
 const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
 mode.className='construction-mode active';
-mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите район в пределах 1 шага выбранного представителя. Подсветка учитывает Стоимость земли, уличную сеть / ж/д / порт / пожарную защиту / клинику.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
+mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите район: текущий, соседний или доступный через Market Street. Подсветка учитывает Стоимость земли, ж/д, порт, пожарную защиту и клинику.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
 $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
 }else if(state.developmentComplete){
 mode.className='construction-mode complete';
@@ -1425,9 +1432,9 @@ const klass=(d.passable===false?'district-meta special closed':d.buildable===fal
 pending?(reachableIds.has(d.id)?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta dimmed')
 :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
 :'district-meta')+riskClass;
-const tags=[a.road?'ST':'',a.rail?'RL':'',a.port?'PT':'',a.fire?'F':'',a.clinic?'C':''].filter(Boolean).join('·');
+const tags=[a.rail?'RL':'',a.port?'PT':'',a.fire?'FIRE':'',a.clinic?'CL':'',a.police?'POL':''].filter(Boolean).join('·');
 const normal=d.passable===false?'CLOSED':d.buildable===false?'PASSAGE · NO BUILD':`LAND ${ds.landValue} · ${used}/5${tags?` · ${tags}`:''}`;
-const label=riskViewActive&&risk?`Q ${riskDisplay(risk.earthquake.raw,{compact:true})} · F ${riskDisplay(risk.fire.raw,{compact:true})}`:normal;
+const label=riskViewActive&&risk?`У ${riskDisplay(risk.earthquake.raw,{compact:true})} · П ${riskDisplay(risk.fire.raw,{compact:true})}`:normal;
 return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
 }).join('');
 }
@@ -1552,7 +1559,7 @@ if(state.view==='hall'){
 const m=state.market.find(x=>x&&x.uid===state.selectedMarketUid)||state.market.find(Boolean);
 if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
 const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-panel.innerHTML=`${close}<div class="detail-type">${p.type}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Влияние на риск района</div>${projectRiskChips(p)}</div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+panel.innerHTML=`${close}<div class="detail-type">${projectTypeLabel(p)}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Влияние на риск района</div>${projectRiskChips(p)}</div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
 }else{
 const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
 const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
@@ -1572,7 +1579,7 @@ focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title
 }
 }
 const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
-const accessHtml=`<div class="access-grid">${accessChip('STREET',access.road)}${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
+const accessHtml=`<div class="access-grid">${accessChip('RAIL',access.rail)}${accessChip('PORT',access.port)}${accessChip('FIRE',access.fire)}${accessChip('CLINIC',access.clinic)}${accessChip('POLICE',access.police)}</div>${fireSource?`<div class="access-source">Fire Protection: ${fireSource}</div>`:''}${clinicSource?`<div class="access-source">Clinic access: ${clinicSource}</div>`:''}`;
 let workerActionHtml='';
 if(state.pendingWorkerAction?.type==='raiseCapital'){
 const pid=state.pendingWorkerAction.playerId,w=activeWorker(state,pid);
@@ -1595,7 +1602,10 @@ const statsHtml=d.buildable===false
 ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
 :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
 const riskPanelHtml=d.buildable===false?'':districtRiskPanelHtml(d.id);
-panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Характер района</div><div class="detail-text">${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.28 Map Test:</b> 18 строительных районов по 5 слотов. Golden Gate Park — проходная зона без строительства. Presidio и Twin Peaks закрыты. Fire House и Clinic по-прежнему работают на свой и соседний район; Rail/Port заданы картой.</div>`;
+const soilClass=districtSoilClass(d.id);
+const soilLabel=soilClass==='poor'?'Неблагоприятный грунт':soilClass==='stable'?'Устойчивый грунт':'Обычные / смешанные грунты';
+const marketStreetNote=districtHasMarketStreet(d.id)?'<div class="access-source"><b>Market Street:</b> район входит в базовую сеть быстрого перемещения представителей.</div>':'';
+panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}${marketStreetNote}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Грунт и характер района</div><div class="detail-text"><b>${soilLabel}</b> · ${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.43A:</b> обычные улицы больше не являются отдельным игровым доступом. Market Street связывает Noe Valley, Mission, Civic Center, SoMa и Financial District для перемещения представителей; Rail/Port заданы картой.</div>`;
 const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
 const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
 $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -1628,7 +1638,7 @@ const occupant=actionSpaceOccupant(state,con.id);
 const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
-actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Трамвай повысил стоимость земли на $1 и, если требовалось, открыл уличную сеть в районе.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
+actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Трамвайное расширение повысило стоимость земли на $1. Подключение к Market Street появится через исследование электрификации.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
@@ -1656,7 +1666,7 @@ const activationNote=isActive
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Следующий доход</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.28:</b> рука ограничена 5 проектами. Основное действие привязано к представителю; доставка — отдельное повторяемое свободное действие.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние</span><strong>${p.influence}</strong></div><div class="office-stat"><span>Следующий доход</span><strong>+$${roundIncome(state,p.id)}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.43A:</b> рука ограничена 5 проектами. Основное действие привязано к представителю; Market Street расширяет доступ представителей, доставка остаётся отдельным повторяемым свободным действием.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
@@ -1700,14 +1710,14 @@ document.addEventListener('keydown',event=>{
   else if(event.key==='Escape'&&newsEmergencyMode){newsEmergencyMode=false;render();}
 });
 $('#undoBtn').onclick=undoLastGameAction;
-$('#helpBtn').onclick=()=>{showToast('v0.30A-L1: нейтральный Грузовой двор в Western Addition и финальная доставка для проектов на 4–5 ресурсов.');};
+$('#helpBtn').onclick=()=>{showToast('v0.43A: Уязвимость У / Пожароопасность П, типы зданий и быстрое перемещение представителей по Market Street.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
 $('#newGameBtn').onclick=newGame;
 $('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
 $('#endRoundBtn').onclick=()=>{deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;const r=cleanupMarket(state);if(!r.ok){if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');return;}newsEmergencyMode=false;newsArchiveIndex=null;state.view=r.finished?'city':'hall';render();showToast(r.finished?'Итоговый выпуск газеты готов':'Вышел свежий выпуск The San Francisco Call');};
-const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: Q / F по всем районам':'Обычный вид карты');};
+const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: У / П по всем районам':'Обычный вид карты');};
 const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
 const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
 $$('[data-district]').forEach(g=>g.onclick=()=>{

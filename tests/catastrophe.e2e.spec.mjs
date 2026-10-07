@@ -27,7 +27,7 @@ test('raw Z above III survives editing and re-run',async({page})=>{
   await expect(page.locator('#z')).toHaveValue('8');
   await expect(page.locator('#mapWindow #laboratoryLabels')).toContainText('III(8)');
   await page.locator('#quake').click();
-  await expect(page.locator('#selectionInfo')).toContainText('З8');
+  await expect(page.locator('#selectionInfo')).toContainText('У8');
   await page.locator('#reset').click();
   await expect(page.locator('#z')).toHaveValue('8');
   await page.locator('#zminus').click();
@@ -78,7 +78,7 @@ test('one-click complete report copies full configuration and results on desktop
   expect(text).toContain('=== ИСХОДНЫЕ ЗНАЧЕНИЯ ВСЕХ РАЙОНОВ');
   expect(text).toContain('=== ПОШАГОВОЕ РАСПРОСТРАНЕНИЕ ПОЖАРА');
   expect(text).toContain('=== ИТОГ И ТЕКУЩИЕ СОСТОЯНИЯ');
-  expect(text).toMatch(/Mission Bay: З\d+ П\d+/);
+  expect(text).toMatch(/Mission Bay: У\d+ П\d+/);
   expect(text).toMatch(/Шаг \d+\. Источник:/);
   expect(text).toContain('Осталось в очереди: нет');
 });
@@ -93,7 +93,7 @@ test('mobile copy supports high raw risk and partial playback',async({page,conte
   await page.locator('#copyReport').click();
   await expect(page.locator('#copyFeedback')).toContainText('Скопировано');
   const text=await page.evaluate(()=>navigator.clipboard.readText());
-  expect(text).toContain('SoMa: З8');
+  expect(text).toContain('SoMa: У8');
   expect(text).toContain('Статус: Частичный расчёт');
   expect(text).toContain('Осталось в очереди:');
   expect(text).toContain('Шаг 1. Источник:');
@@ -116,7 +116,7 @@ test('one local station saves Financial and stops large fire chain',async({page,
   await page.locator('#copyReport').click();
   await expect(page.locator('#copyFeedback')).toContainText('Скопировано');
   const report=await page.evaluate(()=>navigator.clipboard.readText());
-  expect(report).toContain('Financial District: З1 П1; пожарная часть: есть');
+  expect(report).toContain('Financial District: У1 П1; пожарная часть: есть');
   expect(report).toContain('пожарных частей построено: 1');
   expect(report).toContain('действуют: 1');
 });
@@ -133,7 +133,7 @@ test('mobile damaged station stays active and copied log records it',async({page
   await expect(page.locator('#selectionInfo')).toContainText('работает');
   await page.locator('#copyReport').click();
   const report=await page.evaluate(()=>navigator.clipboard.readText());
-  expect(report).toContain('Mission Bay: З2 П0; пожарная часть: есть');
+  expect(report).toContain('Mission Bay: У2 П0; пожарная часть: есть');
   await page.locator('#reset').click();
   await expect(page.locator('#firehouse')).toBeEnabled();
   await expect(page.locator('#firehouse')).toBeChecked();

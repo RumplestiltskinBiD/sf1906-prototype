@@ -49,7 +49,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.42');
+  await expect(page.locator('.version-badge')).toHaveText('v0.43A');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -69,6 +69,38 @@ test('fresh game UI can complete draft handoff and reach Development without dea
   await expect(page.locator('#actionDelivery')).toBeEnabled();
 });
 
+
+
+test('v0.30a save migrates to v0.43A without losing player state and removes the old street gate',async({page})=>{
+  const s=makeDevState();
+  s.version='0.30a';
+  s.players[0].capital=37;
+  s.districts.sunset.roadAccess=false;
+  s.constructions=[con('C1',0,'tenement','civic','complete',['Lumber','Lumber','Masonry'])];
+  await seed(page,s);
+  await page.goto('/');
+  const saved=await stored(page);
+  expect(saved.version).toBe('0.43a');
+  expect(saved.players[0].capital).toBe(37);
+  expect(saved.constructions.find(x=>x.id==='C1')?.status).toBe('complete');
+  expect(saved.districts.sunset.roadAccess).toBe(true);
+});
+
+test('Market Street performs a real long representative move from Noe Valley to Financial District',async({page})=>{
+  const s=makeDevState();
+  const w=s.players[0].workers[0];
+  w.districtId='noe';
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('[data-worker-token="'+w.id+'"]').click();
+  await page.locator('#actionRaiseCapital').click();
+  const financial=page.locator('[data-district="financial"]');
+  await expect(financial).toHaveClass(/move-target/);
+  await financial.click();
+  const saved=await stored(page);
+  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('financial');
+  expect(saved.players[0].capital).toBe(53);
+});
 
 test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
   const s=makeDevState();
@@ -751,7 +783,7 @@ test('wide landscape phone remains mobile at 932x430 without page overflow',asyn
   expect(layout.strip).not.toBe('none');
 });
 
-test('exhaustive worker adjacency highlighting matches the locked graph',async({page})=>{
+test('exhaustive worker highlighting matches adjacency plus Market Street',async({page})=>{
   const adjacency={
     presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
     marina:['presidio','pacific','northbeach'],
@@ -786,7 +818,9 @@ test('exhaustive worker adjacency highlighting matches the locked graph',async({
     await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
     await page.reload();
     await page.locator('#actionRaiseCapital').click();
+    const market=new Set(['noe','mission','civic','soma','financial']);
     const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
+    if(market.has(from))for(const id of market)expected.add(id);
     for(const id of Object.keys(adjacency)){
       const district=page.locator('[data-district="'+id+'"]');
       if(expected.has(id)){
@@ -842,7 +876,7 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   expect(saved.players[0].capital).toBe(beforeCapital+3);
 });
 
-test('Risk view exposes district Q/F levels without replacing the map',async({page})=>{
+test('Risk view exposes district У/П levels without replacing the map',async({page})=>{
   const s=makeDevState();
   await seed(page,s);
   await page.goto('/');
@@ -851,9 +885,9 @@ test('Risk view exposes district Q/F levels without replacing the map',async({pa
   await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('EARTHQUAKE');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('УЯЗВИМОСТЬ');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('У 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('П 0');
 });
 
 test('construction preview shows the district risk change before confirmation',async({page})=>{
@@ -870,8 +904,8 @@ test('construction preview shows the district risk change before confirmation',a
   const preview=page.locator('#contextPanel .risk-preview-box');
   await expect(preview).toBeVisible();
   await expect(preview).toContainText('ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ');
-  await expect(preview).toContainText('Q');
-  await expect(preview).toContainText('F');
+  await expect(preview).toContainText('У');
+  await expect(preview).toContainText('П');
 });
 
 
@@ -975,8 +1009,8 @@ test('mobile Risk view stays usable in portrait',async({page})=>{
   await page.locator('[data-district="missionbay"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('Q 2');
-  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('F 0');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('У 2');
+  await expect(page.locator('#contextPanel .district-risk-panel')).toContainText('П 0');
 
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
@@ -1015,7 +1049,7 @@ test('mobile market overview compares all five projects before card browsing',as
   await expect(overview).toContainText('СРАВНИТЬ РЫНОК');
   const first=overview.locator('[data-market-overview-slot]').first();
   await expect(first).toContainText('$');
-  await expect(first).toContainText('Q');
+  await expect(first).toContainText('У');
   await first.click();
   await expect(first).toHaveClass(/selected/);
 });
