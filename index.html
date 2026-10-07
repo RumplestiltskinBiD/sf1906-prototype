@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — Foundation v0.43A</title>
-  <link rel="stylesheet" href="./styles.css?v=043a" />
+  <title>San Francisco 1906 — Influence & Upkeep v0.43B</title>
+  <link rel="stylesheet" href="./styles.css?v=043b" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.43A</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.43B</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 6</strong></div>
@@ -28,6 +28,11 @@
   </header>
 
   <section class="players-bar" id="playersBar" aria-label="Игроки"></section>
+
+  <div class="year-transition-backdrop" id="yearTransitionBackdrop" hidden></div>
+  <section class="year-transition-sheet" id="yearTransitionSheet" role="dialog" aria-modal="true" aria-label="Обслуживание незавершённых строек" hidden>
+    <div id="yearTransitionContent"></div>
+  </section>
 
   <section class="news-strip" id="newsStrip" aria-label="Текущий выпуск газеты">
     <button type="button" class="news-strip-main" id="newsOpenBtn" aria-label="Открыть газету">
@@ -177,6 +182,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=043a"></script>
+<script type="module" src="./app.js?v=043b"></script>
 </body>
 </html>

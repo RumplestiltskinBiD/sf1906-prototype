@@ -268,3 +268,15 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Added historical soil classes for future research effects: poor ground = Marina / Financial District / SoMa / Mission / Mission Bay; stable ground = Pacific Heights / Chinatown.
 - Marina base vulnerability is now **У2**; Mission Bay remains **У2**.
 - UI terminology changed from earthquake Q/Z labels to **У (Уязвимость)** and **П (Пожароопасность)**, including the catastrophe lab.
+
+
+## v0.43B — Influence, annual order and construction upkeep
+
+- Influence markers occupy unique spaces. Fresh games use positions **2 / 3 / 4**.
+- Influence movement skips occupied spaces in **both directions**. A one-step loss can therefore move farther than one printed space when intervening positions are occupied.
+- At the beginning of each year, players are ordered from highest to lowest Influence. That **yearTurnOrder is frozen for the whole year**; mid-year Influence changes affect the next year, not the current sequence.
+- City Hall declarations and Development activations use the same frozen annual order.
+- There is no separate “one construction per player per year” cap. Starting every construction still consumes one representative’s main action.
+- At the transition into a new year, **income is resolved first**, then every still unfinished construction costs **$1 upkeep**.
+- If a player cannot pay all upkeep, the transition pauses and that player chooses an unfinished construction to close. Its delivered staging materials are lost, its site is freed, and the project does not return to the player’s hand. If the remaining upkeep is still unaffordable, another closure is required.
+- The upkeep choice is a dedicated between-year sheet; on phones it becomes a compact bottom sheet instead of covering the map during normal play.

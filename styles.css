@@ -2516,3 +2516,82 @@ body.drawer-open .mobile-action-dock{
 
 /* Explicitly override local class displays when semantic [hidden] is set. */
 .news-sheet[hidden],.news-backdrop[hidden],.news-strip-cancel[hidden]{display:none!important}
+
+
+/* v0.43B — political influence order + construction upkeep */
+.turn-order-badge{
+  position:absolute;left:6px;top:-6px;z-index:2;
+  min-width:23px;padding:2px 5px;border-radius:6px;
+  background:#d8c28e;color:#2d261d;border:1px solid rgba(0,0,0,.18);
+  font-size:8px;font-weight:900;line-height:1;letter-spacing:.04em;text-align:center
+}
+.player-pill{padding-left:34px}
+.player-pill.first::after{right:7px}
+.upkeep-mini{color:#f0c089!important;font-weight:900}
+.upkeep-note{
+  margin:8px 0 0;padding:7px 8px;border:1px solid #d7bd92;border-radius:8px;
+  background:#fff0d8;color:#5b4730;font-size:10px;line-height:1.35
+}
+.year-transition-backdrop{
+  position:fixed;inset:0;z-index:79;background:rgba(11,14,15,.62);
+  backdrop-filter:blur(2px)
+}
+.year-transition-sheet{
+  position:fixed;z-index:80;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(680px,calc(100vw - 28px));max-height:min(82dvh,760px);overflow:auto;
+  border:1px solid #bca783;border-radius:16px;background:#f5ecdc;color:#342d24;
+  box-shadow:0 28px 80px rgba(0,0,0,.42);padding:14px
+}
+.year-transition-sheet[hidden],.year-transition-backdrop[hidden]{display:none!important}
+.year-transition-card{display:grid;gap:12px}
+.year-transition-head span{font-size:9px;font-weight:900;letter-spacing:.12em;color:#8a6a3d}
+.year-transition-head h2{margin:3px 0 0;font:700 25px/1.05 Georgia,serif}
+.year-transition-card>p{margin:0;font-size:12px;line-height:1.5;color:#5d5143}
+.upkeep-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.upkeep-summary>div{padding:9px;border:1px solid #d4c2a4;border-radius:9px;background:#fff8ec}
+.upkeep-summary span{display:block;font-size:8px;font-weight:900;letter-spacing:.08em;color:#8b7a67;text-transform:uppercase}
+.upkeep-summary b{display:block;margin-top:3px;font-size:17px}
+.upkeep-build-list{display:grid;gap:7px}
+.upkeep-build{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:stretch;
+  padding:5px;border:1px solid #ccb897;border-radius:10px;background:#fff9ef
+}
+.upkeep-build.selected{outline:2px solid #9a4635;background:#fff1df}
+.upkeep-build-main{
+  min-width:0;border:0;background:transparent;color:#40382e;text-align:left;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px
+}
+.upkeep-build-main span{min-width:0}.upkeep-build-main b{display:block;font-size:12px}.upkeep-build-main small{display:block;margin-top:3px;color:#7d6e5d;font-size:9px}
+.upkeep-build-main strong{font-size:16px;color:#9a4635;white-space:nowrap}
+.upkeep-map-btn{
+  border:1px solid #b9a886;border-radius:8px;background:#efe3cd;color:#594c3e;
+  min-width:76px;padding:6px 8px;font-size:9px;font-weight:900
+}
+.upkeep-confirm{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;
+  position:sticky;bottom:-14px;margin:0 -14px -14px;padding:11px 14px;
+  border-top:1px solid #c9b696;background:#efe2cc
+}
+.upkeep-confirm span{font-size:10px;line-height:1.35;color:#5e4d3b}
+.upkeep-confirm .danger-btn{min-height:42px;padding:9px 12px}
+body.year-transition-open .nav-rail,
+body.year-transition-open .sticky-action{pointer-events:none}
+
+@media(max-width:640px){
+  .player-pill{padding-left:28px!important}
+  .turn-order-badge{left:3px;top:-3px;font-size:6px;min-width:19px;padding:2px 3px}
+  .year-transition-sheet{
+    left:0;right:0;bottom:0;top:auto;transform:none;width:auto;
+    max-height:82dvh;border-radius:18px 18px 0 0;
+    padding:12px 10px calc(12px + env(safe-area-inset-bottom))
+  }
+  .year-transition-head h2{font-size:21px}
+  .upkeep-summary{gap:5px}.upkeep-summary>div{padding:7px}.upkeep-summary b{font-size:14px}
+  .upkeep-build{grid-template-columns:minmax(0,1fr) 72px}
+  .upkeep-map-btn{min-width:0;padding:5px;font-size:8px}
+  .upkeep-confirm{
+    grid-template-columns:1fr;margin:0 -10px calc(-12px - env(safe-area-inset-bottom));
+    padding:9px 10px calc(10px + env(safe-area-inset-bottom))
+  }
+  .upkeep-confirm .danger-btn{width:100%}
+}

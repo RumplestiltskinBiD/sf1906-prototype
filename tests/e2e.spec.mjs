@@ -41,6 +41,23 @@ async function stored(page){
   return JSON.parse(await page.evaluate(key=>localStorage.getItem(key),STORAGE_KEY));
 }
 
+function makeUpkeepState({count=4,capital=0}={}){
+  const s=makeDevState();
+  s.players.forEach(p=>{p.workers.forEach(w=>{w.used=true;});p.workersLeft=0;});
+  s.developmentComplete=true;
+  s.developmentPlayer=null;
+  s.activeWorkerId=null;
+  s.activationMainActionUsed=false;
+  s.yearTurnOrder=[0,1,2];
+  s.firstPlayer=0;
+  s.newsCurrentIds=['E05'];
+  s.newsLastResolvedRound=0;
+  s.players[0].capital=capital;
+  const districts=['civic','western','mission','soma','financial','pacific'];
+  s.constructions=Array.from({length:count},(_,i)=>con('U'+i,0,'bureau',districts[i%districts.length],'under-construction',i===0?['Lumber']:[]));
+  return s;
+}
+
 function assertDelivery(saved,id,materials){
   const con=saved.constructions.find(x=>x.id===id);
   expect(con).toBeTruthy();
@@ -49,7 +66,7 @@ function assertDelivery(saved,id,materials){
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.43A');
+  await expect(page.locator('.version-badge')).toHaveText('v0.43B');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -71,16 +88,22 @@ test('fresh game UI can complete draft handoff and reach Development without dea
 
 
 
-test('v0.30a save migrates to v0.43A without losing player state and removes the old street gate',async({page})=>{
+test('v0.30a save migrates to v0.43B without losing player state, street cleanup or annual order',async({page})=>{
   const s=makeDevState();
   s.version='0.30a';
   s.players[0].capital=37;
+  s.players.forEach(p=>{p.influence=2;});
+  s.firstPlayer=0;
+  delete s.yearTurnOrder;
   s.districts.sunset.roadAccess=false;
   s.constructions=[con('C1',0,'tenement','civic','complete',['Lumber','Lumber','Masonry'])];
   await seed(page,s);
   await page.goto('/');
   const saved=await stored(page);
-  expect(saved.version).toBe('0.43a');
+  expect(saved.version).toBe('0.43b');
+  expect(new Set(saved.players.map(p=>p.influence)).size).toBe(3);
+  expect(saved.yearTurnOrder).toHaveLength(3);
+  expect(saved.firstPlayer).toBe(saved.yearTurnOrder[0]);
   expect(saved.players[0].capital).toBe(37);
   expect(saved.constructions.find(x=>x.id==='C1')?.status).toBe('complete');
   expect(saved.districts.sunset.roadAccess).toBe(true);
@@ -457,6 +480,103 @@ test('a complete Development round uses all 9 workers and advances cleanly to ro
   expect(saved.phase).toBe('declare');
   expect(saved.firstPlayer).toBe(1);
   expect(saved.players.every(p=>p.workersLeft===3)).toBe(true);
+});
+
+
+test('Influence backward skips occupied spaces while the current-year order badge stays frozen',async({page})=>{
+  const s=makeDevState();
+  s.players[0].influence=5;
+  s.players[1].influence=4;
+  s.players[2].influence=3;
+  s.yearTurnOrder=[0,1,2];
+  s.firstPlayer=0;
+  await seed(page,s);
+  await page.goto('/');
+  await expect(page.locator('[data-office="0"] .turn-order-badge')).toHaveText('#1');
+  await page.locator('#settingsBtn').click();
+  await page.locator('[data-inf="0"][data-delta="-1"]').click();
+  const saved=await stored(page);
+  expect(saved.players[0].influence).toBe(2);
+  expect(saved.yearTurnOrder).toEqual([0,1,2]);
+  await expect(page.locator('[data-office="0"] .turn-order-badge')).toHaveText('#1');
+});
+
+test('year upkeep credits income once, survives reload and lets the player close a construction',async({page})=>{
+  const s=makeUpkeepState({count:4,capital:0});
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#endRoundBtn').click();
+  await expect(page.locator('#yearTransitionSheet')).toBeVisible();
+  await expect(page.locator('#yearTransitionSheet')).toContainText('После income');
+  let saved=await stored(page);
+  expect(saved.phase).toBe('upkeep');
+  expect(saved.players[0].capital).toBe(3);
+  expect(saved.round).toBe(1);
+
+  await page.reload();
+  await expect(page.locator('#yearTransitionSheet')).toBeVisible();
+  saved=await stored(page);
+  expect(saved.players[0].capital).toBe(3);
+  expect(saved.round).toBe(1);
+
+  await page.locator('[data-upkeep-select="U0"]').click();
+  await expect(page.locator('#confirmUpkeepClosure')).toBeEnabled();
+  await page.locator('#confirmUpkeepClosure').click();
+  await expect(page.locator('#yearTransitionSheet')).toBeHidden();
+  saved=await stored(page);
+  expect(saved.round).toBe(2);
+  expect(saved.phase).toBe('declare');
+  expect(saved.players[0].capital).toBe(0);
+  const closed=saved.constructions.find(c=>c.id==='U0');
+  expect(closed.status).toBe('abandoned');
+  expect(closed.lostMaterials).toEqual(['Lumber']);
+  expect(closed.materialsDelivered).toEqual([]);
+
+  await page.locator('[data-view="city"]').click();
+  await expect(page.locator('[data-construction-token="U0"]')).toHaveCount(0);
+});
+
+test('portrait mobile upkeep sheet is usable without horizontal overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeUpkeepState({count:4,capital:0});
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#endRoundBtn').click();
+  const sheet=page.locator('#yearTransitionSheet');
+  await expect(sheet).toBeVisible();
+  const layout=await page.evaluate(()=>{
+    const r=document.querySelector('#yearTransitionSheet').getBoundingClientRect();
+    return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,height:innerHeight};
+  });
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.left).toBeGreaterThanOrEqual(-1);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.bottom).toBeLessThanOrEqual(layout.height+1);
+  await page.locator('[data-upkeep-select="U0"]').click();
+  await page.locator('#confirmUpkeepClosure').scrollIntoViewIfNeeded();
+  await page.locator('#confirmUpkeepClosure').click();
+  await expect(sheet).toBeHidden();
+});
+
+test('landscape phone upkeep sheet remains inside viewport and scrollable',async({page})=>{
+  await page.setViewportSize({width:932,height:430});
+  const s=makeUpkeepState({count:6,capital:0});
+  await seed(page,s);
+  await page.goto('/');
+  await page.locator('#endRoundBtn').click();
+  const sheet=page.locator('#yearTransitionSheet');
+  await expect(sheet).toBeVisible();
+  const layout=await page.evaluate(()=>{
+    const el=document.querySelector('#yearTransitionSheet'),r=el.getBoundingClientRect();
+    return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,height:innerHeight};
+  });
+  expect(layout.pageWidth).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.left).toBeGreaterThanOrEqual(-1);
+  expect(layout.right).toBeLessThanOrEqual(layout.viewport+1);
+  expect(layout.top).toBeGreaterThanOrEqual(-1);
+  expect(layout.bottom).toBeLessThanOrEqual(layout.height+1);
+  expect(layout.scrollHeight).toBeGreaterThanOrEqual(layout.clientHeight);
+  await expect(page.locator('[data-upkeep-select="U0"]')).toBeVisible();
 });
 
 test('state survives a browser reload after Delivery',async({page})=>{
