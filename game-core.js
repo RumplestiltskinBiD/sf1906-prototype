@@ -1252,12 +1252,91 @@ export function setLandValue(state,districtId,value){
   return {ok:true,value:v};
 }
 
+function finishYearTransition(state,{rng=Math.random}={}){
+  const survivors=(state.market||[]).filter(Boolean);
+  const needed=5-survivors.length;
+  const incoming=[];
+  while(incoming.length<needed&&state.deck.length)incoming.push(emptyMarketCard(state.deck.shift()));
+  const blanks=Array(Math.max(0,5-incoming.length-survivors.length)).fill(null);
+  state.market=[...incoming,...blanks,...survivors];
+  state.round++;
+  state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
+  state.newsEmergency={};
+  const forthcoming=newsCard(state.newsCurrentIds[0]);
+  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
+  refreshLogisticsSupply(state,{rng});
+  state.haulersUsed=[];
+  setYearTurnOrderFromInfluence(state);
+  state.players.forEach(p=>{
+    p.workers=p.workers?.length?p.workers:createWorkers(p.id);
+    p.workers.forEach(w=>w.used=false);
+    p.workersLeft=p.workers.length;
+  });
+  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
+  state.procurementRemaining=0;state.procurementSource=null;
+  state.actionSpaceOccupancy={};
+  state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
+  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
+  state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
+  state.yearTransition=null;
+  const first=state.market.find(Boolean);
+  state.selectedMarketUid=first?.uid||null;
+  state.selectedProjectId=first?.id||null;
+  const order=turnOrder(state).map(pid=>state.players[pid].name).join(' → ');
+  logEvent(state,`Раунд ${state.round}. Порядок по Influence: ${order}. Старые проекты сдвинуты вправо и стоят на $1 дешевле.`,'accent');
+  logEvent(state,'Поставки в портах и на станциях полностью обновлены: Lumber 40% · Masonry 35% · Steel 25%.','accent');
+  return {ok:true,finished:false};
+}
+
+function advanceConstructionUpkeep(state,{rng=Math.random}={}){
+  const transition=state.yearTransition;
+  if(!transition)return {ok:false,reason:'no-transition'};
+  const order=transition.playerOrder||state.players.map(p=>p.id);
+  for(let i=transition.cursor||0;i<order.length;i++){
+    const pid=order[i],player=state.players[pid];
+    const due=constructionUpkeepDue(state,pid);
+    transition.cursor=i;
+    transition.playerId=pid;
+    transition.due=due;
+    if(due<=0){transition.cursor=i+1;continue;}
+    if(player.capital>=due){
+      player.capital-=due;
+      logEvent(state,`${player.name} платит $${due} за простой ${unfinishedConstructions(state,pid).length} незавершённых строек.`,'bad');
+      transition.cursor=i+1;continue;
+    }
+    state.phase='upkeep';
+    return {ok:false,reason:'upkeep-choice',playerId:pid,due,capital:player.capital,
+      constructionIds:unfinishedConstructions(state,pid).map(c=>c.id)};
+  }
+  return finishYearTransition(state,{rng});
+}
+
+export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Math.random}={}){
+  if(state.phase!=='upkeep'||!state.yearTransition)return {ok:false,reason:'wrong-phase'};
+  if(state.yearTransition.playerId!==playerId)return {ok:false,reason:'wrong-player'};
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId&&c.playerId===playerId&&c.status==='under-construction');
+  if(!construction)return {ok:false,reason:'invalid-construction'};
+  const lost=[...(construction.materialsDelivered||[])];
+  construction.status='abandoned';
+  construction.closedRound=state.round+1;
+  construction.closedReason='upkeep';
+  construction.lostMaterials=lost;
+  construction.materialsDelivered=[];
+  construction.warehouseInventory=[];
+  const player=state.players[playerId],project=projectById(construction.projectId),district=districtById(construction.districtId);
+  logEvent(state,`${player.name} закрывает незавершённый объект «${project?.name||construction.projectId}» в ${district?.name||construction.districtId}: не хватает денег на простой; потеряно материалов ${lost.length}.`,'bad');
+  return advanceConstructionUpkeep(state,{rng});
+}
+
 export function cleanupMarket(state,{rng=Math.random}={}){
+  if(state.phase==='upkeep'&&state.yearTransition){
+    return {ok:false,reason:'upkeep-choice',playerId:state.yearTransition.playerId,
+      due:constructionUpkeepDue(state,state.yearTransition.playerId),
+      capital:state.players[state.yearTransition.playerId]?.capital||0,
+      constructionIds:unfinishedConstructions(state,state.yearTransition.playerId).map(c=>c.id)};
+  }
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
-  // Every newspaper is announced at the beginning of its year and
-  // settled only after every representative has taken their actions.
-  // Calling cleanup while Development is unfinished has no side effects.
   ensureNewspaper(state,{rng});
   resolveNewspaper(state);
   const remaining=state.market.filter(m=>m&&!m.sold);
@@ -1288,34 +1367,10 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}).`,'good');
   });
 
-  const needed=5-survivors.length;
-  const incoming=[];
-  while(incoming.length<needed&&state.deck.length)incoming.push(emptyMarketCard(state.deck.shift()));
-  const blanks=Array(Math.max(0,5-incoming.length-survivors.length)).fill(null);
-  state.market=[...incoming,...blanks,...survivors];
-  state.round++;
-  state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
-  state.newsEmergency={};
-  const forthcoming=newsCard(state.newsCurrentIds[0]);
-  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
-  refreshLogisticsSupply(state,{rng});
-  state.haulersUsed=[];
-  state.firstPlayer=(state.firstPlayer+1)%3;
-  state.players.forEach(p=>{p.workers=p.workers?.length?p.workers:createWorkers(p.id);p.workers.forEach(w=>w.used=false);p.workersLeft=p.workers.length;});
-  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
-  state.procurementRemaining=0;state.procurementSource=null;
-  state.actionSpaceOccupancy={};
-  state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
-  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
-  state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
-  const first=state.market.find(Boolean);
-  state.selectedMarketUid=first?.uid||null;
-  state.selectedProjectId=first?.id||null;
-  logEvent(state,`Раунд ${state.round}. Первый игрок: ${state.players[state.firstPlayer].name}. Старые проекты сдвинуты вправо и стоят на $1 дешевле.`,'accent');
-  logEvent(state,'Поставки в портах и на станциях полностью обновлены: Lumber 40% · Masonry 35% · Steel 25%.','accent');
-  return {ok:true,finished:false};
+  state.market=[...survivors];
+  state.yearTransition={stage:'upkeep',fromRound:state.round,cursor:0,playerId:null,due:0,playerOrder:turnOrder(state)};
+  return advanceConstructionUpkeep(state,{rng});
 }
-
 export function tenderSummary(state){
   return state.market.filter(Boolean).map(m=>({
     uid:m.uid,
