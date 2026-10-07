@@ -12,8 +12,8 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/Influence & Upkeep v0\.43B/);
-  assert.match(html,/app\.js\?v=043b/);
-  assert.match(html,/styles\.css\?v=043b/);
+  assert.match(html,/app\.js\?v=043b-types/);
+  assert.match(html,/styles\.css\?v=043b-types/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -115,4 +115,26 @@ test('v0.43B influence and upkeep UI hooks are present',async()=>{
   for(const needle of ['function renderYearTransition()','closeConstructionForUpkeep','upkeepSelectedConstructionId','turn-order-badge','Простой незавершённых строек'])assert.ok(app.includes(needle),needle);
   for(const needle of ['export function moveInfluence','export function constructionUpkeepDue','export function closeConstructionForUpkeep','yearTurnOrder'])assert.ok(core.includes(needle),needle);
   for(const needle of ['id="yearTransitionBackdrop"','id="yearTransitionSheet"'])assert.ok(html.includes(needle),needle);
+});
+
+
+test('building type color palette and stripe hooks are present everywhere',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  for(const pair of [
+    ["'Жилое':'#56875A'","Жилое"],
+    ["'Бизнес':'#76558F'","Бизнес"],
+    ["'Промышленное':'#34383D'","Промышленное"],
+    ["'Общественное':'#3F78A8'","Общественное"],
+    ["'Торговое':'#D5A021'","Торговое"]
+  ]) assert.ok(app.includes(pair[0]),pair[1]);
+  for(const needle of [
+    'function projectTypeStripe(project)',
+    'linear-gradient(90deg',
+    'typed-project',
+    'type-stripe-compact',
+    'projectSvgTypeStripe',
+    'construction-type-cap'
+  ]) assert.ok(app.includes(needle),needle);
+  for(const needle of ['.typed-project', '--type-stripe', '.detail-type-stripe', '.construction-type-cap'])assert.ok(css.includes(needle),needle);
 });

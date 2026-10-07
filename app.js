@@ -193,6 +193,30 @@ if(state.phase==='declare'&&currentDeclarer(state)!=null)return currentDeclarer(
 return state.firstPlayer;
 }
 function projectTypeLabel(project){return projectTypes(project).join(' · ')||project?.type||'Проект';}
+const BUILDING_TYPE_COLORS=Object.freeze({
+'Жилое':'#56875A',
+'Бизнес':'#76558F',
+'Промышленное':'#34383D',
+'Общественное':'#3F78A8',
+'Торговое':'#D5A021'
+});
+function projectTypeColors(project){
+return projectTypes(project).map(t=>BUILDING_TYPE_COLORS[t]).filter(Boolean);
+}
+function projectTypeStripe(project){
+const colors=projectTypeColors(project);
+if(!colors.length)return '#8A7D6B';
+if(colors.length===1)return colors[0];
+const stop=100/colors.length;
+return 'linear-gradient(90deg,'+colors.map((c,i)=>c+' '+(i*stop)+'% '+((i+1)*stop)+'%').join(',')+')';
+}
+function projectTypeStyle(project){return 'style="--type-stripe:'+projectTypeStripe(project)+'"';}
+function projectSvgTypeStripe(project,{x,y,width,height=5}){
+const colors=projectTypeColors(project);
+if(!colors.length)return '';
+const part=width/colors.length;
+return colors.map((c,i)=>'<rect class="construction-type-cap" x="'+(x+i*part)+'" y="'+y+'" width="'+part+'" height="'+height+'" fill="'+c+'"/>').join('');
+}
 function typeClass(projectOrType){
 const types=typeof projectOrType==='string'?[projectOrType]:projectTypes(projectOrType);
 const type=types[0]||projectOrType?.type||'';
@@ -938,7 +962,7 @@ const pr=projectById(con.projectId),d=districtById(con.districtId),prog=construc
 const missing=missingConstructionMaterials(con);
 const finish=canCompleteConstruction(state,con.id);
 const ready=finish.ok&&finish.warehouseUse>0;
-return '<button class="overview-object build-object '+(focusedConstructionId===con.id?'focused':'')+'" data-overview-construction="'+con.id+'">'
+return '<button class="overview-object build-object typed-project type-stripe-compact '+(focusedConstructionId===con.id?'focused':'')+'" '+projectTypeStyle(pr)+' data-overview-construction="'+con.id+'">'
 +'<span class="overview-object-head"><b>'+pr.name+'</b><em>'+d.name+'</em></span>'
 +'<span class="overview-materials">'+resourcePills(pr.materials,con.materialsDelivered||[])+'</span>'
 +'<span class="overview-object-foot"><strong>'+prog.delivered+'/'+prog.required+'</strong><small>'+(ready?'Склад может завершить':missing.length?'Нужно: '+missing.join(', '):'Комплект собран')+'</small></span>'
@@ -947,7 +971,8 @@ return '<button class="overview-object build-object '+(focusedConstructionId===c
 const warehouseHtml=warehouses.map(wh=>{
 const d=districtById(wh.districtId),inv=warehouseInventory(wh),counts=deliveryCounts(inv);
 const supported=builds.filter(x=>x.districtId===wh.districtId).map(x=>projectById(x.projectId)?.name).filter(Boolean);
-return '<button class="overview-object warehouse-object '+(focusedConstructionId===wh.id?'focused':'')+'" data-overview-construction="'+wh.id+'">'
+const warehouseProject=projectById(wh.projectId);
+return '<button class="overview-object warehouse-object typed-project type-stripe-compact '+(focusedConstructionId===wh.id?'focused':'')+'" '+projectTypeStyle(warehouseProject)+' data-overview-construction="'+wh.id+'">'
 +'<span class="overview-object-head"><b>Склад</b><em>'+d.name+'</em></span>'
 +'<span class="warehouse-counts"><i class="lumber">Д '+(counts.Lumber||0)+'</i><i class="masonry">К '+(counts.Masonry||0)+'</i><i class="steel">С '+(counts.Steel||0)+'</i><strong>'+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</strong></span>'
 +'<span class="overview-object-foot"><small>'+(supported.length?'Поддерживает: '+supported.join(', '):'Нет активной стройки в районе')+'</small></span>'
@@ -976,9 +1001,9 @@ const viewingOpponent=activePid!=null&&pid!==activePid;
 const items=[];
 for(const con of builds){
 const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
-items.push('<button class="mobile-object-chip build construction-needs-chip" data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong> · простой $1</span></button>');
+items.push('<button class="mobile-object-chip build construction-needs-chip typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong> · простой $1</span></button>');
 }
-for(const wh of warehouses){const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv);items.push('<button class="mobile-object-chip warehouse" data-mobile-object="'+wh.id+'"><b>Склад · '+d.name+'</b><span>'+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');}
+for(const wh of warehouses){const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv),pr=projectById(wh.projectId);items.push('<button class="mobile-object-chip warehouse typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+wh.id+'"><b>Склад · '+d.name+'</b><span>'+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');}
 const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);items.push('<span class="mobile-object-chip freight-yard"><b>Грузовой двор · Western</b><span>'+yi.length+'/2 · Д'+(yc.Lumber||0)+' К'+(yc.Masonry||0)+' С'+(yc.Steel||0)+' · '+(yi.length?'аренда активна':'вход $2')+'</span></span>');
 const procurement=activePid===pid?(state.procurementRemaining||0):0;
 if(procurement)items.unshift('<span class="mobile-effect-chip"><b>Закупка ×'+procurement+'</b><span>материалы по $0</span></span>');
@@ -1015,7 +1040,7 @@ return `<div class="card-rules">
 }
 function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',priceValue=null,selected=false,extraClass='',footer=''}={}){
 const price=priceValue==null?p.open:priceValue;
-return `<article class="project-card full-info ${typeClass(p)} ${selected?'selected':''} ${extraClass}">
+return `<article class="project-card full-info typed-project ${typeClass(p)} ${selected?'selected':''} ${extraClass}" ${projectTypeStyle(p)}>
 <div class="card-stripe"></div>
 <div class="project-inner">
 <div class="card-top"><span class="slot-mark">${topLeft}</span><span class="age-badge">${topRight}</span></div>
@@ -1050,7 +1075,7 @@ el.className='market-overview';el.innerHTML='';return;
 const rows=(state.market||[]).map((m,slot)=>{
 if(!m)return '<div class="market-overview-item empty"><b>'+(slot+1)+'</b><span>Пусто</span></div>';
 const p=projectById(m.id),price=openingPrice(m),selected=state.selectedMarketUid===m.uid;
-return '<button class="market-overview-item '+(selected?'selected ':'')+(m.age===1?'old ':'')+(m.sold?'sold':'')+'" data-market-overview-slot="'+slot+'">'
+return '<button class="market-overview-item typed-project type-stripe-compact '+(selected?'selected ':'')+(m.age===1?'old ':'')+(m.sold?'sold':'')+'" '+projectTypeStyle(p)+' data-market-overview-slot="'+slot+'">'
 +'<b>'+(slot+1)+'</b><span class="market-overview-name">'+p.name+'</span><strong>$'+price+'</strong>'
 +'<span class="market-overview-mats">'+compactMarketMaterials(p)+'</span>'
 +'<span class="market-overview-risk">'+compactMarketRisk(p)+'</span>'
@@ -1101,7 +1126,7 @@ el.classList.add('active');
 const pid=currentDraftPlayer(state),player=state.players[pid];
 const marketStrip=(state.market||[]).filter(Boolean).map((m,i)=>{
 const p=projectById(m.id);
-return `<div class="draft-market-item ${typeClass(p)}"><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${p.income||0} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
+return `<div class="draft-market-item typed-project type-stripe-compact ${typeClass(p)}" ${projectTypeStyle(p)}><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${p.income||0} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
 }).join('');
 const marketRef=`<div class="draft-market-ref"><div class="draft-market-ref-head"><b>OPEN MARKET</b><span>Публичный рынок уже открыт — учитывайте его при выборе стартовой стратегии.</span></div><div class="draft-market-strip">${marketStrip}</div></div>`;
 if(!state.draftRevealed){
@@ -1539,14 +1564,14 @@ const interactionHit=whSource
 let content='';
 if(isWarehouse){
 const inv=warehouseInventory(con),cnt=deliveryCounts(inv);
-content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/><text class="warehouse-token-title" y="-4">СКЛ ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
+content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">СКЛ ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
 const showNeed=!!deliveryMode&&!complete;
 const needText=showNeed?compactConstructionNeed(con):'';
 content=showNeed
-?`<rect x="-36" y="-21" width="72" height="44" rx="10"/><text y="-2">${label}</text><text class="construction-need-text" y="13">${needText}</text>`
-:`<rect x="-29" y="-16" width="58" height="32" rx="10"/><text y="4">${label}</text>`;
+?`<rect x="-36" y="-21" width="72" height="44" rx="10"/>${projectSvgTypeStripe(pr,{x:-34,y:-20,width:68,height:5})}<text y="-2">${label}</text><text class="construction-need-text" y="13">${needText}</text>`
+:`<rect x="-29" y="-16" width="58" height="32" rx="10"/>${projectSvgTypeStripe(pr,{x:-27,y:-15,width:54,height:5})}<text y="4">${label}</text>`;
 }
 const title=complete
 ?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
@@ -1616,7 +1641,7 @@ if(state.view==='hall'){
 const m=state.market.find(x=>x&&x.uid===state.selectedMarketUid)||state.market.find(Boolean);
 if(!m){panel.innerHTML=close+'<div class="empty-state">На рынке нет проекта.</div>';wireContextClose();return;}
 const p=projectById(m.id),claims=m.claims.map(c=>state.players[c.player].name).join(', ')||'нет';
-panel.innerHTML=`${close}<div class="detail-type">${projectTypeLabel(p)}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Влияние на риск района</div>${projectRiskChips(p)}</div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
+panel.innerHTML=`${close}<div class="detail-type-stripe" ${projectTypeStyle(p)}></div><div class="detail-type">${projectTypeLabel(p)}</div><h3>${p.name}</h3><div class="detail-price">$${openingPrice(m)} <span style="font-size:11px;color:#84786a">opening</span></div><div class="project-vp-callout">Престиж <b>+${p.prestige||0} VP</b> после завершения</div><div class="detail-section"><div class="detail-label">Материалы</div><div class="project-material-line">${resourcePills(p.materials)}</div></div><div class="detail-section"><div class="detail-label">Влияние на риск района</div>${projectRiskChips(p)}</div><div class="detail-section"><div class="detail-label">Условия строительства</div><div class="detail-text">${p.requires}</div></div><div class="detail-section"><div class="detail-label">После постройки</div><div class="detail-text">${p.effect}</div></div><div class="detail-section"><div class="detail-label">Тендер</div><div class="detail-text">Заявки: ${claims}<br>${m.age===1?'Последний шанс · скидка $1':'Новый проект'}${m.result?`<br><b>Результат: ${state.players[m.result.player].name} за $${m.result.price}</b>`:''}</div></div>`;
 }else{
 const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
 const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
@@ -1652,7 +1677,7 @@ constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><
 const objects=builtHere.length?builtHere.map(x=>{
 const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
 const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','publicworks','streetcar'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
-return `<div class="mini-construction ${x.status==='complete'?'done':''}"><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${pr.income||0}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
+return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${pr.income||0}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
 }).join(''):'Пока нет.';
 const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
 const statsHtml=d.buildable===false
@@ -1700,7 +1725,7 @@ actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Трам
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Престиж +${pr.prestige||0} VP</b> · Доход +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Престиж +${pr.prestige||0} VP</b> · Доход +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const warehouses=completedWarehouses(state,p.id,con.districtId);
@@ -1712,7 +1737,7 @@ const warehouseLine=warehouses.length
 const finishBtn=isActive&&finish.ok
 ?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
 :'';
-return `<div class="portfolio-card construction-card active-build ${isActive?'':'view-only'}"><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${finishBtn}</div>`;
+return `<div class="portfolio-card construction-card active-build typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${finishBtn}</div>`;
 }).join('');
 const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
 const procurementChip=procurement?`<span class="procurement-chip">Procurement · ${procurement} material${procurement===1?'':'s'} at $0</span>`:'';

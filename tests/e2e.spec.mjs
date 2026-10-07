@@ -64,6 +64,60 @@ function assertDelivery(saved,id,materials){
   for(const material of materials)expect(con.materialsDelivered).toContain(material);
 }
 
+
+test('building type stripes render in market, office, completed buildings and map tokens',async({page})=>{
+  const marketState=createInitialState({rng:()=>0.1});
+  marketState.market[0].id='club';
+  await seed(page,marketState);
+  await page.goto('/');
+  const marketCard=page.locator('#projectMarket .project-card').first();
+  await expect(marketCard).toHaveClass(/typed-project/);
+  const marketStyle=await marketCard.getAttribute('style');
+  expect(marketStyle).toContain('#76558F');
+  expect(marketStyle).toContain('#D5A021');
+  const stripeBg=await marketCard.locator('.card-stripe').evaluate(el=>getComputedStyle(el).backgroundImage);
+  expect(stripeBg).toContain('linear-gradient');
+
+  const s=makeDevState();
+  s.constructions=[
+    con('TYPE_FACTORY',0,'factory','civic','complete',[]),
+    con('TYPE_CLUB',0,'club','civic','under-construction',[])
+  ];
+  await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
+  await page.reload();
+  await page.locator('#officeBtn').click();
+
+  const completed=page.locator('.construction-card.completed.typed-project').filter({hasText:'Крупная фабрика'});
+  await expect(completed).toBeVisible();
+  expect(await completed.getAttribute('style')).toContain('#34383D');
+
+  const active=page.locator('.construction-card.active-build.typed-project').filter({hasText:'Ресторан и клуб'});
+  await expect(active).toBeVisible();
+  const activeStyle=await active.getAttribute('style');
+  expect(activeStyle).toContain('#76558F');
+  expect(activeStyle).toContain('#D5A021');
+
+  await page.locator('#officeDrawer [data-close-drawer]').click();
+  await expect(page.locator('[data-construction-token="TYPE_FACTORY"] .construction-type-cap')).toHaveCount(1);
+  await expect(page.locator('[data-construction-token="TYPE_CLUB"] .construction-type-cap')).toHaveCount(2);
+});
+
+test('portrait mobile object strip keeps building type color accents',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  s.constructions=[con('TYPE_MOBILE',0,'club','civic','under-construction',[])];
+  await seed(page,s);
+  await page.goto('/');
+  const chip=page.locator('[data-mobile-object="TYPE_MOBILE"]');
+  await expect(chip).toBeVisible();
+  await expect(chip).toHaveClass(/typed-project/);
+  const style=await chip.getAttribute('style');
+  expect(style).toContain('#76558F');
+  expect(style).toContain('#D5A021');
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
   await expect(page.locator('.version-badge')).toHaveText('v0.43B');
@@ -780,7 +834,7 @@ test('warehouse map marker always shows compact inventory without enlarging the 
   const marker=page.locator('[data-construction-token="W1"]');
   await expect(marker.locator('.warehouse-token-title')).toHaveText('СКЛ 3/5');
   await expect(marker.locator('.warehouse-token-stock')).toHaveText('Д1 К1 С1');
-  const rect=await marker.locator('rect').evaluate(el=>({w:+el.getAttribute('width'),h:+el.getAttribute('height')}));
+  const rect=await marker.locator('rect:not(.construction-type-cap)').first().evaluate(el=>({w:+el.getAttribute('width'),h:+el.getAttribute('height')}));
   expect(rect.w).toBeLessThanOrEqual(62);
   expect(rect.h).toBeLessThanOrEqual(38);
 });
