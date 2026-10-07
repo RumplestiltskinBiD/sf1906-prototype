@@ -97,7 +97,7 @@ test('building type stripes render in market, office, completed buildings and ma
   expect(activeStyle).toContain('#76558F');
   expect(activeStyle).toContain('#D5A021');
 
-  await page.locator('#officeClose').click();
+  await page.locator('#officeDrawer [data-close-drawer]').click();
   await expect(page.locator('[data-construction-token="TYPE_FACTORY"] .construction-type-cap')).toHaveCount(1);
   await expect(page.locator('[data-construction-token="TYPE_CLUB"] .construction-type-cap')).toHaveCount(2);
 });
@@ -834,7 +834,7 @@ test('warehouse map marker always shows compact inventory without enlarging the 
   const marker=page.locator('[data-construction-token="W1"]');
   await expect(marker.locator('.warehouse-token-title')).toHaveText('СКЛ 3/5');
   await expect(marker.locator('.warehouse-token-stock')).toHaveText('Д1 К1 С1');
-  const rect=await marker.locator('rect').evaluate(el=>({w:+el.getAttribute('width'),h:+el.getAttribute('height')}));
+  const rect=await marker.locator('rect:not(.construction-type-cap)').first().evaluate(el=>({w:+el.getAttribute('width'),h:+el.getAttribute('height')}));
   expect(rect.w).toBeLessThanOrEqual(62);
   expect(rect.h).toBeLessThanOrEqual(38);
 });
