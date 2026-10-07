@@ -31,7 +31,8 @@ test('police is a normal project competing for land and construction time',()=>{
   assert.deepEqual(p.materials,['Lumber','Masonry','Steel']);
   assert.equal(p.prestige,3);
   assert.equal(p.income,0);
-  assert.ok(p.accessAll.includes('road'));
+  assert.deepEqual(G.projectTypes(p),['Общественное']);
+  assert.equal(p.accessAll,undefined);
 });
 test('only complete projects contribute to a newspaper and police covers neighbours',()=>{
   const s=game('C01');
