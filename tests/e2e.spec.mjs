@@ -904,8 +904,8 @@ test('construction preview shows the district risk change before confirmation',a
   const preview=page.locator('#contextPanel .risk-preview-box');
   await expect(preview).toBeVisible();
   await expect(preview).toContainText('ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ');
-  await expect(preview).toContainText('Q');
-  await expect(preview).toContainText('F');
+  await expect(preview).toContainText('У');
+  await expect(preview).toContainText('П');
 });
 
 
@@ -1049,7 +1049,7 @@ test('mobile market overview compares all five projects before card browsing',as
   await expect(overview).toContainText('СРАВНИТЬ РЫНОК');
   const first=overview.locator('[data-market-overview-slot]').first();
   await expect(first).toContainText('$');
-  await expect(first).toContainText('Q');
+  await expect(first).toContainText('У');
   await first.click();
   await expect(first).toHaveClass(/selected/);
 });
