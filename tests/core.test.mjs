@@ -584,7 +584,7 @@ test('risk from a project enters the district only after construction is complet
   const r=G.completeConstruction(s,c);
   assert.equal(r.ok,true);
   assert.equal(G.districtRisk(s,'civic').fire.raw,1);
-  assert.ok(s.log.some(x=>x.msg.includes('Риск Civic Center:')&&x.msg.includes('F 0→1')));
+  assert.ok(s.log.some(x=>x.msg.includes('Риск Civic Center:')&&x.msg.includes('П 0→1')));
 });
 
 
