@@ -155,7 +155,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
       (n.quakeFireBonus?' +'+n.quakeFireBonus+' (повреждение)':'')+
       (n.firehouseBuilt&&n.quake!=='destroyed'?' −1 (пожарная часть)':'')+
       ' → П'+n.initialAfterQuakeP+
-      '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.quake==='destroyed'?'уничтожена землетрясением':'работает')+
+      '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.quake==='destroyed'?'уничтожена землетрясением':n.firehouseDestroyed?'уничтожена пожаром':'работает')+
       (n.origin==='earthquake'?'; первоначальный очаг от разрушения':
         n.origin==='fire-risk'?'; первоначальный очаг по П':''));
   }
