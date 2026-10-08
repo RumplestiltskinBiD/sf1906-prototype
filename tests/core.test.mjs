@@ -149,6 +149,7 @@ test('goal market refresh keeps leftovers after three claims but flushes them af
   assert.equal(keep.goalMarket.length,5);
   assert.equal(keep.goalMarket[3]?.uid,beforeKeep[3]);
   assert.equal(keep.goalMarket[4]?.uid,beforeKeep[4]);
+  assert.equal(new Set(keep.goalMarket.filter(Boolean).map(x=>x.id)).size,5,'no duplicate goal types in one market');
 
   const flush=G.createInitialState({rng:()=>0.1});
   const old=new Set(flush.goalMarket.filter(Boolean).map(x=>x.uid));
@@ -157,6 +158,7 @@ test('goal market refresh keeps leftovers after three claims but flushes them af
   assert.equal(fr.claims,1);
   assert.equal(flush.goalMarket.filter(Boolean).length,5);
   assert.ok(flush.goalMarket.filter(Boolean).every(x=>!old.has(x.uid)),'remaining old market is discarded after weak demand');
+  assert.equal(new Set(flush.goalMarket.filter(Boolean).map(x=>x.id)).size,5);
 });
 
 test('final Phase I goal check rewards completed goals and penalizes only incomplete goals',()=>{
