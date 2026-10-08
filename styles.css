@@ -2637,3 +2637,39 @@ body.year-transition-open .sticky-action{pointer-events:none}
   .portfolio-card.typed-project{padding-top:14px}
   .mobile-object-chip.typed-project{padding-top:6px}
 }
+
+
+/* Historical neutral material suppliers — expensive, unlimited fallback sources */
+.neutral-supplier-source{
+  border-style:solid;
+  background:#f5ecdc;
+  box-shadow:inset 0 4px 0 rgba(88,70,48,.12)
+}
+.full-sf-map .neutral-supplier-node{pointer-events:none}
+.full-sf-map .neutral-supplier-node .node-hit{fill:transparent;pointer-events:all;cursor:pointer}
+.full-sf-map .supplier-pin{
+  fill:#f0e2c4;stroke:#3d342a;stroke-width:3;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.38))
+}
+.full-sf-map .neutral-supplier-node.lumber .supplier-pin{fill:#d9b386}
+.full-sf-map .neutral-supplier-node.masonry .supplier-pin{fill:#d7ccb7}
+.full-sf-map .neutral-supplier-node.steel .supplier-pin{fill:#aeb9bd}
+.full-sf-map .supplier-code{
+  font:900 12px/1 ui-sans-serif,system-ui,sans-serif;
+  text-anchor:middle;fill:#302820;pointer-events:none
+}
+.full-sf-map .supplier-price{
+  font:900 8px/1 ui-sans-serif,system-ui,sans-serif;
+  text-anchor:middle;fill:#5f4c34;paint-order:stroke;stroke:#f8efdb;stroke-width:2px;pointer-events:none
+}
+.full-sf-map .neutral-supplier-node.source-available{pointer-events:all;cursor:pointer}
+.full-sf-map .neutral-supplier-node.source-available .supplier-pin{
+  stroke:#f8e27d;stroke-width:6;
+  filter:drop-shadow(0 0 9px rgba(248,226,125,.92))
+}
+@media(max-width:640px){
+  .full-sf-map .supplier-code{font-size:13px}
+  .full-sf-map .supplier-price{font-size:9px}
+  .full-sf-map .neutral-supplier-node .node-name{font-size:11px}
+  .full-sf-map .neutral-supplier-node .node-type{font-size:8px}
+}
