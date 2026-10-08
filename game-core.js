@@ -46,6 +46,12 @@ export const LOGISTICS_NODES = [
   {id:'unioniron',name:'Union Iron Works / Potrero Point',shortName:'Union Iron Works',districtId:'potrero',kind:'industrial-rail-port',throughput:2,x:1222,y:850,weights:{Lumber:0.20,Masonry:0.25,Steel:0.55},profile:'Сталь'}
 ];
 
+export const NEUTRAL_MATERIAL_SUPPLIERS = Object.freeze([
+  {id:'gray-quarry',name:'Gray Brothers Quarry',shortName:'Gray Bros. Quarry',districtId:'noe',resource:'Masonry',unitPrice:3,x:668,y:807,code:'К',historical:'Каменоломня · Noe Valley'},
+  {id:'engle-lumber',name:'Engle & Son Lumber Yard',shortName:'Engle & Son',districtId:'marina',resource:'Lumber',unitPrice:3,x:692,y:151,code:'Д',historical:'Lumber yard · Fillmore & Francisco'},
+  {id:'axford-iron',name:'Axford Bros. Iron Foundry',shortName:'Axford Bros.',districtId:'mission',resource:'Steel',unitPrice:5,x:844,y:688,code:'С',historical:'Iron foundry · 2256 Harrison'}
+]);
+
 export function randomLogisticsResource(rng=Math.random,weights=LOGISTICS_RESOURCE_WEIGHTS){
   const roll=rng();
   if(roll<weights.Lumber)return 'Lumber';
@@ -879,6 +885,14 @@ export function deliverySourceInfo(state,playerId,source){
     if(!node)return null;
     return {kind:'node',id:node.id,name:node.name,districtId:node.districtId,inventory:state.logisticsSupply?.[node.id]||[]};
   }
+  if(source.kind==='supplier'){
+    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
+    if(!supplier)return null;
+    const maxCapacity=Math.max(...DELIVERY_HAULERS.map(h=>h.capacity));
+    return {kind:'supplier',id:supplier.id,name:supplier.name,districtId:supplier.districtId,
+      inventory:Array.from({length:maxCapacity},()=>supplier.resource),
+      resource:supplier.resource,unitPrice:supplier.unitPrice,unlimited:true};
+  }
   if(source.kind==='warehouse'){
     const wh=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId&&c.projectId==='warehouse'&&c.status==='complete');
     if(!wh)return null;
@@ -918,6 +932,12 @@ function multisetEquals(a,b){
 }
 
 export function deliveryMaterialCost(state,source,cargo){
+  if(source?.kind==='supplier'){
+    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
+    if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
+    const gross=(cargo||[]).reduce((sum,type)=>sum+(type===supplier.resource?supplier.unitPrice:0),0);
+    return {gross,discount:0,cost:gross,procurementUsed:0};
+  }
   if(source?.kind!=='node')return {gross:0,discount:0,cost:0,procurementUsed:0};
   const prices=(cargo||[]).map(type=>RESOURCE_PRICES[type]??0);
   const gross=prices.reduce((a,b)=>a+b,0);
@@ -1039,10 +1059,12 @@ export function executeDelivery(state,plan){
   const {source,hauler,cost}=check;
   const sourceInventory=source.kind==='node'
     ?state.logisticsSupply[source.id]
-    :source.kind==='warehouse'
-      ?warehouseInventory((state.constructions||[]).find(c=>c.id===source.id))
-      :freightYardInventory(state,plan.playerId);
-  if(!removeMaterials(sourceInventory,plan.cargo))return {ok:false,reason:'source-stock'};
+    :source.kind==='supplier'
+      ?null
+      :source.kind==='warehouse'
+        ?warehouseInventory((state.constructions||[]).find(c=>c.id===source.id))
+        :freightYardInventory(state,plan.playerId);
+  if(source.kind!=='supplier'&&!removeMaterials(sourceInventory,plan.cargo))return {ok:false,reason:'source-stock'};
 
   const player=state.players[plan.playerId];
   player.capital-=cost.total;

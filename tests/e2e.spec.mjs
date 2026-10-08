@@ -179,6 +179,85 @@ test('Market Street performs a real long representative move from Noe Valley to 
   expect(saved.players[0].capital).toBe(53);
 });
 
+test('historical supplier markers sit inside their gameplay districts',async({page})=>{
+  const s=makeDevState();
+  await seed(page,s);await page.goto('/');
+  const checks=[
+    ['gray-quarry','noe'],
+    ['engle-lumber','marina'],
+    ['axford-iron','mission']
+  ];
+  for(const [supplier,district] of checks){
+    const result=await page.evaluate(({supplier,district})=>{
+      const g=document.querySelector('[data-delivery-supplier="'+supplier+'"]');
+      const path=document.querySelector('[data-district="'+district+'"] path');
+      if(!g||!path)return {exists:false};
+      const m=(g.getAttribute('transform')||'').match(/translate\(([-\d.]+)[ ,]+([-\d.]+)\)/);
+      if(!m)return {exists:true,parsed:false};
+      return {exists:true,parsed:true,x:+m[1],y:+m[2],inside:path.isPointInFill(new DOMPoint(+m[1],+m[2]))};
+    },{supplier,district});
+    expect(result.exists).toBe(true);
+    expect(result.parsed).toBe(true);
+    expect(result.inside,supplier+' should be inside '+district+' at '+result.x+','+result.y).toBe(true);
+  }
+});
+
+test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Delivery',async({page})=>{
+  const s=makeDevState();
+  s.selectedDistrictId='mission';
+  s.procurementRemaining=2;
+  s.constructions=[con('SUP1',0,'insurance','mission')];
+  await seed(page,s);await page.goto('/');
+
+  await page.locator('#actionDelivery').click();
+  const quarry=page.locator('[data-delivery-supplier="gray-quarry"]');
+  await expect(quarry).toHaveClass(/source-available/);
+  await quarry.click();
+
+  await page.locator('[data-hauler="dray2a"]').click();
+  const masonry=page.locator('[data-load="Masonry"]');
+  await expect(masonry).toContainText('$3');
+  await expect(masonry).toContainText('∞');
+  await expect(page.locator('[data-load="Lumber"]')).toBeDisabled();
+  await expect(page.locator('[data-load="Steel"]')).toBeDisabled();
+  await masonry.click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('[data-route-next="mission"]').click();
+  await page.locator('[data-drop-id="SUP1"][data-drop-type="Masonry"]').click();
+  await expect(page.locator('.delivery-total')).toContainText('Материалы $3');
+  await expect(page.locator('.delivery-total')).toContainText('Границы $1');
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryConfirm').click();
+
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='SUP1').materialsDelivered).toEqual(['Masonry']);
+  expect(saved.procurementRemaining).toBe(2);
+  expect(saved.players[0].capital).toBe(46);
+
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('[data-delivery-supplier="gray-quarry"]')).toHaveClass(/source-available/);
+});
+
+test('mobile source list shows all three historical suppliers without overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=makeDevState();
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('[data-delivery-supplier="gray-quarry"]')).toHaveClass(/source-available/);
+  await page.locator('#deliveryShowSourceList').click();
+  for(const [id,name,price] of [
+    ['gray-quarry','Gray Bros. Quarry','$3'],
+    ['engle-lumber','Engle & Son','$3'],
+    ['axford-iron','Axford Bros.','$5']
+  ]){
+    const card=page.locator('[data-ds-supplier="'+id+'"]');
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(name);
+    await expect(card).toContainText(price);
+  }
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
 test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
   const s=makeDevState();
   s.freightYardInventories=[['Lumber'],[],['Steel','Masonry']];
