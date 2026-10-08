@@ -120,7 +120,7 @@ test('portrait mobile object strip keeps building type color accents',async({pag
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.43B');
+  await expect(page.locator('.version-badge')).toHaveText('v0.44');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -142,7 +142,57 @@ test('fresh game UI can complete draft handoff and reach Development without dea
 
 
 
-test('v0.30a save migrates to v0.43B without losing player state, street cleanup or annual order',async({page})=>{
+
+test('City Hall goal can be taken without consuming the project declaration',async({page})=>{
+  const s=createInitialState({rng:()=>0.1});
+  s.phase='declare';s.view='hall';s.declarationIndex=0;
+  await seed(page,s);await page.goto('/');
+  const current=s.yearTurnOrder[0];
+  await expect(page.locator('#cityGoalMarket .city-goal-card')).toHaveCount(5);
+  await expect(page.locator('[data-goal-slot="0"]')).toBeEnabled();
+  await page.locator('[data-goal-slot="0"]').click();
+  await expect(page.locator('#passTender')).toBeVisible();
+  const saved=await stored(page);
+  expect(saved.declarationIndex).toBe(0);
+  expect(saved.players[current].goals).toHaveLength(1);
+  expect(saved.players[current].goalTakenRound).toBe(1);
+  expect(saved.goalMarket[0]).toBeNull();
+  await expect(page.locator('[data-goal-slot="1"]')).toBeDisabled();
+});
+
+test('player office shows active City Hall goal and live progress',async({page})=>{
+  const s=makeDevState();
+  s.players[0].goals=[{uid:'GX',id:'C02',status:'active',acquiredRound:1,preExistingConstructionIds:[]}];
+  s.constructions=[
+    con('B1',0,'bank','financial','complete',[]),
+    con('B2',0,'bureau','civic','complete',[])
+  ];
+  await seed(page,s);await page.goto('/');
+  await page.locator('[data-office="0"]').click();
+  const goal=page.locator('.office-goal').filter({hasText:'Новый деловой центр'});
+  await expect(goal).toBeVisible();
+  await expect(goal).toContainText('ГОТОВО К ОТЧЁТУ');
+  await expect(goal).toContainText('Прогресс 2/2');
+});
+
+test('portrait mobile City Hall goal market is horizontally browsable without page overflow',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const s=createInitialState({rng:()=>0.1});
+  s.phase='declare';s.view='hall';s.declarationIndex=0;
+  await seed(page,s);await page.goto('/');
+  const market=page.locator('#cityGoalMarket');
+  await expect(market).toBeVisible();
+  await expect(market.locator('.city-goal-card')).toHaveCount(5);
+  const metrics=await page.evaluate(()=>{
+    const grid=document.querySelector('.city-goal-grid');
+    return {pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,scrollWidth:grid.scrollWidth,clientWidth:grid.clientWidth};
+  });
+  expect(metrics.pageWidth).toBeLessThanOrEqual(metrics.viewport+1);
+  expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth);
+  await expect(page.locator('[data-goal-slot="0"]')).toBeEnabled();
+});
+
+test('v0.30a save migrates to v0.44 without losing player state, street cleanup or annual order',async({page})=>{
   const s=makeDevState();
   s.version='0.30a';
   s.players[0].capital=37;
@@ -154,7 +204,9 @@ test('v0.30a save migrates to v0.43B without losing player state, street cleanup
   await seed(page,s);
   await page.goto('/');
   const saved=await stored(page);
-  expect(saved.version).toBe('0.43b');
+  expect(saved.version).toBe('0.44');
+  expect(saved.goalMarket).toHaveLength(5);
+  expect(saved.players.every(p=>Array.isArray(p.goals))).toBe(true);
   expect(new Set(saved.players.map(p=>p.influence)).size).toBe(3);
   expect(saved.yearTurnOrder).toHaveLength(3);
   expect(saved.firstPlayer).toBe(saved.yearTurnOrder[0]);
