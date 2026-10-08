@@ -660,12 +660,17 @@ export function reportCompletedCityGoals(state){
   return reports;
 }
 
-function drawGoalCard(state,rng=Math.random){
+function drawGoalCard(state,rng=Math.random,excludeIds=new Set()){
   state.goalDeck=state.goalDeck||[];state.goalDiscard=state.goalDiscard||[];
-  if(!state.goalDeck.length&&state.goalDiscard.length){
-    state.goalDeck=shuffle(state.goalDiscard.splice(0),rng);
+  const recycle=()=>{if(!state.goalDeck.length&&state.goalDiscard.length)state.goalDeck=shuffle(state.goalDiscard.splice(0),rng);};
+  recycle();
+  let index=state.goalDeck.findIndex(card=>!excludeIds.has(card.id));
+  if(index<0&&state.goalDiscard.length){
+    state.goalDeck.push(...shuffle(state.goalDiscard.splice(0),rng));
+    index=state.goalDeck.findIndex(card=>!excludeIds.has(card.id));
   }
-  return state.goalDeck.shift()||null;
+  if(index<0)index=state.goalDeck.length?0:-1;
+  return index>=0?state.goalDeck.splice(index,1)[0]:null;
 }
 export function refreshCityGoalMarket(state,{rng=Math.random}={}){
   state.goalMarket=Array.isArray(state.goalMarket)?state.goalMarket:Array(5).fill(null);
@@ -674,10 +679,11 @@ export function refreshCityGoalMarket(state,{rng=Math.random}={}){
     for(const card of state.goalMarket)if(card)state.goalDiscard.push(card);
     state.goalMarket=Array(5).fill(null);
   }
+  const present=new Set(state.goalMarket.filter(Boolean).map(card=>card.id));
   for(let i=0;i<5;i++){
     if(state.goalMarket[i])continue;
-    const card=drawGoalCard(state,rng);if(!card)break;
-    state.goalMarket[i]=card;
+    const card=drawGoalCard(state,rng,present);if(!card)break;
+    state.goalMarket[i]=card;present.add(card.id);
   }
   state.goalSessionClaims=[];
   return {claims,market:state.goalMarket};
