@@ -2673,3 +2673,73 @@ body.year-transition-open .sticky-action{pointer-events:none}
   .full-sf-map .neutral-supplier-node .node-name{font-size:11px}
   .full-sf-map .neutral-supplier-node .node-type{font-size:8px}
 }
+
+
+/* v0.44 — City Hall Goals */
+.city-goal-market{
+  margin:12px 0 16px;padding:12px;
+  border:1px solid #b9a98e;border-radius:14px;background:#eee2cf
+}
+.city-goal-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px
+}
+.city-goal-head b{display:block;font-size:11px;letter-spacing:.12em}
+.city-goal-head span{display:block;margin-top:3px;color:#716657;font-size:10px;line-height:1.35}
+.city-goal-head>strong{font-size:10px;color:#654d2d}
+.city-goal-grid{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px
+}
+.city-goal-card{
+  position:relative;display:flex;flex-direction:column;min-width:0;min-height:270px;
+  padding:10px;border:1px solid #c9b89c;border-radius:11px;background:#fff8ec;color:#40372c
+}
+.city-goal-card::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:7px;border-radius:10px 10px 0 0;
+  background:#637f69
+}
+.city-goal-card.complete-now{outline:2px solid #64825f;background:#f0f7e9}
+.city-goal-card.empty{align-items:center;justify-content:center;min-height:180px;border-style:dashed;color:#8d8173}
+.goal-card-top{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.goal-card-top span{font-size:7px;font-weight:900;letter-spacing:.1em;color:#7e725f}
+.goal-card-top strong{font-size:9px;color:#5e6f58}
+.city-goal-card h3{margin:7px 0 2px;font:700 16px/1.05 Georgia,serif}
+.goal-sponsor{color:#826d50;font-size:8px;font-weight:800}
+.goal-flavor{margin:8px 0;font-size:9px;line-height:1.35;color:#6a6053}
+.goal-requirement{padding:7px;border-radius:8px;background:#f1e7d4}
+.goal-requirement b{display:block;font-size:7px;letter-spacing:.1em;color:#806f59}
+.goal-requirement span{display:block;margin-top:3px;font-size:9px;line-height:1.35}
+.goal-progress,.goal-reward{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px}
+.goal-progress span{font-size:8px;color:#73685c}.goal-progress strong{font-size:12px}
+.goal-reward{margin-top:auto;padding-top:8px;border-top:1px solid #ddcfba}
+.goal-reward span{font-size:9px;font-weight:900;color:#45644d}.goal-reward em{font-size:8px;font-style:normal;color:#9a5147}
+.goal-take-btn{
+  min-height:36px;margin-top:8px;border:1px solid #58725e;border-radius:8px;background:#607d67;color:white;
+  font-size:9px;font-weight:900
+}
+.goal-take-btn:disabled{background:#ded4c4;color:#8a7d6e;border-color:#c7baa6}
+.goal-report-banner{
+  display:flex;gap:10px;align-items:center;margin:-2px 0 10px;padding:8px 10px;border-radius:8px;
+  background:#e4efdf;border:1px solid #b7c9ad
+}
+.goal-report-banner b{font-size:8px;letter-spacing:.1em;color:#486248}
+.goal-report-banner span{font-size:9px;line-height:1.35;color:#53634f}
+.office-goals{display:grid;gap:7px;margin-top:7px}
+.office-goal{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;padding:9px;border:1px solid #cdbfa9;border-radius:9px;background:#fff8ed}
+.office-goal>div b{display:block;font-size:11px}.office-goal>div small{display:block;margin-top:2px;font-size:8px;color:#766b5f}
+.office-goal>strong{font-size:8px;letter-spacing:.08em;color:#6e6559}
+.office-goal>span,.office-goal>em{grid-column:1/-1;font-size:8px;line-height:1.35}
+.office-goal>em{font-style:normal;color:#946846}
+.office-goal.ready{border-color:#89a77b;background:#eef6e8}
+.office-goal.completed{border-color:#8eac88;background:#e8f2e3}
+.office-goal.failed{border-color:#c79c93;background:#f6e7e2}
+
+@media(max-width:1000px){
+  .city-goal-grid{grid-template-columns:repeat(5,210px);overflow-x:auto;padding-bottom:5px}
+}
+@media(max-width:640px){
+  .city-goal-market{margin:9px 0 12px;padding:9px 8px}
+  .city-goal-head{align-items:flex-start;flex-direction:column;gap:4px}
+  .city-goal-grid{display:flex;overflow-x:auto;scroll-snap-type:x proximity;gap:7px}
+  .city-goal-card{flex:0 0 225px;min-height:255px;scroll-snap-align:start}
+  .goal-report-banner{align-items:flex-start;flex-direction:column;gap:3px}
+}

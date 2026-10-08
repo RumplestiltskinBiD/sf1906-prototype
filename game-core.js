@@ -52,6 +52,37 @@ export const NEUTRAL_MATERIAL_SUPPLIERS = Object.freeze([
   {id:'axford-iron',name:'Axford Bros. Iron Foundry',shortName:'Axford Bros.',districtId:'mission',resource:'Steel',unitPrice:5,x:844,y:688,code:'С',historical:'Iron foundry · 2256 Harrison'}
 ]);
 
+export const CITY_GOAL_COPIES = 3;
+export const CITY_GOALS = Object.freeze([
+  {id:'C01',name:'Западная жилая экспансия',sponsor:'Western Land & Improvement Syndicate',
+    requirement:'2 Жилых здания в 2 разных западных районах',
+    reward:{capital:4,prestige:4,influence:0},failPrestige:2,
+    flavor:'Частный синдикат продвигает жилое расширение к западу от старого городского ядра.'},
+  {id:'C02',name:'Новый деловой центр',sponsor:'Downtown Property Association',
+    requirement:'2 Бизнес-здания в Financial / Civic Center / SoMa',
+    reward:{capital:5,prestige:4,influence:0},failPrestige:3,
+    flavor:'Землевладельцы и предприниматели добиваются концентрации новой деловой застройки.'},
+  {id:'C03',name:'Промышленный узел',sponsor:'San Francisco Industrial & Freight Association',
+    requirement:'Промышленное + Торговое в одном районе с Port или Rail',
+    reward:{capital:6,prestige:5,influence:0},failPrestige:4,
+    flavor:'Грузовые интересы связывают производство, хранение и доступ к региональным перевозкам.'},
+  {id:'C04',name:'Расширение городских служб',sponsor:'Board of Public Works',
+    requirement:'2 разных Общественных здания в 2 разных районах',
+    reward:{capital:4,prestige:5,influence:1},failPrestige:4,
+    flavor:'Город требует распределять муниципальные службы между растущими районами.'},
+  {id:'C05',name:'Новый квартал Mission Bay',sponsor:'Mission Bay Development Syndicate',
+    requirement:'3 здания в Mission Bay, минимум 2 разных типа',
+    reward:{capital:8,prestige:7,influence:0},failPrestige:5,
+    flavor:'Спекулятивный синдикат пытается превратить прибрежные земли Mission Bay в новый городской квартал.'}
+]);
+export function cityGoalById(id){return CITY_GOALS.find(g=>g.id===id)||null;}
+export function createCityGoalPool({rng=Math.random}={}){
+  const market=CITY_GOALS.map((g,i)=>({uid:`G0-${i+1}-${g.id}`,id:g.id}));
+  const deck=[];let serial=1;
+  for(let copy=1;copy<CITY_GOAL_COPIES;copy++)for(const goal of CITY_GOALS)deck.push({uid:`GD${serial++}-${goal.id}`,id:goal.id});
+  return {market,deck:shuffle(deck,rng),discard:[]};
+}
+
 export function randomLogisticsResource(rng=Math.random,weights=LOGISTICS_RESOURCE_WEIGHTS){
   const roll=rng();
   if(roll<weights.Lumber)return 'Lumber';
@@ -435,7 +466,7 @@ export function confirmStarterDraft(state){
   state.starterDiscards=state.starterDiscards||[];state.starterDiscards.push(...discarded);state.starterDraftHands[pid]=[];
   logEvent(state,`${player.name} завершает стартовый драфт: оставляет ${STARTER_KEEP} проекта, сбрасывает ${discarded.length}.`,'good');
   state.draftSelection=[];state.draftRevealed=false;
-  if(pid>=state.players.length-1){state.phase='declare';state.starterDraftPlayer=null;state.declarationIndex=0;logEvent(state,'Стартовый драфт завершён. Начинается City Hall Session.','accent');return {ok:true,complete:true,nextPlayer:null};}
+  if(pid>=state.players.length-1){state.phase='declare';state.starterDraftPlayer=null;state.declarationIndex=0;state.goalSessionClaims=[];logEvent(state,'Стартовый драфт завершён. Начинается City Hall Session: можно взять до 1 городской цели и заявить проект.','accent');return {ok:true,complete:true,nextPlayer:null};}
   state.starterDraftPlayer=pid+1;return {ok:true,complete:false,nextPlayer:state.starterDraftPlayer};
 }
 
@@ -451,10 +482,11 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
+  const goalSetup=createCityGoalPool({rng});
   return {
-    version:'0.43b',
+    version:'0.44',
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -471,6 +503,11 @@ export function createInitialState({rng=Math.random}={}){
     market,
     deck:pool,
     expired:[],
+    goalMarket:goalSetup.market,
+    goalDeck:goalSetup.deck,
+    goalDiscard:goalSetup.discard,
+    goalSessionClaims:[],
+    lastGoalReports:[],
     starterDraftHands,
     starterDiscards:[],
     starterDraftPlayer:0,
@@ -500,12 +537,171 @@ export function createInitialState({rng=Math.random}={}){
     logisticsSupply:generateLogisticsSupply({rng}),
     freightYardInventories:[[],[],[]],
     haulersUsed:[],
-    log:[{msg:'Началась тестовая партия v0.43B. Influence занимает уникальные позиции; порядок года фиксируется в начале года. Незавершённая стройка стоит $1 простоя при переходе года.','cls':'accent'}],
+    log:[{msg:'Началась тестовая партия v0.44 City Hall Goals. В City Hall каждый игрок может взять до 1 городской цели; выполненные цели отчитываются в начале следующего года.','cls':'accent'}],
     finished:false
   };
 }
 
 export function logEvent(state,msg,cls=''){state.log.push({msg,cls});}
+
+
+function completedPlayerConstructions(state,playerId){
+  return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete');
+}
+function combinations(items,count){
+  const out=[];
+  const walk=(start,pick)=>{
+    if(pick.length===count){out.push([...pick]);return;}
+    for(let i=start;i<=items.length-(count-pick.length);i++){pick.push(items[i]);walk(i+1,pick);pick.pop();}
+  };
+  walk(0,[]);return out;
+}
+function constructionHasType(c,type){return projectTypes(c.projectId).includes(type);}
+function goalCandidateSets(state,playerId,goalId){
+  const built=completedPlayerConstructions(state,playerId),sets=[];
+  if(goalId==='C01'){
+    const west=new Set(['outerrichmond','innerrichmond','sunset','innersunset']);
+    for(const pair of combinations(built.filter(c=>west.has(c.districtId)&&constructionHasType(c,'Жилое')),2)){
+      if(pair[0].districtId!==pair[1].districtId)sets.push(pair);
+    }
+  }else if(goalId==='C02'){
+    const districts=new Set(['financial','civic','soma']);
+    sets.push(...combinations(built.filter(c=>districts.has(c.districtId)&&constructionHasType(c,'Бизнес')),2));
+  }else if(goalId==='C03'){
+    for(const district of DISTRICTS.filter(d=>d.port||d.rail)){
+      const here=built.filter(c=>c.districtId===district.id);
+      for(const a of here.filter(c=>constructionHasType(c,'Промышленное'))){
+        for(const b of here.filter(c=>c.id!==a.id&&constructionHasType(c,'Торговое')))sets.push([a,b]);
+      }
+    }
+  }else if(goalId==='C04'){
+    const civic=built.filter(c=>constructionHasType(c,'Общественное'));
+    for(const pair of combinations(civic,2)){
+      if(pair[0].districtId!==pair[1].districtId&&pair[0].projectId!==pair[1].projectId)sets.push(pair);
+    }
+  }else if(goalId==='C05'){
+    const here=built.filter(c=>c.districtId==='missionbay');
+    for(const trio of combinations(here,3)){
+      const types=new Set(trio.flatMap(c=>projectTypes(c.projectId)));
+      if(types.size>=2)sets.push(trio);
+    }
+  }
+  return sets;
+}
+export function cityGoalEvaluation(state,playerId,goalEntryOrId){
+  const goalId=typeof goalEntryOrId==='string'?goalEntryOrId:goalEntryOrId?.id;
+  const entry=typeof goalEntryOrId==='object'?goalEntryOrId:null;
+  const candidates=goalCandidateSets(state,playerId,goalId);
+  const pre=new Set(entry?.preExistingConstructionIds||[]);
+  const ranked=candidates.map(set=>({
+    set,
+    retroactive:set.filter(c=>pre.has(c.id)).length,
+    newest:Math.max(...set.map(c=>c.completedRound||0))
+  })).sort((a,b)=>a.retroactive-b.retroactive||b.newest-a.newest);
+  const best=ranked[0]||null;
+  return {complete:!!best,constructionIds:best?best.set.map(c=>c.id):[],retroactiveCount:best?.retroactive||0,
+    progress:cityGoalProgress(state,playerId,goalId)};
+}
+export function cityGoalProgress(state,playerId,goalId){
+  const built=completedPlayerConstructions(state,playerId);
+  if(goalId==='C01'){
+    const west=new Set(['outerrichmond','innerrichmond','sunset','innersunset']);
+    return Math.min(2,new Set(built.filter(c=>west.has(c.districtId)&&constructionHasType(c,'Жилое')).map(c=>c.districtId)).size);
+  }
+  if(goalId==='C02')return Math.min(2,built.filter(c=>['financial','civic','soma'].includes(c.districtId)&&constructionHasType(c,'Бизнес')).length);
+  if(goalId==='C03')return goalCandidateSets(state,playerId,goalId).length?2:Math.min(1,built.filter(c=>constructionHasType(c,'Промышленное')||constructionHasType(c,'Торговое')).length);
+  if(goalId==='C04'){
+    const civic=built.filter(c=>constructionHasType(c,'Общественное'));
+    return goalCandidateSets(state,playerId,goalId).length?2:Math.min(1,civic.length);
+  }
+  if(goalId==='C05')return Math.min(3,built.filter(c=>c.districtId==='missionbay').length);
+  return 0;
+}
+export function cityGoalTarget(goalId){return goalId==='C05'?3:2;}
+
+export function claimCityGoal(state,slot){
+  if(state.phase!=='declare')return {ok:false,reason:'wrong-phase'};
+  const pid=currentDeclarer(state);if(pid==null)return {ok:false,reason:'no-declarer'};
+  const player=state.players[pid];
+  if(player.goalTakenRound===state.round)return {ok:false,reason:'already-taken'};
+  const card=state.goalMarket?.[slot];if(!card)return {ok:false,reason:'empty-slot'};
+  const goal=cityGoalById(card.id);if(!goal)return {ok:false,reason:'goal'};
+  const preExistingConstructionIds=completedPlayerConstructions(state,pid).map(c=>c.id);
+  player.goals=player.goals||[];
+  player.goals.push({uid:card.uid,id:card.id,status:'active',acquiredRound:state.round,preExistingConstructionIds});
+  player.goalTakenRound=state.round;
+  state.goalMarket[slot]=null;
+  state.goalSessionClaims=state.goalSessionClaims||[];
+  state.goalSessionClaims.push({playerId:pid,uid:card.uid,id:card.id});
+  logEvent(state,`${player.name} принимает городскую цель «${goal.name}». Отчёт возможен только в следующей City Hall Session.`,'accent');
+  return {ok:true,playerId:pid,goalId:card.id};
+}
+
+export function reportCompletedCityGoals(state){
+  const reports=[];
+  for(const player of state.players){
+    for(const entry of player.goals||[]){
+      if(entry.status!=='active'||entry.acquiredRound>=state.round)continue;
+      const goal=cityGoalById(entry.id),evaluation=cityGoalEvaluation(state,player.id,entry);
+      if(!goal||!evaluation.complete)continue;
+      player.capital+=goal.reward.capital||0;
+      player.prestige=(player.prestige||0)+(goal.reward.prestige||0);
+      let influenceMove=null;
+      if(goal.reward.influence)influenceMove=moveInfluence(state,player.id,goal.reward.influence);
+      entry.status='completed';entry.reportedRound=state.round;entry.matchedConstructionIds=evaluation.constructionIds;
+      entry.retroactiveCount=evaluation.retroactiveCount;
+      const retro=evaluation.retroactiveCount?` · ретроактивных зданий: ${evaluation.retroactiveCount} (доплата пока не активна)`:'';
+      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${goal.reward.capital}, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}${retro}.`,'good');
+      reports.push({playerId:player.id,goalId:goal.id,capital:goal.reward.capital,prestige:goal.reward.prestige,
+        influence:goal.reward.influence||0,retroactiveCount:evaluation.retroactiveCount,influenceMove});
+    }
+  }
+  state.lastGoalReports=reports;
+  return reports;
+}
+
+function drawGoalCard(state,rng=Math.random,excludeIds=new Set()){
+  state.goalDeck=state.goalDeck||[];state.goalDiscard=state.goalDiscard||[];
+  const recycle=()=>{if(!state.goalDeck.length&&state.goalDiscard.length)state.goalDeck=shuffle(state.goalDiscard.splice(0),rng);};
+  recycle();
+  let index=state.goalDeck.findIndex(card=>!excludeIds.has(card.id));
+  if(index<0&&state.goalDiscard.length){
+    state.goalDeck.push(...shuffle(state.goalDiscard.splice(0),rng));
+    index=state.goalDeck.findIndex(card=>!excludeIds.has(card.id));
+  }
+  if(index<0)index=state.goalDeck.length?0:-1;
+  return index>=0?state.goalDeck.splice(index,1)[0]:null;
+}
+export function refreshCityGoalMarket(state,{rng=Math.random}={}){
+  state.goalMarket=Array.isArray(state.goalMarket)?state.goalMarket:Array(5).fill(null);
+  const claims=(state.goalSessionClaims||[]).length;
+  if(claims<state.players.length){
+    for(const card of state.goalMarket)if(card)state.goalDiscard.push(card);
+    state.goalMarket=Array(5).fill(null);
+  }
+  const present=new Set(state.goalMarket.filter(Boolean).map(card=>card.id));
+  for(let i=0;i<5;i++){
+    if(state.goalMarket[i])continue;
+    const card=drawGoalCard(state,rng,present);if(!card)break;
+    state.goalMarket[i]=card;present.add(card.id);
+  }
+  state.goalSessionClaims=[];
+  return {claims,market:state.goalMarket};
+}
+export function failIncompleteCityGoals(state){
+  const failures=[];
+  for(const player of state.players){
+    for(const entry of player.goals||[]){
+      if(entry.status!=='active')continue;
+      const goal=cityGoalById(entry.id);if(!goal)continue;
+      player.prestige=Math.max(0,(player.prestige||0)-goal.failPrestige);
+      entry.status='failed';entry.failedRound=state.round;
+      logEvent(state,`${player.name} не выполнил цель «${goal.name}»: −${goal.failPrestige} VP.`,'bad');
+      failures.push({playerId:player.id,goalId:goal.id,prestige:-goal.failPrestige});
+    }
+  }
+  return failures;
+}
 
 export function claimProject(state,slot){
   if(state.phase!=='declare') return {ok:false,reason:'wrong-phase'};
@@ -558,7 +754,7 @@ export function submitBid(state,value){
   return {ok:true};
 }
 
-export function resolveTenders(state){
+export function resolveTenders(state,{rng=Math.random}={}){
   if(state.phase!=='ready')return {ok:false};
   state.market.forEach(m=>{
     if(!m||!m.claims.length)return;
@@ -581,6 +777,7 @@ export function resolveTenders(state){
     }
     award(state,m,w.player,w.bid,reason);
   });
+  const goalRefresh=refreshCityGoalMarket(state,{rng});
   state.phase='development';
   state.developmentPlayer=state.firstPlayer;
   state.developmentComplete=false;
@@ -590,8 +787,8 @@ export function resolveTenders(state){
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};
   state.bureauOwnerRewarded={};
-  logEvent(state,`Тендерная сессия завершена. Development Phase начинает ${state.players[state.developmentPlayer].name}.`,'accent');
-  return {ok:true};
+  logEvent(state,`City Hall завершён. Целей взято: ${goalRefresh.claims}; рынок целей обновлён. Development Phase начинает ${state.players[state.developmentPlayer].name}.`,'accent');
+  return {ok:true,goalRefresh};
 }
 
 function award(state,m,pid,price,reason){
@@ -1288,6 +1485,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
   state.haulersUsed=[];
+  reportCompletedCityGoals(state);
   setYearTurnOrderFromInfluence(state);
   state.players.forEach(p=>{
     p.workers=p.workers?.length?p.workers:createWorkers(p.id);
@@ -1298,7 +1496,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
-  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;
+  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
   state.yearTransition=null;
   const first=state.market.find(Boolean);
@@ -1370,6 +1568,11 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
 
   if(state.round>=MAX_ROUNDS){
+    // Final City Hall report: 1905 completions still count before incomplete contracts are penalized.
+    state.round=MAX_ROUNDS+1;
+    reportCompletedCityGoals(state);
+    failIncompleteCityGoals(state);
+    state.round=MAX_ROUNDS;
     state.finished=true;state.phase='finished';
     state.market=[...survivors];
     state.procurementRemaining=0;state.procurementSource=null;

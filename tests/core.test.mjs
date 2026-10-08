@@ -20,7 +20,7 @@ function construction(id,playerId,projectId,districtId,status='under-constructio
 
 test('initial state is internally consistent',()=>{
   const s=G.createInitialState({rng:()=>0.1});
-  assert.equal(s.version,'0.43b');
+  assert.equal(s.version,'0.44');
   assert.equal(s.players.length,3);
   assert.equal(s.market.length,5);
   assert.equal(s.starterDraftHands.length,3);
@@ -63,6 +63,123 @@ test('Influence skips occupied spaces both forward and backward',()=>{
   assert.deepEqual(G.setYearTurnOrderFromInfluence(s),[2,1,0]);
 });
 
+
+test('v0.44 City Hall goal catalog and all five requirement evaluators work',()=>{
+  assert.deepEqual(G.CITY_GOALS.map(g=>g.id),['C01','C02','C03','C04','C05']);
+  const s=devState();
+  s.constructions=[
+    construction('W1',0,'tenement','outerrichmond','complete'),
+    construction('W2',0,'luxury','innersunset','complete'),
+    construction('B1',0,'bank','financial','complete'),
+    construction('B2',0,'bureau','civic','complete'),
+    construction('I1',0,'factory','soma','complete'),
+    construction('T1',0,'warehouse','soma','complete'),
+    construction('P1',0,'firehouse','civic','complete'),
+    construction('P2',0,'clinic','western','complete'),
+    construction('M1',0,'tenement','missionbay','complete'),
+    construction('M2',0,'bank','missionbay','complete'),
+    construction('M3',0,'warehouse','missionbay','complete')
+  ];
+  for(const id of ['C01','C02','C03','C04','C05']){
+    const e=G.cityGoalEvaluation(s,0,id);
+    assert.equal(e.complete,true,id);
+    assert.equal(e.progress,G.cityGoalTarget(id),id);
+  }
+});
+
+test('City Hall player can take at most one goal without ending project declaration',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  s.phase='declare';s.declarationIndex=0;
+  const pid=G.currentDeclarer(s);
+  const r=G.claimCityGoal(s,0);
+  assert.equal(r.ok,true);
+  assert.equal(G.currentDeclarer(s),pid,'taking a goal must not advance declaration');
+  assert.equal(s.players[pid].goals.length,1);
+  assert.equal(s.goalMarket[0],null);
+  assert.equal(G.claimCityGoal(s,1).reason,'already-taken');
+  assert.equal(G.passDeclaration(s).ok,true);
+  assert.notEqual(G.currentDeclarer(s),pid);
+});
+
+test('goal completed with old buildings reports only in a later City Hall and records retroactive use',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  const p=s.players[0];
+  p.capital=10;p.prestige=0;
+  s.constructions=[
+    construction('OLD1',0,'tenement','outerrichmond','complete'),
+    construction('OLD2',0,'luxury','innersunset','complete')
+  ];
+  p.goals=[{uid:'X',id:'C01',status:'active',acquiredRound:1,preExistingConstructionIds:['OLD1','OLD2']}];
+  s.round=1;
+  assert.equal(G.reportCompletedCityGoals(s).length,0,'same City Hall cannot report newly acquired goal');
+  s.round=2;
+  const reports=G.reportCompletedCityGoals(s);
+  assert.equal(reports.length,1);
+  assert.equal(reports[0].retroactiveCount,2);
+  assert.equal(p.capital,14);
+  assert.equal(p.prestige,4);
+  assert.equal(p.goals[0].status,'completed');
+});
+
+test('C04 report moves Influence before next-year order is recalculated',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  s.players[0].influence=2;s.players[1].influence=3;s.players[2].influence=4;
+  s.yearTurnOrder=[2,1,0];s.firstPlayer=2;
+  s.constructions=[
+    construction('CIV1',0,'firehouse','civic','complete'),
+    construction('CIV2',0,'clinic','western','complete')
+  ];
+  s.players[0].goals=[{uid:'C04X',id:'C04',status:'active',acquiredRound:1,preExistingConstructionIds:[]}];
+  s.round=2;
+  const before=G.turnOrder(s);
+  const reports=G.reportCompletedCityGoals(s);
+  assert.equal(reports.length,1);
+  assert.equal(s.players[0].influence,5,'+1 skips occupied 3 and 4');
+  assert.deepEqual(G.turnOrder(s),before,'current stored order stays frozen until recalculation');
+  assert.deepEqual(G.setYearTurnOrderFromInfluence(s),[0,2,1]);
+});
+
+test('goal market refresh keeps leftovers after three claims but flushes them after fewer claims',()=>{
+  const keep=G.createInitialState({rng:()=>0.1});
+  const beforeKeep=keep.goalMarket.map(x=>x?.uid);
+  keep.goalMarket[0]=null;keep.goalMarket[1]=null;keep.goalMarket[2]=null;
+  keep.goalSessionClaims=[{},{},{}];
+  const kr=G.refreshCityGoalMarket(keep,{rng:()=>0.2});
+  assert.equal(kr.claims,3);
+  assert.equal(keep.goalMarket.length,5);
+  assert.equal(keep.goalMarket[3]?.uid,beforeKeep[3]);
+  assert.equal(keep.goalMarket[4]?.uid,beforeKeep[4]);
+  assert.equal(new Set(keep.goalMarket.filter(Boolean).map(x=>x.id)).size,5,'no duplicate goal types in one market');
+
+  const flush=G.createInitialState({rng:()=>0.1});
+  const old=new Set(flush.goalMarket.filter(Boolean).map(x=>x.uid));
+  flush.goalMarket[0]=null;flush.goalSessionClaims=[{}];
+  const fr=G.refreshCityGoalMarket(flush,{rng:()=>0.2});
+  assert.equal(fr.claims,1);
+  assert.equal(flush.goalMarket.filter(Boolean).length,5);
+  assert.ok(flush.goalMarket.filter(Boolean).every(x=>!old.has(x.uid)),'remaining old market is discarded after weak demand');
+  assert.equal(new Set(flush.goalMarket.filter(Boolean).map(x=>x.id)).size,5);
+});
+
+test('final Phase I goal check rewards completed goals and penalizes only incomplete goals',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  s.round=6;s.phase='development';s.developmentComplete=true;
+  s.newsCurrentIds=['E05'];s.newsLastResolvedRound=5;
+  s.players[0].prestige=10;
+  s.constructions=[
+    construction('B1',0,'bank','financial','complete'),
+    construction('B2',0,'bureau','civic','complete')
+  ];
+  s.players[0].goals=[
+    {uid:'DONE',id:'C02',status:'active',acquiredRound:5,preExistingConstructionIds:[]},
+    {uid:'FAIL',id:'C05',status:'active',acquiredRound:5,preExistingConstructionIds:[]}
+  ];
+  const r=G.cleanupMarket(s,{rng:()=>0.9});
+  assert.equal(r.ok,true);assert.equal(r.finished,true);
+  assert.equal(s.players[0].goals.find(g=>g.uid==='DONE').status,'completed');
+  assert.equal(s.players[0].goals.find(g=>g.uid==='FAIL').status,'failed');
+  assert.equal(s.players[0].prestige,9,'10 +4 VP for C02 −5 VP for failed C05');
+});
 test('district adjacency is symmetric and references valid districts',()=>{
   const ids=new Set(G.DISTRICTS.map(d=>d.id));
   for(const [id,neighbors] of Object.entries(G.DISTRICT_ADJACENCY)){

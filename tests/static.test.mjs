@@ -11,9 +11,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/Influence & Upkeep v0\.43B/);
-  assert.match(html,/app\.js\?v=043b-suppliers/);
-  assert.match(html,/styles\.css\?v=043b-suppliers/);
+  assert.match(html,/City Hall Goals v0\.44/);
+  assert.match(html,/app\.js\?v=044-goals/);
+  assert.match(html,/styles\.css\?v=044-goals/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -147,4 +147,16 @@ test('historical neutral material suppliers are wired into core and Delivery UI'
   for(const needle of ['Gray Brothers Quarry','Engle & Son Lumber Yard','Axford Bros. Iron Foundry','NEUTRAL_MATERIAL_SUPPLIERS'])assert.ok(core.includes(needle),needle);
   for(const needle of ['data-delivery-supplier','data-ds-supplier','neutral-supplier-node','исторический поставщик'])assert.ok(app.includes(needle),needle);
   for(const needle of ['.neutral-supplier-node','.neutral-supplier-source','.supplier-pin'])assert.ok(css.includes(needle),needle);
+});
+
+
+test('v0.44 City Hall Goals hooks are present',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  for(const needle of ['CITY_GOALS','claimCityGoal','cityGoalEvaluation','reportCompletedCityGoals','refreshCityGoalMarket','failIncompleteCityGoals'])assert.ok(core.includes(needle),needle);
+  for(const needle of ['function renderCityGoals()','goalRewardText','data-goal-slot','office-goal'])assert.ok(app.includes(needle),needle);
+  assert.ok(html.includes('id="cityGoalMarket"'));
+  for(const needle of ['.city-goal-market','.city-goal-card','.office-goal'])assert.ok(css.includes(needle),needle);
 });

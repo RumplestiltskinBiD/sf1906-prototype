@@ -1,9 +1,9 @@
 import {
-PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+PROJECTS,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
-createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
+createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
@@ -41,14 +41,14 @@ for(const key of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(key);if(raw)break
 }
 if(raw){
 const parsed=JSON.parse(raw);
-if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a','0.43b'].includes(parsed?.version))return migrateState(parsed);
+if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a','0.43b','0.44'].includes(parsed?.version))return migrateState(parsed);
 }
 }catch(e){}
 return createInitialState();
 }
 function migrateState(parsed){
 const originalVersion=parsed.version;
-parsed.version='0.43b';
+parsed.version='0.44';
 parsed.players=(parsed.players||[]).map(p=>{
 let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
@@ -68,6 +68,8 @@ workersLeft:workers.filter(w=>!w.used).length,
 portfolio:p.portfolio||[],
 loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
+goals:Array.isArray(p.goals)?p.goals:[],
+goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
 };
 });
@@ -117,7 +119,16 @@ parsed.draftRevealed=parsed.phase==='draft'?!!parsed.draftRevealed:false;
 parsed.selectedMarketUid=parsed.selectedMarketUid||parsed.market.find(m=>m&&m.id===parsed.selectedProjectId)?.uid||parsed.market.find(Boolean)?.uid||null;
 parsed.pendingConstruction=null;
 parsed.yearTransition=parsed.yearTransition||null;
-if(originalVersion!=='0.43b'||!Array.isArray(parsed.yearTurnOrder)||parsed.yearTurnOrder.length!==parsed.players.length){
+if(!Array.isArray(parsed.goalMarket)||!Array.isArray(parsed.goalDeck)){
+const goalSetup=createCityGoalPool();
+parsed.goalMarket=goalSetup.market;parsed.goalDeck=goalSetup.deck;parsed.goalDiscard=goalSetup.discard;
+}
+parsed.goalMarket=Array.from({length:5},(_,i)=>parsed.goalMarket?.[i]||null);
+parsed.goalDiscard=Array.isArray(parsed.goalDiscard)?parsed.goalDiscard:[];
+parsed.goalSessionClaims=Array.isArray(parsed.goalSessionClaims)?parsed.goalSessionClaims:[];
+parsed.lastGoalReports=Array.isArray(parsed.lastGoalReports)?parsed.lastGoalReports:[];
+
+if(!['0.43b','0.44'].includes(originalVersion)||!Array.isArray(parsed.yearTurnOrder)||parsed.yearTurnOrder.length!==parsed.players.length){
 normalizeInfluenceTrack(parsed);
 }
 if(parsed.phase==='development'){
@@ -129,7 +140,7 @@ parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlay
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
 }
-if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b','0.44'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
 ensureNewspaper(parsed);
 return parsed;
 }
@@ -921,7 +932,7 @@ render();
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
@@ -1035,7 +1046,7 @@ const steps=[['draft','0 Драфт'],['declare','1 Заявки'],['bids','2 З
 const order={draft:0,declare:1,bids:2,ready:3,development:4,upkeep:5,finished:5};const current=order[state.phase]??0;
 $('#tenderSteps').innerHTML=steps.map(([id,label],idx)=>`<span class="step-chip ${idx===current?'active':idx<current?'done':''}">${label}</span>`).join('');
 const yearOrder=turnOrder(state).map((pid,i)=>`${i+1}. ${state.players[pid].name}`).join(' → ');
-$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. Он зафиксирован до следующего года; более поздние игроки видят предыдущие заявки.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
+$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. В свою очередь можно взять до 1 городской цели, затем заявить проект или пасовать.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
 }
 function projectCardRules(p){
 return `<div class="card-rules">
@@ -1094,6 +1105,34 @@ const slot=+b.dataset.marketOverviewSlot,m=state.market[slot];if(!m)return;
 state.selectedMarketUid=m.uid;state.selectedProjectId=m.id;
 render();
 requestAnimationFrame(()=>$('#projectMarket')?.children?.[slot]?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));
+});
+}
+function goalRewardText(goal){
+return '+$'+goal.reward.capital+' · +'+goal.reward.prestige+' VP'+(goal.reward.influence?' · +'+goal.reward.influence+' Влияние':'');
+}
+function renderCityGoals(){
+const el=$('#cityGoalMarket');if(!el)return;
+const cd=currentDeclarer(state),player=cd!=null?state.players[cd]:null,already=player?.goalTakenRound===state.round;
+const report=(state.lastGoalReports||[]).length?'<div class="goal-report-banner"><b>ОТЧЁТ НАЧАЛА ГОДА</b><span>'+state.lastGoalReports.map(r=>state.players[r.playerId].name+' · '+cityGoalById(r.goalId)?.name+' → +$'+r.capital+' / +'+r.prestige+' VP').join(' · ')+'</span></div>':'';
+const cards=(state.goalMarket||[]).map((card,slot)=>{
+if(!card)return '<div class="city-goal-card empty"><span>Цель взята</span></div>';
+const g=cityGoalById(card.id),ev=player?cityGoalEvaluation(state,player.id,g.id):null,can=state.phase==='declare'&&!!player&&!already;
+const progress=player?(ev.progress+'/'+cityGoalTarget(g.id)):'—';
+return '<article class="city-goal-card '+(ev?.complete?'complete-now':'')+'">'
++'<div class="goal-card-top"><span>ГОРОДСКАЯ ЦЕЛЬ</span><strong>'+g.id+'</strong></div>'
++'<h3>'+g.name+'</h3><small class="goal-sponsor">'+g.sponsor+'</small>'
++'<p class="goal-flavor">'+g.flavor+'</p>'
++'<div class="goal-requirement"><b>ТРЕБОВАНИЕ</b><span>'+g.requirement+'</span></div>'
++'<div class="goal-progress"><span>Прогресс '+(player?player.name:'')+'</span><strong>'+progress+(ev?.complete?' ✓':'')+'</strong></div>'
++'<div class="goal-reward"><span>'+goalRewardText(g)+'</span><em>Провал: −'+g.failPrestige+' VP</em></div>'
++'<button class="goal-take-btn" data-goal-slot="'+slot+'" '+(can?'':'disabled')+'>'+(already?'Цель уже взята':can?'Взять цель':'Только в свою заявку')+'</button>'
++'</article>';
+}).join('');
+el.innerHTML=report+'<div class="city-goal-head"><div><b>ГОРОДСКИЕ ЦЕЛИ</b><span>До 1 новой цели на игрока за City Hall · отчёт в начале следующего года</span></div>'+(player?'<strong>Сейчас: '+player.name+(already?' · цель уже взята':'')+'</strong>':'')+'</div><div class="city-goal-grid">'+cards+'</div>';
+$$('[data-goal-slot]').forEach(b=>b.onclick=()=>{
+const r=claimCityGoal(state,+b.dataset.goalSlot);
+if(!r.ok){showToast(r.reason==='already-taken'?'В этой City Hall Session вы уже взяли цель':'Сейчас цель взять нельзя');return;}
+showToast('Цель принята · проект всё ещё можно заявить');render();
 });
 }
 function renderMarket(){
@@ -1174,7 +1213,7 @@ $('#draftConfirmSticky').onclick=()=>{const r=confirmStarterDraft(state);if(!r.o
 }else if(state.phase==='declare'){
 const pid=currentDeclarer(state);
 if(pid==null){bar.innerHTML=`<div class="sticky-copy"><strong>Все заявки сделаны</strong><span>Перейдите к закрытым ставкам. Если конкуренции нет, сразу к вскрытию.</span></div><div class="sticky-actions"><button class="secondary-btn" id="nextTenderStage">Перейти к ставкам</button></div>`;$('#nextTenderStage').onclick=()=>{beginBidding(state);render();};}
-else bar.innerHTML=`<div class="sticky-copy"><strong>Заявка: ${state.players[pid].name} · рука ${state.players[pid].portfolio.length}/${HAND_LIMIT}</strong><span>Выберите один проект или пасуйте. При полной руке сначала нужно начать стройку в Development.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас</button></div>`,$('#passTender').onclick=()=>{passDeclaration(state);render();};
+else {const gp=state.players[pid],goalTaken=gp.goalTakenRound===state.round;bar.innerHTML=`<div class="sticky-copy"><strong>City Hall: ${gp.name} · рука ${gp.portfolio.length}/${HAND_LIMIT}</strong><span>${goalTaken?'Городская цель уже взята. ':'Можно взять 1 городскую цель. '}Затем выберите проект или пасуйте.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас на проект</button></div>`;$('#passTender').onclick=()=>{passDeclaration(state);render();};}
 }else if(state.phase==='bids'){
 const q=currentBidTask(state),pl=q?state.players[q.player]:null;bar.innerHTML=`<div class="sticky-copy"><strong>Закрытые ставки</strong><span>${pl?`Следующая ставка: ${pl.name}`:'Ставки собраны'}. Суммы скрыты до вскрытия.</span></div><div class="sticky-actions"><button class="secondary-btn" id="openBidNow">Продолжить ставки</button></div>`;$('#openBidNow').onclick=openBidCurtain;
 }else if(state.phase==='ready'){
@@ -1754,10 +1793,15 @@ const activationNote=isActive
 :state.phase==='development'&&!state.developmentComplete
 ?`<div class="office-activation locked"><b>ТОЛЬКО ПРОСМОТР</b><span>Сейчас активация: ${state.players[activePlayerId].name}. Доставка / завершение / погашение кредита доступны только активному игроку.</span></div>`
 :'';
+const goalHtml=(p.goals||[]).length?(p.goals||[]).map(entry=>{
+const g=cityGoalById(entry.id),ev=cityGoalEvaluation(state,p.id,entry),target=cityGoalTarget(entry.id);
+const status=entry.status==='completed'?'ВЫПОЛНЕНО':entry.status==='failed'?'ПРОВАЛЕНО':ev.complete?'ГОТОВО К ОТЧЁТУ':'АКТИВНО';
+return '<div class="office-goal '+entry.status+' '+(ev.complete?'ready':'')+'"><div><b>'+g.name+'</b><small>'+g.requirement+'</small></div><strong>'+status+'</strong><span>Прогресс '+ev.progress+'/'+target+' · '+goalRewardText(g)+' · провал −'+g.failPrestige+' VP</span>'+(ev.retroactiveCount?'<em>Ретроактивных зданий: '+ev.retroactiveCount+' · доплата пока не активна</em>':'')+'</div>';
+}).join(''):'<div class="empty-state compact">Городских целей пока нет.</div>';
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.43B:</b> количество начатых строек за год не ограничено отдельным лимитом: каждая требует main action представителя. Каждая незавершённая стройка стоит $1 простоя после income при переходе года.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals направляют застройку и отчитываются в начале следующего года. Ретроактивные здания уже отслеживаются; дополнительная стоимость их регистрации пока намеренно не активирована до баланс-теста.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
@@ -1801,7 +1845,7 @@ document.addEventListener('keydown',event=>{
   else if(event.key==='Escape'&&newsEmergencyMode){newsEmergencyMode=false;render();}
 });
 $('#undoBtn').onclick=undoLastGameAction;
-$('#helpBtn').onclick=()=>{showToast('v0.43B: Influence задаёт порядок следующего года; занятые деления перепрыгиваются в обе стороны. Каждая незавершённая стройка стоит $1 простоя после income.');};
+$('#helpBtn').onclick=()=>{showToast('v0.44: в City Hall можно взять до 1 городской цели; выполненные цели отчитываются в начале следующего года. Influence и простой строек работают как в v0.43B.');};
 $('#drawerBackdrop').onclick=closeDrawers;
 $('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
 $('#modalBackdrop').onclick=()=>{};
