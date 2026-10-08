@@ -203,6 +203,55 @@ test('same-district Delivery is valid and has zero road cost',()=>{
   assert.deepEqual(s.constructions[0].materialsDelivered,['Masonry','Steel']);
 });
 
+
+test('historical neutral suppliers are unlimited expensive Delivery sources',()=>{
+  assert.deepEqual(
+    G.NEUTRAL_MATERIAL_SUPPLIERS.map(x=>[x.name,x.districtId,x.resource,x.unitPrice]),
+    [
+      ['Gray Brothers Quarry','noe','Masonry',3],
+      ['Engle & Son Lumber Yard','marina','Lumber',3],
+      ['Axford Bros. Iron Foundry','mission','Steel',5]
+    ]
+  );
+  const s=devState();
+  s.players[0].capital=20;
+  s.procurementRemaining=2;
+  s.constructions=[construction('I1',0,'insurance','mission')];
+
+  const source=G.deliverySourceInfo(s,0,{kind:'supplier',id:'gray-quarry'});
+  assert.equal(source.unlimited,true);
+  assert.ok(source.inventory.every(x=>x==='Masonry'));
+  assert.equal(source.unitPrice,3);
+
+  const first={playerId:0,source:{kind:'supplier',id:'gray-quarry'},haulerId:'dray2a',cargo:['Masonry'],route:['noe','mission'],drops:[{kind:'construction',id:'I1',materials:['Masonry']}]};
+  let v=G.validateDeliveryPlan(s,first);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(v.cost.materialCost,3);
+  assert.equal(v.cost.procurementDiscount,0);
+  assert.equal(v.cost.routeCost,1);
+  assert.equal(v.cost.total,4);
+  assert.equal(G.executeDelivery(s,first).ok,true);
+  assert.equal(s.procurementRemaining,2,'Shopping Row discount must not apply to neutral suppliers');
+
+  const second={...first,haulerId:'dray2b'};
+  v=G.validateDeliveryPlan(s,second);
+  assert.equal(v.ok,true,JSON.stringify(v));
+  assert.equal(G.executeDelivery(s,second).ok,true);
+  assert.deepEqual(s.constructions[0].materialsDelivered,['Masonry','Masonry']);
+  assert.equal(s.players[0].capital,12);
+  assert.equal(G.deliverySourceInfo(s,0,{kind:'supplier',id:'gray-quarry'}).inventory.length,5,'supplier stock never depletes');
+});
+
+test('neutral supplier only offers its own material at its fixed premium',()=>{
+  const s=devState();
+  const lumber=G.deliverySourceInfo(s,0,{kind:'supplier',id:'engle-lumber'});
+  const steel=G.deliverySourceInfo(s,0,{kind:'supplier',id:'axford-iron'});
+  assert.deepEqual(new Set(lumber.inventory),new Set(['Lumber']));
+  assert.deepEqual(new Set(steel.inventory),new Set(['Steel']));
+  assert.equal(G.deliveryMaterialCost(s,{kind:'supplier',id:'engle-lumber'},['Lumber','Lumber']).cost,6);
+  assert.equal(G.deliveryMaterialCost(s,{kind:'supplier',id:'axford-iron'},['Steel','Steel']).cost,10);
+});
+
 test('multi-drop route charges each crossed border once and preserves cargo multiset',()=>{
   const s=devState();
   s.logisticsSupply.broadway=['Lumber','Lumber'];
