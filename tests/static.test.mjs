@@ -12,8 +12,8 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/Influence & Upkeep v0\.43B/);
-  assert.match(html,/app\.js\?v=043b-types/);
-  assert.match(html,/styles\.css\?v=043b-types/);
+  assert.match(html,/app\.js\?v=043b-suppliers/);
+  assert.match(html,/styles\.css\?v=043b-suppliers/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -137,4 +137,14 @@ test('building type color palette and stripe hooks are present everywhere',async
     'construction-type-cap'
   ]) assert.ok(app.includes(needle),needle);
   for(const needle of ['.typed-project', '--type-stripe', '.detail-type-stripe', '.construction-type-cap'])assert.ok(css.includes(needle),needle);
+});
+
+
+test('historical neutral material suppliers are wired into core and Delivery UI',async()=>{
+  const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  for(const needle of ['Gray Brothers Quarry','Engle & Son Lumber Yard','Axford Bros. Iron Foundry','NEUTRAL_MATERIAL_SUPPLIERS'])assert.ok(core.includes(needle),needle);
+  for(const needle of ['data-delivery-supplier','data-ds-supplier','neutral-supplier-node','исторический поставщик'])assert.ok(app.includes(needle),needle);
+  for(const needle of ['.neutral-supplier-node','.neutral-supplier-source','.supplier-pin'])assert.ok(css.includes(needle),needle);
 });
