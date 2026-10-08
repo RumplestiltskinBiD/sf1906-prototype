@@ -1225,9 +1225,9 @@ const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[3
 function renderSupply(){
 const el=$('#resourceSupply');if(!el)return;
 const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0);
-el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>Узлы имеют разные профили ресурсов · общий средний баланс сохраняется · доставка = материалы + перевозчик + $1 за границу</span></div><div class="supply-items">'
+el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>Порты и ж/д: дешёвый ограниченный запас · 3 исторических поставщика: дорогой ресурс всегда доступен · доставка в обоих случаях обычная</span></div><div class="supply-items">'
 +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
-+'<span class="supply-resource city-throughput"><b>'+total+'</b><span>кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов</strong></span></div>';
++'<span class="supply-resource city-throughput"><b>'+total+'</b><span>дешёвых кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов + '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика</strong></span></div>';
 }
 function renderSupplyNodes(){
 const layer=$('#supplyNodeLayer');if(!layer)return;const supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
