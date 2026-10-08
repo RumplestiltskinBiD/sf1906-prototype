@@ -1046,7 +1046,7 @@ const steps=[['draft','0 Драфт'],['declare','1 Заявки'],['bids','2 З
 const order={draft:0,declare:1,bids:2,ready:3,development:4,upkeep:5,finished:5};const current=order[state.phase]??0;
 $('#tenderSteps').innerHTML=steps.map(([id,label],idx)=>`<span class="step-chip ${idx===current?'active':idx<current?'done':''}">${label}</span>`).join('');
 const yearOrder=turnOrder(state).map((pid,i)=>`${i+1}. ${state.players[pid].name}`).join(' → ');
-$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. Он зафиксирован до следующего года; более поздние игроки видят предыдущие заявки.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
+$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. В свою очередь можно взять до 1 городской цели, затем заявить проект или пасовать.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
 }
 function projectCardRules(p){
 return `<div class="card-rules">
@@ -1105,6 +1105,34 @@ const slot=+b.dataset.marketOverviewSlot,m=state.market[slot];if(!m)return;
 state.selectedMarketUid=m.uid;state.selectedProjectId=m.id;
 render();
 requestAnimationFrame(()=>$('#projectMarket')?.children?.[slot]?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}));
+});
+}
+function goalRewardText(goal){
+return '+$'+goal.reward.capital+' · +'+goal.reward.prestige+' VP'+(goal.reward.influence?' · +'+goal.reward.influence+' Влияние':'');
+}
+function renderCityGoals(){
+const el=$('#cityGoalMarket');if(!el)return;
+const cd=currentDeclarer(state),player=cd!=null?state.players[cd]:null,already=player?.goalTakenRound===state.round;
+const report=(state.lastGoalReports||[]).length?'<div class="goal-report-banner"><b>ОТЧЁТ НАЧАЛА ГОДА</b><span>'+state.lastGoalReports.map(r=>state.players[r.playerId].name+' · '+cityGoalById(r.goalId)?.name+' → +$'+r.capital+' / +'+r.prestige+' VP').join(' · ')+'</span></div>':'';
+const cards=(state.goalMarket||[]).map((card,slot)=>{
+if(!card)return '<div class="city-goal-card empty"><span>Цель взята</span></div>';
+const g=cityGoalById(card.id),ev=player?cityGoalEvaluation(state,player.id,g.id):null,can=state.phase==='declare'&&!!player&&!already;
+const progress=player?(ev.progress+'/'+cityGoalTarget(g.id)):'—';
+return '<article class="city-goal-card '+(ev?.complete?'complete-now':'')+'">'
++'<div class="goal-card-top"><span>ГОРОДСКАЯ ЦЕЛЬ</span><strong>'+g.id+'</strong></div>'
++'<h3>'+g.name+'</h3><small class="goal-sponsor">'+g.sponsor+'</small>'
++'<p class="goal-flavor">'+g.flavor+'</p>'
++'<div class="goal-requirement"><b>ТРЕБОВАНИЕ</b><span>'+g.requirement+'</span></div>'
++'<div class="goal-progress"><span>Прогресс '+(player?player.name:'')+'</span><strong>'+progress+(ev?.complete?' ✓':'')+'</strong></div>'
++'<div class="goal-reward"><span>'+goalRewardText(g)+'</span><em>Провал: −'+g.failPrestige+' VP</em></div>'
++'<button class="goal-take-btn" data-goal-slot="'+slot+'" '+(can?'':'disabled')+'>'+(already?'Цель уже взята':can?'Взять цель':'Только в свою заявку')+'</button>'
++'</article>';
+}).join('');
+el.innerHTML=report+'<div class="city-goal-head"><div><b>ГОРОДСКИЕ ЦЕЛИ</b><span>До 1 новой цели на игрока за City Hall · отчёт в начале следующего года</span></div>'+(player?'<strong>Сейчас: '+player.name+(already?' · цель уже взята':'')+'</strong>':'')+'</div><div class="city-goal-grid">'+cards+'</div>';
+$$('[data-goal-slot]').forEach(b=>b.onclick=()=>{
+const r=claimCityGoal(state,+b.dataset.goalSlot);
+if(!r.ok){showToast(r.reason==='already-taken'?'В этой City Hall Session вы уже взяли цель':'Сейчас цель взять нельзя');return;}
+showToast('Цель принята · проект всё ещё можно заявить');render();
 });
 }
 function renderMarket(){
@@ -1185,7 +1213,7 @@ $('#draftConfirmSticky').onclick=()=>{const r=confirmStarterDraft(state);if(!r.o
 }else if(state.phase==='declare'){
 const pid=currentDeclarer(state);
 if(pid==null){bar.innerHTML=`<div class="sticky-copy"><strong>Все заявки сделаны</strong><span>Перейдите к закрытым ставкам. Если конкуренции нет, сразу к вскрытию.</span></div><div class="sticky-actions"><button class="secondary-btn" id="nextTenderStage">Перейти к ставкам</button></div>`;$('#nextTenderStage').onclick=()=>{beginBidding(state);render();};}
-else bar.innerHTML=`<div class="sticky-copy"><strong>Заявка: ${state.players[pid].name} · рука ${state.players[pid].portfolio.length}/${HAND_LIMIT}</strong><span>Выберите один проект или пасуйте. При полной руке сначала нужно начать стройку в Development.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас</button></div>`,$('#passTender').onclick=()=>{passDeclaration(state);render();};
+else {const gp=state.players[pid],goalTaken=gp.goalTakenRound===state.round;bar.innerHTML=`<div class="sticky-copy"><strong>City Hall: ${gp.name} · рука ${gp.portfolio.length}/${HAND_LIMIT}</strong><span>${goalTaken?'Городская цель уже взята. ':'Можно взять 1 городскую цель. '}Затем выберите проект или пасуйте.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас на проект</button></div>`;$('#passTender').onclick=()=>{passDeclaration(state);render();};}
 }else if(state.phase==='bids'){
 const q=currentBidTask(state),pl=q?state.players[q.player]:null;bar.innerHTML=`<div class="sticky-copy"><strong>Закрытые ставки</strong><span>${pl?`Следующая ставка: ${pl.name}`:'Ставки собраны'}. Суммы скрыты до вскрытия.</span></div><div class="sticky-actions"><button class="secondary-btn" id="openBidNow">Продолжить ставки</button></div>`;$('#openBidNow').onclick=openBidCurtain;
 }else if(state.phase==='ready'){
