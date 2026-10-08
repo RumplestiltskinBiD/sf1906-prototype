@@ -1,9 +1,9 @@
 import {
-PROJECTS,DISTRICTS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+PROJECTS,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
-createInitialState,claimProject,passDeclaration,beginBidding,currentBidTask,submitBid,
+createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
@@ -41,14 +41,14 @@ for(const key of LEGACY_STORAGE_KEYS){raw=localStorage.getItem(key);if(raw)break
 }
 if(raw){
 const parsed=JSON.parse(raw);
-if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a','0.43b'].includes(parsed?.version))return migrateState(parsed);
+if(['0.16.5','0.16.6','0.17','0.18','0.19','0.19.1','0.19.2','0.20','0.21','0.22','0.23','0.24','0.25','0.26','0.27','0.28','0.30a','0.43a','0.43b','0.44'].includes(parsed?.version))return migrateState(parsed);
 }
 }catch(e){}
 return createInitialState();
 }
 function migrateState(parsed){
 const originalVersion=parsed.version;
-parsed.version='0.43b';
+parsed.version='0.44';
 parsed.players=(parsed.players||[]).map(p=>{
 let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
@@ -68,6 +68,8 @@ workersLeft:workers.filter(w=>!w.used).length,
 portfolio:p.portfolio||[],
 loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
+goals:Array.isArray(p.goals)?p.goals:[],
+goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
 };
 });
@@ -117,7 +119,16 @@ parsed.draftRevealed=parsed.phase==='draft'?!!parsed.draftRevealed:false;
 parsed.selectedMarketUid=parsed.selectedMarketUid||parsed.market.find(m=>m&&m.id===parsed.selectedProjectId)?.uid||parsed.market.find(Boolean)?.uid||null;
 parsed.pendingConstruction=null;
 parsed.yearTransition=parsed.yearTransition||null;
-if(originalVersion!=='0.43b'||!Array.isArray(parsed.yearTurnOrder)||parsed.yearTurnOrder.length!==parsed.players.length){
+if(!Array.isArray(parsed.goalMarket)||!Array.isArray(parsed.goalDeck)){
+const goalSetup=createCityGoalPool();
+parsed.goalMarket=goalSetup.market;parsed.goalDeck=goalSetup.deck;parsed.goalDiscard=goalSetup.discard;
+}
+parsed.goalMarket=Array.from({length:5},(_,i)=>parsed.goalMarket?.[i]||null);
+parsed.goalDiscard=Array.isArray(parsed.goalDiscard)?parsed.goalDiscard:[];
+parsed.goalSessionClaims=Array.isArray(parsed.goalSessionClaims)?parsed.goalSessionClaims:[];
+parsed.lastGoalReports=Array.isArray(parsed.lastGoalReports)?parsed.lastGoalReports:[];
+
+if(!['0.43b','0.44'].includes(originalVersion)||!Array.isArray(parsed.yearTurnOrder)||parsed.yearTurnOrder.length!==parsed.players.length){
 normalizeInfluenceTrack(parsed);
 }
 if(parsed.phase==='development'){
@@ -129,7 +140,7 @@ parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlay
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
 }
-if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
+if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b','0.44'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
 ensureNewspaper(parsed);
 return parsed;
 }
@@ -921,7 +932,7 @@ render();
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
