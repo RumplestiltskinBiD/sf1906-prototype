@@ -732,7 +732,10 @@ html+='<div class="ux3-route-dock">'
 +'<div class="ux3-route-price"><small>ИТОГО</small><strong>$'+(cost?.total||0)+'</strong></div>'
 +'<button id="deliveryLockRoute" class="primary-btn ux3-route-confirm" '+(canLock?'':'disabled')+'>Подтвердить маршрут</button>'
 +'<button id="cancelDelivery" class="ux3-route-cancel">Отмена</button>'
-+'</div>';
++'</div>'+pickupSelectorHtml();
+const focused=deliveryDraft.focusTargetId?deliveryRouteTargets().find(x=>x.id===deliveryDraft.focusTargetId):null;
+if(focused){const kind=deliveryRouteTargetKind(focused);html+='<div class="delivery-route-quickdrop"><b>Разгрузить здесь · '+(kind==='export'?'Gas House Cove':districtById(focused.districtId)?.name||'объект')+'</b><div class="drop-buttons">';for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focused.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,focused.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button></div>';}
+
 }else if(step==='unload'&&mobile){
 const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0);
 const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?routeTargets.find(x=>x.id===deliveryDraft.focusTargetId):null;
@@ -745,6 +748,7 @@ html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ 
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+else if(kind==='export'){label='Gas House Cove · Mare Island';cap='Сталь для экспорта · $'+(state.players[pid].mareIslandOneOff?8:7)+'/шт.';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,focus.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,focus.id)?.materials||[];
 html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
@@ -765,6 +769,7 @@ for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+else if(kind==='export'){label='Gas House Cove · Mare Island';cap='Сталь · $'+(state.players[pid].mareIslandOneOff?8:7)+'/шт.';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,con.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,con.id)?.materials||[];
 html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
@@ -772,7 +777,7 @@ for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop
 html+='</div></div>';
 }
 if(!routeTargets.length)html+='<div class="delivery-target-empty">На маршруте пока нет подходящей точки разгрузки.</div>';
-html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
+html+='</div>'+pickupSelectorHtml()+'<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
 next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
 html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
 html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span>'+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
@@ -797,6 +802,10 @@ $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
+$('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=true;render();});
+$('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
+$$('[data-extra-source-kind]').forEach(b=>b.onclick=()=>chooseExtraPickup(b.dataset.extraSourceKind,b.dataset.extraSourceId));
+$$('[data-extra-cargo]').forEach(b=>b.onclick=()=>addExtraPickupCargo(b.dataset.extraCargo));
 $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.focusTargetId=null;render();});
 $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
 }
@@ -1705,7 +1714,7 @@ html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.ke
 });
 layer.innerHTML=html;
 $$('[data-construction-token]').forEach(g=>g.onclick=e=>{
-if(deliveryDraft?.step==='unload'&&g.dataset.deliveryDropTarget){
+if(['route','unload'].includes(deliveryDraft?.step)&&g.dataset.deliveryDropTarget){
 e.stopPropagation();openDeliveryTargetFromMap(g.dataset.deliveryDropTarget);return;
 }
 if(deliveryDraft)return;
