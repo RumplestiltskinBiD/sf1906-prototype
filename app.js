@@ -503,7 +503,8 @@ function deliveryPickupSources(){
   return candidates.filter(src=>{
     const info=deliverySourceInfo(state,pid,src);
     return info&&info.districtId===d&&info.inventory.length&&
-      ![{source:deliveryDraft.source},...(deliveryDraft.pickups||[])].some(p=>p.source.kind===src.kind&&p.source.id===src.id);
+      !(deliveryDraft.source.kind===src.kind&&deliveryDraft.source.id===src.id)&&
+      !(deliveryDraft.pickups||[]).some(p=>p.source.kind===src.kind&&p.source.id===src.id&&p.routeIndex!==deliveryDraft.route.length-1);
   });
 }
 function deliveryOnboardAt(idx){
@@ -538,7 +539,7 @@ function pickupSelectorHtml(){
   const options=deliveryPickupSources(),chosen=d.pickupSource;
   if(!options.length&&!chosen)return '';
   const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId),free=Math.max(0,(hauler?.capacity||0)-deliveryOnboardAt(d.route.length-1).length);
-  let html='<div class="delivery-extra-loading"><div class="delivery-extra-head"><b>ДОП. ПОГРУЗКА · $1 / остановка</b><span>Свободно '+free+'/'+hauler.capacity+'</span></div>';
+  let html='<div class="delivery-extra-loading '+(d.pickupOpen?'expanded':'collapsed')+'"><div class="delivery-extra-head"><b>ДОП. ПОГРУЗКА · $1 / остановка</b><span>Свободно '+free+'/'+hauler.capacity+'</span></div>';
   if(!d.pickupOpen){
     html+='<button id="deliveryShowPickups" class="delivery-extra-trigger">+ Догрузить здесь</button>';
   }else{
@@ -559,12 +560,35 @@ function pickupSelectorHtml(){
   return html+'</div>';
 }
 
+function routeEarlyUnloadHtml(){
+  const d=deliveryDraft;if(d?.step!=='route'||!isMobile())return '';
+  const targets=deliveryRouteTargets().filter(x=>x.districtId===d.route.at(-1)&&deliveryRouteTargetCanAcceptAny(x));
+  if(!targets.length)return '';
+  const focus=d.focusTargetId?targets.find(x=>x.id===d.focusTargetId):null;
+  let html='<div class="delivery-route-quickdrop '+(d.routeDropOpen||focus?'expanded':'collapsed')+'">';
+  if(!d.routeDropOpen&&!focus)html+='<button id="deliveryShowRouteDrops" class="delivery-route-trigger">↓ Разгрузить здесь</button>';
+  else if(!focus){
+    html+='<button id="deliveryHideRouteDrops" class="ghost-btn">× Закрыть</button>';
+    for(const t of targets){
+      const name=t.id===MARE_ISLAND_EXPORT.id?'Gas House Cove':t.id===FREIGHT_YARD.id?'Грузовой двор':
+        t.projectId==='warehouse'?'Склад':'Стройка';
+      html+='<button data-early-drop-target="'+t.id+'">'+name+' · '+districtById(t.districtId)?.name+'</button>';
+    }
+  }else {
+    const kind=deliveryRouteTargetKind(focus);
+    html+='<strong>'+(kind==='export'?'Gas House Cove · экспорт':'Разгрузка · '+districtById(focus.districtId)?.name)+'</strong>';
+    html+='<div class="drop-buttons">';
+    for(const type of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+type+'" '+(deliveryCanDrop(kind,focus.id,type)?'':'disabled')+'>+'+materialShort(type)+'</button>';
+    html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button>';
+  }
+  return html+'</div>';
+}
 function addDeliveryRouteDistrict(id){
 if(deliveryDraft?.step!=='route')return false;
 const last=deliveryDraft.route[deliveryDraft.route.length-1];
 if(id===last){showToast('Вы уже в этом районе — выберите точку разгрузки в панели доставки');return true;}
 if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Чтобы ехать дальше, выберите соседний район');return true;}
-deliveryDraft.route.push(id);deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();if(isMobile())focusMapOnDistrict(id);return true;
+deliveryDraft.route.push(id);deliveryDraft.routeDropOpen=false;deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();if(isMobile())focusMapOnDistrict(id);return true;
 }
 function undoDeliveryRoute(){
 if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
@@ -575,7 +599,7 @@ const routeSet=new Set(deliveryDraft.route);
 deliveryDraft.drops=(deliveryDraft.drops||[]).filter(d=>{
 return (d.routeIndex??deliveryDraft.route.indexOf(deliveryTargetDistrict(d)))<deliveryDraft.route.length&&routeSet.has(deliveryTargetDistrict(d));
 });
-deliveryDraft.focusTargetId=null;
+deliveryDraft.focusTargetId=null;deliveryDraft.routeDropOpen=false;
 deliveryDraft.panelExpanded=false;
 deliveryDraft.menuOpen=false;
 render();
@@ -732,9 +756,7 @@ html+='<div class="ux3-route-dock">'
 +'<div class="ux3-route-price"><small>ИТОГО</small><strong>$'+(cost?.total||0)+'</strong></div>'
 +'<button id="deliveryLockRoute" class="primary-btn ux3-route-confirm" '+(canLock?'':'disabled')+'>Подтвердить маршрут</button>'
 +'<button id="cancelDelivery" class="ux3-route-cancel">Отмена</button>'
-+'</div>'+pickupSelectorHtml();
-const focused=deliveryDraft.focusTargetId?deliveryRouteTargets().find(x=>x.id===deliveryDraft.focusTargetId):null;
-if(focused){const kind=deliveryRouteTargetKind(focused);html+='<div class="delivery-route-quickdrop"><b>Разгрузить здесь · '+(kind==='export'?'Gas House Cove':districtById(focused.districtId)?.name||'объект')+'</b><div class="drop-buttons">';for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focused.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,focused.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button></div>';}
++'</div>'+pickupSelectorHtml()+routeEarlyUnloadHtml();
 
 }else if(step==='unload'&&mobile){
 const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0);
@@ -802,7 +824,10 @@ $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-$('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=true;render();});
+$('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;deliveryDraft.pickupOpen=true;render();});
+$('#deliveryShowRouteDrops')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;deliveryDraft.routeDropOpen=true;render();});
+$('#deliveryHideRouteDrops')?.addEventListener('click',()=>{deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;render();});
+$$('[data-early-drop-target]').forEach(b=>b.onclick=()=>{deliveryDraft.focusTargetId=b.dataset.earlyDropTarget;render();});
 $('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
 $$('[data-extra-source-kind]').forEach(b=>b.onclick=()=>chooseExtraPickup(b.dataset.extraSourceKind,b.dataset.extraSourceId));
 $$('[data-extra-cargo]').forEach(b=>b.onclick=()=>addExtraPickupCargo(b.dataset.extraCargo));
