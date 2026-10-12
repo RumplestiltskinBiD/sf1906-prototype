@@ -1,12 +1,12 @@
 import {
 PROJECTS,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
+LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,MARE_ISLAND_EXPORT,FERRY_BUILDING,generateLogisticsSupply,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
-availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
+availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,deliveryAllCargo,canExportMareIsland,signMareIslandContract,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
@@ -103,6 +103,8 @@ parsed.districts[d.id].roadAccess=d.buildable!==false;
 parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
 parsed.freightYardInventories=Array.from({length:3},(_,i)=>Array.isArray(parsed.freightYardInventories?.[i])?parsed.freightYardInventories[i].slice(0,2):[]);
 parsed.haulersUsed=Array.isArray(parsed.haulersUsed)?parsed.haulersUsed:[];
+parsed.ferryOfferTakenRound=parsed.ferryOfferTakenRound||0;
+parsed.players.forEach(p=>{p.mareIslandPartner=!!p.mareIslandPartner;p.mareIslandOneOff=!!p.mareIslandOneOff;p.mareIslandUsedRound=p.mareIslandUsedRound||0;});
 parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
 parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
 parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
@@ -445,13 +447,13 @@ function deliveryAssigned(){
 return (deliveryDraft?.drops||[]).flatMap(d=>d.materials||[]);
 }
 function deliveryRemaining(){
-const c=deliveryCounts(deliveryDraft?.cargo||[]);
+const c=deliveryCounts(deliveryDraft?deliveryAllCargo(deliveryDraft):[]);
 for(const t of deliveryAssigned())c[t]=Math.max(0,(c[t]||0)-1);
 return c;
 }
 function startDeliveryFlow(playerId){
 if(!canUseFreeAction(state,playerId)){showToast('Доставка доступна только во время вашей активации');return;}
-deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],route:[],drops:[],listOpen:false,panelExpanded:false,menuOpen:false,focusTargetId:null};
+deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],pickups:[],pickupSource:null,pickupOpen:false,route:[],drops:[],listOpen:false,panelExpanded:false,menuOpen:false,focusTargetId:null};
 state.pendingConstruction=null;state.pendingWorkerAction=null;state.view='city';
 closeDrawers();closeMobileContext();render();
 focusDeliveryMap({detail:false});
@@ -461,7 +463,7 @@ function chooseDeliverySource(source){
 if(deliveryDraft?.step!=='source')return;
 const info=deliverySourceInfo(state,deliveryDraft.playerId,source);
 if(!info?.inventory?.length){showToast('В этом источнике нет ресурсов');return;}
-deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
+deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 }
 function chooseDeliveryHauler(id){
 if(deliveryDraft?.step!=='load')return;
@@ -486,22 +488,121 @@ const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);
 deliveryDraft.step='route';deliveryDraft.route=[src.districtId];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 if(isMobile())focusMapOnDistrict(src.districtId);
 }
+
+function deliveryTargetDistrict(d){
+  if(d.kind==='export')return MARE_ISLAND_EXPORT.districtId;
+  if(d.kind==='freight-yard')return FREIGHT_YARD.districtId;
+  return state.constructions.find(c=>c.id===d.id)?.districtId||null;
+}
+function deliveryPickupSources(){
+  if(deliveryDraft?.step!=='route')return [];
+  const d=deliveryDraft.route.at(-1),pid=deliveryDraft.playerId;
+  const candidates=[...LOGISTICS_NODES.map(x=>({kind:'node',id:x.id})),
+    ...NEUTRAL_MATERIAL_SUPPLIERS.map(x=>({kind:'supplier',id:x.id})),
+    ...completedWarehouses(state,pid).map(x=>({kind:'warehouse',id:x.id})),{kind:'freight-yard',id:FREIGHT_YARD.id}];
+  return candidates.filter(src=>{
+    const info=deliverySourceInfo(state,pid,src);
+    return info&&info.districtId===d&&info.inventory.length&&
+      !(deliveryDraft.source.kind===src.kind&&deliveryDraft.source.id===src.id)&&
+      !(deliveryDraft.pickups||[]).some(p=>p.source.kind===src.kind&&p.source.id===src.id&&p.routeIndex!==deliveryDraft.route.length-1);
+  });
+}
+function deliveryOnboardAt(idx){
+  const d=deliveryDraft,stock=[];
+  for(let i=0;i<=idx;i++){
+    if(i===0)stock.push(...d.cargo);
+    const remaining=[];
+    for(const drop of (d.drops||[]).filter(x=>(x.routeIndex??d.route.indexOf(deliveryTargetDistrict(x)))===i))
+      for(const t of drop.materials){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);else remaining.push(t);}
+    for(const p of (d.pickups||[]).filter(x=>x.routeIndex===i))stock.push(...p.cargo);
+    for(const t of remaining){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);}
+  }
+  return stock;
+}
+function chooseExtraPickup(kind,id){
+  const src=deliveryPickupSources().find(x=>x.kind===kind&&x.id===id);
+  if(!src){showToast('Источник не находится на текущей остановке');return;}
+  deliveryDraft.pickupSource=src;deliveryDraft.pickupOpen=true;render();
+}
+function addExtraPickupCargo(type){
+  const d=deliveryDraft;if(d?.step!=='route'||!d.pickupSource)return;
+  const info=deliverySourceInfo(state,d.playerId,d.pickupSource),idx=d.route.length-1;
+  const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId);
+  if(!info||!hauler||!info.inventory.includes(type))return;
+  if(deliveryOnboardAt(idx).length>=hauler.capacity){showToast('Повозка заполнена. Разгрузите груз перед следующей погрузкой.');return;}
+  const p=d.pickups.find(x=>x.routeIndex===idx&&x.source.kind===d.pickupSource.kind&&x.source.id===d.pickupSource.id);
+  if(p&&!info.unlimited&&(deliveryCounts(p.cargo)[type]||0)>=(deliveryCounts(info.inventory)[type]||0)){
+    showToast('Материалов здесь больше нет');return;
+  }
+  if(p)p.cargo.push(type);else d.pickups.push({source:{...d.pickupSource},routeIndex:idx,cargo:[type]});
+  d.pickupOpen=false;d.pickupSource=null;render();
+}
+function pickupSelectorHtml(){
+  const d=deliveryDraft;if(d?.step!=='route')return '';
+  const options=deliveryPickupSources(),chosen=d.pickupSource;
+  if(!options.length&&!chosen)return '';
+  const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId),free=Math.max(0,(hauler?.capacity||0)-deliveryOnboardAt(d.route.length-1).length);
+  let html='<div class="delivery-extra-loading '+(d.pickupOpen?'expanded':'collapsed')+'"><div class="delivery-extra-head"><b>ДОП. ПОГРУЗКА · $1 / остановка</b><span>Свободно '+free+'/'+hauler.capacity+'</span></div>';
+  if(!d.pickupOpen){
+    html+='<button id="deliveryShowPickups" class="delivery-extra-trigger">+ Догрузить здесь</button>';
+  }else{
+    html+='<button id="deliveryHidePickups" class="ghost-btn">× Закрыть</button>';
+    if(chosen){
+      const info=deliverySourceInfo(state,d.playerId,chosen),stock=deliveryCounts(info.inventory);
+      html+='<strong>'+info.name+'</strong><div class="delivery-extra-load-buttons">';
+      for(const t of RESOURCE_ORDER){
+        const n=stock[t]||0,price=chosen.kind==='node'?RESOURCE_PRICES[t]:chosen.kind==='supplier'?info.unitPrice:0;
+        html+='<button data-extra-cargo="'+t+'" '+(!n||!free?'disabled':'')+'>'+materialLabel(t)+' · '+(info.unlimited?'∞':n)+' · $'+price+'</button>';
+      }
+      html+='</div>';
+    }else for(const src of options){
+      const info=deliverySourceInfo(state,d.playerId,src);
+      html+='<button data-extra-source-kind="'+src.kind+'" data-extra-source-id="'+src.id+'">'+info.name+'</button>';
+    }
+  }
+  return html+'</div>';
+}
+
+function routeEarlyUnloadHtml(){
+  const d=deliveryDraft;if(d?.step!=='route'||!isMobile())return '';
+  const targets=deliveryRouteTargets().filter(x=>x.districtId===d.route.at(-1)&&deliveryRouteTargetCanAcceptAny(x));
+  if(!targets.length)return '';
+  const focus=d.focusTargetId?targets.find(x=>x.id===d.focusTargetId):null;
+  let html='<div class="delivery-route-quickdrop '+(d.routeDropOpen||focus?'expanded':'collapsed')+'">';
+  if(!d.routeDropOpen&&!focus)html+='<button id="deliveryShowRouteDrops" class="delivery-route-trigger">↓ Разгрузить здесь</button>';
+  else if(!focus){
+    html+='<button id="deliveryHideRouteDrops" class="ghost-btn">× Закрыть</button>';
+    for(const t of targets){
+      const name=t.id===MARE_ISLAND_EXPORT.id?'Gas House Cove':t.id===FREIGHT_YARD.id?'Грузовой двор':
+        t.projectId==='warehouse'?'Склад':'Стройка';
+      html+='<button data-early-drop-target="'+t.id+'">'+name+' · '+districtById(t.districtId)?.name+'</button>';
+    }
+  }else {
+    const kind=deliveryRouteTargetKind(focus);
+    html+='<strong>'+(kind==='export'?'Gas House Cove · экспорт':'Разгрузка · '+districtById(focus.districtId)?.name)+'</strong>';
+    html+='<div class="drop-buttons">';
+    for(const type of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+type+'" '+(deliveryCanDrop(kind,focus.id,type)?'':'disabled')+'>+'+materialShort(type)+'</button>';
+    html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button>';
+  }
+  return html+'</div>';
+}
 function addDeliveryRouteDistrict(id){
 if(deliveryDraft?.step!=='route')return false;
 const last=deliveryDraft.route[deliveryDraft.route.length-1];
 if(id===last){showToast('Вы уже в этом районе — выберите точку разгрузки в панели доставки');return true;}
 if(!deliveryNeighbors(last).includes(id)){showToast(id==='park'?'Через Golden Gate Park груз не едет':'Чтобы ехать дальше, выберите соседний район');return true;}
-deliveryDraft.route.push(id);deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();if(isMobile())focusMapOnDistrict(id);return true;
+deliveryDraft.route.push(id);deliveryDraft.routeDropOpen=false;deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();if(isMobile())focusMapOnDistrict(id);return true;
 }
 function undoDeliveryRoute(){
 if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
 deliveryDraft.route.pop();
+deliveryDraft.pickups=(deliveryDraft.pickups||[]).filter(p=>p.routeIndex<deliveryDraft.route.length);
+deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;
 const routeSet=new Set(deliveryDraft.route);
 deliveryDraft.drops=(deliveryDraft.drops||[]).filter(d=>{
-if(d.kind==='freight-yard')return routeSet.has(FREIGHT_YARD.districtId);
-const con=(state.constructions||[]).find(x=>x.id===d.id);return con&&routeSet.has(con.districtId);
+return (d.routeIndex??deliveryDraft.route.indexOf(deliveryTargetDistrict(d)))<deliveryDraft.route.length&&routeSet.has(deliveryTargetDistrict(d));
 });
-deliveryDraft.focusTargetId=null;
+deliveryDraft.focusTargetId=null;deliveryDraft.routeDropOpen=false;
 deliveryDraft.panelExpanded=false;
 deliveryDraft.menuOpen=false;
 render();
@@ -510,12 +611,14 @@ function deliveryTarget(kind,id){
 return (deliveryDraft?.drops||[]).find(d=>d.kind===kind&&d.id===id);
 }
 function deliveryDropPhase(){
-return deliveryDraft?.step==='unload'||(!isMobile()&&deliveryDraft?.step==='route');
+return deliveryDraft?.step==='unload'||deliveryDraft?.step==='route';
 }
 function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.districtId,status:'freight-yard'};}
+function exportTarget(){return {id:MARE_ISLAND_EXPORT.id,districtId:MARE_ISLAND_EXPORT.districtId,status:'export'};}
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
+if(kind==='export')return id===MARE_ISLAND_EXPORT.id&&type==='Steel'&&canExportMareIsland(state,deliveryDraft.playerId)&&deliveryDraft.route.includes(MARE_ISLAND_EXPORT.districtId)&&assigned.length<MARE_ISLAND_EXPORT.capacity;
 if(kind==='freight-yard')return id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
@@ -529,32 +632,34 @@ return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(cc[t]||0))<=(left[t]||0))
 }
 function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
+if(con.id===MARE_ISLAND_EXPORT.id)return canExportMareIsland(state,deliveryDraft.playerId)?'export':null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
 if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
 function deliveryTargetKind(con){return deliveryDropPhase()?deliveryRouteTargetKind(con):null;}
-function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());return a;}
+function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());if(deliveryDraft?.route?.includes(MARE_ISLAND_EXPORT.districtId)&&canExportMareIsland(state,deliveryDraft.playerId))a.push(exportTarget());return a;}
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
+if(kind==='export')return (deliveryRemaining().Steel||0)>0&&canExportMareIsland(state,deliveryDraft.playerId);
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
 if(kind==='warehouse')return warehouseInventory(con).length<WAREHOUSE_STORAGE_CAPACITY;
-const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryDraft.cargo||[]);
+const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryAllCargo(deliveryDraft));
 const missing=Object.fromEntries(RESOURCE_ORDER.map(t=>[t,Math.max(0,(req[t]||0)-(have[t]||0))]));
 if(!RESOURCE_ORDER.some(t=>(cargo[t]||0)>0&&(missing[t]||0)>0))return false;
 return (con.materialsDelivered||[]).length<3||RESOURCE_ORDER.every(t=>(cargo[t]||0)>=(missing[t]||0));
 }
 function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&RESOURCE_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
-function openDeliveryTargetFromMap(id){if(!isMobile()||deliveryDraft?.step!=='unload')return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
+function openDeliveryTargetFromMap(id){if(!isMobile()||!['route','unload'].includes(deliveryDraft?.step))return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
 function addDeliveryDrop(kind,id,type){
 if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
-let d=deliveryTarget(kind,id);if(!d){d={kind,id,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
+let d=deliveryTarget(kind,id);if(!d){const at=deliveryDraft.step==='route'?deliveryDraft.route.length-1:deliveryDraft.route.indexOf(deliveryTargetDistrict({kind,id}));d={kind,id,routeIndex:at,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
 }
 function clearDeliveryDrops(){
 if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
 }
 function deliveryPlan(){
-return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,materials:[...d.materials]}))};
+return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials]}))};
 }
 function confirmDeliveryRoute(){
 if(!isMobile()||deliveryDraft?.step!=='route')return;
@@ -564,7 +669,6 @@ const cost=deliveryPlanCost(state,deliveryDraft);
 if(!cost){showToast('Маршрут недопустим');return;}
 if(state.players[deliveryDraft.playerId].capital<cost.total){showToast('Недостаточно Капитал для этой доставки');return;}
 deliveryDraft.step='unload';
-deliveryDraft.drops=[];
 deliveryDraft.focusTargetId=null;
 deliveryDraft.listOpen=false;
 deliveryDraft.panelExpanded=false;
@@ -574,14 +678,14 @@ focusDeliveryMap({detail:false});
 }
 function backToDeliveryRoute(){
 if(deliveryDraft?.step!=='unload')return;
-deliveryDraft.step='route';deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();
+deliveryDraft.step='route';deliveryDraft.focusTargetId=null;render();
 if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 }
 function confirmDelivery(){
 if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
-if(!check.ok){showToast(check.reason==='unassigned'?'Разгрузите весь груз':check.reason==='capital'?'Недостаточно Капитал':'План доставки недопустим');return;}
+if(!check.ok){showToast(({unassigned:'Разгрузите весь груз','unload-before-pickup':'Разгрузка раньше погрузки',capacity:'Превышена вместимость на участке маршрута','source-stock':'Недостаточно запасов','pickup-route':'Источник не лежит на маршруте',capital:'Недостаточно денег'}[check.reason])||'План доставки: '+check.reason);return;}
 const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена');return;}
-deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
+deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Доставка −$'+r.cost.total+(r.cost.exportRevenue?' · экспорт +$'+r.cost.exportRevenue:'')+(r.completed.length?' · стройка завершена':''));
 render();
 }
 function renderDeliveryPanel(){
@@ -655,7 +759,8 @@ html+='<div class="ux3-route-dock">'
 +'<div class="ux3-route-price"><small>ИТОГО</small><strong>$'+(cost?.total||0)+'</strong></div>'
 +'<button id="deliveryLockRoute" class="primary-btn ux3-route-confirm" '+(canLock?'':'disabled')+'>Подтвердить маршрут</button>'
 +'<button id="cancelDelivery" class="ux3-route-cancel">Отмена</button>'
-+'</div>';
++'</div>'+pickupSelectorHtml()+routeEarlyUnloadHtml();
+
 }else if(step==='unload'&&mobile){
 const cost=deliveryPlanCost(state,deliveryDraft),left=deliveryRemaining(),leftTotal=Object.values(left).reduce((a,b)=>a+b,0);
 const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?routeTargets.find(x=>x.id===deliveryDraft.focusTargetId):null;
@@ -668,6 +773,7 @@ html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ 
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+else if(kind==='export'){label='Gas House Cove · Mare Island';cap='Сталь для экспорта · $'+(state.players[pid].mareIslandOneOff?8:7)+'/шт.';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,focus.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,focus.id)?.materials||[];
 html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
@@ -688,6 +794,7 @@ for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+WAREHOUSE_STORAGE_CAPACITY;}
+else if(kind==='export'){label='Gas House Cove · Mare Island';cap='Сталь · $'+(state.players[pid].mareIslandOneOff?8:7)+'/шт.';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,con.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,con.id)?.materials||[];
 html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
@@ -695,7 +802,7 @@ for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop
 html+='</div></div>';
 }
 if(!routeTargets.length)html+='<div class="delivery-target-empty">На маршруте пока нет подходящей точки разгрузки.</div>';
-html+='</div><div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
+html+='</div>'+pickupSelectorHtml()+'<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
 next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
 html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
 html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span>'+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
@@ -720,6 +827,13 @@ $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
+$('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;deliveryDraft.pickupOpen=true;render();});
+$('#deliveryShowRouteDrops')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;deliveryDraft.routeDropOpen=true;render();});
+$('#deliveryHideRouteDrops')?.addEventListener('click',()=>{deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;render();});
+$$('[data-early-drop-target]').forEach(b=>b.onclick=()=>{deliveryDraft.focusTargetId=b.dataset.earlyDropTarget;render();});
+$('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
+$$('[data-extra-source-kind]').forEach(b=>b.onclick=()=>chooseExtraPickup(b.dataset.extraSourceKind,b.dataset.extraSourceId));
+$$('[data-extra-cargo]').forEach(b=>b.onclick=()=>addExtraPickupCargo(b.dataset.extraCargo));
 $('#deliveryBackLoad')?.addEventListener('click',()=>{deliveryDraft.step='load';deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.focusTargetId=null;render();});
 $('#deliveryConfirm')?.addEventListener('click',confirmDelivery);
 }
@@ -1276,10 +1390,15 @@ const suppliers=NEUTRAL_MATERIAL_SUPPLIERS.map(n=>'<g class="neutral-supplier-no
 const yp=deliveryDraft?.playerId??pid??0,yi=freightYardInventory(state,yp),src=selecting&&yi.length,target=deliveryDropPhase()&&deliveryDraft?.route?.includes('western')&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryTargetAcceptsAny(freightYardTarget());
 const slots=state.players.map((p,i)=>'<circle class="yard-player-dot '+p.key+'" cx="'+(-18+i*18)+'" cy="26" r="6"/><text class="yard-count" x="'+(-18+i*18)+'" y="29">'+freightYardInventory(state,i).length+'</text>').join('');
 const yard='<g class="freight-yard-node '+(src?'source-available ':'')+(target?'delivery-drop-available':'')+'" transform="translate('+FREIGHT_YARD.x+' '+FREIGHT_YARD.y+')" data-delivery-freight-yard="freightyard"><title>Городской грузовой двор · Western Addition · 2 места/игрок · вход $2</title><circle class="node-hit" r="38"/><rect class="freight-yard-pin" x="-24" y="-20" width="48" height="40" rx="9"/><text class="freight-yard-code" y="4">ГД</text>'+slots+'<text class="node-name" y="48">Грузовой двор</text><text class="node-type" y="61">2 места / игрок · $2</text></g>';
-layer.innerHTML=nodes+suppliers+yard;
+const current=deliveryDraft?.route?.includes(MARE_ISLAND_EXPORT.districtId)&&canExportMareIsland(state,deliveryDraft.playerId);
+const exportPin='<g class="export-cove '+(current?'delivery-drop-available':'')+'" transform="translate('+MARE_ISLAND_EXPORT.x+' '+MARE_ISLAND_EXPORT.y+')" data-export-cove="'+MARE_ISLAND_EXPORT.id+'"><title>Gas House Cove · экспорт стали на Mare Island</title><circle class="node-hit" r="29"/><rect class="export-cove-pin" x="-23" y="-16" width="46" height="32" rx="8"/><text class="export-cove-code" y="4">EXP</text><text class="node-name" y="46">Gas House Cove</text><text class="node-type" y="60">Экспорт · Marina</text></g>';
+const ferryPin='<g class="ferry-terminal" transform="translate('+FERRY_BUILDING.x+' '+FERRY_BUILDING.y+')" data-ferry-terminal="'+FERRY_BUILDING.id+'"><title>Ferry Building · деловые поездки</title><circle class="node-hit" r="27"/><rect class="ferry-terminal-pin" x="-21" y="-16" width="42" height="32" rx="8"/><text class="ferry-terminal-code" y="4">F</text><text class="node-name" y="45">Ferry Building</text></g>';
+layer.innerHTML=nodes+suppliers+yard+exportPin+ferryPin;
 $$('[data-delivery-node]').forEach(g=>g.onclick=e=>{e.stopPropagation();if(deliveryDraft?.step==='source')chooseDeliverySource({kind:'node',id:g.dataset.deliveryNode});});
 $$('[data-delivery-supplier]').forEach(g=>g.onclick=e=>{e.stopPropagation();if(deliveryDraft?.step==='source')chooseDeliverySource({kind:'supplier',id:g.dataset.deliverySupplier});});
-$$('[data-delivery-freight-yard]').forEach(g=>g.onclick=e=>{e.stopPropagation();if(deliveryDraft?.step==='source'){if(!freightYardInventory(state,deliveryDraft.playerId).length){showToast('Ваша секция Грузового двора пуста');return;}chooseDeliverySource({kind:'freight-yard',id:FREIGHT_YARD.id});}else if(deliveryDraft?.step==='unload')openDeliveryTargetFromMap(FREIGHT_YARD.id);});
+$$('[data-delivery-freight-yard]').forEach(g=>g.onclick=e=>{e.stopPropagation();if(deliveryDraft?.step==='source'){if(!freightYardInventory(state,deliveryDraft.playerId).length){showToast('Ваша секция Грузового двора пуста');return;}chooseDeliverySource({kind:'freight-yard',id:FREIGHT_YARD.id});}else if(deliveryDropPhase())openDeliveryTargetFromMap(FREIGHT_YARD.id);});
+$('[data-export-cove]')?.addEventListener('click',e=>{e.stopPropagation();if(deliveryDropPhase())openDeliveryTargetFromMap(MARE_ISLAND_EXPORT.id);else showToast('Gas House Cove · экспорт только по контракту Mare Island');});
+$('[data-ferry-terminal]')?.addEventListener('click',e=>{e.stopPropagation();showToast('Ferry Building: договор Mare Island выбирается в городских действиях');});
 }
 function loadDevMapBackground(){
 const image=$('#devMapImage');if(!image)return;
@@ -1388,6 +1507,8 @@ return `<button class="action-space-btn club ${disabled?'':'available-action'} $
 }).join(''):'<div class="action-space-locked">Restaurant & Club ещё не построен</div>';
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const capitalDisabled=mainUsed||!selected;
+const ferryReach=!!selected&&reachable.includes(FERRY_BUILDING.districtId),ferryAvailable=!mainUsed&&ferryReach&&state.ferryOfferTakenRound!==state.round;
+const industryComplete=state.constructions.some(c=>c.playerId===pid&&c.status==='complete'&&projectTypes(c.projectId).includes('Промышленное'));
 const deliveryDisabled=!canUseFreeAction(state,pid);
 el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Проекты ${availableProjects} · Кредиты ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Контракт':''}${procurement?` · Закупка ${procurement}`:''}</span></div><span class="activation-state">${mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':selected?`ПРЕДСТАВИТЕЛЬ #${selected.number} ГОТОВ`:'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'}</span></div>
 <div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>
@@ -1396,7 +1517,8 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
 <div class="city-action-grid ${mainUsed?'main-action-used':''}">
 <button class="city-action-card build ${buildDisabled?'':'action-available'}" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
 <button class="city-action-card capital ${capitalDisabled?'':'action-available'}" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Привлечь капитал</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ РАЙОН'}</strong></button>
-<button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Источник → перевозчик → маршрут → несколько разгрузок</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
+<button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Несколько источников (+$1 за каждую дополнительную погрузку) → несколько разгрузок</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
+<div class="city-action-card ferry-card ${ferryAvailable?'action-available':''}"><b>Ferry Building · контракт Mare Island</b><span>Financial District · 1 предложение на год. Верфь арендует Gas House Cove (Marina) для приёмки стали. После договора доставьте 1–2 Steel туда обычной перевозкой.</span><div class="action-space-list"><button class="action-space-btn" data-mare-sign="one-off" ${!ferryAvailable||p.mareIslandOneOff?'disabled':''}>Разовый: $8/сталь</button><button class="action-space-btn" data-mare-sign="partner" ${!ferryAvailable||!industryComplete||p.mareIslandPartner?'disabled':''}>Партнёр: $7/сталь · 1 раз/год · нужен промышленный проект</button></div></div>
 <div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
 <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
@@ -1409,6 +1531,7 @@ state.pendingConstruction=null;state.pendingWorkerAction=null;render();
 });
 const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
+$$('[data-mare-sign]').forEach(b=>b.onclick=()=>{const r=signMareIslandContract(state,pid,b.dataset.mareSign);if(!r.ok){showToast('Нельзя заключить договор: '+r.reason);return;}showToast('Mare Island: договор подписан. Экспорт через Gas House Cove.');render();});
 const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
 deliveryDraft=null;
 state.pendingConstruction=null;
@@ -1628,7 +1751,7 @@ html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.ke
 });
 layer.innerHTML=html;
 $$('[data-construction-token]').forEach(g=>g.onclick=e=>{
-if(deliveryDraft?.step==='unload'&&g.dataset.deliveryDropTarget){
+if(['route','unload'].includes(deliveryDraft?.step)&&g.dataset.deliveryDropTarget){
 e.stopPropagation();openDeliveryTargetFromMap(g.dataset.deliveryDropTarget);return;
 }
 if(deliveryDraft)return;
@@ -1798,10 +1921,11 @@ const g=cityGoalById(entry.id),ev=cityGoalEvaluation(state,p.id,entry),target=ci
 const status=entry.status==='completed'?'ВЫПОЛНЕНО':entry.status==='failed'?'ПРОВАЛЕНО':ev.complete?'ГОТОВО К ОТЧЁТУ':'АКТИВНО';
 return '<div class="office-goal '+entry.status+' '+(ev.complete?'ready':'')+'"><div><b>'+g.name+'</b><small>'+g.requirement+'</small></div><strong>'+status+'</strong><span>Прогресс '+ev.progress+'/'+target+' · '+goalRewardText(g)+' · провал −'+g.failPrestige+' VP</span>'+(ev.retroactiveCount?'<em>Ретроактивных зданий: '+ev.retroactiveCount+' · доплата пока не активна</em>':'')+'</div>';
 }).join(''):'<div class="empty-state compact">Городских целей пока нет.</div>';
+const mareIslandNote=(p.mareIslandPartner?'<div class="office-partner">ПАРТНЁРСКИЕ СВЯЗИ · Mare Island Navy Yard · Gas House Cove · до 2 стали по $7 · '+(p.mareIslandUsedRound===state.round?'ИСПОЛЬЗОВАНО В ЭТОМ ГОДУ':'ГОТОВО')+'</div>':'')+(p.mareIslandOneOff?'<div class="office-partner">РАЗОВЫЙ КОНТРАКТ · Mare Island · до 2 стали по $8 · доставить в Marina</div>':'');
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals направляют застройку и отчитываются в начале следующего года. Ретроактивные здания уже отслеживаются; дополнительная стоимость их регистрации пока намеренно не активирована до баланс-теста.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div>${mareIslandNote}<div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals направляют застройку и отчитываются в начале следующего года. Ретроактивные здания уже отслеживаются; дополнительная стоимость их регистрации пока намеренно не активирована до баланс-теста.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
