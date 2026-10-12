@@ -120,7 +120,7 @@ test('portrait mobile object strip keeps building type color accents',async({pag
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.44');
+  await expect(page.locator('.version-badge')).toHaveText('v0.44-L1');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
