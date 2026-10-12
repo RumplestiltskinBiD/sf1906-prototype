@@ -1,12 +1,12 @@
 import {
 PROJECTS,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
+LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,MARE_ISLAND_EXPORT,FERRY_BUILDING,generateLogisticsSupply,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
-availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,validateDeliveryPlan,executeDelivery,
+availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,deliveryAllCargo,canExportMareIsland,signMareIslandContract,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
@@ -103,6 +103,8 @@ parsed.districts[d.id].roadAccess=d.buildable!==false;
 parsed.logisticsSupply=parsed.logisticsSupply||generateLogisticsSupply();
 parsed.freightYardInventories=Array.from({length:3},(_,i)=>Array.isArray(parsed.freightYardInventories?.[i])?parsed.freightYardInventories[i].slice(0,2):[]);
 parsed.haulersUsed=Array.isArray(parsed.haulersUsed)?parsed.haulersUsed:[];
+parsed.ferryOfferTakenRound=parsed.ferryOfferTakenRound||0;
+parsed.players.forEach(p=>{p.mareIslandPartner=!!p.mareIslandPartner;p.mareIslandOneOff=!!p.mareIslandOneOff;p.mareIslandUsedRound=p.mareIslandUsedRound||0;});
 parsed.bankOwnerRewarded=parsed.bankOwnerRewarded||{};
 parsed.bureauOwnerRewarded=parsed.bureauOwnerRewarded||{};
 parsed.actionSpaceOccupancy=parsed.actionSpaceOccupancy||{};
@@ -445,13 +447,13 @@ function deliveryAssigned(){
 return (deliveryDraft?.drops||[]).flatMap(d=>d.materials||[]);
 }
 function deliveryRemaining(){
-const c=deliveryCounts(deliveryDraft?.cargo||[]);
+const c=deliveryCounts(deliveryDraft?deliveryAllCargo(deliveryDraft):[]);
 for(const t of deliveryAssigned())c[t]=Math.max(0,(c[t]||0)-1);
 return c;
 }
 function startDeliveryFlow(playerId){
 if(!canUseFreeAction(state,playerId)){showToast('Доставка доступна только во время вашей активации');return;}
-deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],route:[],drops:[],listOpen:false,panelExpanded:false,menuOpen:false,focusTargetId:null};
+deliveryDraft={playerId,step:'source',source:null,haulerId:null,cargo:[],pickups:[],pickupSource:null,pickupOpen:false,route:[],drops:[],listOpen:false,panelExpanded:false,menuOpen:false,focusTargetId:null};
 state.pendingConstruction=null;state.pendingWorkerAction=null;state.view='city';
 closeDrawers();closeMobileContext();render();
 focusDeliveryMap({detail:false});
@@ -461,7 +463,7 @@ function chooseDeliverySource(source){
 if(deliveryDraft?.step!=='source')return;
 const info=deliverySourceInfo(state,deliveryDraft.playerId,source);
 if(!info?.inventory?.length){showToast('В этом источнике нет ресурсов');return;}
-deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
+deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 }
 function chooseDeliveryHauler(id){
 if(deliveryDraft?.step!=='load')return;
@@ -496,10 +498,11 @@ deliveryDraft.route.push(id);deliveryDraft.listOpen=false;deliveryDraft.panelExp
 function undoDeliveryRoute(){
 if(deliveryDraft?.step!=='route'||deliveryDraft.route.length<=1)return;
 deliveryDraft.route.pop();
+deliveryDraft.pickups=(deliveryDraft.pickups||[]).filter(p=>p.routeIndex<deliveryDraft.route.length);
+deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;
 const routeSet=new Set(deliveryDraft.route);
 deliveryDraft.drops=(deliveryDraft.drops||[]).filter(d=>{
-if(d.kind==='freight-yard')return routeSet.has(FREIGHT_YARD.districtId);
-const con=(state.constructions||[]).find(x=>x.id===d.id);return con&&routeSet.has(con.districtId);
+return (d.routeIndex??deliveryDraft.route.indexOf(deliveryTargetDistrict(d)))<deliveryDraft.route.length&&routeSet.has(deliveryTargetDistrict(d));
 });
 deliveryDraft.focusTargetId=null;
 deliveryDraft.panelExpanded=false;
@@ -510,12 +513,14 @@ function deliveryTarget(kind,id){
 return (deliveryDraft?.drops||[]).find(d=>d.kind===kind&&d.id===id);
 }
 function deliveryDropPhase(){
-return deliveryDraft?.step==='unload'||(!isMobile()&&deliveryDraft?.step==='route');
+return deliveryDraft?.step==='unload'||deliveryDraft?.step==='route';
 }
 function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.districtId,status:'freight-yard'};}
+function exportTarget(){return {id:MARE_ISLAND_EXPORT.id,districtId:MARE_ISLAND_EXPORT.districtId,status:'export'};}
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
+if(kind==='export')return id===MARE_ISLAND_EXPORT.id&&type==='Steel'&&canExportMareIsland(state,deliveryDraft.playerId)&&deliveryDraft.route.includes(MARE_ISLAND_EXPORT.districtId)&&assigned.length<MARE_ISLAND_EXPORT.capacity;
 if(kind==='freight-yard')return id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
@@ -529,32 +534,34 @@ return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(cc[t]||0))<=(left[t]||0))
 }
 function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
+if(con.id===MARE_ISLAND_EXPORT.id)return canExportMareIsland(state,deliveryDraft.playerId)?'export':null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
 if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='warehouse'&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
 function deliveryTargetKind(con){return deliveryDropPhase()?deliveryRouteTargetKind(con):null;}
-function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());return a;}
+function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());if(deliveryDraft?.route?.includes(MARE_ISLAND_EXPORT.districtId)&&canExportMareIsland(state,deliveryDraft.playerId))a.push(exportTarget());return a;}
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
+if(kind==='export')return (deliveryRemaining().Steel||0)>0&&canExportMareIsland(state,deliveryDraft.playerId);
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
 if(kind==='warehouse')return warehouseInventory(con).length<WAREHOUSE_STORAGE_CAPACITY;
-const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryDraft.cargo||[]);
+const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryAllCargo(deliveryDraft));
 const missing=Object.fromEntries(RESOURCE_ORDER.map(t=>[t,Math.max(0,(req[t]||0)-(have[t]||0))]));
 if(!RESOURCE_ORDER.some(t=>(cargo[t]||0)>0&&(missing[t]||0)>0))return false;
 return (con.materialsDelivered||[]).length<3||RESOURCE_ORDER.every(t=>(cargo[t]||0)>=(missing[t]||0));
 }
 function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&RESOURCE_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
-function openDeliveryTargetFromMap(id){if(!isMobile()||deliveryDraft?.step!=='unload')return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
+function openDeliveryTargetFromMap(id){if(!isMobile()||!['route','unload'].includes(deliveryDraft?.step))return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
 function addDeliveryDrop(kind,id,type){
 if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
-let d=deliveryTarget(kind,id);if(!d){d={kind,id,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
+let d=deliveryTarget(kind,id);if(!d){const at=deliveryDraft.step==='route'?deliveryDraft.route.length-1:deliveryDraft.route.indexOf(deliveryTargetDistrict({kind,id}));d={kind,id,routeIndex:at,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
 }
 function clearDeliveryDrops(){
 if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
 }
 function deliveryPlan(){
-return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,materials:[...d.materials]}))};
+return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials]}))};
 }
 function confirmDeliveryRoute(){
 if(!isMobile()||deliveryDraft?.step!=='route')return;
@@ -564,7 +571,6 @@ const cost=deliveryPlanCost(state,deliveryDraft);
 if(!cost){showToast('Маршрут недопустим');return;}
 if(state.players[deliveryDraft.playerId].capital<cost.total){showToast('Недостаточно Капитал для этой доставки');return;}
 deliveryDraft.step='unload';
-deliveryDraft.drops=[];
 deliveryDraft.focusTargetId=null;
 deliveryDraft.listOpen=false;
 deliveryDraft.panelExpanded=false;
@@ -574,14 +580,14 @@ focusDeliveryMap({detail:false});
 }
 function backToDeliveryRoute(){
 if(deliveryDraft?.step!=='unload')return;
-deliveryDraft.step='route';deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();
+deliveryDraft.step='route';deliveryDraft.focusTargetId=null;render();
 if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 }
 function confirmDelivery(){
 if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
-if(!check.ok){showToast(check.reason==='unassigned'?'Разгрузите весь груз':check.reason==='capital'?'Недостаточно Капитал':'План доставки недопустим');return;}
+if(!check.ok){showToast(({unassigned:'Разгрузите весь груз','unload-before-pickup':'Разгрузка раньше погрузки',capacity:'Превышена вместимость на участке маршрута','source-stock':'Недостаточно запасов','pickup-route':'Источник не лежит на маршруте',capital:'Недостаточно денег'}[check.reason])||'План доставки: '+check.reason);return;}
 const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена');return;}
-deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
+deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Доставка −$'+r.cost.total+(r.cost.exportRevenue?' · экспорт +$'+r.cost.exportRevenue:'')+(r.completed.length?' · стройка завершена':''));
 render();
 }
 function renderDeliveryPanel(){
