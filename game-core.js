@@ -28,6 +28,9 @@ export const CONSTRUCTION_STAGING_CAPACITY = 3;
 export const WAREHOUSE_STORAGE_CAPACITY = 5;
 export const FREIGHT_YARD = {id:'freightyard',name:'Городской грузовой двор',shortName:'Грузовой двор',districtId:'western',capacityPerPlayer:2,rentCost:2,x:570,y:375};
 export const DELIVERY_EDGE_COST = 1;
+export const DELIVERY_EXTRA_LOADING_COST = 1;
+export const MARE_ISLAND_EXPORT = Object.freeze({id:'gas-house-cove',name:'Gas House Cove',districtId:'marina',x:770,y:118,capacity:2,oneOffPrice:8,partnerPrice:7});
+export const FERRY_BUILDING = Object.freeze({id:'ferry-building',name:'Ferry Building',districtId:'financial',x:1155,y:275});
 export const DELIVERY_HAULERS = [
   {id:'dray2a',name:'Малая подвода A',capacity:2,baseCost:0,limited:true},
   {id:'dray2b',name:'Малая подвода B',capacity:2,baseCost:0,limited:true},
@@ -482,7 +485,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,mareIslandOneOff:false,mareIslandPartner:false,mareIslandUsedRound:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -537,6 +540,7 @@ export function createInitialState({rng=Math.random}={}){
     logisticsSupply:generateLogisticsSupply({rng}),
     freightYardInventories:[[],[],[]],
     haulersUsed:[],
+    ferryOfferTakenRound:0,
     log:[{msg:'Началась тестовая партия v0.44 City Hall Goals. В City Hall каждый игрок может взять до 1 городской цели; выполненные цели отчитываются в начале следующего года.','cls':'accent'}],
     finished:false
   };
@@ -1128,6 +1132,38 @@ function multisetEquals(a,b){
   return [...keys].every(k=>(ac[k]||0)===(bc[k]||0));
 }
 
+// A pickup is a stop, not an additional hauler. Legacy plans with one source remain valid.
+export function deliveryPickups(plan){
+  if(!plan)return [];
+  return [{source:plan.source,routeIndex:0,cargo:plan.cargo||[]},...(plan.pickups||[])];
+}
+export function deliveryAllCargo(plan){return deliveryPickups(plan).flatMap(p=>p.cargo||[]);}
+export function canExportMareIsland(state,playerId){
+  const p=state.players?.[playerId];
+  if(!p)return false;
+  return !!p.mareIslandOneOff|| (!!p.mareIslandPartner&&p.mareIslandUsedRound!==state.round);
+}
+export function mareIslandExportPrice(state,playerId){
+  const p=state.players?.[playerId];return p?.mareIslandOneOff?MARE_ISLAND_EXPORT.oneOffPrice:p?.mareIslandPartner?MARE_ISLAND_EXPORT.partnerPrice:0;
+}
+export function signMareIslandContract(state,playerId,mode){
+  if(!['one-off','partner'].includes(mode))return {ok:false,reason:'mode'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'worker'};
+  if(state.ferryOfferTakenRound===state.round)return {ok:false,reason:'offer-taken'};
+  if(!workerCanReachDistrict(state,playerId,FERRY_BUILDING.districtId))return {ok:false,reason:'worker-range'};
+  const p=state.players[playerId];
+  if(mode==='partner'&&!(state.constructions||[]).some(c=>c.playerId===playerId&&c.status==='complete'&&(projectTypes(c.projectId)||[]).includes('Промышленное')))
+    return {ok:false,reason:'industry-required'};
+  if(mode==='partner'&&p.mareIslandPartner)return {ok:false,reason:'already-partner'};
+  if(mode==='one-off'&&p.mareIslandOneOff)return {ok:false,reason:'already-signed'};
+  const action=consumeMainAction(state,playerId,FERRY_BUILDING.districtId);
+  if(!action.ok)return action;
+  state.ferryOfferTakenRound=state.round;
+  if(mode==='partner')p.mareIslandPartner=true;else p.mareIslandOneOff=true;
+  logEvent(state,`${p.name} заключает ${mode==='partner'?'постоянное соглашение':'разовый экспортный контракт'} с Mare Island Navy Yard через Gas House Cove.`,'accent');
+  return {ok:true,mode,worker:action.worker};
+}
+
 export function deliveryMaterialCost(state,source,cargo){
   if(source?.kind==='supplier'){
     const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
@@ -1153,19 +1189,21 @@ export function deliveryPlanCost(state,plan){
   const hauler=DELIVERY_HAULERS.find(h=>h.id===plan?.haulerId);
   if(!hauler)return null;
   const route=plan.route||[];
-  const material=deliveryMaterialCost(state,plan.source,plan.cargo||[]);
+  const pickups=deliveryPickups(plan).filter(p=>p?.cargo?.length);
+  const costs=pickups.map(p=>deliveryMaterialCost({...state,procurementRemaining:0},p.source,p.cargo));
+  const materialGross=costs.reduce((n,c)=>n+c.gross,0);
+  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'?(p.cargo||[]).map(t=>RESOURCE_PRICES[t]||0):[]);
+  const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
+  const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
+  const materialCost=materialGross-procurementDiscount;
+  const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*DELIVERY_EDGE_COST;
   const yardRentCost=freightYardRentCost(state,plan);
-  return {
-    materialGross:material.gross,
-    procurementDiscount:material.discount,
-    procurementUsed:material.procurementUsed,
-    materialCost:material.cost,
-    haulerCost:hauler.baseCost,
-    routeCost,
-    yardRentCost,
-    total:material.cost+hauler.baseCost+routeCost+yardRentCost
-  };
+  const exportQuantity=(plan.drops||[]).filter(d=>d.kind==='export').reduce((n,d)=>n+(d.materials||[]).length,0);
+  const exportRevenue=exportQuantity*mareIslandExportPrice(state,plan.playerId);
+  return {materialGross,procurementDiscount,procurementUsed,materialCost,
+    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,exportRevenue,
+    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost};
 }
 
 function validateRoute(route,sourceDistrictId){
@@ -1185,6 +1223,7 @@ function targetDistrictId(state,target){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
   if(target.kind==='freight-yard'&&target.id===FREIGHT_YARD.id)return FREIGHT_YARD.districtId;
+  if(target.kind==='export'&&target.id===MARE_ISLAND_EXPORT.id)return MARE_ISLAND_EXPORT.districtId;
   return null;
 }
 
@@ -1193,127 +1232,135 @@ export function validateDeliveryPlan(state,plan){
   const player=state.players[plan.playerId];
   if(!player)return {ok:false,reason:'player'};
   if(!canUseFreeAction(state,plan.playerId))return {ok:false,reason:'not-active-player'};
-  const source=deliverySourceInfo(state,plan.playerId,plan.source);
-  if(!source)return {ok:false,reason:'source'};
-  const cargo=Array.isArray(plan.cargo)?plan.cargo:[];
-  if(!cargo.length)return {ok:false,reason:'cargo'};
-  if(!hasMaterials(source.inventory,cargo))return {ok:false,reason:'source-stock'};
-
   const hauler=DELIVERY_HAULERS.find(h=>h.id===plan.haulerId);
   if(!hauler)return {ok:false,reason:'hauler'};
   if(hauler.limited&&(state.haulersUsed||[]).includes(hauler.id))return {ok:false,reason:'hauler-used'};
-  if(cargo.length>hauler.capacity)return {ok:false,reason:'capacity'};
-
+  const pickups=deliveryPickups(plan);
+  if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
+  if(!Array.isArray(plan.pickups||[]))return {ok:false,reason:'pickups'};
+  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES)))return {ok:false,reason:'pickup-cargo'};
+  const firstSource=deliverySourceInfo(state,plan.playerId,plan.source);
+  if(!firstSource)return {ok:false,reason:'source'};
   const route=Array.isArray(plan.route)?plan.route:[];
-  if(!validateRoute(route,source.districtId))return {ok:false,reason:'route'};
-  const routeSet=new Set(route);
+  if(!validateRoute(route,firstSource.districtId))return {ok:false,reason:'route'};
+  const inventories=new Map(),pickedByStop=new Map(),sources=[];
+  for(const pickup of pickups){
+    const src=deliverySourceInfo(state,plan.playerId,pickup.source);
+    const idx=pickup.routeIndex;
+    if(!src||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==src.districtId)return {ok:false,reason:'pickup-route'};
+    const key=src.kind+':'+src.id;
+    const previous=inventories.get(key)||[];
+    const together=[...previous,...pickup.cargo];
+    if(!src.unlimited&&!hasMaterials(src.inventory,together))return {ok:false,reason:'source-stock'};
+    if(src.unlimited&&!pickup.cargo.every(type=>type===src.resource))return {ok:false,reason:'source-stock'};
+    inventories.set(key,together);
+    sources.push(src);
+    if(!pickedByStop.has(idx))pickedByStop.set(idx,[]);
+    pickedByStop.get(idx).push(...pickup.cargo);
+  }
   const drops=Array.isArray(plan.drops)?plan.drops:[];
-  const assigned=drops.flatMap(d=>d.materials||[]);
-  if(!multisetEquals(cargo,assigned))return {ok:false,reason:'unassigned'};
-
-  const constructionDraft=new Map();
-  const warehouseDraft=new Map();
-  let freightYardDraft=[...freightYardInventory(state,plan.playerId)];
+  if(!multisetEquals(deliveryAllCargo(plan),drops.flatMap(d=>d.materials||[])))return {ok:false,reason:'unassigned'};
+  const dropsByStop=new Map(),constructionDraft=new Map(),warehouseDraft=new Map();
+  let freightYardDraft=[...freightYardInventory(state,plan.playerId)],exportCount=0;
   for(const drop of drops){
     if(!drop||!Array.isArray(drop.materials)||!drop.materials.length)continue;
     const districtId=targetDistrictId(state,drop);
-    if(!districtId||!routeSet.has(districtId))return {ok:false,reason:'target-route'};
+    const idx=drop.routeIndex??route.indexOf(districtId);
+    if(!districtId||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==districtId)return {ok:false,reason:'target-route'};
+    if(!dropsByStop.has(idx))dropsByStop.set(idx,[]);
+    dropsByStop.get(idx).push(...drop.materials);
     if(drop.kind==='construction'){
       const con=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!con||con.playerId!==plan.playerId||con.status!=='under-construction')return {ok:false,reason:'target'};
       const staged=[...(constructionDraft.get(con.id)||con.materialsDelivered||[]),...drop.materials];
-      const projectMaterials=projectById(con.projectId)?.materials||[];
-      const required=materialCounts(projectMaterials);
-      const counts=materialCounts(staged);
-      if(Object.entries(counts).some(([type,count])=>count>(required[type]||0)))return {ok:false,reason:'target-material'};
-      const completesProject=multisetEquals(staged,projectMaterials);
-      if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!completesProject)return {ok:false,reason:'target-capacity'};
+      const recipe=projectById(con.projectId)?.materials||[];
+      const required=materialCounts(recipe),counts=materialCounts(staged);
+      if(Object.entries(counts).some(([t,n])=>n>(required[t]||0)))return {ok:false,reason:'target-material'};
+      if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!multisetEquals(staged,recipe))return {ok:false,reason:'target-capacity'};
       constructionDraft.set(con.id,staged);
     }else if(drop.kind==='warehouse'){
       const wh=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!wh||wh.playerId!==plan.playerId||wh.projectId!=='warehouse'||wh.status!=='complete')return {ok:false,reason:'target'};
-      if(plan.source.kind==='warehouse'&&plan.source.id===wh.id)return {ok:false,reason:'same-warehouse'};
+      if(pickups.some(p=>p.source.kind==='warehouse'&&p.source.id===wh.id))return {ok:false,reason:'same-warehouse'};
       const stored=[...(warehouseDraft.get(wh.id)||warehouseInventory(wh)),...drop.materials];
       if(stored.length>WAREHOUSE_STORAGE_CAPACITY)return {ok:false,reason:'target-capacity'};
       warehouseDraft.set(wh.id,stored);
     }else if(drop.kind==='freight-yard'){
-      if(drop.id!==FREIGHT_YARD.id)return {ok:false,reason:'target'};
-      if(plan.source.kind==='freight-yard')return {ok:false,reason:'same-freight-yard'};
-      freightYardDraft=[...freightYardDraft,...drop.materials];
+      if(drop.id!==FREIGHT_YARD.id||pickups.some(p=>p.source.kind==='freight-yard'))return {ok:false,reason:'same-freight-yard'};
+      freightYardDraft.push(...drop.materials);
       if(freightYardDraft.length>FREIGHT_YARD.capacityPerPlayer)return {ok:false,reason:'target-capacity'};
+    }else if(drop.kind==='export'){
+      if(drop.id!==MARE_ISLAND_EXPORT.id||!canExportMareIsland(state,plan.playerId))return {ok:false,reason:'export-unavailable'};
+      if(!drop.materials.every(t=>t==='Steel'))return {ok:false,reason:'export-material'};
+      exportCount+=drop.materials.length;
+      if(exportCount>MARE_ISLAND_EXPORT.capacity)return {ok:false,reason:'export-capacity'};
     }else return {ok:false,reason:'target'};
   }
-
+  // Check actual sequence along the route (cargo must be on board before unloading).
+  let onBoard=[];
+  for(let idx=0;idx<route.length;idx++){
+    onBoard.push(...(pickedByStop.get(idx)||[]));
+    if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
+    const leaving=dropsByStop.get(idx)||[];
+    if(!removeMaterials(onBoard,leaving))return {ok:false,reason:'unload-before-pickup'};
+  }
+  if(onBoard.length)return {ok:false,reason:'unassigned'};
   const cost=deliveryPlanCost(state,plan);
   if(!cost)return {ok:false,reason:'cost'};
   if(player.capital<cost.total)return {ok:false,reason:'capital',cost};
-  return {ok:true,cost,source,hauler};
+  return {ok:true,cost,source:firstSource,sources,hauler};
 }
 
 export function executeDelivery(state,plan){
   const check=validateDeliveryPlan(state,plan);
   if(!check.ok)return check;
   const {source,hauler,cost}=check;
-  const sourceInventory=source.kind==='node'
-    ?state.logisticsSupply[source.id]
-    :source.kind==='supplier'
-      ?null
-      :source.kind==='warehouse'
-        ?warehouseInventory((state.constructions||[]).find(c=>c.id===source.id))
-        :freightYardInventory(state,plan.playerId);
-  if(source.kind!=='supplier'&&!removeMaterials(sourceInventory,plan.cargo))return {ok:false,reason:'source-stock'};
-
+  const pickups=deliveryPickups(plan);
+  for(const pickup of pickups){
+    const src=deliverySourceInfo(state,plan.playerId,pickup.source);
+    if(src.kind==='supplier')continue;
+    const inv=src.kind==='node'?state.logisticsSupply[src.id]:
+      src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
+        freightYardInventory(state,plan.playerId);
+    removeMaterials(inv,pickup.cargo);
+  }
   const player=state.players[plan.playerId];
   player.capital-=cost.total;
-  if(hauler.limited){
-    state.haulersUsed=state.haulersUsed||[];
-    state.haulersUsed.push(hauler.id);
-  }
-  if(source.kind==='node'&&cost.procurementUsed){
-    state.procurementRemaining=Math.max(0,(state.procurementRemaining||0)-cost.procurementUsed);
-  }
-
-  const directConstructionIds=[];
+  if(hauler.limited){state.haulersUsed=state.haulersUsed||[];state.haulersUsed.push(hauler.id);}
+  if(cost.procurementUsed)state.procurementRemaining=Math.max(0,(state.procurementRemaining||0)-cost.procurementUsed);
+  const constructionIds=[];
+  let exported=0;
   for(const drop of plan.drops||[]){
     if(drop.kind==='construction'){
       const con=state.constructions.find(c=>c.id===drop.id);
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
-      if(!directConstructionIds.includes(con.id))directConstructionIds.push(con.id);
+      if(!constructionIds.includes(con.id))constructionIds.push(con.id);
     }else if(drop.kind==='warehouse'){
-      const wh=state.constructions.find(c=>c.id===drop.id);
-      warehouseInventory(wh).push(...drop.materials);
+      warehouseInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
     }else if(drop.kind==='freight-yard'){
       freightYardInventory(state,plan.playerId).push(...drop.materials);
-    }
+    }else if(drop.kind==='export'){exported+=drop.materials.length;}
   }
-
+  if(exported){
+    player.capital+=cost.exportRevenue;
+    if(player.mareIslandOneOff)player.mareIslandOneOff=false;
+    else player.mareIslandUsedRound=state.round;
+  }
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
-  const dropText=(plan.drops||[]).filter(d=>Array.isArray(d.materials)&&d.materials.length).map(drop=>{
-    const con=drop.kind==='freight-yard'?null:state.constructions.find(c=>c.id===drop.id);
-    const districtName=drop.kind==='freight-yard'
-      ?districtById(FREIGHT_YARD.districtId)?.name
-      :(districtById(con?.districtId)?.name||con?.districtId||'?');
-    const targetName=drop.kind==='freight-yard'
-      ?`${FREIGHT_YARD.name} (${districtName})`
-      :drop.kind==='warehouse'
-        ?`Warehouse (${districtName})`
-        :`«${projectById(con?.projectId)?.name||con?.projectId||'стройка'}» (${districtName})`;
-    const counts=materialCounts(drop.materials);
-    const materials=Object.entries(counts).map(([type,count])=>`${materialNameRu(type)} ×${count}`).join(', ');
-    return `${targetName}: ${materials}`;
+  const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
+  const dropText=(plan.drops||[]).map(d=>{
+    const con=d.kind==='export'?null:state.constructions.find(c=>c.id===d.id);
+    const dest=d.kind==='export'?'Gas House Cove':d.kind==='freight-yard'?'Грузовой двор':d.kind==='warehouse'?'Склад':projectById(con?.projectId)?.name||'стройка';
+    return dest+': '+d.materials.map(materialNameRu).join(', ');
   }).join('; ');
-  const rentText=cost.yardRentCost?` + аренда ${cost.yardRentCost}`:'';
-  logEvent(state,`${player.name} выполняет Delivery: ${source.name}; ${hauler.name} ${plan.cargo.length}/${hauler.capacity}; маршрут ${routeText}; разгрузка: ${dropText||'—'}; материалы ${cost.materialCost} + перевозчик ${cost.haulerCost} + дорога ${cost.routeCost}${rentText} = ${cost.total}.`,'accent');
-
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + аренда $${cost.yardRentCost} = $${cost.total}${exported?'; продажа стали +$'+cost.exportRevenue:''}.`,'accent');
   const completed=[];
-  for(const id of directConstructionIds){
+  for(const id of constructionIds){
     const con=state.constructions.find(c=>c.id===id);
-    const result=completeConstruction(state,con);
-    if(result.ok)completed.push(id);
+    if(completeConstruction(state,con).ok)completed.push(id);
   }
-
-  return {ok:true,cost,completed,hauler,source};
+  return {ok:true,cost,completed,hauler,source,exported};
 }
 
 export function buildingIncome(state,playerId){
@@ -1485,6 +1532,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
   state.haulersUsed=[];
+  state.ferryOfferTakenRound=0;
   reportCompletedCityGoals(state);
   setYearTurnOrderFromInfluence(state);
   state.players.forEach(p=>{
