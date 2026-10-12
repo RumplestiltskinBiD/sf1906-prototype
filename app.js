@@ -549,7 +549,7 @@ function addExtraPickupCargo(type){
   d.pickupSource=null;d.pickupOpen=false;render();
 }
 function pickupSelectorHtml(){
-  const d=deliveryDraft;if(d?.step!=='route')return '';
+  const d=deliveryDraft;if(d?.step!=='route'||d.routeDropOpen||d.focusTargetId)return '';
   const sources=deliveryPickupSources();
   if(!sources.length&&!d.pickupSource)return '';
   const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId);
@@ -576,7 +576,7 @@ function pickupSelectorHtml(){
   return html+'</div>';
 }
 function routeEarlyUnloadHtml(){
-  const d=deliveryDraft;if(d?.step!=='route'||!isMobile())return '';
+  const d=deliveryDraft;if(d?.step!=='route'||!isMobile()||d.pickupOpen)return '';
   const targets=deliveryRouteTargets().filter(x=>x.districtId===d.route.at(-1)&&deliveryRouteTargetCanAcceptAny(x));
   if(!targets.length)return '';
   const focus=d.focusTargetId?targets.find(x=>x.id===d.focusTargetId):null;
