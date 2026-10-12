@@ -106,3 +106,21 @@ test('Mare Island partnership requires completed industrial project and a reacha
  assert.equal(s.ferryOfferTakenRound,s.round);
  assert.equal(G.signMareIslandContract(s,0,'one-off').ok,false);
 });
+
+
+test('a wagon can unload three cargo and load two new resources at the same intermediate stop',()=>{
+ const s=state();
+ s.constructions.push({id:'WN',playerId:0,projectId:'warehouse',districtId:'northbeach',status:'complete',
+   warehouseInventory:[],materialsDelivered:[],startedRound:1,completedRound:1});
+ s.players[0].mareIslandPartner=true;
+ const route=[...path('soma','northbeach'),...path('northbeach','marina').slice(1)];
+ const at=route.indexOf('northbeach');
+ const plan=basic(s,{cargo:['Steel','Lumber','Masonry'],route,
+   pickups:[{source:{kind:'node',id:'broadway'},routeIndex:at,cargo:['Steel','Steel']}],
+   drops:[{kind:'warehouse',id:'WN',routeIndex:at,materials:['Steel','Lumber','Masonry']},
+     {kind:'export',id:'gas-house-cove',routeIndex:route.length-1,materials:['Steel','Steel']}]});
+ const check=G.validateDeliveryPlan(s,plan);assert.equal(check.ok,true,check.reason);
+ assert.equal(check.cost.loadingCost,1);
+ assert.equal(G.executeDelivery(s,plan).exported,2);
+ assert.deepEqual(s.constructions.find(c=>c.id==='WN').warehouseInventory,['Steel','Lumber','Masonry']);
+});
