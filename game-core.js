@@ -1276,7 +1276,8 @@ export function validateDeliveryPlan(state,plan){
       const recipe=projectById(con.projectId)?.materials||[];
       const required=materialCounts(recipe),counts=materialCounts(staged);
       if(Object.entries(counts).some(([t,n])=>n>(required[t]||0)))return {ok:false,reason:'target-material'};
-      if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!multisetEquals(staged,recipe))return {ok:false,reason:'target-capacity'};
+      const completesProject=multisetEquals(staged,recipe);
+      if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!completesProject)return {ok:false,reason:'target-capacity'};
       constructionDraft.set(con.id,staged);
     }else if(drop.kind==='warehouse'){
       const wh=(state.constructions||[]).find(c=>c.id===drop.id);
@@ -1351,8 +1352,12 @@ export function executeDelivery(state,plan){
   const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
     const con=d.kind==='export'?null:state.constructions.find(c=>c.id===d.id);
-    const dest=d.kind==='export'?'Gas House Cove':d.kind==='freight-yard'?'Грузовой двор':d.kind==='warehouse'?'Склад':projectById(con?.projectId)?.name||'стройка';
-    return dest+': '+d.materials.map(materialNameRu).join(', ');
+    const districtName=d.kind==='export'?districtById(MARE_ISLAND_EXPORT.districtId)?.name:
+      d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
+    const dest=d.kind==='export'?'Gas House Cove':d.kind==='freight-yard'?FREIGHT_YARD.name:
+      d.kind==='warehouse'?'Warehouse':'«'+(projectById(con?.projectId)?.name||'стройка')+'»';
+    const count=materialCounts(d.materials);
+    return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
   logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + аренда $${cost.yardRentCost} = $${cost.total}${exported?'; продажа стали +$'+cost.exportRevenue:''}.`,'accent');
   const completed=[];
