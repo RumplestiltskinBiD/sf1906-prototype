@@ -508,11 +508,14 @@ function deliveryPickupSources(){
   });
 }
 function deliveryOnboardAt(idx){
-  const d=deliveryDraft,stock=[],pickups=[{routeIndex:0,cargo:d.cargo},...(d.pickups||[])];
+  const d=deliveryDraft,stock=[];
   for(let i=0;i<=idx;i++){
-    for(const p of pickups.filter(x=>x.routeIndex===i))stock.push(...p.cargo);
+    if(i===0)stock.push(...d.cargo);
+    const remaining=[];
     for(const drop of (d.drops||[]).filter(x=>(x.routeIndex??d.route.indexOf(deliveryTargetDistrict(x)))===i))
-      for(const t of drop.materials){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);}
+      for(const t of drop.materials){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);else remaining.push(t);}
+    for(const p of (d.pickups||[]).filter(x=>x.routeIndex===i))stock.push(...p.cargo);
+    for(const t of remaining){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);}
   }
   return stock;
 }
