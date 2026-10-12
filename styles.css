@@ -2743,3 +2743,48 @@ body.year-transition-open .sticky-action{pointer-events:none}
   .city-goal-card{flex:0 0 225px;min-height:255px;scroll-snap-align:start}
   .goal-report-banner{align-items:flex-start;flex-direction:column;gap:3px}
 }
+
+
+/* v0.44-L1 · extra loading per route stop: compact map-first mobile tools. */
+.delivery-extra-loading,.delivery-route-quickdrop{
+  margin:8px 0;padding:9px;border:1px solid #a0bba9;border-radius:10px;background:#edf3e8;color:#30473b
+}
+.delivery-extra-loading button,.delivery-route-quickdrop button{
+  padding:8px 11px;margin:4px 4px 0 0;min-height:42px;border:1px solid #829c86;
+  border-radius:8px;background:#fffdf4;color:#29543c;font-size:12px;font-weight:750
+}
+.delivery-extra-loading button:disabled,.delivery-route-quickdrop button:disabled{opacity:.42}
+.delivery-extra-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:11px}
+.delivery-extra-head b{font-size:12px}
+.delivery-extra-load-buttons{display:flex;flex-wrap:wrap;gap:4px}
+.delivery-extra-load-buttons button{flex:1 1 100px}
+.delivery-extra-trigger{background:#d6ead5!important}
+.delivery-route-quickdrop .drop-buttons{display:flex;flex-wrap:wrap;gap:4px}
+.delivery-route-quickdrop .drop-buttons button{flex:1 1 42px}
+@media(max-width:1000px){
+  .delivery-panel.mobile-route-build{overflow:visible!important}
+  .delivery-panel.mobile-route-build .delivery-extra-loading,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop{
+    position:absolute!important;bottom:calc(100% + 5px)!important;z-index:15;
+    margin:0!important;max-height:35vh!important;overflow:auto!important;
+    border-radius:9px;box-shadow:0 7px 18px rgba(0,0,0,.25)
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading{right:4px!important;left:auto!important;width:min(340px,90vw)!important}
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop{left:4px!important;right:auto!important;width:min(340px,90vw)!important}
+  .delivery-panel.mobile-route-build .delivery-extra-loading.collapsed,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.collapsed{
+    width:auto!important;max-width:45vw!important;padding:0!important;border:0!important;
+    box-shadow:none!important;overflow:visible!important;background:transparent!important
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading.collapsed button,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.collapsed button{
+    min-height:36px!important;padding:6px 10px!important;margin:0!important;
+    font-size:11px!important;border:2px solid #5b876b!important;
+    box-shadow:0 2px 10px rgba(0,0,0,.18)
+  }
+}
+@media(orientation:landscape) and (max-height:500px){
+  .delivery-panel.mobile-route-build .delivery-extra-loading,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop{max-height:35vh!important}
+  .delivery-panel.mobile-route-build .delivery-extra-loading.expanded button{min-height:36px}
+}
