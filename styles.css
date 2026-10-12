@@ -2788,3 +2788,20 @@ body.year-transition-open .sticky-action{pointer-events:none}
   .delivery-panel.mobile-route-build .delivery-route-quickdrop{max-height:35vh!important}
   .delivery-panel.mobile-route-build .delivery-extra-loading.expanded button{min-height:36px}
 }
+
+
+/* Route-building must hit the district polygons, not the decorative tokens,
+   logistics pins, or route stop badges drawn above the polygons.
+   Source selection and the confirmed unloading phase stay fully interactive. */
+body.delivery-route-build #constructionLayer,
+body.delivery-route-build #constructionLayer *,
+body.delivery-route-build #supplyNodeLayer,
+body.delivery-route-build #supplyNodeLayer *,
+body.delivery-route-build #workerLayer,
+body.delivery-route-build #workerLayer *,
+body.delivery-route-build #districtMetaLayer,
+body.delivery-route-build #districtMetaLayer *,
+body.delivery-route-build #deliveryRouteLayer,
+body.delivery-route-build #deliveryRouteLayer *{
+  pointer-events:none!important;
+}
