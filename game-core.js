@@ -1297,13 +1297,24 @@ export function validateDeliveryPlan(state,plan){
       if(exportCount>MARE_ISLAND_EXPORT.capacity)return {ok:false,reason:'export-capacity'};
     }else return {ok:false,reason:'target'};
   }
-  // Check actual sequence along the route (cargo must be on board before unloading).
+  // At each stop, unload existing cargo before loading more; this allows a full
+  // wagon to replenish in the same district without exceeding its capacity.
   let onBoard=[];
   for(let idx=0;idx<route.length;idx++){
-    onBoard.push(...(pickedByStop.get(idx)||[]));
+    if(idx===0){
+      onBoard.push(...plan.cargo);
+      if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
+    }
+    const remaining=[];
+    for(const type of dropsByStop.get(idx)||[]){
+      const pos=onBoard.indexOf(type);
+      if(pos>=0)onBoard.splice(pos,1);
+      else remaining.push(type);
+    }
+    const extras=pickups.slice(1).filter(p=>p.routeIndex===idx).flatMap(p=>p.cargo);
+    onBoard.push(...extras);
     if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
-    const leaving=dropsByStop.get(idx)||[];
-    if(!removeMaterials(onBoard,leaving))return {ok:false,reason:'unload-before-pickup'};
+    if(!removeMaterials(onBoard,remaining))return {ok:false,reason:'unload-before-pickup'};
   }
   if(onBoard.length)return {ok:false,reason:'unassigned'};
   const cost=deliveryPlanCost(state,plan);
