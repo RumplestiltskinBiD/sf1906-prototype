@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 import {createInitialState} from '../game-core.js';
 
 const KEY='sf1906_phase1_ui_v030a';
+test.beforeEach(async({page})=>{page.setDefaultTimeout(7000);});
 const makeState=()=>{
  const s=createInitialState({rng:()=>0.1});
  s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
@@ -13,7 +14,7 @@ const makeState=()=>{
 function warehouse(id,districtId){return {id,playerId:0,projectId:'warehouse',districtId,status:'complete',
  materialsDelivered:[],warehouseInventory:[],startedRound:1,completedRound:1};}
 async function seed(page,s){
- await page.addInitScript(({key,value})=>{localStorage.setItem(key,value);},{key:KEY,value:JSON.stringify(s)});
+ await page.addInitScript(({key,value})=>{if(!localStorage.getItem(key))localStorage.setItem(key,value);},{key:KEY,value:JSON.stringify(s)});
  await page.goto('/');
 }
 async function save(page){return JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));}
@@ -57,8 +58,11 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
  });
  test('mobile '+vp.width+' same stop multiple items from Pacific Mail remain one extra loading fee',async({page})=>{
   await page.setViewportSize(vp);await seed(page,makeState());await begin(page);
+  console.log('L1-same-stop: before Masonry');
   await addFromPacific(page,'Masonry');
+  console.log('L1-same-stop: before Lumber');
   await addFromPacific(page,'Lumber');
+  console.log('L1-same-stop: after second load');
   await expect(page.locator('.ux3-route-price')).toContainText('$8');
   await page.locator('#deliveryLockRoute').click();
   await page.locator('[data-construction-token="W1"]').click();
@@ -72,18 +76,23 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
 
 test('mobile portrait allows return to same source only after leaving its district',async({page})=>{
  await page.setViewportSize({width:390,height:844});await seed(page,makeState());await begin(page);
+ console.log('L1-return: first stop');
  await page.locator('#deliveryShowPickups').click();
  await expect(page.locator('[data-extra-source-id="southernpacific"]')).toHaveCount(0);
  await page.locator('#deliveryHidePickups').click();
+ console.log('L1-return: moving to Mission');
  await page.locator('[data-district="mission"]').click();
  await expect(page.locator('#deliveryShowRouteDrops')).toBeVisible();
+ console.log('L1-return: unloading at Mission');
  await page.locator('#deliveryShowRouteDrops').click();
  await page.locator('[data-early-drop-target="W2"]').click();
  await page.locator('[data-drop-kind="warehouse"][data-drop-type="Steel"]').click();
  await page.locator('#deliveryCloseTarget').click();
+ console.log('L1-return: back to SoMa');
  await page.locator('[data-district="soma"]').click();
  await page.locator('#deliveryShowPickups').click();
  await expect(page.locator('[data-extra-source-id="southernpacific"]')).toBeVisible();
+ console.log('L1-return: selecting original source again');
  await page.locator('[data-extra-source-id="southernpacific"]').click();
  await page.locator('[data-extra-cargo="Steel"]').click();
  await page.locator('#deliveryLockRoute').click();
