@@ -2788,3 +2788,41 @@ body.year-transition-open .sticky-action{pointer-events:none}
   .delivery-panel.mobile-route-build .delivery-extra-loading{max-height:18vh;padding:5px}
   .delivery-panel.mobile-route-build .delivery-extra-loading button{min-height:36px}
 }
+
+
+/* Mobile route tools float above the compact UX3 dock, never enlarging it. */
+@media(max-width:1000px){
+  .delivery-panel.mobile-route-build{overflow:visible!important}
+  .delivery-panel.mobile-route-build .delivery-extra-loading,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop{
+    position:absolute!important;bottom:calc(100% + 5px)!important;z-index:15;
+    margin:0!important;max-height:min(38vh,240px)!important;overflow:auto!important;
+    box-shadow:0 7px 20px rgba(0,0,0,.22)
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading{
+    right:4px!important;left:auto!important;width:min(365px,92vw)!important
+  }
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop{
+    left:4px!important;right:auto!important;width:min(365px,92vw)!important
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading.collapsed,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.collapsed{
+    width:auto!important;max-width:45vw!important;padding:0!important;
+    background:transparent!important;border:none!important;box-shadow:none!important;overflow:visible!important
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading.collapsed .delivery-extra-head{display:none}
+  .delivery-panel.mobile-route-build .delivery-extra-loading.collapsed button,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.collapsed button{
+    margin:0!important;min-height:36px!important;padding:6px 12px!important;
+    border:2px solid #508466!important;border-radius:9px!important;font-size:11px!important;
+    box-shadow:0 2px 10px rgba(0,0,0,.18)
+  }
+  .delivery-panel.mobile-route-build .delivery-extra-loading.expanded,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.expanded{
+    background:#eef5ed!important;padding:9px!important;border:1px solid #91ac95!important;border-radius:10px!important
+  }
+}
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  .delivery-panel.mobile-route-build .delivery-extra-loading.expanded,
+  .delivery-panel.mobile-route-build .delivery-route-quickdrop.expanded{max-height:35vh!important}
+}
