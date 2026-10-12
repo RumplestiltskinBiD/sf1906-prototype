@@ -72,8 +72,14 @@ test('cannot unload export steel before it has been picked up or exceed capacity
    drops:[{kind:'export',id:'gas-house-cove',routeIndex:fromMarina.length-1,materials:['Steel']},
           {kind:'warehouse',id:'W1',routeIndex:0,materials:['Lumber']}]});
  if(plan.pickups[0].routeIndex>=0)assert.equal(G.validateDeliveryPlan(s,plan).ok,true);
- const bad=basic(s,{cargo:['Steel','Lumber','Masonry'],pickups:[{source:{kind:'node',id:'pacificmail'},routeIndex:0,cargo:['Steel']}],
-   drops:[{kind:'warehouse',id:'W1',routeIndex:0,materials:['Steel','Steel','Lumber','Masonry']}]});
+ // Cargo cannot travel over an edge beyond capacity; contrast with
+ // the legitimate same-stop unloading and reloading scenario.
+ s.constructions.push({id:'W2',playerId:0,projectId:'warehouse',districtId:'mission',
+   status:'complete',warehouseInventory:[],materialsDelivered:[],startedRound:1,completedRound:1});
+ const routeToMission=path('soma','mission');
+ const bad=basic(s,{cargo:['Steel','Lumber','Masonry'],route:routeToMission,
+   pickups:[{source:{kind:'node',id:'pacificmail'},routeIndex:0,cargo:['Steel']}],
+   drops:[{kind:'warehouse',id:'W2',routeIndex:routeToMission.length-1,materials:['Steel','Steel','Lumber','Masonry']}]});
  assert.equal(G.validateDeliveryPlan(s,bad).reason,'capacity');
 });
 test('Mare Island export pays exactly $8 one-off or $7 partner and consumes one-off contracts',()=>{
