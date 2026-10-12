@@ -488,6 +488,77 @@ const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);
 deliveryDraft.step='route';deliveryDraft.route=[src.districtId];deliveryDraft.drops=[];deliveryDraft.listOpen=false;deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 if(isMobile())focusMapOnDistrict(src.districtId);
 }
+
+function deliveryTargetDistrict(d){
+  if(d.kind==='export')return MARE_ISLAND_EXPORT.districtId;
+  if(d.kind==='freight-yard')return FREIGHT_YARD.districtId;
+  return state.constructions.find(c=>c.id===d.id)?.districtId||null;
+}
+function deliveryPickupSources(){
+  if(deliveryDraft?.step!=='route')return [];
+  const d=deliveryDraft.route.at(-1),pid=deliveryDraft.playerId;
+  const candidates=[...LOGISTICS_NODES.map(x=>({kind:'node',id:x.id})),
+    ...NEUTRAL_MATERIAL_SUPPLIERS.map(x=>({kind:'supplier',id:x.id})),
+    ...completedWarehouses(state,pid).map(x=>({kind:'warehouse',id:x.id})),{kind:'freight-yard',id:FREIGHT_YARD.id}];
+  return candidates.filter(src=>{
+    const info=deliverySourceInfo(state,pid,src);
+    return info&&info.districtId===d&&info.inventory.length&&
+      ![{source:deliveryDraft.source},...(deliveryDraft.pickups||[])].some(p=>p.source.kind===src.kind&&p.source.id===src.id);
+  });
+}
+function deliveryOnboardAt(idx){
+  const d=deliveryDraft,stock=[],pickups=[{routeIndex:0,cargo:d.cargo},...(d.pickups||[])];
+  for(let i=0;i<=idx;i++){
+    for(const p of pickups.filter(x=>x.routeIndex===i))stock.push(...p.cargo);
+    for(const drop of (d.drops||[]).filter(x=>(x.routeIndex??d.route.indexOf(deliveryTargetDistrict(x)))===i))
+      for(const t of drop.materials){const j=stock.indexOf(t);if(j>=0)stock.splice(j,1);}
+  }
+  return stock;
+}
+function chooseExtraPickup(kind,id){
+  const src=deliveryPickupSources().find(x=>x.kind===kind&&x.id===id);
+  if(!src){showToast('Источник не находится на текущей остановке');return;}
+  deliveryDraft.pickupSource=src;deliveryDraft.pickupOpen=true;render();
+}
+function addExtraPickupCargo(type){
+  const d=deliveryDraft;if(d?.step!=='route'||!d.pickupSource)return;
+  const info=deliverySourceInfo(state,d.playerId,d.pickupSource),idx=d.route.length-1;
+  const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId);
+  if(!info||!hauler||!info.inventory.includes(type))return;
+  if(deliveryOnboardAt(idx).length>=hauler.capacity){showToast('Повозка заполнена. Разгрузите груз перед следующей погрузкой.');return;}
+  const p=d.pickups.find(x=>x.routeIndex===idx&&x.source.kind===d.pickupSource.kind&&x.source.id===d.pickupSource.id);
+  if(p&&!info.unlimited&&(deliveryCounts(p.cargo)[type]||0)>=(deliveryCounts(info.inventory)[type]||0)){
+    showToast('Материалов здесь больше нет');return;
+  }
+  if(p)p.cargo.push(type);else d.pickups.push({source:{...d.pickupSource},routeIndex:idx,cargo:[type]});
+  d.pickupOpen=false;d.pickupSource=null;render();
+}
+function pickupSelectorHtml(){
+  const d=deliveryDraft;if(d?.step!=='route')return '';
+  const options=deliveryPickupSources(),chosen=d.pickupSource;
+  if(!options.length&&!chosen)return '';
+  const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId),free=Math.max(0,(hauler?.capacity||0)-deliveryOnboardAt(d.route.length-1).length);
+  let html='<div class="delivery-extra-loading"><div class="delivery-extra-head"><b>ДОП. ПОГРУЗКА · $1 / остановка</b><span>Свободно '+free+'/'+hauler.capacity+'</span></div>';
+  if(!d.pickupOpen){
+    html+='<button id="deliveryShowPickups" class="delivery-extra-trigger">+ Догрузить здесь</button>';
+  }else{
+    html+='<button id="deliveryHidePickups" class="ghost-btn">× Закрыть</button>';
+    if(chosen){
+      const info=deliverySourceInfo(state,d.playerId,chosen),stock=deliveryCounts(info.inventory);
+      html+='<strong>'+info.name+'</strong><div class="delivery-extra-load-buttons">';
+      for(const t of RESOURCE_ORDER){
+        const n=stock[t]||0,price=chosen.kind==='node'?RESOURCE_PRICES[t]:chosen.kind==='supplier'?info.unitPrice:0;
+        html+='<button data-extra-cargo="'+t+'" '+(!n||!free?'disabled':'')+'>'+materialLabel(t)+' · '+(info.unlimited?'∞':n)+' · $'+price+'</button>';
+      }
+      html+='</div>';
+    }else for(const src of options){
+      const info=deliverySourceInfo(state,d.playerId,src);
+      html+='<button data-extra-source-kind="'+src.kind+'" data-extra-source-id="'+src.id+'">'+info.name+'</button>';
+    }
+  }
+  return html+'</div>';
+}
+
 function addDeliveryRouteDistrict(id){
 if(deliveryDraft?.step!=='route')return false;
 const last=deliveryDraft.route[deliveryDraft.route.length-1];
