@@ -280,3 +280,16 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - At the transition into a new year, **income is resolved first**, then every still unfinished construction costs **$1 upkeep**.
 - If a player cannot pay all upkeep, the transition pauses and that player chooses an unfinished construction to close. Its delivered staging materials are lost, its site is freed, and the project does not return to the player’s hand. If the remaining upkeep is still unaffordable, another closure is required.
 - The upkeep choice is a dedicated between-year sheet; on phones it becomes a compact bottom sheet instead of covering the map during normal play.
+
+
+## v0.44-L1 — Multi-source loading only
+
+This isolated logistics patch adds **one rule** to the original v0.44 truck delivery:
+- One route may load from several physically visited existing sources (port, rail hub, neutral material seller, owned Warehouse or Freight Yard). The first pickup has no surcharge; each **additional source pickup stop** costs **$1**, regardless of the number of goods taken there.
+- Every pickup is keyed by **source ID + its actual route visit index**. Repeating a source at the same stop is one pickup only (additional goods merge into that pickup; forged duplicate records are rejected by the game core). Leaving and returning through the road network permits another paid pickup.
+- Capacity is checked along the sequence of stops. Previously loaded goods can be unloaded before refilling at the same stop; overloading even one segment is forbidden.
+- Existing material prices, hauler types and capacities, warehouse and Freight Yard restrictions, the road graph, and the Golden Gate Park ban are unchanged.
+- Old one-source delivery plans remain valid. Purchase, route, extra loading, Freight Yard rent, and procurement discount are computed and displayed separately; state changes only after complete validation.
+- Mobile portrait and landscape use a compact route dock with optional floating controls for extra pickup and early unloading, preserving the map.
+- **No Ferry Building, Gas House Cove, Mare Island export, trips, new cards or office changes in this patch.**
+- The file tests/multisource-l1.e2e.spec.mjs is included in Playwright testMatch and therefore in the GitHub Actions CI job.
