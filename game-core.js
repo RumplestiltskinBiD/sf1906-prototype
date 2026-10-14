@@ -119,8 +119,12 @@ export const PROJECTS = [
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
   {prestige:3,income:0,id:'clinic',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доступ к клинике (район + соседний район) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Доступ к клинике действует в своём и соседнем районе.'},
   {prestige:3,income:0,id:'publicworks',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Полные воды / газа / ремонта правила будут добавлены позже.'},
-  {prestige:3,income:0,id:'streetcar',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',streetcarExtension:true,effect:'Трамвайное расширение · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · трамвайная инфраструктура',actionName:'—',actionText:'Связь с Market Street будет доступна через исследование электрификации.',limits:'Нет дополнительных ограничений.'}
 ]
+
+// Existing v0.44-L1 saves may contain a started/completed streetcar project.
+// Keep its historical definition only for rendering and completing those saves;
+// RETIRED_PROJECTS never enters the market, starter draft or new construction.
+export const RETIRED_PROJECTS = Object.freeze([{...{prestige:3,income:0,id:'streetcar',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',streetcarExtension:true,effect:'Трамвайное расширение · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · трамвайная инфраструктура',actionName:'—',actionText:'Связь с Market Street будет доступна через исследование электрификации.',limits:'Нет дополнительных ограничений.'},retired:true}]);
 
 export const DISTRICTS = [
   {id:'presidio',earthquakeBase:0,fireBase:0,name:'Presidio',hint:'Федеральная территория · закрыто для строительства и передвижения',landValue:0,sites:0,road:false,rail:false,port:false,buildable:false,passable:false},
@@ -176,7 +180,7 @@ export function shuffle(items, rng=Math.random){
   return a;
 }
 
-export function projectById(id){return PROJECTS.find(p=>p.id===id) || null;}
+export function projectById(id){return PROJECTS.find(p=>p.id===id) || RETIRED_PROJECTS.find(p=>p.id===id) || null;}
 export function projectTypes(projectOrId){
   const project=typeof projectOrId==='string'?projectById(projectOrId):projectOrId;
   return Array.isArray(project?.types)&&project.types.length?[...project.types]:[];
@@ -248,14 +252,12 @@ export function workerCanReachDistrict(state,playerId,targetDistrictId,workerId=
   const target=districtById(targetDistrictId);
   if(!worker||worker.used||!target||target.passable===false)return false;
   const local=worker.districtId===targetDistrictId||districtNeighbors(worker.districtId).includes(targetDistrictId);
-  const marketStreet=districtHasMarketStreet(worker.districtId)&&districtHasMarketStreet(targetDistrictId);
-  return local||marketStreet;
+  return local;
 }
 export function workerReachableDistricts(state,playerId,workerId=null){
   const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
   if(!worker||worker.used)return [];
   const ids=[worker.districtId,...districtNeighbors(worker.districtId)];
-  if(districtHasMarketStreet(worker.districtId))ids.push(...MARKET_STREET_DISTRICTS);
   return [...new Set(ids)].filter(id=>districtById(id)?.passable!==false);
 }
 export function selectWorker(state,playerId,workerId){
@@ -310,9 +312,6 @@ export function districtAccess(state,districtId){
     clinicSources,
     policeSources
   };
-}
-export function canPlaceStreetcar(state,districtId){
-  return districtById(districtId)?.buildable!==false;
 }
 export function influenceOrder(state){
   const previous=Array.isArray(state?.yearTurnOrder)?state.yearTurnOrder:[];
@@ -708,6 +707,7 @@ export function claimProject(state,slot){
   if(state.phase!=='declare') return {ok:false,reason:'wrong-phase'};
   const pid=currentDeclarer(state); if(pid==null) return {ok:false,reason:'no-declarer'};
   const m=state.market[slot]; if(!m) return {ok:false,reason:'empty-slot'};
+  if(!PROJECTS.some(p=>p.id===m.id))return {ok:false,reason:'retired-project'};
   if(state.market.some(x=>x&&x.claims.some(c=>c.player===pid))) return {ok:false,reason:'already-declared'};
   if((state.players[pid].portfolio||[]).length>=HAND_LIMIT)return {ok:false,reason:'hand-limit'};
   const price=openingPrice(m);
@@ -823,6 +823,7 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
   if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
+  if(project?.retired)reasons.push('Проект снят с рынка и недоступен для нового строительства.');
   if(player){
     const worker=activeWorker(state,playerId);
     if(currentDeveloper(state)!==playerId)reasons.push('Сейчас ход другого игрока.');

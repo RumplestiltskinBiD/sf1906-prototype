@@ -202,16 +202,40 @@ test('worker movement allows Golden Gate Park but blocks Presidio and Twin Peaks
   assert.equal(G.workerCanReachDistrict(s,0,'twinpeaks',w.id),false);
 });
 
-test('Market Street connects its five districts for representative actions without changing freight adjacency',()=>{
+test('Market Street is a geographic tag, never a free representative travel link',()=>{
   const s=devState();
   const w=G.playerWorkers(s,0)[0];
   w.districtId='noe';
   assert.deepEqual(G.MARKET_STREET_DISTRICTS,['noe','mission','civic','soma','financial']);
-  assert.equal(G.workerCanReachDistrict(s,0,'financial',w.id),true);
-  assert.equal(G.workerCanReachDistrict(s,0,'civic',w.id),true);
+  assert.equal(G.districtHasMarketStreet('noe'),true);
+  assert.equal(G.workerCanReachDistrict(s,0,'financial',w.id),false);
+  assert.equal(G.workerCanReachDistrict(s,0,'civic',w.id),false);
+  assert.equal(G.workerCanReachDistrict(s,0,'mission',w.id),true);
+  assert.equal(G.workerCanReachDistrict(s,0,'noe',w.id),true);
   assert.equal(G.workerCanReachDistrict(s,0,'northbeach',w.id),false);
-  assert.ok(G.workerReachableDistricts(s,0,w.id).includes('soma'));
+  assert.equal(G.workerReachableDistricts(s,0,w.id).includes('soma'),false);
+  assert.equal(G.workerReachableDistricts(s,0,w.id).includes('mission'),true);
   assert.equal(G.deliveryNeighbors('noe').includes('financial'),false);
+});
+test('streetcar removed from active project pool, but a legacy construction is safe',()=>{
+  const s=devState();
+  assert.equal(G.PROJECTS.some(p=>p.id==='streetcar'),false);
+  assert.equal(G.projectById('streetcar')?.retired,true);
+  assert.equal(G.createProjectCardPool({rng:()=>0.1}).some(p=>p.id==='streetcar'),false);
+  assert.equal(s.deck.some(p=>p.id==='streetcar'),false);
+  assert.equal(s.market.some(p=>p?.id==='streetcar'),false);
+  assert.equal(s.starterDraftHands.some(hand=>hand.some(p=>p.id==='streetcar')),false);
+  const w=s.players[0].workers[0];
+  w.districtId='civic';G.selectWorker(s,0,w.id);
+  s.players[0].portfolio=['streetcar'];
+  assert.equal(G.constructionEligibility(s,0,'streetcar','civic').ok,false);
+  assert.equal(G.beginConstruction(s,0,'streetcar','civic').ok,false);
+  s.constructions.push(construction('LEG-1',0,'streetcar','civic','under-construction',['Lumber','Masonry','Steel']));
+  const prior=s.districts.civic.landValue;
+  const r=G.completeConstructionFromStorage(s,'LEG-1');
+  assert.equal(r.ok,true);
+  assert.equal(s.constructions.at(-1).status,'complete');
+  assert.equal(s.districts.civic.landValue,Math.min(6,prior+1));
 });
 
 test('v0.43A exposes canonical building types and historical ground classes',()=>{

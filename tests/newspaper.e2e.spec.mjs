@@ -122,7 +122,7 @@ test('old saved projects receive extra cards only once on migration',async({page
   await page.reload();
   const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('sf1906_phase1_ui_v030a')));
   expect(first.marketExtendedForSixYears).toBe(true);
-  expect(first.deck).toHaveLength(12+16);
+  expect(first.deck).toHaveLength(12+15);
   await page.reload();
   const second=await page.evaluate(()=>JSON.parse(localStorage.getItem('sf1906_phase1_ui_v030a')));
   expect(second.deck).toHaveLength(first.deck.length);

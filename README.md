@@ -24,11 +24,11 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - Каждый игрок управляет 3 отдельными представителями.
 - Все представители начинают в Civic Center.
 - Для main action выбирается один неиспользованный представитель.
-- Он может действовать в текущем или одном соседнем районе; если представитель находится вдоль Market Street, он также может действовать в любом другом районе базовой Market Street Network (Noe Valley, Mission, Civic Center, SoMa, Financial District). После действия фигурка остаётся в районе назначения.
-- Raise Capital (+$3) использует те же правила перемещения, включая Market Street.
+- Он может действовать только в текущем или одном соседнем районе. Market Street не даёт дальних действий. После действия фигурка остаётся в районе назначения.
+- Raise Capital (+$3) использует те же правила соседства без исключений для Market Street.
 - Позиции сохраняются между раундами; в начале нового раунда сбрасывается только статус used.
 - Действия Bank / Bureau / Shopping Row / Club и начало строительства требуют физической доступности выбранного представителя.
-- Обычные улицы больше не являются отдельным игровым доступом. Rail/Port остаются свойствами карты; Market Street используется только для быстрого перемещения представителей.
+- Обычные улицы больше не являются отдельным игровым доступом. Rail/Port остаются свойствами карты; Market Street сохраняется как географическое свойство района и потенциальное требование проектов, но не как транспортный бонус.
 
 
 ## v0.25 mobile UX
@@ -46,7 +46,7 @@ https://rumplestiltskinbid.github.io/sf1906-prototype/
 - В каждом строительном районе ровно 5 building slots.
 - Golden Gate Park — отдельная проходная зона: строить нельзя, представитель может войти и затем выйти в соседний район.
 - Presidio и Twin Peaks закрыты и для строительства, и для перемещения.
-- Обычное движение представителей идёт по явному графу соседства; Market Street добавляет одно дальнее транспортное соединение между пятью исторически связанными районами.
+- Обычное движение представителей идёт по явному графу соседства; Market Street отмечает пять географически связанных районов, но не добавляет соединений для представителей или грузов.
 - Земля сохраняет шкалу $0–$4: дорогие центральные/северо-восточные районы, средние центрально-западные, дешёвые южные/западные; Outer Sunset стартует с $0.
 - Карта переведена в интерактивный SVG: районы кликабельны, legal destinations подсвечиваются, а workers/buildings рисуются поверх поля.
 - Легенда оставлена на поле для тестирования ощущения физической настольной карты.
@@ -293,3 +293,13 @@ This isolated logistics patch adds **one rule** to the original v0.44 truck deli
 - Mobile portrait and landscape use a compact route dock with optional floating controls for extra pickup and early unloading, preserving the map.
 - **No Ferry Building, Gas House Cove, Mare Island export, trips, new cards or office changes in this patch.**
 - The file tests/multisource-l1.e2e.spec.mjs is included in Playwright testMatch and therefore in the GitHub Actions CI job.
+
+## v0.44-L2 — Local representatives; retire Streetcar Depot (2026-10-15)
+
+- Removed the **Market Street teleport** rule: a representative's main action (including Raise Capital, construction, Bank/Bureau/Shopping/Club) must target the current or one **normally adjacent** district. Its final position persists. Freight adjacency, logistics, Golden Gate Park movement, closed Presidio/Twin Peaks and the three-worker economy remain unchanged.
+- Market Street stays **only a geographic characteristic** of Noe Valley, Mission, Civic Center, SoMa and Financial District for potential location requirements in future projects. **No active project currently requires Market Street**; this update adds no new project or access rule.
+- Removed **«Трамвайное расширение и депо» / streetcar** from the active project catalog, starter draft and market/deck pools. New buildings of this type are blocked even for crafted stale saved portfolios.
+- Existing saves: already started or completed streetcar constructions remain in place with their original historic recipe, Prestige and Land Value effect; they can be completed normally. Unbuilt streetcar cards in market, hand and starting draft are replaced **using remaining existing deck cards** (if no cards remain, the position is cleared); market claims/bids tied to replaced cards are canceled without affecting other bids. Other buildings, incomes, capital and saved worker positions are preserved.
+- The game-state schema remains `0.44`. The visible UI/build label and asset cache-bust are `v0.44-L2`.
+- Research **R06 «Электрификация городских железных дорог»** is **under redesign**, not implemented; it no longer unlocks travel along Market Street or silently removes geographic building requirements. No other research or partner card is added.
+- QA: core tests, browser E2E, legacy save migration and portrait/landscape mobile movement/market tests are required before release.

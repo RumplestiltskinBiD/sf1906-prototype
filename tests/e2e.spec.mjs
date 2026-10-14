@@ -120,7 +120,7 @@ test('portrait mobile object strip keeps building type color accents',async({pag
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.44-L1');
+  await expect(page.locator('.version-badge')).toHaveText('v0.44-L2');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -215,7 +215,7 @@ test('v0.30a save migrates to v0.44 without losing player state, street cleanup 
   expect(saved.districts.sunset.roadAccess).toBe(true);
 });
 
-test('Market Street performs a real long representative move from Noe Valley to Financial District',async({page})=>{
+test('Market Street cannot teleport worker from Noe Valley to Financial District',async({page})=>{
   const s=makeDevState();
   const w=s.players[0].workers[0];
   w.districtId='noe';
@@ -224,10 +224,12 @@ test('Market Street performs a real long representative move from Noe Valley to 
   await page.locator('[data-worker-token="'+w.id+'"]').click();
   await page.locator('#actionRaiseCapital').click();
   const financial=page.locator('[data-district="financial"]');
-  await expect(financial).toHaveClass(/move-target/);
-  await financial.click();
+  await expect(financial).not.toHaveClass(/move-target/);
+  const mission=page.locator('[data-district="mission"]');
+  await expect(mission).toHaveClass(/move-target/);
+  await mission.click();
   const saved=await stored(page);
-  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('financial');
+  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('mission');
   expect(saved.players[0].capital).toBe(53);
 });
 
@@ -1088,7 +1090,7 @@ test('wide landscape phone remains mobile at 932x430 without page overflow',asyn
   expect(layout.strip).not.toBe('none');
 });
 
-test('exhaustive worker highlighting matches adjacency plus Market Street',async({page})=>{
+test('exhaustive worker highlighting matches physical adjacency only',async({page})=>{
   const adjacency={
     presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
     marina:['presidio','pacific','northbeach'],
@@ -1123,9 +1125,7 @@ test('exhaustive worker highlighting matches adjacency plus Market Street',async
     await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
     await page.reload();
     await page.locator('#actionRaiseCapital').click();
-    const market=new Set(['noe','mission','civic','soma','financial']);
     const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
-    if(market.has(from))for(const id of market)expected.add(id);
     for(const id of Object.keys(adjacency)){
       const district=page.locator('[data-district="'+id+'"]');
       if(expected.has(id)){
