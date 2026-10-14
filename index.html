@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — v0.44-L1 Multi-Source Logistics</title>
-  <link rel="stylesheet" href="./styles.css?v=044l1-logistics" />
+  <title>San Francisco 1906 — v0.44-L2 Local Workers</title>
+  <link rel="stylesheet" href="./styles.css?v=044l2-movement" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.44-L1</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.44-L2</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 6</strong></div>
@@ -82,7 +82,7 @@
           <div>
             <div class="eyebrow">ФАЗА РАЗВИТИЯ</div>
             <h2>Город</h2>
-            <p>Каждая активация: выберите 1 из 3 представителей. Главное действие выполняется в текущем, соседнем районе или через Market Street между Noe Valley, Mission, Civic Center, SoMa и Financial District. Позиции сохраняются между раундами.</p>
+            <p>Каждая активация: выберите 1 из 3 представителей. Главное действие выполняется только в текущем или соседнем районе. Market Street не предоставляет дополнительных перемещений. Позиции сохраняются между раундами.</p>
           </div>
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
@@ -183,6 +183,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=044l1-logistics"></script>
+<script type="module" src="./app.js?v=044l2-movement"></script>
 </body>
 </html>
