@@ -215,7 +215,7 @@ test('v0.30a save migrates to v0.44 without losing player state, street cleanup 
   expect(saved.districts.sunset.roadAccess).toBe(true);
 });
 
-test('Market Street performs a real long representative move from Noe Valley to Financial District',async({page})=>{
+test('Market Street cannot teleport worker from Noe Valley to Financial District',async({page})=>{
   const s=makeDevState();
   const w=s.players[0].workers[0];
   w.districtId='noe';
@@ -224,10 +224,12 @@ test('Market Street performs a real long representative move from Noe Valley to 
   await page.locator('[data-worker-token="'+w.id+'"]').click();
   await page.locator('#actionRaiseCapital').click();
   const financial=page.locator('[data-district="financial"]');
-  await expect(financial).toHaveClass(/move-target/);
-  await financial.click();
+  await expect(financial).not.toHaveClass(/move-target/);
+  const mission=page.locator('[data-district="mission"]');
+  await expect(mission).toHaveClass(/move-target/);
+  await mission.click();
   const saved=await stored(page);
-  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('financial');
+  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('mission');
   expect(saved.players[0].capital).toBe(53);
 });
 
