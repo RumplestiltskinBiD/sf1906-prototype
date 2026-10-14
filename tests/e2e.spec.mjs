@@ -1090,7 +1090,7 @@ test('wide landscape phone remains mobile at 932x430 without page overflow',asyn
   expect(layout.strip).not.toBe('none');
 });
 
-test('exhaustive worker highlighting matches adjacency plus Market Street',async({page})=>{
+test('exhaustive worker highlighting matches physical adjacency only',async({page})=>{
   const adjacency={
     presidio:['outerrichmond','innerrichmond','western','pacific','marina'],
     marina:['presidio','pacific','northbeach'],
@@ -1125,9 +1125,7 @@ test('exhaustive worker highlighting matches adjacency plus Market Street',async
     await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
     await page.reload();
     await page.locator('#actionRaiseCapital').click();
-    const market=new Set(['noe','mission','civic','soma','financial']);
     const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
-    if(market.has(from))for(const id of market)expected.add(id);
     for(const id of Object.keys(adjacency)){
       const district=page.locator('[data-district="'+id+'"]');
       if(expected.has(id)){
