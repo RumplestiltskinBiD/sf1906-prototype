@@ -33,6 +33,49 @@ let lastSavedSnapshot=JSON.stringify(state);
 let lastSavedFingerprint=gameplayFingerprint(state);
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
+
+/** Remove obsolete unbuilt streetcar cards without destroying purchased buildings.
+ * Replacements come from the already shuffled deck: no additional cards minted.
+ * Completed/in-progress legacy sites remain in saves via RETIRED_PROJECTS.
+ */
+function retireStreetcarCardsInSave(parsed){
+  const obsolete=id=>id==='streetcar';
+  parsed.deck=(parsed.deck||[]).filter(c=>!obsolete(c?.id));
+  const nextCard=()=>parsed.deck.length?parsed.deck.shift():null;
+  const newMarketSlots=new Set();
+  parsed.market=(parsed.market||[]).map((m,i)=>{
+    if(!m||!obsolete(m.id))return m;
+    newMarketSlots.add(i);
+    const next=nextCard();
+    return next?{...next,age:0,discount:0,claims:[],bids:{},result:null,sold:false}:null;
+  });
+  parsed.starterDraftHands=(parsed.starterDraftHands||[]).map(hand=>{
+    const out=(hand||[]).filter(c=>!obsolete(c?.id));
+    while(out.length<(hand||[]).length&&parsed.deck.length)out.push(nextCard());
+    return out;
+  });
+  const allDraftIds=new Set(parsed.starterDraftHands.flatMap(h=>h.map(c=>c.uid)));
+  parsed.draftSelection=(parsed.draftSelection||[]).filter(uid=>allDraftIds.has(uid));
+  parsed.players.forEach(p=>{
+    p.portfolio=(p.portfolio||[]).flatMap(id=>{
+      if(!obsolete(id))return [id];
+      const substitute=nextCard();
+      return substitute?[substitute.id]:[];
+    });
+  });
+  if(newMarketSlots.size){
+    const oldQueue=parsed.bidQueue||[],cursor=parsed.bidCursor||0;
+    parsed.bidCursor=oldQueue.slice(0,cursor).filter(q=>!newMarketSlots.has(q.slot)).length;
+    parsed.bidQueue=oldQueue.filter(q=>!newMarketSlots.has(q.slot));
+    if(parsed.phase==='bids'&&parsed.bidCursor>=parsed.bidQueue.length)parsed.phase='ready';
+    if(!parsed.market.some(m=>m?.uid===parsed.selectedMarketUid)){
+      const first=parsed.market.find(Boolean);
+      parsed.selectedMarketUid=first?.uid||null;
+      parsed.selectedProjectId=first?.id||null;
+    }
+  }
+  return newMarketSlots.size;
+}
 function loadState(){
 try{
 let raw=localStorage.getItem(STORAGE_KEY);
@@ -116,6 +159,7 @@ parsed.starterDiscards=parsed.starterDiscards||[];
 parsed.starterDraftPlayer=parsed.phase==='draft'?(parsed.starterDraftPlayer??0):null;
 parsed.draftSelection=parsed.draftSelection||[];
 parsed.draftRevealed=parsed.phase==='draft'?!!parsed.draftRevealed:false;
+retireStreetcarCardsInSave(parsed);
 parsed.selectedMarketUid=parsed.selectedMarketUid||parsed.market.find(m=>m&&m.id===parsed.selectedProjectId)?.uid||parsed.market.find(Boolean)?.uid||null;
 parsed.pendingConstruction=null;
 parsed.yearTransition=parsed.yearTransition||null;
@@ -1618,7 +1662,7 @@ $('#cancelWorkerAction').onclick=()=>{state.pendingWorkerAction=null;mobileConte
 }else if(pending){
 const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
 mode.className='construction-mode active';
-mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите район: текущий, соседний или доступный через Market Street. Подсветка учитывает Стоимость земли, ж/д, порт, пожарную защиту и клинику.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
+mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите текущий или соседний район. Market Street больше не даёт быстрого перемещения. Подсветка учитывает Стоимость земли, ж/д, порт, пожарную защиту и клинику.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
 $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
 }else if(state.developmentComplete){
 mode.className='construction-mode complete';
@@ -1847,8 +1891,8 @@ const statsHtml=d.buildable===false
 const riskPanelHtml=d.buildable===false?'':districtRiskPanelHtml(d.id);
 const soilClass=districtSoilClass(d.id);
 const soilLabel=soilClass==='poor'?'Неблагоприятный грунт':soilClass==='stable'?'Устойчивый грунт':'Обычные / смешанные грунты';
-const marketStreetNote=districtHasMarketStreet(d.id)?'<div class="access-source"><b>Market Street:</b> район входит в базовую сеть быстрого перемещения представителей.</div>':'';
-panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}${marketStreetNote}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Грунт и характер района</div><div class="detail-text"><b>${soilLabel}</b> · ${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.43A:</b> обычные улицы больше не являются отдельным игровым доступом. Market Street связывает Noe Valley, Mission, Civic Center, SoMa и Financial District для перемещения представителей; Rail/Port заданы картой.</div>`;
+const marketStreetNote=districtHasMarketStreet(d.id)?'<div class="access-source"><b>Market Street:</b> географическая отметка магистрали для требований будущих проектов; не ускоряет передвижение представителей.</div>':'';
+panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}${marketStreetNote}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Грунт и характер района</div><div class="detail-text"><b>${soilLabel}</b> · ${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.43A:</b> обычные улицы больше не являются отдельным игровым доступом. Market Street — географическое свойство, а не транспортная связь представителей; Rail/Port заданы картой.</div>`;
 const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
 const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
 $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
@@ -1882,7 +1926,7 @@ const occupant=actionSpaceOccupant(state,con.id);
 const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
-actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Трамвайное расширение повысило стоимость земли на $1. Подключение к Market Street появится через исследование электрификации.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
+actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
