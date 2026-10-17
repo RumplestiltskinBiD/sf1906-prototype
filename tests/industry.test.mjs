@@ -111,8 +111,8 @@ test('cannery adds $1 per completed home in its own district, max $3, any owner'
     building('H5',0,'tenement','soma')
   ];
   assert.equal(G.canneryIncomeBonus(s,s.constructions[0]),3);
-  assert.equal(G.buildingIncome(s,0),1+3+3+2,'cannery + homes with their normal income');
-  assert.equal(G.roundIncome(s,0),3+(1+3+3+2));
+  assert.equal(G.buildingIncome(s,0),1+3+3+2+2,'cannery + homes with their normal income');
+  assert.equal(G.roundIncome(s,0),3+(1+3+3+2+2));
   s.constructions.splice(1,4);
   assert.equal(G.canneryIncomeBonus(s,s.constructions[0]),0,'adjacent housing excluded');
   assert.equal(G.buildingIncome(s,0),1+2);
