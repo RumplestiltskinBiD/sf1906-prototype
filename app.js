@@ -5,7 +5,7 @@ projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCi
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
-constructionProgress,completedWarehouses,warehouseInventory,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
+constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
@@ -541,6 +541,7 @@ function deliveryPickupSources(){
   const sources=[...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
     ...NEUTRAL_MATERIAL_SUPPLIERS.map(n=>({kind:'supplier',id:n.id})),
     ...completedWarehouses(state,d.playerId).map(w=>({kind:'warehouse',id:w.id})),
+    ...completedIndustrialProducers(state,d.playerId).map(p=>({kind:'industry',id:p.id})),
     {kind:'freight-yard',id:FREIGHT_YARD.id}];
   return sources.filter(src=>{
     const info=deliverySourceInfo(state,d.playerId,src);
@@ -764,8 +765,10 @@ let html=(mobile&&(step==='route'||step==='unload'))?'':'<div class="delivery-he
 if(step==='source'){
 if(mobile&&!deliveryDraft.listOpen){
 const availableNodes=LOGISTICS_NODES.filter(n=>(state.logisticsSupply?.[n.id]||[]).length).length;
-const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length,yard=freightYardInventory(state,pid);
-html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д, исторический поставщик, свой склад или Грузовой двор.</span><small>'+availableNodes+' дешёвых узлов · '+NEUTRAL_MATERIAL_SUPPLIERS.length+' постоянных поставщика · '+availableWarehouses+' складов</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
+const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length,
+      availablePlants=completedIndustrialProducers(state,pid).filter(p=>industrialInventory(p).length).length,
+      yard=freightYardInventory(state,pid);
+html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д, поставщик, свой склад, завод или Грузовой двор.</span><small>'+availableNodes+' дешёвых узлов · '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика · '+availableWarehouses+' складов · '+availablePlants+' заводов с запасом</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
 }else{
 html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
 if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
@@ -778,6 +781,8 @@ for(const supplier of NEUTRAL_MATERIAL_SUPPLIERS){
 html+='<button class="delivery-source-card neutral-supplier-source" data-ds-supplier="'+supplier.id+'"><b>'+supplier.shortName+'</b><span>'+districtById(supplier.districtId)?.name+' · '+supplier.historical+'</span><small>'+materialLabel(supplier.resource)+' всегда доступен · $'+supplier.unitPrice+' / ед.</small></button>';
 }
 for(const w of completedWarehouses(state,pid)){const inv=warehouseInventory(w),cnt=deliveryCounts(inv);html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+WAREHOUSE_STORAGE_CAPACITY+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
+for(const plant of completedIndustrialProducers(state,pid)){const inv=industrialInventory(plant),cnt=deliveryCounts(inv),capacity=INDUSTRIAL_PRODUCTION[plant.projectId].capacity;
+html+='<button class="delivery-source-card warehouse-source" data-ds-plant="'+plant.id+'" '+(inv.length?'':'disabled')+'><b>'+projectById(plant.projectId).name+'</b><span>'+districtById(plant.districtId)?.name+' · '+inv.length+'/'+capacity+'</span><small>Собственное производство · Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
 const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);
 html+='<button class="delivery-source-card freight-yard-source" data-ds-yard="'+FREIGHT_YARD.id+'" '+(yi.length?'':'disabled')+'><b>Грузовой двор</b><span>Western Addition · ваша секция '+yi.length+'/2</span><small>Д '+(yc.Lumber||0)+' · К '+(yc.Masonry||0)+' · С '+(yc.Steel||0)+' · уже оплачено</small></button></div>';
 }
@@ -857,8 +862,9 @@ $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOp
 $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
 $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
 $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'supplier',id:b.dataset.dsSupplier}));
-$$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
-$$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
+$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
+$('[data-ds-plant]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'industry',id:b.dataset.dsPlant}));
+$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
 $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
 $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
 $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
@@ -1759,17 +1765,20 @@ list.forEach((con,i)=>{
 const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
 const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
 const complete=con.status==='complete',isWarehouse=complete&&con.projectId==='warehouse';
+const isProducer=complete&&!!INDUSTRIAL_PRODUCTION[con.projectId];
 const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
 const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
+const plantSource=deliveryMode?.step==='source'&&isProducer&&con.playerId===deliveryMode.playerId&&industrialInventory(con).length?` data-delivery-industry="${con.id}"`:``;
 const dropAvailable=deliveryMode?.step==='unload'&&isMobile()&&deliveryTargetAcceptsAny(con);
 const dropAttr=dropAvailable?` data-delivery-drop-target="${con.id}"`:``;
-const interactionHit=whSource
+const interactionHit=whSource||plantSource
 ?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>'
 :dropAvailable?'<rect class="construction-drop-hit" x="-46" y="-34" width="92" height="68" rx="17"/>':'';
 let content='';
-if(isWarehouse){
-const inv=warehouseInventory(con),cnt=deliveryCounts(inv);
-content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">СКЛ ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
+if(isWarehouse||isProducer){
+const inv=isWarehouse?warehouseInventory(con):industrialInventory(con),cnt=deliveryCounts(inv);
+const capacity=isWarehouse?WAREHOUSE_STORAGE_CAPACITY:INDUSTRIAL_PRODUCTION[con.projectId].capacity;
+content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
 const showNeed=!!deliveryMode&&!complete;
@@ -1779,9 +1788,9 @@ content=showNeed
 :`<rect x="-29" y="-16" width="58" height="32" rx="10"/>${projectSvgTypeStripe(pr,{x:-27,y:-15,width:54,height:5})}<text y="4">${label}</text>`;
 }
 const title=complete
-?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
+?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:isProducer?`${pl.name}: ${pr.name} · запас ${materialCountText(industrialInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
 :`${pl.name}: ${pr.name} · ${prog.delivered}/${prog.required} · ${missingConstructionMaterials(con).join(', ')}`;
-html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
+html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource||plantSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${plantSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
 });
 });
 layer.innerHTML=html;
@@ -1793,7 +1802,8 @@ if(deliveryDraft)return;
 e.stopPropagation();
 focusConstruction(g.dataset.constructionToken);
 });
-$$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
+$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
+$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
 }
 renderDeliveryRouteOverlay();
 }
@@ -1930,7 +1940,7 @@ actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архи
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>Престиж +${pr.prestige||0} VP</b> · Доход +$${pr.income||0} / раунд · ${pr.effect}</div>${wh}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${pr.prestige||0} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)} / год · ${pr.effect}</div>${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const warehouses=completedWarehouses(state,p.id,con.districtId);
