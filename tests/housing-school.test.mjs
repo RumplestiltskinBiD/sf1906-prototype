@@ -91,9 +91,9 @@ test('school pays 2-4 VP, including neighboring rival homes, once at completion'
   for(const [homes,expectedVp] of [[0,2],[1,3],[2,4],[3,4]]){
     const s=state();
     const possible=[
-      build('H1',1,'tenement','noe'),
+      build('H1',1,'tenement','mission'),
       build('H2',2,'luxury','civic'),
-      build('H3',0,'speculative','noe')
+      build('H3',0,'speculative','mission')
     ];
     s.constructions.push(...possible.slice(0,homes));
     const school=build('S',0,'school','civic','under-construction',['Lumber','Masonry','Masonry']);
