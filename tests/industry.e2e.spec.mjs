@@ -75,3 +75,48 @@ for(const viewport of [
     expect(errors).toEqual([]);
   });
 }
+
+
+for(const viewport of [
+  {width:390,height:844},
+  {width:932,height:430},
+  {width:1366,height:768}
+]){
+  test('rival factory purchase prices and tappable sources at '+viewport.width+'x'+viewport.height,async({page})=>{
+    await page.setViewportSize(viewport);
+    const s=game();
+    s.developmentPlayer=1; // Rival of the owner of BR/FO
+    await seed(page,s);
+    const errors=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto('/');
+    const mobile=viewport.width<=640||(viewport.height<=500&&viewport.width<=960);
+    await page.locator(mobile?'[data-mobile-action="delivery"]':'#actionDelivery').click();
+    if(mobile)await page.locator('#deliveryShowSourceList').click();
+    const brick=page.locator('[data-ds-plant="BR"]');
+    await expect(brick).toBeVisible();
+    await expect(brick).toContainText('Синий'); // Owned by P1 while P2 buys
+    await expect(brick).toContainText('$1/Masonry');
+    await expect(page.locator('[data-ds-plant="FO"]')).toContainText('$2/Steel');
+    await expect(page.locator('[data-delivery-industry="BR"]')).toHaveCount(1);
+    await brick.click();
+    await page.locator('[data-hauler="standard"]').click();
+    await page.locator('[data-load="Masonry"]').click();
+    await page.locator('[data-load="Masonry"]').click();
+    await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $2');
+    await expect(page.locator('.cargo-box')).toContainText('2/3');
+    expect(errors).toEqual([]);
+  });
+}
+
+test('owner buying two bricks sees pair discount in delivery preview',async({page})=>{
+  const s=game();await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-ds-plant="BR"]').click();
+  await page.locator('[data-hauler="standard"]').click();
+  await page.locator('[data-load="Masonry"]').click();
+  await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $1');
+  await page.locator('[data-load="Masonry"]').click();
+  await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $1');
+  await expect(page.locator('[data-load="Masonry"]')).toContainText('$0');
+});
