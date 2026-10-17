@@ -34,11 +34,11 @@ test('all new industrial cards display in market with correct colors and recipes
   for(let i=0;i<4;i++)s.market[i].id=['brickworks','woodworks','foundry','cannery'][i];
   await seed(page,s);await page.goto('/');
   const cards=page.locator('#projectMarket .project-card');
-  await expect(cards.filter({hasText:'Кирпичный завод'})).toBeVisible();
-  await expect(cards.filter({hasText:'Деревообрабатывающая фабрика'})).toBeVisible();
-  await expect(cards.filter({hasText:'Литейно-механический завод'})).toBeVisible();
-  await expect(cards.filter({hasText:'Консервный завод'})).toBeVisible();
-  await expect(cards.filter({hasText:'Консервный завод'})).toContainText('Доход');
+  await expect(cards.filter({hasText:'Кирпичный завод'}).first()).toBeVisible();
+  await expect(cards.filter({hasText:'Деревообрабатывающая фабрика'}).first()).toBeVisible();
+  await expect(cards.filter({hasText:'Литейно-механический завод'}).first()).toBeVisible();
+  await expect(cards.filter({hasText:'Консервный завод'}).first()).toBeVisible();
+  await expect(cards.filter({hasText:'Консервный завод'}).first()).toContainText('Доход');
   const industrialCards=cards.locator('.card-stripe');
   await expect(industrialCards).toHaveCount(5);
 });
