@@ -17,7 +17,7 @@ export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 3;
-export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,streetcar:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
 export const POOR_GROUND_DISTRICTS = Object.freeze(['marina','financial','soma','mission','missionbay']);
@@ -107,6 +107,8 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'tenement',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +2 · много жителей · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нет дополнительных ограничений.'},
   {prestige:0,income:3,id:'speculative',types:["Жилое"],risk:{earthquake:1,fire:1},name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Стоимость земли ≤2',effect:'Доход +3 · очень много жителей · высокий риск',landMax:2,benefit:'Доход +3 / раунд · Престиж 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Стоимость земли ≤2. Высокий риск в будущей катастрофе.'},
   {prestige:3,income:3,id:'luxury',types:["Жилое"],risk:{earthquake:0,fire:0},name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3 · Престиж +3',landMin:3,benefit:'Доход +3 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
+  {prestige:2,income:1,id:'cottages',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Пригородные викторианские коттеджи',type:'Жильё',open:3,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1 / год · +2 VP · при завершении первым в районе +$2',benefit:'Доход +$1 / год · +2 VP · освоение нового района +$2',actionName:'Освоение территории',actionText:'При завершении в районе без других завершённых зданий любых игроков получите +$2 один раз.',limits:'Бонус проверяется в момент завершения; незавершённые стройки не учитываются, премия не повторяется.'},
+  {prestige:2,income:4,id:'brickapartments',types:["Жилое"],risk:{earthquake:2,fire:0},name:'Кирпичный многоквартирный дом',type:'Жильё',open:4,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Доход +$4 / год · +2 VP · уязвимость района У +2',benefit:'Доход +$4 / год · +2 VP · капитальная застройка с высоким риском У',actionName:'—',actionText:'Отдельного действия нет. Материалы (5) требуют склада в том же районе для завершения.',limits:'Стоимость земли 2+. У +2 и П 0 изменяют риск всего района. 5 материалов: стандартное ограничение стройплощадки 3.'},
   {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Престиж +1',landMin:1,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации.',limits:'Нужна незавершённая стройка · 1 использование / здание / раунд · при чужом использовании $1 получает владелец.'},
   {prestige:3,income:4,id:'hotel',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4 · Престиж +3',landMin:3,benefit:'Доход +4 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
   {prestige:1,income:2,id:'bank',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Банковский кредит» · Престиж +1',landMin:2,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
@@ -123,6 +125,7 @@ export const PROJECTS = [
   {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
   {prestige:3,income:0,id:'clinic',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доступ к клинике (район + соседний район) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Доступ к клинике действует в своём и соседнем районе.'},
+  {prestige:2,income:0,id:'school',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Муниципальная начальная школа',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Стоимость земли района +1 · +2 VP и до +2 VP за завершённое жильё в этом и соседних районах',benefit:'2–4 VP однократно · Стоимость земли района +1',actionName:'Развитый жилой квартал',actionText:'При завершении школы получите +1 VP за каждое завершённое жилое здание в этом или соседних районах (любого владельца), максимум +2 VP.',limits:'Бонус школы единовременный, только при завершении; будущие жилые здания не дают VP задним числом.'},
   {prestige:3,income:0,id:'publicworks',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Полные воды / газа / ремонта правила будут добавлены позже.'},
 ]
 
@@ -493,6 +496,7 @@ export function createInitialState({rng=Math.random}={}){
   return {
     version:'0.44',
     industrialExpansionV1:true,
+    housingSchoolExpansionV1:true,
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -1063,18 +1067,42 @@ export function completeConstruction(state,construction){
     return {ok:false,reason:'warehouse-materials'};
   }
   const riskBefore=districtRisk(state,construction.districtId);
+  // Count completed buildings BEFORE this project flips to complete. Pending
+  // projects do not block cottages' "first completed" district bonus.
+  const completedInDistrictBefore=(state.constructions||[]).filter(c=>
+    c!==construction&&c.status==='complete'&&c.districtId===construction.districtId).length;
+  // School receives one bonus VP per completed home in own/adjacent district,
+  // from ANY player, up to two; resolve on school completion only.
+  const schoolHousingVp=project.id==='school'
+    ?Math.min(2,(state.constructions||[]).filter(c=>c.status==='complete'
+        &&(c.districtId===construction.districtId||districtNeighbors(construction.districtId).includes(c.districtId))
+        &&projectTypes(c.projectId).includes('Жилое')).length)
+    :0;
   construction.materialsDelivered=[...(project.materials||[])];
   construction.status='complete';
   construction.completedRound=state.round;
   if(project.id==='warehouse'&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
-  const vp=project.prestige||0;
+  const vp=(project.prestige||0)+schoolHousingVp;
   if(vp){
     player.prestige=(player.prestige||0)+vp;
     logEvent(state,`${player.name} завершил «${project.name}» в ${districtById(construction.districtId).name} и получает +${vp} Prestige VP.`,'good');
   }else{
     logEvent(state,`${player.name} завершил «${project.name}» в ${districtById(construction.districtId).name}.`,'good');
+  }
+
+  // The first completed building in a district can be suburban cottages.
+  // Award once, on THIS project's completion; a rival's existing building
+  // prevents the bonus just as the owner's existing building does.
+  let cottageBonus=0;
+  if(project.id==='cottages'&&completedInDistrictBefore===0){
+    cottageBonus=2;
+    player.capital+=cottageBonus;
+    logEvent(state,`${player.name}: первые коттеджи в ${districtById(construction.districtId).name} — +$2 за освоение территории.`,'good');
+  }
+  if(schoolHousingVp){
+    logEvent(state,`${player.name}: школа получает +${schoolHousingVp} VP за завершённое жильё рядом.`,'good');
   }
 
   const roadOpened=false;
@@ -1106,7 +1134,7 @@ export function completeConstruction(state,construction){
   if(riskBefore&&riskAfter&&(riskBefore.earthquake.raw!==riskAfter.earthquake.raw||riskBefore.fire.raw!==riskAfter.fire.raw)){
     logEvent(state,`Риск ${districtById(construction.districtId).name}: У ${riskBefore.earthquake.raw}→${riskAfter.earthquake.raw} · П ${riskBefore.fire.raw}→${riskAfter.fire.raw}.`,'accent');
   }
-  return {ok:true,prestige:vp,landChange,roadOpened,warehouseUse:check.warehouseUse||0};
+  return {ok:true,prestige:vp,schoolHousingVp,cottageBonus,landChange,roadOpened,warehouseUse:check.warehouseUse||0};
 }
 
 export function completeConstructionFromStorage(state,constructionId){
