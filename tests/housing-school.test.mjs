@@ -71,10 +71,10 @@ test('brick apartments require warehouse logistics for five materials, risk +2 t
   const s=state(),district='civic';
   const site=build('BRICK',0,'brickapartments',district,'under-construction',['Lumber','Masonry','Steel']);
   s.constructions.push(site);
-  const before=G.districtRisk(s,district);
   assert.equal(G.canCompleteConstruction(s,'BRICK').ok,false,'two more resources need local storage');
   s.constructions.push(build('WAREHOUSE',0,'warehouse',district));
   s.constructions[1].warehouseInventory=['Masonry','Steel'];
+  const before=G.districtRisk(s,district); // Include the existing warehouse's P+1 in baseline.
   assert.equal(G.canCompleteConstruction(s,'BRICK').ok,true);
   const done=G.completeConstructionFromStorage(s,'BRICK');
   assert.equal(done.ok,true,done.reason);
