@@ -105,7 +105,7 @@ test('school pays 2-4 VP, including neighboring rival homes, once at completion'
     assert.equal(s.players[0].prestige,expectedVp);
     assert.equal(school.schoolHousingVpAwarded,expectedVp-2);
     assert.equal(s.districts.civic.landValue,Math.min(6,oldLand+1));
-    assert.equal(G.buildingIncome(s,0),0,'school itself produces no income');
+    assert.equal(G.projectById('school').income,0,'school itself produces no income');
     s.constructions.push(build('LATE',1,'tenement','civic'));
     assert.equal(s.players[0].prestige,expectedVp,'no retroactive VP');
   }
