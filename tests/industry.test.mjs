@@ -56,7 +56,7 @@ test('industrial output replenishes to cap, does not pile up, and belongs to own
   assert.deepEqual(G.industrialInventory(s.constructions[3]),[],'unfinished does not generate');
 });
 
-test('industrial output can be hauled for free as raw material, but normal route costs apply',()=>{
+test('own brickworks gives a $1 bundle price for two Masonry but still pays hauler',()=>{
   const s=state();
   s.constructions=[
     building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
@@ -67,11 +67,11 @@ test('industrial output can be hauled for free as raw material, but normal route
     drops:[{kind:'warehouse',id:'WH',routeIndex:0,materials:['Masonry','Masonry']}]};
   const check=G.validateDeliveryPlan(s,plan);
   assert.equal(check.ok,true,check.reason);
-  assert.equal(check.cost.materialCost,0,'own production cannot be purchased again');
+  assert.equal(check.cost.materialCost,1,'owner buys two Masonry in one pickup for $1');
   assert.equal(check.cost.haulerCost,3,'standard hauler remains required');
   const paid=G.executeDelivery(s,plan);
   assert.equal(paid.ok,true);
-  assert.equal(s.players[0].capital,97);
+  assert.equal(s.players[0].capital,96,'no commission on own bricks, $1 materials + $3 carrier');
   assert.deepEqual(G.industrialInventory(s.constructions[0]),[]);
   assert.deepEqual(G.warehouseInventory(s.constructions[1]),['Masonry','Masonry']);
   assert.equal(G.replenishIndustrialProduction(s).length,1);
@@ -129,4 +129,116 @@ test('industrial inventory and annual bonus flags survive serializing a save',()
   assert.deepEqual(G.industrialInventory(saved.constructions[0]),['Masonry']);
   assert.equal(saved.constructions[1].woodworkingRewardRound,3);
   assert.equal(G.deliverySourceInfo(saved,0,{kind:'industry',id:'BR'}).inventory.length,1);
+});
+
+
+test('brickworks sale to rival yields $1 total commission for TWO Masonry in same pickup',()=>{
+  const s=state();
+  s.developmentPlayer=1;
+  s.constructions=[
+    building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
+    building('WH',1,'warehouse','soma')
+  ];
+  const src={kind:'industry',id:'BR'};
+  assert.equal(G.deliverySourceInfo(s,1,src).ownerId,0);
+  assert.equal(G.deliveryMaterialCost(s,src,['Masonry','Masonry'],1).cost,2);
+  assert.equal(G.deliveryMaterialCost(s,src,['Masonry','Masonry'],1).ownerPayment,1);
+  const plan={playerId:1,source:src,haulerId:'standard',
+    cargo:['Masonry','Masonry'],route:['soma'],drops:[
+      {kind:'warehouse',id:'WH',routeIndex:0,materials:['Masonry','Masonry']}
+    ]};
+  const check=G.validateDeliveryPlan(s,plan);
+  assert.equal(check.ok,true,check.reason);
+  assert.equal(check.cost.materialCost,2);
+  assert.deepEqual(check.cost.industrySales,[{ownerId:0,amount:1}]);
+  assert.equal(G.executeDelivery(s,plan).ok,true);
+  assert.equal(s.players[1].capital,95,'buyer pays $2 for bricks + $3 standard hauler');
+  assert.equal(s.players[0].capital,101,'owner receives exactly $1, not $2');
+  assert.deepEqual(G.industrialInventory(s.constructions[0]),[]);
+  assert.deepEqual(G.warehouseInventory(s.constructions[1]),['Masonry','Masonry']);
+});
+
+test('brickworks rival buying one Masonry receives normal price and owner earns $1',()=>{
+  const s=state();s.developmentPlayer=1;
+  s.constructions=[building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
+    building('WH',1,'warehouse','soma')];
+  const plan={playerId:1,source:{kind:'industry',id:'BR'},haulerId:'standard',
+    cargo:['Masonry'],route:['soma'],
+    drops:[{kind:'warehouse',id:'WH',materials:['Masonry'],routeIndex:0}]};
+  const r=G.executeDelivery(s,plan);
+  assert.equal(r.ok,true);
+  assert.equal(r.cost.materialCost,1);
+  assert.equal(s.players[0].capital,101);
+  assert.equal(s.players[1].capital,96);
+  assert.deepEqual(G.industrialInventory(s.constructions[0]),['Masonry']);
+});
+
+test('own single Masonry costs standard $1, separate purchases do not unlock pair discount',()=>{
+  const s=state();
+  s.constructions=[building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
+    building('WH',0,'warehouse','soma')];
+  const src={kind:'industry',id:'BR'};
+  assert.equal(G.deliveryMaterialCost(s,src,['Masonry'],0).cost,1);
+  assert.equal(G.deliveryMaterialCost(s,src,['Masonry','Masonry'],0).cost,1);
+  assert.equal(G.deliveryMaterialCost(s,src,['Masonry'],0).ownerPayment,0);
+  const plan={playerId:0,source:src,haulerId:'standard',
+    cargo:['Masonry'],route:['soma'],
+    drops:[{kind:'warehouse',id:'WH',materials:['Masonry'],routeIndex:0}]};
+  assert.equal(G.executeDelivery(s,plan).ok,true);
+  assert.equal(s.players[0].capital,96,'own single brick costs 1, standard hauler 3');
+  assert.equal(G.industrialInventory(s.constructions[0]).length,1);
+});
+
+test('foundry Steel sells at $2 to rivals ($1 commission), $1 to owner (no commission)',()=>{
+  for(const buyer of [0,1]){
+    const s=state();s.developmentPlayer=buyer;
+    s.constructions=[building('FO',0,'foundry','soma',{stock:['Steel']}),
+      building('WH',buyer,'warehouse','soma')];
+    const src={kind:'industry',id:'FO'};
+    const offer=G.deliveryMaterialCost(s,src,['Steel'],buyer);
+    assert.equal(offer.cost,buyer===0?1:2);
+    assert.equal(offer.ownerPayment,buyer===0?0:1);
+    const plan={playerId:buyer,source:src,haulerId:'standard',
+      cargo:['Steel'],route:['soma'],
+      drops:[{kind:'warehouse',id:'WH',materials:['Steel'],routeIndex:0}]};
+    assert.equal(G.executeDelivery(s,plan).ok,true);
+    assert.equal(s.players[buyer].capital,100-3-(buyer===0?1:2)+(buyer===0?0:0));
+    if(buyer===1)assert.equal(s.players[0].capital,101);
+    else assert.equal(s.players[0].capital,96,'no self-sale commission');
+    assert.deepEqual(G.industrialInventory(s.constructions[0]),[]);
+  }
+});
+
+test('invalid or unaffordable factory deliveries do not pay commission or consume inventory',()=>{
+  const s=state();s.developmentPlayer=1;s.players[1].capital=1;
+  s.constructions=[building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
+    building('WH',1,'warehouse','soma')];
+  const plan={playerId:1,source:{kind:'industry',id:'BR'},haulerId:'standard',
+    cargo:['Masonry','Masonry'],route:['soma'],
+    drops:[{kind:'warehouse',id:'WH',routeIndex:0,materials:['Masonry','Masonry']}]};
+  assert.equal(G.executeDelivery(s,plan).ok,false);
+  assert.equal(s.players[0].capital,100);
+  assert.deepEqual(G.industrialInventory(s.constructions[0]),['Masonry','Masonry']);
+});
+
+test('factory purchase with additional source pickup still uses same material pricing and commission',()=>{
+  const s=state();s.developmentPlayer=1;
+  s.constructions=[
+    building('BR',0,'brickworks','soma',{stock:['Masonry','Masonry']}),
+    building('WH',1,'warehouse','soma')
+  ];
+  const src={kind:'industry',id:'BR'};
+  const node=G.LOGISTICS_NODES.find(n=>n.districtId==='soma');
+  assert.ok(node);
+  s.logisticsSupply[node.id]=['Steel'];
+  const plan={playerId:1,source:{kind:'node',id:node.id},haulerId:'standard',
+    cargo:['Steel'],route:['soma'],
+    pickups:[{source:src,routeIndex:0,cargo:['Masonry','Masonry']}],
+    drops:[{kind:'warehouse',id:'WH',routeIndex:0,materials:['Steel','Masonry','Masonry']}]};
+  const result=G.executeDelivery(s,plan);
+  assert.equal(result.ok,true,result.reason);
+  assert.equal(result.cost.materialCost,4,'Steel $2 + two bricks $2');
+  assert.equal(result.cost.loadingCost,1,'extra loading fee still applies');
+  assert.equal(s.players[0].capital,101,'one sale, $1 commission');
+  assert.deepEqual(G.industrialInventory(s.constructions[0]),[]);
 });
