@@ -46,7 +46,7 @@ test('industrial output replenishes to cap, does not pile up, and belongs to own
     building('UNDER',0,'brickworks','soma',{status:'under-construction'})
   ];
   assert.equal(G.deliverySourceInfo(s,0,{kind:'industry',id:'BR'}).inventory.length,1);
-  assert.equal(G.deliverySourceInfo(s,1,{kind:'industry',id:'BR'}),null);
+  assert.equal(G.deliverySourceInfo(s,1,{kind:'industry',id:'BR'}).ownerId,0,'rival can now purchase plant output');
   assert.equal(G.deliverySourceInfo(s,0,{kind:'industry',id:'UNDER'}),null);
   assert.equal(G.deliverySourceInfo(s,0,{kind:'industry',id:'WORK'}),null);
   assert.equal(G.replenishIndustrialProduction(s).length,2);
