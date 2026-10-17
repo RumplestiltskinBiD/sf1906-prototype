@@ -791,7 +791,7 @@ const availableNodes=LOGISTICS_NODES.filter(n=>(state.logisticsSupply?.[n.id]||[
 const availableWarehouses=completedWarehouses(state,pid).filter(w=>warehouseInventory(w).length).length,
       availablePlants=completedIndustrialProducers(state,pid).filter(p=>industrialInventory(p).length).length,
       yard=freightYardInventory(state,pid);
-html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д, поставщик, свой склад, завод или Грузовой двор.</span><small>'+availableNodes+' дешёвых узлов · '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика · '+availableWarehouses+' складов · '+availablePlants+' заводов с запасом</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
+html+='<div class="delivery-map-prompt"><div><b>1. Выберите источник на карте</b><span>Порт, ж/д, исторический поставщик, свой склад, завод или Грузовой двор.</span><small>'+availableNodes+' дешёвых узлов · '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика · '+availableWarehouses+' складов · '+availablePlants+' заводов с запасом</small></div><button id="deliveryShowSourceList" class="ghost-btn">Список</button></div>';
 }else{
 html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
 if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
@@ -885,9 +885,9 @@ $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOp
 $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
 $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
 $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'supplier',id:b.dataset.dsSupplier}));
-$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
-$('[data-ds-plant]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'industry',id:b.dataset.dsPlant}));
-$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
+$$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
+$$('[data-ds-plant]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'industry',id:b.dataset.dsPlant}));
+$$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
 $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
 $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
 $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
@@ -1825,8 +1825,8 @@ if(deliveryDraft)return;
 e.stopPropagation();
 focusConstruction(g.dataset.constructionToken);
 });
-$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
-$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
+$$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
+$$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
 }
 renderDeliveryRouteOverlay();
 }
