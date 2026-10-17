@@ -113,6 +113,11 @@ export const PROJECTS = [
   {prestige:2,income:2,id:'club',types:["Бизнес","Торговое"],risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Престиж +2',landMin:2,benefit:'Доход +2 / раунд · Престиж +2',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние.',limits:'1 использование / здание / раунд · если использует соперник, его $1 получает владелец.'},
   {prestige:1,income:2,id:'warehouse',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · Хранение 5 · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · хранит до 5 ресурсов и снабжает стройки в этом районе',actionName:'—',actionText:'Может быть источником и точкой разгрузки Доставка.',limits:'Хранение 5 ресурсов.'},
   {prestige:0,income:5,id:'factory',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Доступ к ж/д или порту',accessAny:['rail','port'],effect:'Доход +5 · Стоимость земли −1',benefit:'Доход +5 / раунд · Престиж 0 · после завершения Стоимость земли района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Доступ к ж/д или порту. Стоимость земли не падает ниже 0.'},
+
+  {prestige:1,income:1,id:'brickworks',types:["Промышленное"],risk:{earthquake:1,fire:1},name:'Кирпичный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · производит до 2 Masonry при смене года; вывоз через обычную Доставку',benefit:'Доход +$1 / год · запас до 2 Masonry · +1 VP',actionName:'—',actionText:'С начала следующего года пополняет собственный запас до 2 Masonry. Материалы не поступают на стройку автоматически.',limits:'Запас на заводе максимум 2 Masonry; погрузка возможна только владельцу и оплачивается стандартная Доставка.'},
+  {prestige:1,income:2,id:'woodworks',types:["Промышленное"],risk:{earthquake:0,fire:2},name:'Деревообрабатывающая фабрика',type:'Промышленность',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · один раз в год +$2 при завершении собственного жилого здания в этом или соседнем районе',benefit:'Доход +$2 / год · строительная премия +$2 (раз в год) · +1 VP',actionName:'—',actionText:'Автоматически +$2 при завершении собственного жилого здания в районе фабрики или соседнем; 1 раз за год на фабрику.',limits:'Только новое завершённое Жилое здание владельца; бонус не начисляется задним числом.'},
+  {prestige:1,income:2,id:'foundry',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Литейно-механический завод',type:'Промышленность',open:6,materials:['Lumber','Masonry','Steel','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · производит до 1 Steel при смене года; вывоз через обычную Доставку',benefit:'Доход +$2 / год · запас до 1 Steel · +1 VP',actionName:'—',actionText:'С начала следующего года пополняет собственный запас до 1 Steel. Материалы не поступают на стройку автоматически.',limits:'Запас на заводе максимум 1 Steel; погрузка возможна только владельцу и оплачивается стандартная Доставка.'},
+  {prestige:1,income:1,id:'cannery',types:["Промышленное"],risk:{earthquake:0,fire:1},name:'Консервный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1; ещё +$1 за каждое завершённое Жилое здание в своём районе (максимум +$3)',benefit:'Доход +$1–4 / год (по жилой застройке) · +1 VP',actionName:'—',actionText:'Дополнительный доход пересчитывается ежегодно; учитываются завершённые жилые здания любых игроков в том же районе.',limits:'Максимум +$3 дополнительно за год; соседние районы не учитываются.'},
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли · Престиж +1',benefit:'Престиж +1 · Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · Престиж +1 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд · Престиж +1',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
   {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
@@ -927,6 +932,41 @@ export function completedWarehouses(state,playerId,districtId=null){
   );
 }
 
+
+/** Industrial output is private stock at the finished building, not free warehouse
+ * storage and not a global-market supply node. A new year fills missing places
+ * up to capacity; unused output cannot accumulate past the per-building limit.
+ */
+export const INDUSTRIAL_PRODUCTION = Object.freeze({
+  brickworks: Object.freeze({resource:'Masonry',capacity:2}),
+  foundry: Object.freeze({resource:'Steel',capacity:1})
+});
+export function industrialInventory(construction){
+  if(!construction||construction.status!=='complete'||!INDUSTRIAL_PRODUCTION[construction.projectId])return [];
+  if(!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
+  return construction.industrialInventory;
+}
+export function completedIndustrialProducers(state,playerId=null){
+  return (state.constructions||[]).filter(c=>c.status==='complete'
+    &&INDUSTRIAL_PRODUCTION[c.projectId]&&(playerId==null||c.playerId===playerId));
+}
+export function replenishIndustrialProduction(state){
+  const results=[];
+  for(const construction of completedIndustrialProducers(state)){
+    const output=INDUSTRIAL_PRODUCTION[construction.projectId];
+    const inventory=industrialInventory(construction);
+    const missing=Math.max(0,output.capacity-inventory.length);
+    for(let i=0;i<missing;i++)inventory.push(output.resource);
+    if(missing)results.push({constructionId:construction.id,resource:output.resource,added:missing,stock:inventory.length});
+  }
+  return results;
+}
+export function canneryIncomeBonus(state,construction){
+  if(!construction||construction.status!=='complete'||construction.projectId!=='cannery')return 0;
+  return Math.min(3,(state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===construction.districtId
+    &&projectTypes(c.projectId).includes('Жилое')).length);
+}
+
 export function warehouseInventory(construction){
   if(!construction||construction.projectId!=='warehouse'||construction.status!=='complete')return [];
   if(!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
@@ -1026,6 +1066,7 @@ export function completeConstruction(state,construction){
   construction.status='complete';
   construction.completedRound=state.round;
   if(project.id==='warehouse'&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
+  if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
   const vp=project.prestige||0;
   if(vp){
@@ -1045,6 +1086,19 @@ export function completeConstruction(state,construction){
     if(after!==before){
       const verb=landChange>0?'повышает':'снижает';
       logEvent(state,`${project.name} ${verb} Land Value района ${districtById(construction.districtId).name}: $${before} → $${after}.`,'accent');
+    }
+  }
+  // Only a NEW completion of the owner's residential project can trigger
+  // a local woodworking premium. Each completed woodworks pays at most once/year.
+  if(projectTypes(construction.projectId).includes('Жилое')){
+    for(const works of (state.constructions||[])){
+      if(works.projectId!=='woodworks'||works.status!=='complete'||works.playerId!==construction.playerId
+        ||works.woodworkingRewardRound===state.round)continue;
+      const nearby=works.districtId===construction.districtId||districtNeighbors(works.districtId).includes(construction.districtId);
+      if(!nearby)continue;
+      works.woodworkingRewardRound=state.round;
+      player.capital+=2;
+      logEvent(state,`${player.name}: «${projectById(works.projectId).name}» выплатила +$2 за завершение жилья в ${districtById(construction.districtId).name}.`,'good');
     }
   }
   const riskAfter=districtRisk(state,construction.districtId);
@@ -1091,6 +1145,14 @@ export function deliverySourceInfo(state,playerId,source){
     return {kind:'supplier',id:supplier.id,name:supplier.name,districtId:supplier.districtId,
       inventory:Array.from({length:maxCapacity},()=>supplier.resource),
       resource:supplier.resource,unitPrice:supplier.unitPrice,unlimited:true};
+  }
+  if(source.kind==='industry'){
+    const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId
+      &&c.status==='complete'&&INDUSTRIAL_PRODUCTION[c.projectId]);
+    if(!plant)return null;
+    const output=INDUSTRIAL_PRODUCTION[plant.projectId];
+    return {kind:'industry',id:plant.id,name:projectById(plant.projectId).name+' · '+districtById(plant.districtId).name,
+      districtId:plant.districtId,inventory:industrialInventory(plant),resource:output.resource};
   }
   if(source.kind==='warehouse'){
     const wh=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId&&c.projectId==='warehouse'&&c.status==='complete');
@@ -1301,6 +1363,7 @@ export function executeDelivery(state,plan){
     if(src.kind==='supplier')continue;
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
+      src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
         freightYardInventory(state,plan.playerId);
     removeMaterials(inv,pickup.cargo);
   }
@@ -1342,7 +1405,7 @@ export function executeDelivery(state,plan){
 
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0),0);
+    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0)+canneryIncomeBonus(state,c),0);
 }
 
 export function grossRoundIncome(state,playerId){
@@ -1508,6 +1571,11 @@ function finishYearTransition(state,{rng=Math.random}={}){
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
+  const produced=replenishIndustrialProduction(state);
+  for(const item of produced){
+    const plant=state.constructions.find(c=>c.id===item.constructionId);
+    logEvent(state,`${projectById(plant.projectId).name} (${districtById(plant.districtId).name}): произведено ${item.resource} ×${item.added}, запас ${item.stock}/${INDUSTRIAL_PRODUCTION[plant.projectId].capacity}.`,'good');
+  }
   state.haulersUsed=[];
   reportCompletedCityGoals(state);
   setYearTurnOrderFromInfluence(state);
