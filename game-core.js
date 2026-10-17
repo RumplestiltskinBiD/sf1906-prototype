@@ -1081,6 +1081,7 @@ export function completeConstruction(state,construction){
   construction.materialsDelivered=[...(project.materials||[])];
   construction.status='complete';
   construction.completedRound=state.round;
+  if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
   if(project.id==='warehouse'&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
@@ -1099,6 +1100,7 @@ export function completeConstruction(state,construction){
   if(project.id==='cottages'&&completedInDistrictBefore===0){
     cottageBonus=2;
     player.capital+=cottageBonus;
+    construction.cottageBonusAwarded=cottageBonus;
     logEvent(state,`${player.name}: первые коттеджи в ${districtById(construction.districtId).name} — +$2 за освоение территории.`,'good');
   }
   if(schoolHousingVp){
