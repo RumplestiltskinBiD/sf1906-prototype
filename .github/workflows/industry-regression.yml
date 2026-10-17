@@ -1,0 +1,40 @@
+name: Industrial buildings regression
+
+on:
+  pull_request:
+    paths:
+      - 'game-core.js'
+      - 'app.js'
+      - 'tests/industry.test.mjs'
+      - 'tests/industry.e2e.spec.mjs'
+      - 'package.json'
+      - '.github/workflows/industry-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:core
+
+  mobile-and-desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/industry.e2e.spec.mjs
