@@ -116,7 +116,7 @@ test('owner buying two bricks sees pair discount in delivery preview',async({pag
   await page.locator('[data-hauler="standard"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $1');
+  await expect(page.locator('[data-load="Masonry"]')).toContainText('$0','second brick has zero marginal cost in bundle');
   await page.locator('[data-load="Masonry"]').click();
   await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $1');
-  await expect(page.locator('[data-load="Masonry"]')).toContainText('$0');
 });
