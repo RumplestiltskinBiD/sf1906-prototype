@@ -127,10 +127,33 @@ parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-$
 if(!parsed.marketExtendedForSixYears){
   // Saved three-year games originally had two copies of each project.
   // Add one to the available deck once, retaining all acquired projects.
-  for(const p of PROJECTS){
+  for(const p of PROJECTS.filter(p=>!['brickworks','woodworks','foundry','cannery'].includes(p.id))){
     parsed.deck.push({uid:'V042-'+p.id,id:p.id});
   }
   parsed.marketExtendedForSixYears=true;
+}
+// Add the industrial expansion to old saves exactly once, without changing
+// existing market, hands, bids or building ownership. Distribute remaining
+// project cards through the unseen deck so they can appear before 1905.
+if(!parsed.industrialExpansionV1){
+  const ids=['brickworks','woodworks','foundry','cannery'];
+  const held=[
+    ...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.market||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.constructions||[]).map(c=>c.projectId)
+  ];
+  const additions=[];
+  for(const id of ids){
+    const already=held.filter(x=>x===id).length;
+    for(let i=already;i<3;i++)additions.push({uid:'IND-V1-'+id+'-'+(i+1),id});
+  }
+  const deck=parsed.deck||[];
+  const spacing=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  for(let i=0;i<additions.length;i++)deck.splice(Math.min((i+1)*spacing,deck.length),0,additions[i]);
+  parsed.deck=deck;
+  parsed.industrialExpansionV1=true;
 }
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
