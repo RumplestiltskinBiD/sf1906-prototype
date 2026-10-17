@@ -127,7 +127,7 @@ parsed.deck=(parsed.deck||[]).map((card,i)=>typeof card==='string'?{uid:`MIG-D-$
 if(!parsed.marketExtendedForSixYears){
   // Saved three-year games originally had two copies of each project.
   // Add one to the available deck once, retaining all acquired projects.
-  for(const p of PROJECTS.filter(p=>!['brickworks','woodworks','foundry','cannery'].includes(p.id))){
+  for(const p of PROJECTS.filter(p=>!['brickworks','woodworks','foundry','cannery','cottages','brickapartments','school'].includes(p.id))){
     parsed.deck.push({uid:'V042-'+p.id,id:p.id});
   }
   parsed.marketExtendedForSixYears=true;
@@ -154,6 +154,31 @@ if(!parsed.industrialExpansionV1){
   for(let i=0;i<additions.length;i++)deck.splice(Math.min((i+1)*spacing,deck.length),0,additions[i]);
   parsed.deck=deck;
   parsed.industrialExpansionV1=true;
+}
+// The three new projects must also appear in existing, already-started saves.
+// Add exactly three copies per type to the future deck without moving
+// current market cards, starter draft, player portfolios or built sites.
+if(!parsed.housingSchoolExpansionV1){
+  const ids=['cottages','brickapartments','school'];
+  const held=[
+    ...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.market||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),
+    ...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)
+  ];
+  const additions=[];
+  for(const id of ids){
+    const already=held.filter(x=>x===id).length;
+    for(let i=already;i<PROJECT_COPIES;i++)additions.push({uid:'BUILD-V2-'+id+'-'+(i+1),id});
+  }
+  const deck=parsed.deck||[];
+  const spacing=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  for(let i=0;i<additions.length;i++)deck.splice(Math.min((i+1)*spacing,deck.length),0,additions[i]);
+  parsed.deck=deck;
+  parsed.housingSchoolExpansionV1=true;
 }
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -1969,7 +1994,7 @@ actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архи
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${pr.prestige||0} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)} / год · ${pr.effect}</div>${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const warehouses=completedWarehouses(state,p.id,con.districtId);
