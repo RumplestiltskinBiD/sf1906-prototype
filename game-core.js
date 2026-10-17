@@ -492,6 +492,7 @@ export function createInitialState({rng=Math.random}={}){
   const goalSetup=createCityGoalPool({rng});
   return {
     version:'0.44',
+    industrialExpansionV1:true,
     round:1,
     newsDeck,
     newsCurrentIds,
