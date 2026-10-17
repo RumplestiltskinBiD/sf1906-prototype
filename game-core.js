@@ -114,9 +114,9 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'warehouse',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · Хранение 5 · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · хранит до 5 ресурсов и снабжает стройки в этом районе',actionName:'—',actionText:'Может быть источником и точкой разгрузки Доставка.',limits:'Хранение 5 ресурсов.'},
   {prestige:0,income:5,id:'factory',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Доступ к ж/д или порту',accessAny:['rail','port'],effect:'Доход +5 · Стоимость земли −1',benefit:'Доход +5 / раунд · Престиж 0 · после завершения Стоимость земли района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Доступ к ж/д или порту. Стоимость земли не падает ниже 0.'},
 
-  {prestige:1,income:1,id:'brickworks',types:["Промышленное"],risk:{earthquake:1,fire:1},name:'Кирпичный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · производит до 2 Masonry при смене года; вывоз через обычную Доставку',benefit:'Доход +$1 / год · запас до 2 Masonry · +1 VP',actionName:'—',actionText:'С начала следующего года пополняет собственный запас до 2 Masonry. Материалы не поступают на стройку автоматически.',limits:'Запас на заводе максимум 2 Masonry; погрузка возможна только владельцу и оплачивается стандартная Доставка.'},
+  {prestige:1,income:1,id:'brickworks',types:["Промышленное"],risk:{earthquake:1,fire:1},name:'Кирпичный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · производит до 2 Masonry в год; продажа по $1/шт.',benefit:'Доход +$1 / год · запас до 2 Masonry · +1 VP',actionName:'Продажа кирпича',actionText:'Цена $1 за Masonry. Владелец покупает 2 Masonry одной погрузкой за $1. За одну покупку соперника владелец получает $1, даже если куплено 2.',limits:'Запас максимум 2 Masonry; доступны все игроки. Скидка только владельцу при одновременной покупке двух; обычная перевозка обязательна.'},
   {prestige:1,income:2,id:'woodworks',types:["Промышленное"],risk:{earthquake:0,fire:2},name:'Деревообрабатывающая фабрика',type:'Промышленность',open:4,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · один раз в год +$2 при завершении собственного жилого здания в этом или соседнем районе',benefit:'Доход +$2 / год · строительная премия +$2 (раз в год) · +1 VP',actionName:'—',actionText:'Автоматически +$2 при завершении собственного жилого здания в районе фабрики или соседнем; 1 раз за год на фабрику.',limits:'Только новое завершённое Жилое здание владельца; бонус не начисляется задним числом.'},
-  {prestige:1,income:2,id:'foundry',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Литейно-механический завод',type:'Промышленность',open:6,materials:['Lumber','Masonry','Steel','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · производит до 1 Steel при смене года; вывоз через обычную Доставку',benefit:'Доход +$2 / год · запас до 1 Steel · +1 VP',actionName:'—',actionText:'С начала следующего года пополняет собственный запас до 1 Steel. Материалы не поступают на стройку автоматически.',limits:'Запас на заводе максимум 1 Steel; погрузка возможна только владельцу и оплачивается стандартная Доставка.'},
+  {prestige:1,income:2,id:'foundry',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Литейно-механический завод',type:'Промышленность',open:6,materials:['Lumber','Masonry','Steel','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · производит до 1 Steel в год; продажа по $2/шт.',benefit:'Доход +$2 / год · запас до 1 Steel · +1 VP',actionName:'Продажа стали',actionText:'Steel за $2/шт. Для владельца цена $1/шт. При покупке соперником владелец получает $1 за Steel.',limits:'Запас максимум 1 Steel; доступны все игроки. Скидка при покупке собственной продукции; обычная перевозка обязательна.'},
   {prestige:1,income:1,id:'cannery',types:["Промышленное"],risk:{earthquake:0,fire:1},name:'Консервный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1; ещё +$1 за каждое завершённое Жилое здание в своём районе (максимум +$3)',benefit:'Доход +$1–4 / год (по жилой застройке) · +1 VP',actionName:'—',actionText:'Дополнительный доход пересчитывается ежегодно; учитываются завершённые жилые здания любых игроков в том же районе.',limits:'Максимум +$3 дополнительно за год; соседние районы не учитываются.'},
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли · Престиж +1',benefit:'Престиж +1 · Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · Престиж +1 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд · Престиж +1',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
@@ -1148,12 +1148,13 @@ export function deliverySourceInfo(state,playerId,source){
       resource:supplier.resource,unitPrice:supplier.unitPrice,unlimited:true};
   }
   if(source.kind==='industry'){
-    const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId
+    const plant=(state.constructions||[]).find(c=>c.id===source.id
       &&c.status==='complete'&&INDUSTRIAL_PRODUCTION[c.projectId]);
     if(!plant)return null;
     const output=INDUSTRIAL_PRODUCTION[plant.projectId];
     return {kind:'industry',id:plant.id,name:projectById(plant.projectId).name+' · '+districtById(plant.districtId).name,
-      districtId:plant.districtId,inventory:industrialInventory(plant),resource:output.resource};
+      districtId:plant.districtId,inventory:industrialInventory(plant),resource:output.resource,
+      ownerId:plant.playerId,unitPrice:RESOURCE_PRICES[output.resource]};
   }
   if(source.kind==='warehouse'){
     const wh=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId&&c.projectId==='warehouse'&&c.status==='complete');
@@ -1193,7 +1194,25 @@ function multisetEquals(a,b){
   return [...keys].every(k=>(ac[k]||0)===(bc[k]||0));
 }
 
-export function deliveryMaterialCost(state,source,cargo){
+export function deliveryMaterialCost(state,source,cargo,playerId=null){
+  if(source?.kind==='industry'){
+    const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'
+      &&INDUSTRIAL_PRODUCTION[c.projectId]);
+    if(!plant)return {gross:0,discount:0,cost:0,procurementUsed:0};
+    const output=INDUSTRIAL_PRODUCTION[plant.projectId];
+    const units=(cargo||[]).filter(type=>type===output.resource).length;
+    const gross=units*RESOURCE_PRICES[output.resource];
+    const buyingOwn=plant.playerId===playerId;
+    // Own foundry Steel costs $1 instead of $2. Own brickworks Masonry
+    // costs $1 singly or $1 for two in ONE pickup; never pay yourself a commission.
+    const discount=buyingOwn&&(plant.projectId==='foundry'?units:
+      plant.projectId==='brickworks'&&units===2?1:0);
+    // Brickworks: $1 PER PURCHASE, even when the rival takes 2 Masonry at once.
+    // Foundry: $1 per Steel. Neither payment applies to the plant's owner buying.
+    const ownerPayment=buyingOwn?0:plant.projectId==='brickworks'?(units>0?1:0):units;
+    return {gross,discount,cost:gross-discount,procurementUsed:0,
+      ownerId:plant.playerId,ownerPayment};
+  }
   if(source?.kind==='supplier'){
     const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
     if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
@@ -1227,16 +1246,19 @@ export function deliveryPlanCost(state,plan){
   if(!hauler)return null;
   const route=plan.route||[];
   const pickups=deliveryPickups(plan).filter(p=>p?.cargo?.length);
-  const costs=pickups.map(p=>deliveryMaterialCost({...state,procurementRemaining:0},p.source,p.cargo));
+  const costs=pickups.map(p=>deliveryMaterialCost({...state,procurementRemaining:0},p.source,p.cargo,plan.playerId));
   const materialGross=costs.reduce((n,c)=>n+c.gross,0);
+  const industryDiscount=costs.reduce((n,c)=>n+(c.ownerId!=null?c.discount:0),0);
+  const industrySales=costs.filter(c=>c.ownerId!=null&&c.ownerPayment>0)
+    .map(c=>({ownerId:c.ownerId,amount:c.ownerPayment}));
   const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'?(p.cargo||[]).map(t=>RESOURCE_PRICES[t]||0):[]);
   const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
   const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
-  const materialCost=materialGross-procurementDiscount;
+  const materialCost=materialGross-procurementDiscount-industryDiscount;
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*DELIVERY_EDGE_COST;
   const yardRentCost=freightYardRentCost(state,plan);
-  return {materialGross,procurementDiscount,procurementUsed,materialCost,
+  return {materialGross,procurementDiscount,industryDiscount,industrySales,procurementUsed,materialCost,
     haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,
     total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost};
 }
@@ -1370,6 +1392,12 @@ export function executeDelivery(state,plan){
   }
   const player=state.players[plan.playerId];
   player.capital-=cost.total;
+  // The owner receives a commission only when another player purchases
+  // factory output, and only after the complete delivery passed validation.
+  for(const sale of cost.industrySales||[]){
+    state.players[sale.ownerId].capital+=sale.amount;
+    logEvent(state,`${state.players[sale.ownerId].name}: продажа заводской продукции +${sale.amount}.`,'good');
+  }
   if(hauler.limited){state.haulersUsed=state.haulersUsed||[];state.haulersUsed.push(hauler.id);}
   if(cost.procurementUsed)state.procurementRemaining=Math.max(0,(state.procurementRemaining||0)-cost.procurementUsed);
   const constructionIds=[];
