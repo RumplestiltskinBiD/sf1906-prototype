@@ -8,7 +8,7 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -180,6 +180,40 @@ if(!parsed.housingSchoolExpansionV1){
   parsed.deck=deck;
   parsed.housingSchoolExpansionV1=true;
 }
+
+if(!parsed.monoTradeExpansionV1){
+  // Existing saves may have three copies. Keep every existing market, held,
+  // drafted, constructed or discarded card intact, but trim ONLY the future
+  // deck to at most two total per type. Add two of each new single-type card.
+  const additionsIds=['wholesale_market','commission_house','pub','skyscraper'];
+  const lockedIds=[
+    ...(parsed.market||[]).map(x=>x?.id),
+    ...(parsed.players||[]).flatMap(x=>x.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(x=>x?.id)),
+    ...(parsed.starterDiscards||[]).map(x=>x?.id),
+    ...(parsed.expired||[]).map(x=>x?.id),
+    ...(parsed.constructions||[]).map(x=>x.projectId)
+  ];
+  const counts=new Map();
+  for(const id of lockedIds)if(id)counts.set(id,(counts.get(id)||0)+1);
+  const trimmed=[];
+  for(const card of parsed.deck||[]){
+    if(!card||!projectById(card.id))continue;
+    const count=counts.get(card.id)||0;
+    if(count>=PROJECT_COPIES)continue;
+    trimmed.push(card);
+    counts.set(card.id,count+1);
+  }
+  const additions=[];
+  for(const id of additionsIds){
+    const already=counts.get(id)||0;
+    for(let i=already;i<PROJECT_COPIES;i++)additions.push({uid:'MONO-V1-'+id+'-'+(i+1),id});
+  }
+  const spacing=Math.max(1,Math.floor((trimmed.length+additions.length)/(additions.length+1)));
+  for(let i=0;i<additions.length;i++)trimmed.splice(Math.min((i+1)*spacing,trimmed.length),0,additions[i]);
+  parsed.deck=trimmed;
+  parsed.monoTradeExpansionV1=true;
+}
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
 parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -295,7 +329,7 @@ if(state.phase==='development'&&currentDeveloper(state)!=null)return currentDeve
 if(state.phase==='declare'&&currentDeclarer(state)!=null)return currentDeclarer(state);
 return state.firstPlayer;
 }
-function projectTypeLabel(project){return projectTypes(project).join(' · ')||project?.type||'Проект';}
+function projectTypeLabel(project){const types=projectTypes(project).join(' · ')||project?.type||'Проект';return types+(project?.largeBuilding?' · КРУПНОЕ ЗДАНИЕ':'');}
 const BUILDING_TYPE_COLORS=Object.freeze({
 'Жилое':'#56875A',
 'Бизнес':'#76558F',
@@ -1555,6 +1589,7 @@ const banks=completedActionSpaces(state,'bank');
 const bureaus=completedActionSpaces(state,'bureau');
 const shops=completedActionSpaces(state,'shops');
 const clubs=completedActionSpaces(state,'club');
+const commissionHouses=completedActionSpaces(state,'commission_house');
 const availableProjects=(p.portfolio||[]).length;
 const debt=(p.loans||[]).length;
 const contract=(p.bureauContracts||0)>0;
@@ -1571,6 +1606,7 @@ const bankAvailable=!mainUsed&&!!selected&&debt<MAX_ACTIVE_LOANS&&banks.some(x=>
 const bureauAvailable=!mainUsed&&!!selected&&!contract&&bureaus.some(x=>actionReach(x)&&spaceFree(x));
 const shopsAvailable=!mainUsed&&!!selected&&p.capital>=1&&hasConstruction&&shops.some(x=>actionReach(x)&&spaceFree(x));
 const clubAvailable=!mainUsed&&!!selected&&p.capital>=1&&clubs.some(x=>actionReach(x)&&spaceFree(x));
+const commissionAvailable=!mainUsed&&!!selected&&availableProjects>0&&commissionHouses.some(x=>actionReach(x)&&spaceFree(x));
 const bankButtons=banks.length?banks.map(bank=>{
 const owner=state.players[bank.playerId],d=districtById(bank.districtId),occupiedBy=actionSpaceOccupant(state,bank.id);
 const occupied=occupiedBy!=null,range=actionReach(bank);
@@ -1619,6 +1655,7 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
 <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
 <div class="city-action-card club-card ${clubAvailable?'action-available':''}"><b>Ресторан и клуб</b><span>Нужно добраться до клуба · −$1 → +1 Влияние</span><div class="action-space-list">${clubButtons}</div></div>
+<div class="city-action-card ${commissionAvailable?'action-available':''}"><b>Комиссионный торговый дом</b><span>Основное действие: перепродать неначатый проект за $4</span><button class="secondary-btn full" id="actionCommission" ${commissionAvailable?'':'disabled'}>${commissionHouses.length?'Выбрать проект в офисе':'Комиссионный дом ещё не построен'}</button></div>
 </div>`;
 $$('[data-select-worker]').forEach(b=>b.onclick=()=>{
 const r=selectWorker(state,pid,b.dataset.selectWorker);
@@ -1627,6 +1664,7 @@ state.pendingConstruction=null;state.pendingWorkerAction=null;render();
 });
 const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
+const commissionBtn=$('#actionCommission');if(commissionBtn&&!commissionBtn.disabled)commissionBtn.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const raise=$('#actionRaiseCapital');if(raise&&!capitalDisabled)raise.onclick=()=>{
 deliveryDraft=null;
 state.pendingConstruction=null;
@@ -1977,7 +2015,14 @@ const loanHtml=loans.length?loans.map((loan,i)=>`<div class="loan-row"><span><b>
 const available=p.portfolio.map((id,handIndex)=>{
 const pr=projectById(id),isTurn=canTakeMainAction(state,p.id);
 const buttonText=state.phase!=='development'?'После тендеров':!isActive?'Не ваша активация':state.activationMainActionUsed?'Основное действие уже использовано':'Начать строительство';
-const footer=`<button class="secondary-btn full hand-build-btn" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${buttonText}</button>`;
+const commissionHouses=(state.constructions||[]).filter(c=>c.projectId==='commission_house'&&c.status==='complete');
+const selected=activeWorker(state,p.id);
+const accessibleHouse=commissionHouses.find(c=>selected&&actionSpaceOccupant(state,c.id)==null&&workerCanReachDistrict(state,p.id,c.districtId,selected.id));
+const canSell=isTurn&&!!accessibleHouse;
+const sale=commissionHouses.length
+  ?`<button class="secondary-btn full" data-sell-project-index="${handIndex}" data-sell-house="${accessibleHouse?.id||''}" ${canSell?'':'disabled'}>${canSell?'Продать проект за $4':!isActive?'Перепродажа: чужая активация':!selected?'Выберите представителя для перепродажи':'Комиссионный дом недоступен'}</button>`
+  :'';
+const footer=`<button class="secondary-btn full hand-build-btn" data-start-project="${id}" data-player="${p.id}" ${isTurn?'':'disabled'}>${buttonText}</button>`+sale;
 return projectCoreCard(pr,{topLeft:`HAND ${handIndex+1}/${HAND_LIMIT}`,topRight:'IN HAND',priceLabel:'base open',priceValue:pr.open,extraClass:'hand-card',footer});
 }).join('');
 const activeHtml=active.map(con=>{
@@ -1985,9 +2030,9 @@ const pr=projectById(con.projectId),d=districtById(con.districtId),prog=construc
 if(con.status==='complete'){
 const wh=con.projectId==='warehouse'?`<div class="warehouse-note">Склад · Хранение <b>${warehouseInventory(con).length}/${WAREHOUSE_STORAGE_CAPACITY}</b> · может быть источником/точкой доставки и снабжать стройки в этом районе.</div>`:'';
 let actionNote='';
-if(['bank','bureau','shops','club'].includes(con.projectId)){
+if(['bank','bureau','shops','club','commission_house'].includes(con.projectId)){
 const occupant=actionSpaceOccupant(state,con.id);
-const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние'};
+const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
 actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
@@ -2027,6 +2072,12 @@ $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
+$$('[data-sell-project-index]').forEach(b=>b.onclick=()=>{
+  const r=useCommissionHouse(state,p.id,b.dataset.sellHouse,Number(b.dataset.sellProjectIndex));
+  if(!r.ok){showToast(r.reason==='worker-range'?'Представитель слишком далеко от Комиссионного дома':r.reason==='occupied'?'Комиссионный дом уже использован в этом году':r.reason==='no-project'?'Нет доступного проекта':'Перепродажа сейчас недоступна');return;}
+  showToast('Проект перепродан: +$4 · представитель использован');
+  render();
+});
 $$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
 const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Погашение доступно только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала по кредиту должна пройти фаза дохода':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }

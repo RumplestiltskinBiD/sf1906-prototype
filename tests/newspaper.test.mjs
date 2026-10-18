@@ -188,8 +188,8 @@ test('six-year project supply can fill five market slots in every year',()=>{
   const s=G.createInitialState({rng:()=>0.42});
   const consumed=5+(3*5); // Market plus three 5-card starter hands.
   const available=s.deck.length+consumed;
-  assert.equal(G.PROJECT_COPIES,3);
-  assert.equal(available,G.PROJECTS.length*3);
+  assert.equal(G.PROJECT_COPIES,2);
+  assert.equal(available,G.PROJECTS.length*2);
   assert.ok(s.deck.length>=5*(G.MAX_ROUNDS-1),
     'Rotating market should not deplete across six rounds even if all five slots are refilled');
   assert.equal(s.marketExtendedForSixYears,true);

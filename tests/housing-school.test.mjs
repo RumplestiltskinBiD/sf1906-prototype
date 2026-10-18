@@ -16,7 +16,7 @@ function build(id,playerId,projectId,districtId,status='complete',materialsDeliv
 }
 function finish(s,construction){s.constructions.push(construction);return G.completeConstruction(s,construction);}
 
-test('approved cards: exactly 5 residential, 5 municipal and 3 copies of each new type',()=>{
+test('approved cards: exactly 5 residential, 5 municipal and 2 copies of each new type',()=>{
   assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).includes('Жилое')).map(p=>p.id),
     ['tenement','speculative','luxury','cottages','brickapartments']);
   assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).includes('Общественное')).map(p=>p.id),
@@ -33,7 +33,7 @@ test('approved cards: exactly 5 residential, 5 municipal and 3 copies of each ne
     assert.equal(p.prestige,vp,id+' base VP');
     assert.deepEqual(p.risk,risk,id+' district hazard contribution');
     assert.deepEqual(p.materials,materials,id+' recipe');
-    assert.equal(G.createProjectCardPool({rng:()=>0.1}).filter(x=>x.id===id).length,3);
+    assert.equal(G.createProjectCardPool({rng:()=>0.1}).filter(x=>x.id===id).length,2);
   }
   assert.equal(G.projectById('brickapartments').landMin,2);
   assert.equal(G.LAND_VALUE_COMPLETION_CHANGE.school,1);
