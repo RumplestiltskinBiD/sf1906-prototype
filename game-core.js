@@ -16,7 +16,7 @@ export const STARTER_DRAFT_SIZE = 5;
 export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
-export const PROJECT_COPIES = 3;
+export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
@@ -127,6 +127,10 @@ export const PROJECTS = [
   {prestige:3,income:0,id:'clinic',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доступ к клинике (район + соседний район) · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Доступ к клинике действует в своём и соседнем районе.'},
   {prestige:2,income:0,id:'school',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Муниципальная начальная школа',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Стоимость земли района +1 · +2 VP и до +2 VP за завершённое жильё в этом и соседних районах',benefit:'2–4 VP однократно · Стоимость земли района +1',actionName:'Развитый жилой квартал',actionText:'При завершении школы получите +1 VP за каждое завершённое жилое здание в этом или соседних районах (любого владельца), максимум +2 VP.',limits:'Бонус школы единовременный, только при завершении; будущие жилые здания не дают VP задним числом.'},
   {prestige:3,income:0,id:'publicworks',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Полные воды / газа / ремонта правила будут добавлены позже.'},
+  {prestige:1,income:1,id:'wholesale_market',types:['Торговое'],risk:{earthquake:0,fire:2},name:'Городской оптовый рынок',type:'Коммерция',open:3,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +$3 за новую категорию здания в районе',benefit:'Доход +$1/год · +1 VP · +$3 владельцу за новую категорию',actionName:'Новые отрасли',actionText:'После завершения любого другого здания в этом районе, если появилась ранее отсутствовавшая категория, получите $3. Для смешанного здания максимум $3.',limits:'Учитываются постройки всех игроков; повторные категории не оплачиваются. Бонус не начисляется за постройки, завершённые до открытия рынка.'},
+  {prestige:1,income:2,id:'commission_house',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Комиссионный торговый дом',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · продажа неначатого проекта за $4',benefit:'Доход +$2/год · +1 VP · продажа проекта',actionName:'Перепродажа проекта',actionText:'1 представитель → сбросьте одну карту неначатого проекта из своей руки и получите $4.',limits:'Любая карта руки, включая стартовую и купленную на аукционе. Требуется доступ представителя к району здания. Одна активация ячейки здания за год.'},
+  {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает Пиво. +$1 за каждую успешно доставленную партию по общему правилу торговли (после включения системы Товары).',limits:'Приём пива активируется вместе с системой розовых торговых кубиков. До этого действует базовый доход.'},
+  {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
 ]
 
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
@@ -497,6 +501,7 @@ export function createInitialState({rng=Math.random}={}){
     version:'0.44',
     industrialExpansionV1:true,
     housingSchoolExpansionV1:true,
+    monoTradeExpansionV1:true,
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -1069,8 +1074,10 @@ export function completeConstruction(state,construction){
   const riskBefore=districtRisk(state,construction.districtId);
   // Count completed buildings BEFORE this project flips to complete. Pending
   // projects do not block cottages' "first completed" district bonus.
-  const completedInDistrictBefore=(state.constructions||[]).filter(c=>
-    c!==construction&&c.status==='complete'&&c.districtId===construction.districtId).length;
+  const completedBefore=(state.constructions||[]).filter(c=>
+    c!==construction&&c.status==='complete'&&c.districtId===construction.districtId);
+  const completedInDistrictBefore=completedBefore.length;
+  const categoriesBefore=new Set(completedBefore.flatMap(c=>projectTypes(c.projectId)));
   // School receives one bonus VP per completed home in own/adjacent district,
   // from ANY player, up to two; resolve on school completion only.
   const schoolHousingVp=project.id==='school'
@@ -1102,6 +1109,16 @@ export function completeConstruction(state,construction){
     player.capital+=cottageBonus;
     construction.cottageBonusAwarded=cottageBonus;
     logEvent(state,`${player.name}: первые коттеджи в ${districtById(construction.districtId).name} — +$2 за освоение территории.`,'good');
+  }
+  // Each already completed wholesale market rewards a newly represented
+  // district category once per completing building, including hybrid buildings.
+  const newCategories=projectTypes(project).filter(type=>!categoriesBefore.has(type));
+  if(newCategories.length){
+    for(const market of completedBefore.filter(c=>c.projectId==='wholesale_market')){
+      const marketOwner=state.players[market.playerId];
+      marketOwner.capital+=3;
+      logEvent(state,`${marketOwner.name}: оптовый рынок +$3 — новая категория «${newCategories.join(' / ')}» в районе ${districtById(construction.districtId).name}.`,'good');
+    }
   }
   if(schoolHousingVp){
     logEvent(state,`${player.name}: школа получает +${schoolHousingVp} VP за завершённое жильё рядом.`,'good');
@@ -1582,6 +1599,28 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
     logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 материалов бесплатно в следующих Delivery этой активации.${workerMovementText(consumed)}`,'accent');
   }
   return {ok:true,materials:2,cost:1,worker:consumed.worker};
+}
+
+// Sell any unstarted hand project through a completed commission house.
+export function useCommissionHouse(state,playerId,houseConstructionId,handIndex){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
+  const house=(state.constructions||[]).find(c=>c.id===houseConstructionId&&c.projectId==='commission_house'&&c.status==='complete');
+  if(!house)return {ok:false,reason:'no-house'};
+  if(!workerCanReachDistrict(state,playerId,house.districtId))return {ok:false,reason:'worker-range',districtId:house.districtId};
+  if(actionSpaceOccupant(state,houseConstructionId)!=null)return {ok:false,reason:'occupied'};
+  const player=state.players[playerId];
+  if(!Number.isInteger(handIndex)||handIndex<0||handIndex>=player.portfolio.length)return {ok:false,reason:'no-project'};
+  const id=player.portfolio[handIndex];
+  const consumed=consumeMainAction(state,playerId,house.districtId);
+  if(!consumed.ok)return consumed;
+  player.portfolio.splice(handIndex,1);
+  player.capital+=4;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[houseConstructionId]=playerId;
+  state.expired=state.expired||[];
+  state.expired.push({uid:`COMMISSION-${state.round}-${houseConstructionId}-${state.expired.length+1}`,id});
+  logEvent(state,`${player.name} перепродал «${projectById(id)?.name||id}» через Комиссионный торговый дом за $4.${workerMovementText(consumed)}`,'good');
+  return {ok:true,projectId:id,amount:4,worker:consumed.worker};
 }
 
 export function useSocialClub(state,playerId,clubConstructionId){
