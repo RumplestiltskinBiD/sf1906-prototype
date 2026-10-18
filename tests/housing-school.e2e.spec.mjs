@@ -41,7 +41,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366
   });
 }
 
-test('existing games get each new project exactly three times without changing market and portfolios',async({page})=>{
+test('existing games get each new project exactly twice without changing market and portfolios',async({page})=>{
   const s=createInitialState({rng:()=>0.1});
   s.phase='development';s.view='city';s.developmentPlayer=0;
   delete s.housingSchoolExpansionV1; // Simulate old v0.44 save.
@@ -56,10 +56,10 @@ test('existing games get each new project exactly three times without changing m
   expect(stored.housingSchoolExpansionV1).toBe(true);
   expect(stored.market.map(x=>x?.id)).toEqual(oldMarket);
   expect(stored.players[0].portfolio).toEqual(['bank','warehouse']);
-  for(const id of ids)expect(stored.deck.filter(x=>x.id===id)).toHaveLength(3);
+  for(const id of ids)expect(stored.deck.filter(x=>x.id===id)).toHaveLength(2);
   await page.reload();
   stored=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
-  for(const id of ids)expect(stored.deck.filter(x=>x.id===id)).toHaveLength(3);
+  for(const id of ids)expect(stored.deck.filter(x=>x.id===id)).toHaveLength(2);
 });
 
 test('municipal school displays the awarded bonus after saving/reopening office',async({page})=>{
