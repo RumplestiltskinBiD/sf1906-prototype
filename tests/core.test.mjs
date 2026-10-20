@@ -101,7 +101,7 @@ test('City Hall player can take at most one goal without ending project declarat
   assert.notEqual(G.currentDeclarer(s),pid);
 });
 
-test('goal completed with old buildings reports only in a later City Hall and records retroactive use',()=>{
+test('goal completed with old buildings reports without fees in the next City Hall',()=>{
   const s=G.createInitialState({rng:()=>0.1});
   const p=s.players[0];
   p.capital=10;p.prestige=0;
@@ -115,10 +115,39 @@ test('goal completed with old buildings reports only in a later City Hall and re
   s.round=2;
   const reports=G.reportCompletedCityGoals(s);
   assert.equal(reports.length,1);
-  assert.equal(reports[0].retroactiveCount,2);
+  assert.equal(Object.hasOwn(reports[0],'retroactiveCount'),false);
+  assert.equal(Object.hasOwn(p.goals[0],'retroactiveCount'),false);
+  assert.equal(Object.hasOwn(p.goals[0],'preExistingConstructionIds'),false);
   assert.equal(p.capital,14);
   assert.equal(p.prestige,4);
   assert.equal(p.goals[0].status,'completed');
+});
+
+test('city goal immediately recognizes prior construction with no retroactive metadata or fee',()=>{
+  const s=G.createInitialState({rng:()=>0.1});
+  s.phase='declare';s.declarationIndex=0;
+  const pid=G.currentDeclarer(s);
+  s.constructions=[
+    construction('HOME1',pid,'tenement','outerrichmond','complete'),
+    construction('HOME2',pid,'cottages','innersunset','complete')
+  ];
+  // The goal matching the two older western homes is deliberately chosen.
+  const index=s.goalMarket.findIndex(x=>x?.id==='C01');
+  assert.ok(index>=0);
+  const before=s.players[pid].capital;
+  const result=G.claimCityGoal(s,index);
+  assert.equal(result.ok,true);
+  const entry=s.players[pid].goals.at(-1);
+  assert.equal(Object.hasOwn(entry,'preExistingConstructionIds'),false);
+  const ev=G.cityGoalEvaluation(s,pid,entry);
+  assert.equal(ev.complete,true);
+  assert.equal(ev.progress,2);
+  assert.equal(Object.hasOwn(ev,'retroactiveCount'),false);
+  assert.equal(s.players[pid].capital,before,'claiming an already satisfied goal must never charge a registration fee');
+  assert.equal(G.reportCompletedCityGoals(s).length,0,'report stays at next City Hall');
+  s.round=2;
+  assert.equal(G.reportCompletedCityGoals(s).length,1);
+  assert.equal(s.players[pid].capital,before+4);
 });
 
 test('C04 report moves Influence before next-year order is recalculated',()=>{
