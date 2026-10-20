@@ -17,7 +17,7 @@ export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
-export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
 export const POOR_GROUND_DISTRICTS = Object.freeze(['marina','financial','soma','mission','missionbay']);
@@ -131,6 +131,7 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'commission_house',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Комиссионный торговый дом',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · продажа неначатого проекта за $4',benefit:'Доход +$2/год · +1 VP · продажа проекта',actionName:'Перепродажа проекта',actionText:'1 представитель → сбросьте одну карту неначатого проекта из своей руки и получите $4.',limits:'Любая карта руки, включая стартовую и купленную на аукционе. Требуется доступ представителя к району здания. Одна активация ячейки здания за год.'},
   {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает Пиво. +$1 за каждую успешно доставленную партию по общему правилу торговли (после включения системы Товары).',limits:'Приём пива активируется вместе с системой розовых торговых кубиков. До этого действует базовый доход.'},
   {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
+  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · Престиж +2 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · +2 VP · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
 ]
 
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
@@ -222,10 +223,11 @@ export function districtRisk(state,districtId){
   if(earthquakeBase||fireBase)sources.push({kind:'base',label:'Базовая уязвимость района',earthquake:earthquakeBase,fire:fireBase});
   for(const construction of state?.constructions||[]){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
-    const delta=projectRisk(construction.projectId);
+    const base=projectRisk(construction.projectId);
+    const delta={earthquake:base.earthquake,fire:base.fire-(construction.fireSafetyModernized&&base.fire>0?1:0)};
     if(!delta.earthquake&&!delta.fire)continue;
     const project=projectById(construction.projectId);
-    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:project?.name||construction.projectId,earthquake:delta.earthquake,fire:delta.fire});
+    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':''),earthquake:delta.earthquake,fire:delta.fire});
   }
   const projectSources=sources.filter(x=>x.kind==='project');
   const earthquakeNet=earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0);
@@ -494,7 +496,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -502,6 +504,7 @@ export function createInitialState({rng=Math.random}={}){
     industrialExpansionV1:true,
     housingSchoolExpansionV1:true,
     monoTradeExpansionV1:true,
+    fireSafetyExpansionV1:true,
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -1484,7 +1487,7 @@ export function grossRoundIncome(state,playerId){
 }
 
 export function roundIncome(state,playerId){
-  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId));
+  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0));
 }
 
 export function raiseCapital(state,playerId,targetDistrictId=null){
@@ -1597,6 +1600,90 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
 }
 
 // Sell any unstarted hand project through a completed commission house.
+
+export function firehouseHasWorkshop(state,firehouseId){
+  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
+  if(!house)return false;
+  const eligible=new Set([house.districtId,...districtNeighbors(house.districtId)]);
+  return (state.constructions||[]).some(c=>c.projectId==='fireworkshop'&&c.status==='complete'&&eligible.has(c.districtId));
+}
+export function firehouseInspectionDistricts(state,firehouseId){
+  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
+  if(!house)return [];
+  return firehouseHasWorkshop(state,firehouseId)
+    ?[house.districtId,...districtNeighbors(house.districtId)].filter(id=>districtById(id)?.buildable!==false)
+    :[house.districtId];
+}
+export function firehouseUpgradeCandidates(state,playerId,firehouseId){
+  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
+  if(!house)return [];
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===house.districtId
+    &&c.playerId===playerId&&!c.fireSafetyModernized&&projectRisk(c.projectId).fire>0);
+}
+export function firehouseInspectionTargets(state,firehouseId,districtId){
+  if(!firehouseInspectionDistricts(state,firehouseId).includes(districtId))return [];
+  const candidates=(state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===districtId
+    &&!c.fireSafetyModernized&&projectRisk(c.projectId).fire>=2);
+  const max=Math.max(0,...candidates.map(c=>projectRisk(c.projectId).fire));
+  return max>=2?candidates.filter(c=>projectRisk(c.projectId).fire===max):[];
+}
+// Main worker action; firehouse is a public action space, one use per year.
+// Every tied worst offender is upgraded, including the inspecting player's.
+// For a shortfall, take all cash then apply one permanent −$1 annual income
+// penalty per owner for this inspection, not per tied building.
+export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
+  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
+  if(!house)return {ok:false,reason:'no-firehouse'};
+  if(!workerCanReachDistrict(state,playerId,house.districtId))return {ok:false,reason:'worker-range'};
+  if(actionSpaceOccupant(state,firehouseId)!=null)return {ok:false,reason:'occupied'};
+  if(kind!=='upgrade'&&kind!=='inspect')return {ok:false,reason:'action'};
+  let targets,fee=0,districtId=house.districtId;
+  if(kind==='upgrade'){
+    targets=firehouseUpgradeCandidates(state,playerId,firehouseId).filter(c=>c.id===targetId);
+    if(targets.length!==1)return {ok:false,reason:'no-upgrade-target'};
+    fee=firehouseHasWorkshop(state,firehouseId)?1:2;
+    if(state.players[playerId].capital<fee)return {ok:false,reason:'capital'};
+  }else{
+    districtId=targetId;
+    if(!firehouseInspectionDistricts(state,firehouseId).includes(districtId))return {ok:false,reason:'district'};
+    targets=firehouseInspectionTargets(state,firehouseId,districtId);
+    if(!targets.length)return {ok:false,reason:'no-violations'};
+  }
+  const consumed=consumeMainAction(state,playerId,house.districtId);
+  if(!consumed.ok)return consumed;
+  const fireBefore=districtRisk(state,districtId)?.fire.raw;
+  const impacts=[];
+  if(kind==='upgrade'){
+    const target=targets[0];
+    state.players[playerId].capital-=fee;
+    target.fireSafetyModernized=true;
+    impacts.push({playerId,cost:fee,paid:fee,incomePenalty:0,influenceDelta:0,constructionIds:[target.id]});
+  }else{
+    const owners=[...new Set(targets.map(c=>c.playerId))];
+    for(const pid of owners){
+      const owner=state.players[pid],owned=targets.filter(c=>c.playerId===pid);
+      const due=owned.length*3;
+      const paid=Math.min(owner.capital,due);
+      owner.capital-=paid;
+      const shortfall=paid<due;
+      if(shortfall)owner.fireIncomePenalty=Math.max(0,owner.fireIncomePenalty||0)+1;
+      const influence=moveInfluence(state,pid,-1);
+      impacts.push({playerId:pid,cost:due,paid,incomePenalty:shortfall?1:0,
+        influenceDelta:influence.steps,constructionIds:owned.map(c=>c.id)});
+    }
+    for(const c of targets)c.fireSafetyModernized=true;
+  }
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[firehouseId]=playerId;
+  const fireAfter=districtRisk(state,districtId)?.fire.raw;
+  const label=districtById(districtId)?.name||districtId;
+  logEvent(state,kind==='upgrade'
+    ?`${state.players[playerId].name}: добровольная пожарная модернизация «${projectById(targets[0].projectId).name}» в ${label} за $${fee}; П ${fireBefore}→${fireAfter}.`
+    :`${state.players[playerId].name}: пожарная инспекция в ${label}: модернизировано ${targets.length} зданий, П ${fireBefore}→${fireAfter}; штрафы и влияние владельцев пересчитаны.`,'accent');
+  return {ok:true,kind,districtId,targets:targets.map(c=>c.id),impacts,fireBefore,fireAfter,worker:consumed.worker};
+}
+
 export function useCommissionHouse(state,playerId,houseConstructionId,handIndex){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const house=(state.constructions||[]).find(c=>c.id===houseConstructionId&&c.projectId==='commission_house'&&c.status==='complete');
@@ -1770,11 +1857,13 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   state.players.forEach(p=>{
     const gross=grossRoundIncome(state,p.id);
     const interest=loanInterest(state,p.id);
-    const amount=Math.max(0,gross-interest);
+    const penalty=Math.max(0,p.fireIncomePenalty||0);
+    const amount=roundIncome(state,p.id);
     p.capital+=amount;
     (p.loans||[]).forEach(loan=>loan.interestPaid=true);
     const interestText=interest?` − $${interest} проценты`:'';
-    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}).`,'good');
+    const fireText=penalty?` − $${penalty} постоянные пожарные санкции`:'';
+    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}).`,'good');
   });
 
   state.market=[...survivors];

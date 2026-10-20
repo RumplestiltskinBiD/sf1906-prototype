@@ -19,7 +19,7 @@ function finish(s,construction){s.constructions.push(construction);return G.comp
 test('approved cards: exactly 5 residential, 5 municipal and 2 copies of each new type',()=>{
   assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).includes('Жилое')).map(p=>p.id),
     ['tenement','speculative','luxury','cottages','brickapartments']);
-  assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).includes('Общественное')).map(p=>p.id),
+  assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]==='Общественное').map(p=>p.id),
     ['firehouse','police','clinic','school','publicworks']);
   const expected=[
     ['cottages',3,1,2,{earthquake:0,fire:1},['Lumber','Lumber','Masonry']],

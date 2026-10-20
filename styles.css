@@ -2805,3 +2805,25 @@ body.delivery-route-build #deliveryRouteLayer,
 body.delivery-route-build #deliveryRouteLayer *{
   pointer-events:none!important;
 }
+
+/* v0.49 Fire safety actions: compact, touch-friendly controls. */
+.firehouse-list{display:flex;flex-direction:column;gap:8px}
+.firehouse-choice{border:1px solid #73807955;border-radius:10px;padding:10px;background:#f4f2ea}
+.firehouse-choice-title{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}
+.firehouse-choice-title b{font-size:13px}
+.firehouse-choice-title small{font-size:11px;color:#675e52}
+.firehouse-choice-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.firehouse-choice-buttons .action-space-btn{min-width:0;margin:0;text-align:center;padding:9px 7px;font-size:12px;white-space:normal}
+.fire-target-panel{margin-top:10px;border:1px solid #688c77;border-radius:11px;padding:11px;background:#eef5ee;max-width:100%;min-width:0}
+.fire-target-head{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-bottom:9px}
+.fire-target-head b{font-size:13px}
+.fire-target-head button{width:auto;padding:6px 10px}
+.fire-target-options{display:flex;flex-direction:column;gap:7px;min-width:0;max-height:48vh;overflow-y:auto}
+.fire-target-options .action-space-btn{display:flex;flex-direction:column;align-items:stretch;text-align:left;gap:4px;min-width:0;width:100%;margin:0;padding:10px;white-space:normal;overflow-wrap:anywhere}
+.fire-target-options .action-space-btn span{font-size:11px;line-height:1.4}
+@media(max-width:640px),(max-height:500px) and (max-width:960px){
+ .firehouse-choice{padding:9px}
+ .firehouse-choice-buttons .action-space-btn,.fire-target-options .action-space-btn{min-height:43px}
+ .fire-target-options{max-height:42vh}
+ .fire-target-panel{padding:9px}
+}
