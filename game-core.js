@@ -605,16 +605,11 @@ function goalCandidateSets(state,playerId,goalId){
 }
 export function cityGoalEvaluation(state,playerId,goalEntryOrId){
   const goalId=typeof goalEntryOrId==='string'?goalEntryOrId:goalEntryOrId?.id;
-  const entry=typeof goalEntryOrId==='object'?goalEntryOrId:null;
+  // Buildings completed before taking a City Hall goal count normally.
+  // No retroactive registration, additional payments or special markers.
   const candidates=goalCandidateSets(state,playerId,goalId);
-  const pre=new Set(entry?.preExistingConstructionIds||[]);
-  const ranked=candidates.map(set=>({
-    set,
-    retroactive:set.filter(c=>pre.has(c.id)).length,
-    newest:Math.max(...set.map(c=>c.completedRound||0))
-  })).sort((a,b)=>a.retroactive-b.retroactive||b.newest-a.newest);
-  const best=ranked[0]||null;
-  return {complete:!!best,constructionIds:best?best.set.map(c=>c.id):[],retroactiveCount:best?.retroactive||0,
+  const best=candidates[0]||null;
+  return {complete:!!best,constructionIds:best?best.map(c=>c.id):[],
     progress:cityGoalProgress(state,playerId,goalId)};
 }
 export function cityGoalProgress(state,playerId,goalId){
@@ -641,9 +636,8 @@ export function claimCityGoal(state,slot){
   if(player.goalTakenRound===state.round)return {ok:false,reason:'already-taken'};
   const card=state.goalMarket?.[slot];if(!card)return {ok:false,reason:'empty-slot'};
   const goal=cityGoalById(card.id);if(!goal)return {ok:false,reason:'goal'};
-  const preExistingConstructionIds=completedPlayerConstructions(state,pid).map(c=>c.id);
   player.goals=player.goals||[];
-  player.goals.push({uid:card.uid,id:card.id,status:'active',acquiredRound:state.round,preExistingConstructionIds});
+  player.goals.push({uid:card.uid,id:card.id,status:'active',acquiredRound:state.round});
   player.goalTakenRound=state.round;
   state.goalMarket[slot]=null;
   state.goalSessionClaims=state.goalSessionClaims||[];
@@ -664,11 +658,12 @@ export function reportCompletedCityGoals(state){
       let influenceMove=null;
       if(goal.reward.influence)influenceMove=moveInfluence(state,player.id,goal.reward.influence);
       entry.status='completed';entry.reportedRound=state.round;entry.matchedConstructionIds=evaluation.constructionIds;
-      entry.retroactiveCount=evaluation.retroactiveCount;
-      const retro=evaluation.retroactiveCount?` · ретроактивных зданий: ${evaluation.retroactiveCount} (доплата пока не активна)`:'';
-      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${goal.reward.capital}, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}${retro}.`,'good');
+      // Clear legacy metadata after reporting; old buildings are ordinary valid matches.
+      delete entry.retroactiveCount;
+      delete entry.preExistingConstructionIds;
+      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${goal.reward.capital}, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
       reports.push({playerId:player.id,goalId:goal.id,capital:goal.reward.capital,prestige:goal.reward.prestige,
-        influence:goal.reward.influence||0,retroactiveCount:evaluation.retroactiveCount,influenceMove});
+        influence:goal.reward.influence||0,influenceMove});
     }
   }
   state.lastGoalReports=reports;
