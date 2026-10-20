@@ -125,12 +125,12 @@ test('goal completed with old buildings reports without fees in the next City Ha
 
 test('city goal immediately recognizes prior construction with no retroactive metadata or fee',()=>{
   const s=G.createInitialState({rng:()=>0.1});
-  s.constructions=[
-    construction('HOME1',0,'tenement','outerrichmond','complete'),
-    construction('HOME2',0,'cottages','innersunset','complete')
-  ];
   s.phase='declare';s.declarationIndex=0;
   const pid=G.currentDeclarer(s);
+  s.constructions=[
+    construction('HOME1',pid,'tenement','outerrichmond','complete'),
+    construction('HOME2',pid,'cottages','innersunset','complete')
+  ];
   // The goal matching the two older western homes is deliberately chosen.
   const index=s.goalMarket.findIndex(x=>x?.id==='C01');
   assert.ok(index>=0);
