@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import {createInitialState,projectById} from '../game-core.js';
 const KEY='sf1906_phase1_ui_v030a';
 function seed(page,s){
-  return page.addInitScript(({key,value})=>localStorage.setItem(key,value),{key:KEY,value:JSON.stringify(s)});
+  return page.addInitScript(({key,value})=>{if(!localStorage.getItem(key))localStorage.setItem(key,value);},{key:KEY,value:JSON.stringify(s)});
 }
 function building(id,owner,project,district='civic'){
   return {id,playerId:owner,projectId:project,districtId:district,status:'complete',
