@@ -8,7 +8,7 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -19,6 +19,7 @@ let pendingBidReveal=false;
 let mobileContextOpen=false;
 let mobileMapDetail=false;
 let deliveryDraft=null;
+let fireActionDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
 let riskViewActive=false;
@@ -111,6 +112,7 @@ workersLeft:workers.filter(w=>!w.used).length,
 portfolio:p.portfolio||[],
 loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
+fireIncomePenalty:Math.max(0,Number(p.fireIncomePenalty)||0),
 goals:Array.isArray(p.goals)?p.goals:[],
 goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
@@ -120,6 +122,7 @@ parsed.constructions=(parsed.constructions||[]).map(x=>({...x,
 materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),
 warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
 completedRound:x.completedRound??null,
+fireSafetyModernized:!!x.fireSafetyModernized,
 lostMaterials:Array.isArray(x.lostMaterials)?x.lostMaterials:[]
 }));
 parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
@@ -213,6 +216,26 @@ if(!parsed.monoTradeExpansionV1){
   for(let i=0;i<additions.length;i++)trimmed.splice(Math.min((i+1)*spacing,trimmed.length),0,additions[i]);
   parsed.deck=trimmed;
   parsed.monoTradeExpansionV1=true;
+}
+
+if(!parsed.fireSafetyExpansionV1){
+  const id='fireworkshop';
+  const held=[
+    ...(parsed.market||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),
+    ...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId),
+    ...(parsed.deck||[]).map(c=>c?.id)
+  ];
+  const already=held.filter(x=>x===id).length;
+  const additions=Array.from({length:Math.max(0,PROJECT_COPIES-already)},(_,i)=>({uid:'FIRE-V1-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.fireSafetyExpansionV1=true;
 }
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -2011,6 +2034,7 @@ const upkeep=constructionUpkeepDue(state,p.id);
 const loans=p.loans||[],debt=loans.reduce((s,x)=>s+x.principal,0),interest=loanInterest(state,p.id);
 const canRepay=isActive&&loans.some(x=>x.interestPaid)&&p.capital>=LOAN_PRINCIPAL;
 const procurement=isActive?(state.procurementRemaining||0):0;
+const fireFine=p.fireIncomePenalty||0;
 const loanHtml=loans.length?loans.map((loan,i)=>`<div class="loan-row"><span><b>Кредит ${i+1}</b><small>${loan.interestPaid?'процент уже уплачен · можно погашать':'погашение откроется после фазы дохода'}</small></span><strong>$${loan.principal}</strong></div>`).join(''):'<div class="empty-state compact">Активных кредитов нет.</div>';
 const available=p.portfolio.map((id,handIndex)=>{
 const pr=projectById(id),isTurn=canTakeMainAction(state,p.id);
@@ -2028,18 +2052,19 @@ return projectCoreCard(pr,{topLeft:`HAND ${handIndex+1}/${HAND_LIMIT}`,topRight:
 const activeHtml=active.map(con=>{
 const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
 if(con.status==='complete'){
+const fireMarker=con.fireSafetyModernized?'<div class="warehouse-support">🛡 ПОЖАРНАЯ МОДЕРНИЗАЦИЯ · постоянный жетон · вклад П −1</div>':'';
 const wh=con.projectId==='warehouse'?`<div class="warehouse-note">Склад · Хранение <b>${warehouseInventory(con).length}/${WAREHOUSE_STORAGE_CAPACITY}</b> · может быть источником/точкой доставки и снабжать стройки в этом районе.</div>`:'';
 let actionNote='';
-if(['bank','bureau','shops','club','commission_house'].includes(con.projectId)){
+if(['bank','bureau','shops','club','commission_house','firehouse'].includes(con.projectId)){
 const occupant=actionSpaceOccupant(state,con.id);
-const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)'};
+const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','publicworks','streetcar'].includes(con.projectId)){
 actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const warehouses=completedWarehouses(state,p.id,con.districtId);
@@ -2068,7 +2093,7 @@ return '<div class="office-goal '+entry.status+' '+(ev.complete?'ready':'')+'"><
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
