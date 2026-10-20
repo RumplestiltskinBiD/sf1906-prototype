@@ -17,7 +17,7 @@ function building(id,playerId,projectId,districtId,{status='complete',stock=[],m
 }
 
 test('exactly five industrial types and recipe/cost/risk/income data',()=>{
-  const types=G.PROJECTS.filter(p=>G.projectTypes(p.id).includes('Промышленное'));
+  const types=G.PROJECTS.filter(p=>G.projectTypes(p.id).length===1&&G.projectTypes(p.id)[0]==='Промышленное');
   assert.deepEqual(types.map(p=>p.id),['factory','brickworks','woodworks','foundry','cannery']);
   const expected=[
     ['brickworks',4,1,1,1,1,['Lumber','Masonry','Masonry','Steel']],
