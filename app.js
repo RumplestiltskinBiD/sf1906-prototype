@@ -1613,6 +1613,7 @@ const bureaus=completedActionSpaces(state,'bureau');
 const shops=completedActionSpaces(state,'shops');
 const clubs=completedActionSpaces(state,'club');
 const commissionHouses=completedActionSpaces(state,'commission_house');
+const firehouses=completedActionSpaces(state,'firehouse');
 const availableProjects=(p.portfolio||[]).length;
 const debt=(p.loans||[]).length;
 const contract=(p.bureauContracts||0)>0;
@@ -1630,6 +1631,7 @@ const bureauAvailable=!mainUsed&&!!selected&&!contract&&bureaus.some(x=>actionRe
 const shopsAvailable=!mainUsed&&!!selected&&p.capital>=1&&hasConstruction&&shops.some(x=>actionReach(x)&&spaceFree(x));
 const clubAvailable=!mainUsed&&!!selected&&p.capital>=1&&clubs.some(x=>actionReach(x)&&spaceFree(x));
 const commissionAvailable=!mainUsed&&!!selected&&availableProjects>0&&commissionHouses.some(x=>actionReach(x)&&spaceFree(x));
+const fireAvailable=!mainUsed&&!!selected&&firehouses.some(x=>actionReach(x)&&spaceFree(x));
 const bankButtons=banks.length?banks.map(bank=>{
 const owner=state.players[bank.playerId],d=districtById(bank.districtId),occupiedBy=actionSpaceOccupant(state,bank.id);
 const occupied=occupiedBy!=null,range=actionReach(bank);
@@ -1663,6 +1665,35 @@ const ownerText=club.playerId===pid?'ужин / приём $1':'$1 → влад�
 const usedText=occupied?`ИСПОЛЬЗОВАНО · ${state.players[occupiedBy].name}`:!selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ':!range?'СЛИШКОМ ДАЛЕКО':p.capital<1?'НУЖЕН $1':mainUsed?'ДЕЙСТВИЕ ИСП.':'−$1 · +1 Влияние';
 return `<button class="action-space-btn club ${disabled?'':'available-action'} ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-club-action="${club.id}" ${disabled?'disabled':''}><b>Restaurant & Club · ${owner.name}</b><span>${d.name} · ${occupied?`занят ${state.players[occupiedBy].name}`:ownerText}</span><strong>${usedText}</strong></button>`;
 }).join(''):'<div class="action-space-locked">Restaurant & Club ещё не построен</div>';
+const firehouseButtons=firehouses.length?firehouses.map(house=>{
+  const range=actionReach(house),used=!spaceFree(house),enabled=!mainUsed&&!!selected&&range&&!used;
+  const supported=firehouseHasWorkshop(state,house.id);
+  const hint=used?'ЗАНЯТА':!selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ':!range?'НЕДОСТУПНЫЙ РАЙОН':mainUsed?'ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':supported?'МАСТЕРСКИЕ ПОДКЛЮЧЕНЫ':'БАЗОВАЯ СЛУЖБА';
+  return `<div class="firehouse-choice"><div class="firehouse-choice-title"><b>${districtById(house.districtId)?.name}</b><small>${state.players[house.playerId]?.name} · ${hint}</small></div>`
+    +`<div class="firehouse-choice-buttons"><button class="action-space-btn ${enabled?'available-action':''}" data-fire-mode="upgrade" data-firehouse-id="${house.id}" ${enabled?'':'disabled'}>Модернизация · $${supported?1:2}</button>`
+    +`<button class="action-space-btn ${enabled?'available-action':''}" data-fire-mode="inspect" data-firehouse-id="${house.id}" ${enabled?'':'disabled'}>Инспекция</button></div></div>`;
+}).join(''):'<div class="action-space-locked">Пожарные части ещё не построены</div>';
+if(fireActionDraft&&(fireActionDraft.pid!==pid||fireActionDraft.workerId!==selected?.id||mainUsed
+  ||!firehouses.some(h=>h.id===fireActionDraft.firehouseId&&spaceFree(h)&&actionReach(h))))fireActionDraft=null;
+let fireTargetPanel='';
+if(fireActionDraft){
+  const house=firehouses.find(h=>h.id===fireActionDraft.firehouseId);
+  const workshop=firehouseHasWorkshop(state,house.id);
+  let choices=[];
+  if(fireActionDraft.kind==='upgrade'){
+    choices=firehouseUpgradeCandidates(state,pid,house.id).map(c=>({id:c.id,
+      label:`${projectById(c.projectId)?.name} · ${districtById(c.districtId)?.name} · П +${projectRisk(c.projectId).fire} → +${projectRisk(c.projectId).fire-1}`,
+      detail:`Своё здание · стоимость $${workshop?1:2}`,disabled:p.capital<(workshop?1:2)}));
+  }else{
+    choices=firehouseInspectionDistricts(state,house.id).map(id=>{
+      const targets=firehouseInspectionTargets(state,house.id,id);
+      const offenders=targets.map(c=>`${projectById(c.projectId)?.name} (${state.players[c.playerId]?.name}, П +${projectRisk(c.projectId).fire})`).join(' · ');
+      return {id,label:districtById(id)?.name||id,detail:targets.length?`${targets.length} объект(а): ${offenders} · $3 за каждый, −1 Влияние владельцу; при нехватке денег постоянное −$1 дохода`:'Нарушителей П +2 или выше нет',disabled:!targets.length};
+    });
+  }
+  fireTargetPanel=`<div class="fire-target-panel" id="fireTargetPanel"><div class="fire-target-head"><b>${fireActionDraft.kind==='upgrade'?'Добровольная модернизация':'Принудительная инспекция'}</b><button class="secondary-btn" id="cancelFireAction">Отмена</button></div>`
+    +`<div class="fire-target-options">${choices.map(c=>`<button class="action-space-btn ${c.disabled?'':'available-action'}" data-fire-target="${c.id}" ${c.disabled?'disabled':''}><b>${c.label}</b><span>${c.detail}</span></button>`).join('')||'<span>Подходящих объектов нет</span>'}</div></div>`;
+}
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const capitalDisabled=mainUsed||!selected;
 const deliveryDisabled=!canUseFreeAction(state,pid);
@@ -1678,12 +1709,13 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
 <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
 <div class="city-action-card club-card ${clubAvailable?'action-available':''}"><b>Ресторан и клуб</b><span>Нужно добраться до клуба · −$1 → +1 Влияние</span><div class="action-space-list">${clubButtons}</div></div>
+<div class="city-action-card ${fireAvailable?'action-available':''}"><b>🚒 Пожарная служба</b><span>1 представитель · пожарная часть: модернизация своего здания или инспекция района</span><div class="action-space-list firehouse-list">${firehouseButtons}</div>${fireTargetPanel}</div>
 <div class="city-action-card ${commissionAvailable?'action-available':''}"><b>Комиссионный торговый дом</b><span>Основное действие: перепродать неначатый проект за $4</span><button class="secondary-btn full" id="actionCommission" ${commissionAvailable?'':'disabled'}>${commissionHouses.length?'Выбрать проект в офисе':'Комиссионный дом ещё не построен'}</button></div>
 </div>`;
 $$('[data-select-worker]').forEach(b=>b.onclick=()=>{
 const r=selectWorker(state,pid,b.dataset.selectWorker);
 if(!r.ok){showToast(r.reason==='used'?'Этот представитель уже использован':'Нельзя выбрать этого представителя');return;}
-state.pendingConstruction=null;state.pendingWorkerAction=null;render();
+state.pendingConstruction=null;state.pendingWorkerAction=null;fireActionDraft=null;render();
 });
 const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
@@ -1698,7 +1730,7 @@ render();
 showToast('Привлечь капитал: выберите текущий или соседний район на карте');
 };
 const end=$('#actionEndActivation');if(end)end.onclick=()=>{
-deliveryDraft=null;
+deliveryDraft=null;fireActionDraft=null;
 const r=endActivation(state,pid);
 if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
 overviewPlayerId=null;focusedConstructionId=null;
@@ -1706,6 +1738,21 @@ closeDrawers();closeMobileContext();
 showToast(r.complete?'Все представители использованы':`Ход: ${state.players[r.nextPlayer].name} · выберите представителя`);
 render();
 };
+$$('[data-fire-mode]').forEach(b=>b.onclick=()=>{
+  fireActionDraft={pid,workerId:activeWorker(state,pid)?.id,firehouseId:b.dataset.firehouseId,kind:b.dataset.fireMode};
+  renderCityActions();
+  $('#fireTargetPanel')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+});
+$('#cancelFireAction')?.addEventListener('click',()=>{fireActionDraft=null;renderCityActions();});
+$$('[data-fire-target]').forEach(b=>b.onclick=()=>{
+  const draft=fireActionDraft;if(!draft)return;
+  const result=useFirehouseAction(state,pid,draft.firehouseId,draft.kind,b.dataset.fireTarget);
+  if(!result.ok){showToast(result.reason==='capital'?'Недостаточно денег':result.reason==='occupied'?'Эту пожарную часть уже использовали':result.reason==='no-violations'?'Нарушений в районе нет':'Пожарное действие сейчас недоступно');renderCityActions();return;}
+  fireActionDraft=null;
+  const affected=result.impacts.map(x=>`${state.players[x.playerId]?.name}: $${x.paid}/${x.cost}, Влияние ${x.influenceDelta}, штраф дохода ${x.incomePenalty}`).join('; ');
+  showToast(`${result.kind==='inspect'?'Инспекция':'Модернизация'}: ${result.targets.length} объект(а), П ${result.fireBefore}→${result.fireAfter}. ${affected}`);
+  render();
+});
 $$('[data-bank-action]').forEach(b=>b.onclick=()=>{
 const r=takeBankLoan(state,pid,b.dataset.bankAction);
 if(!r.ok){showToast(r.reason==='worker-range'?'Выбранный представитель слишком далеко':r.reason==='worker'?'Сначала выберите представителя':r.reason==='occupied'?'Этот Bank уже занят в этом раунде':r.reason==='max-loans'?'Уже 2 активных кредита':'Bank сейчас недоступен');return;}
