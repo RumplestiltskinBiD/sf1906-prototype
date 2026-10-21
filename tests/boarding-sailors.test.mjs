@@ -112,3 +112,19 @@ test('zero influence disables illegal recruitment; failed/industrial loading nev
  assert.equal(G.resolveSailorRecruitment(s,'S','illegal').reason,'influence');
  assert.equal(G.resolveSailorRecruitment(s,'S','lawful').ok,true);
 });
+
+test('wagon fire risk escalates from P+1 to P+3 and becomes inspectable at levels II/III',()=>{
+ const s=game(0,'sunset');
+ const b=built('W','wagonboarding','sunset',1,{wagonLevel:3});
+ const house=built('FH','firehouse','sunset',0);
+ s.constructions=[b,house];
+ assert.equal(G.constructionFireRisk(b),3);
+ assert.deepEqual(G.firehouseInspectionTargets(s,'FH','sunset').map(c=>c.id),['W']);
+ assert.equal(G.districtRisk(s,'sunset').sources.find(x=>x.constructionId==='W').fire,3);
+ const result=G.useFirehouseAction(s,0,'FH','inspect','sunset');
+ assert.equal(result.ok,true,result.reason);
+ assert.deepEqual(result.targets,['W']);
+ assert.equal(s.players[1].capital,97);
+ assert.equal(b.fireSafetyModernized,true);
+ assert.equal(G.districtRisk(s,'sunset').sources.find(x=>x.constructionId==='W').fire,2);
+});
