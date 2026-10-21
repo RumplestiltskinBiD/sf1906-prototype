@@ -8,7 +8,7 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -123,6 +123,7 @@ materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).sl
 warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
 completedRound:x.completedRound??null,
 fireSafetyModernized:!!x.fireSafetyModernized,
+ wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
 lostMaterials:Array.isArray(x.lostMaterials)?x.lostMaterials:[]
 }));
 parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
@@ -237,6 +238,21 @@ if(!parsed.fireSafetyExpansionV1){
   parsed.deck=deck;
   parsed.fireSafetyExpansionV1=true;
 }
+// v0.50: add only unseen cards to existing saves, never disturb market/portfolio.
+if(!parsed.boardingExpansionV1){
+  const locked=[...(parsed.market||[]).map(c=>c?.id),...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId),...(parsed.deck||[]).map(c=>c?.id)];
+  const additions=[];
+  for(const id of ['wagonboarding','sailorlodging'])for(let i=locked.filter(x=>x===id).length;i<PROJECT_COPIES;i++)additions.push({uid:'BOARD-V1-'+id+'-'+(i+1),id});
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.boardingExpansionV1=true;
+}
+parsed.pendingSailorRecruitments=Array.isArray(parsed.pendingSailorRecruitments)?parsed.pendingSailorRecruitments.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='sailorlodging'&&c.status==='complete')):[];
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
 parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -1204,10 +1220,29 @@ render();
 });
 }
 
+function renderSailorRecruitment(){
+ const sheet=$('#sailorRecruitmentSheet'),backdrop=$('#sailorRecruitmentBackdrop');
+ if(!sheet||!backdrop)return;
+ const con=currentSailorRecruitment(state),active=!!con;
+ sheet.hidden=!active;backdrop.hidden=!active;
+ if(!active){sheet.innerHTML='';return;}
+ const owner=state.players[con.playerId],district=districtById(con.districtId);
+ sheet.innerHTML='<div class="recruitment-card"><small>ПОРТОВОЙ БИЗНЕС · ВЫБОР ВЛАДЕЛЬЦА</small>'+
+ '<h2>Матросская ночлежка</h2><p><b>'+owner.name+'</b> · '+district.name+'</p>'+
+ '<p>После погрузки в местном порту владелец выбирает найм экипажа. Рабочий не расходуется.</p>'+
+ '<div class="recruitment-actions"><button class="primary-btn" data-recruit-mode="lawful">Законный найм · +$2</button>'+
+ '<button class="secondary-btn" data-recruit-mode="illegal" '+(owner.influence>0?'':'disabled')+'>Незаконная вербовка · +$6 / −1 Влияние</button></div>'+
+ (owner.influence<=0?'<small>Незаконная вербовка недоступна при Влиянии 0.</small>':'<small>Влияние уменьшается на один шаг.</small>')+'</div>';
+ $$('[data-recruit-mode]').forEach(b=>b.onclick=()=>{
+   const r=resolveSailorRecruitment(state,con.id,b.dataset.recruitMode);
+   if(!r.ok){showToast('Вербовка сейчас недоступна');return;}
+   showToast('Вербовка: +$'+r.capital+(r.mode==='illegal'?' · −1 Влияние':''));render();
+ });
+}
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
@@ -1919,7 +1954,7 @@ state.pendingConstruction=null;state.pendingWorkerAction=null;render();
 }
 const layer=$('#constructionLayer');
 if(layer){
-const byDistrict={};(state.constructions||[]).filter(x=>x.status!=='abandoned').forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
+const byDistrict={};(state.constructions||[]).filter(x=>!['abandoned','redeveloped'].includes(x.status)).forEach(x=>(byDistrict[x.districtId] ||= []).push(x));
 let html='';
 Object.entries(byDistrict).forEach(([districtId,list])=>{
 const [cx,cy]=DISTRICT_POS[districtId]||[0,0];
@@ -2022,7 +2057,7 @@ panel.innerHTML=`${close}<div class="detail-type-stripe" ${projectTypeStyle(p)}>
 }else{
 const d=districtById(state.selectedDistrictId)||DISTRICTS.find(x=>x.id==='civic')||DISTRICTS[0],ds=state.districts[d.id],access=districtAccess(state,d.id);
 const used=districtConstructionCount(state,d.id),free=d.buildable===false?0:Math.max(0,ds.sites-used);
-const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id&&x.status!=='abandoned');
+const builtHere=(state.constructions||[]).filter(x=>x.districtId===d.id&&!['abandoned','redeveloped'].includes(x.status));
 const focusedHere=builtHere.find(x=>x.id===focusedConstructionId);
 let focusedHtml='';
 if(focusedHere){
@@ -2076,7 +2111,7 @@ function renderOffice(){
 const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
 const activePlayerId=currentDeveloper(state);
 const isActive=state.phase==='development'&&!state.developmentComplete&&activePlayerId===p.id;
-const active=(state.constructions||[]).filter(x=>x.playerId===p.id&&x.status!=='abandoned');
+const active=(state.constructions||[]).filter(x=>x.playerId===p.id&&!['abandoned','redeveloped'].includes(x.status));
 const upkeep=constructionUpkeepDue(state,p.id);
 const loans=p.loans||[],debt=loans.reduce((s,x)=>s+x.principal,0),interest=loanInterest(state,p.id);
 const canRepay=isActive&&loans.some(x=>x.interestPaid)&&p.capital>=LOAN_PRINCIPAL;
