@@ -8,7 +8,7 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -1717,12 +1717,12 @@ if(fireActionDraft){
   let choices=[];
   if(fireActionDraft.kind==='upgrade'){
     choices=firehouseUpgradeCandidates(state,pid,house.id).map(c=>({id:c.id,
-      label:`${projectById(c.projectId)?.name} · ${districtById(c.districtId)?.name} · П +${projectRisk(c.projectId).fire} → +${projectRisk(c.projectId).fire-1}`,
+      label:`${projectById(c.projectId)?.name} · ${districtById(c.districtId)?.name} · П +${constructionFireRisk(c)} → +${constructionFireRisk(c)-1}`,
       detail:`Своё здание · стоимость $${workshop?1:2}`,disabled:p.capital<(workshop?1:2)}));
   }else{
     choices=firehouseInspectionDistricts(state,house.id).map(id=>{
       const targets=firehouseInspectionTargets(state,house.id,id);
-      const offenders=targets.map(c=>`${projectById(c.projectId)?.name} (${state.players[c.playerId]?.name}, П +${projectRisk(c.projectId).fire})`).join(' · ');
+      const offenders=targets.map(c=>`${projectById(c.projectId)?.name} (${state.players[c.playerId]?.name}, П +${constructionFireRisk(c)})`).join(' · ');
       return {id,label:districtById(id)?.name||id,detail:targets.length?`${targets.length} объект(а): ${offenders} · $3 за каждый, −1 Влияние владельцу; при нехватке денег постоянное −$1 дохода`:'Нарушителей П +2 или выше нет',disabled:!targets.length};
     });
   }
