@@ -61,7 +61,7 @@ test('redevelopment uses main worker, reuses land and up to three Lumber, retire
  assert.deepEqual(r.construction.materialsDelivered,['Lumber','Lumber','Lumber']);
  assert.equal(G.districtConstructionCount(s,'sunset'),5);
  assert.equal(s.players[0].workers[0].used,true);
- assert.equal(G.buildingIncome(s,0),G.projectById('speculative').income,'old income lost');
+ assert.equal(G.buildingIncome(s,0),G.projectById('speculative').income+2*G.projectById('tenement').income,'old income lost; other owned homes remain');
  assert.equal(G.districtRisk(s,'sunset').fire.raw,4+1,'old high fire removed, new building P+1');
 });
 test('redevelopment level I credits only required Lumber and cannot bypass warehouse for 4+ resources',()=>{
