@@ -16,9 +16,9 @@ function build(id,playerId,projectId,districtId,status='complete',materialsDeliv
 }
 function finish(s,construction){s.constructions.push(construction);return G.completeConstruction(s,construction);}
 
-test('approved cards: exactly 5 residential, 5 municipal and 2 copies of each new type',()=>{
+test('approved cards: 5 pure residential, new mixed housing, 5 municipal and 2 copies',()=>{
   assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).includes('Жилое')).map(p=>p.id),
-    ['tenement','speculative','luxury','cottages','brickapartments']);
+    ['tenement','speculative','luxury','cottages','brickapartments','club','wagonboarding','sailorlodging']);
   assert.deepEqual(G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]==='Общественное').map(p=>p.id),
     ['firehouse','police','clinic','school','publicworks']);
   const expected=[
