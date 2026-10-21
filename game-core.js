@@ -25,6 +25,8 @@ export const STABLE_GROUND_DISTRICTS = Object.freeze(['pacific','chinatown']);
 
 export const LOGISTICS_RESOURCE_WEIGHTS = {Lumber:0.40,Masonry:0.35,Steel:0.25};
 export const CONSTRUCTION_STAGING_CAPACITY = 3;
+export const WAGON_UPGRADE_PRICE = 2;
+export const WAGON_MAX_LEVEL = 3;
 export const WAREHOUSE_STORAGE_CAPACITY = 5;
 export const FREIGHT_YARD = {id:'freightyard',name:'Городской грузовой двор',shortName:'Грузовой двор',districtId:'western',capacityPerPlayer:2,rentCost:2,x:570,y:375};
 export const DELIVERY_EDGE_COST = 1;
@@ -131,6 +133,8 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'commission_house',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Комиссионный торговый дом',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · продажа неначатого проекта за $4',benefit:'Доход +$2/год · +1 VP · продажа проекта',actionName:'Перепродажа проекта',actionText:'1 представитель → сбросьте одну карту неначатого проекта из своей руки и получите $4.',limits:'Любая карта руки, включая стартовую и купленную на аукционе. Требуется доступ представителя к району здания. Одна активация ячейки здания за год.'},
   {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает Пиво. +$1 за каждую успешно доставленную партию по общему правилу торговли (после включения системы Товары).',limits:'Приём пива активируется вместе с системой розовых торговых кубиков. До этого действует базовый доход.'},
   {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
+  {prestige:0,income:1,id:'wagonboarding',types:['Жилое','Бизнес'],risk:{earthquake:0,fire:1},name:'Вагонный пансион «Виста-дель-Мар»',type:'Жильё',open:3,materials:['Lumber','Lumber'],requires:'Только западные районы: Outer/Inner Sunset, Outer/Inner Richmond',wagonDistricts:['sunset','innersunset','outerrichmond','innerrichmond'],effect:'Доход $1/$2/$3 · быстрое расширение за $2 · перестройка возвращает 1/2/3 Lumber',benefit:'Стартовый доход +$1/год · 0 VP; уровень II/III: +$2/+$3 дохода, П+2/П+3',actionName:'Пристройка / перестройка',actionText:'Быстрое действие без рабочего: $2, +1 уровень (раз в год). Основное действие рабочего: заменить пансион другим проектом на том же участке без повторной покупки земли, засчитав Lumber по уровню.',limits:'Максимум уровень III; один апгрейд в год на здание; максимум 3 Lumber при перестройке, без излишка, staging=3; нельзя перестроить в такой же пансион.'},
+  {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и −1 Влияние',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и −1 шаг Политического влияния. Незаконная недоступна при Влиянии 0.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove, не вводит шкалу коррупции.'},
   {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · Престиж +2 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · +2 VP · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
 ]
 
@@ -224,7 +228,8 @@ export function districtRisk(state,districtId){
   for(const construction of state?.constructions||[]){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
     const base=projectRisk(construction.projectId);
-    const delta={earthquake:base.earthquake,fire:base.fire-(construction.fireSafetyModernized&&base.fire>0?1:0)};
+    const wagonFire=construction.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,construction.wagonLevel||1)-1):0;
+    const delta={earthquake:base.earthquake,fire:base.fire+wagonFire-(construction.fireSafetyModernized&&base.fire>0?1:0)};
     if(!delta.earthquake&&!delta.fire)continue;
     const project=projectById(construction.projectId);
     sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':''),earthquake:delta.earthquake,fire:delta.fire});
@@ -389,11 +394,13 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
+  if((state.pendingSailorRecruitments||[]).length)return false;
   const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
     &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
+  if((state.pendingSailorRecruitments||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId;
 }
 
@@ -505,6 +512,8 @@ export function createInitialState({rng=Math.random}={}){
     housingSchoolExpansionV1:true,
     monoTradeExpansionV1:true,
     fireSafetyExpansionV1:true,
+    boardingExpansionV1:true,
+    pendingSailorRecruitments:[],
     round:1,
     newsDeck,
     newsCurrentIds,
@@ -816,8 +825,23 @@ function award(state,m,pid,price,reason){
   logEvent(state,`${pl.name} получает «${p.name}» за $${price} (${reason}). Рука: ${pl.portfolio.length}/${HAND_LIMIT}.`,'good');
 }
 
+export function upgradeWagonBoarding(state,playerId,constructionId){
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  const con=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!con||con.playerId!==playerId||con.projectId!=='wagonboarding'||con.status!=='complete')return {ok:false,reason:'boarding'};
+  const level=Math.max(1,Math.min(WAGON_MAX_LEVEL,con.wagonLevel||1));
+  if(level>=WAGON_MAX_LEVEL)return {ok:false,reason:'max-level'};
+  if(con.wagonUpgradedRound===state.round)return {ok:false,reason:'already-upgraded'};
+  if(state.players[playerId].capital<WAGON_UPGRADE_PRICE)return {ok:false,reason:'capital'};
+  state.players[playerId].capital-=WAGON_UPGRADE_PRICE;
+  con.wagonLevel=level+1;
+  con.wagonUpgradedRound=state.round;
+  logEvent(state,`${state.players[playerId].name} расширяет вагонный пансион в ${districtById(con.districtId).name} до уровня ${con.wagonLevel}: −$${WAGON_UPGRADE_PRICE}, доход +$1/год, П +1. Быстрое действие без рабочего.`,'accent');
+  return {ok:true,level:con.wagonLevel,cost:WAGON_UPGRADE_PRICE};
+}
+
 export function districtConstructionCount(state,districtId){
-  return (state.constructions||[]).filter(c=>c.districtId===districtId&&c.status!=='abandoned').length;
+  return (state.constructions||[]).filter(c=>c.districtId===districtId&&!['abandoned','redeveloped'].includes(c.status)).length;
 }
 export function unfinishedConstructions(state,playerId=null){
   return (state.constructions||[]).filter(c=>c.status==='under-construction'&&(playerId==null||c.playerId===playerId));
@@ -826,8 +850,12 @@ export function constructionUpkeepDue(state,playerId){
   return unfinishedConstructions(state,playerId).length*CONSTRUCTION_UPKEEP_COST;
 }
 
-export function constructionEligibility(state,playerId,projectId,districtId){
+export function constructionEligibility(state,playerId,projectId,districtId,{redevelopId=null}={}){
   const reasons=[];
+  const former=redevelopId?(state.constructions||[]).find(c=>c.id===redevelopId):null;
+  const replacing=!!(former&&former.status==='complete'&&former.projectId==='wagonboarding'&&former.playerId===playerId&&former.districtId===districtId);
+  if(redevelopId&&!replacing)reasons.push('Перестройка возможна только из собственного готового вагонного пансиона в том же районе.');
+  if(redevelopId&&projectId==='wagonboarding')reasons.push('Нельзя заменить пансион таким же пансионом.');
   const player=state.players[playerId];
   const project=projectById(projectId);
   const district=districtById(districtId);
@@ -850,7 +878,9 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   }
   const used=ds?districtConstructionCount(state,districtId):0;
   if(district?.buildable===false) reasons.push('В этой зоне строительство запрещено.');
-  else if(ds&&used>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
+  else if(ds&&used-(replacing?1:0)>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
+  if(project?.id==='wagonboarding'&&!project.wagonDistricts?.includes(districtId))reasons.push('Вагонный пансион строится только в западных районах.');
+  if(project?.id==='sailorlodging'&&!LOGISTICS_NODES.some(n=>n.districtId===districtId&&n.kind.includes('port')))reasons.push('Для матросской ночлежки нужен действующий портовый узел погрузки.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
 
@@ -868,8 +898,8 @@ export function constructionEligibility(state,playerId,projectId,districtId){
     const names=project.accessAny.map(x=>x==='road'?'улица':x==='rail'?'Rail':x==='port'?'Port':x).join(' или ');
     reasons.push(`Требуется ${names} access.`);
   }
-  const bureauDiscount=player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
-  const landCost=ds?Math.max(0,ds.landValue-bureauDiscount):0;
+  const bureauDiscount=!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
+  const landCost=ds?(replacing?0:Math.max(0,ds.landValue-bureauDiscount)):0;
   if(player&&ds&&player.capital<landCost) reasons.push(`Не хватает капитала на землю ($${landCost}).`);
   return {
     ok:reasons.length===0,
@@ -877,6 +907,8 @@ export function constructionEligibility(state,playerId,projectId,districtId){
     cost:landCost,
     baseCost:ds?.landValue??0,
     bureauDiscount,
+    redevelopment:replacing,
+    redeemedLumber:replacing?Math.min(former.wagonLevel||1,(project?.materials||[]).filter(x=>x==='Lumber').length,CONSTRUCTION_STAGING_CAPACITY):0,
     landValue:ds?.landValue??0,
     access,
     usedSites:used,
@@ -885,22 +917,26 @@ export function constructionEligibility(state,playerId,projectId,districtId){
   };
 }
 
-export function beginConstruction(state,playerId,projectId,districtId){
-  const check=constructionEligibility(state,playerId,projectId,districtId);
+export function beginConstruction(state,playerId,projectId,districtId,{redevelopId=null}={}){
+  const check=constructionEligibility(state,playerId,projectId,districtId,{redevelopId});
   if(!check.ok)return {ok:false,...check};
   const player=state.players[playerId];
   const idx=player.portfolio.indexOf(projectId);
   if(idx<0)return {ok:false,reasons:['Проект уже недоступен.']};
   const consumed=consumeMainAction(state,playerId,districtId);
   if(!consumed.ok)return consumed;
+  const former=check.redevelopment?state.constructions.find(c=>c.id===redevelopId):null;
+  if(former){former.status='redeveloped';former.redevelopedRound=state.round;former.redevelopedInto=state.nextConstructionId||1;}
   const construction={
     id:`C${state.nextConstructionId||1}`,
     playerId,projectId,districtId,
     startedRound:state.round,
     status:'under-construction',
-    materialsDelivered:[],
+    materialsDelivered:Array.from({length:check.redeemedLumber||0},()=> 'Lumber'),
     warehouseInventory:[],
-    completedRound:null
+    completedRound:null,
+    ...(former?{redevelopedFrom:former.id,redeemedLumber:check.redeemedLumber}:{}),
+    ...(projectId==='wagonboarding'?{wagonLevel:1,wagonUpgradedRound:null}:{})
   };
   state.nextConstructionId=(state.nextConstructionId||1)+1;
   player.portfolio.splice(idx,1);
@@ -911,8 +947,9 @@ export function beginConstruction(state,playerId,projectId,districtId){
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
   const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
-  logEvent(state,`${player.name} начал строительство «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}.${workerMovementText(consumed)}`,'good');
-  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker};
+  logEvent(state,`${player.name} ${former?'перестраивает пансион в':'начал строительство'} «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}${former?', повторно использовано Lumber ×'+check.redeemedLumber:''}.${workerMovementText(consumed)}`,'good');
+  const completedImmediately=!!(former&&completeConstruction(state,construction).ok);
+  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
@@ -1469,6 +1506,16 @@ export function executeDelivery(state,plan){
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
   logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
+  // A real supply port loads freight; export-only Gas House Cove is not a trigger.
+  const portDistricts=new Set(pickups.map(p=>p.source.kind==='node'?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
+    .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
+  state.pendingSailorRecruitments=state.pendingSailorRecruitments||[];
+  for(const con of state.constructions||[]){
+    if(con.projectId!=='sailorlodging'||con.status!=='complete'||!portDistricts.has(con.districtId)
+      ||con.sailorRecruitmentRound===state.round||state.pendingSailorRecruitments.includes(con.id))continue;
+    state.pendingSailorRecruitments.push(con.id);
+    logEvent(state,`Матросская ночлежка ${districtById(con.districtId)?.name}: портовая погрузка завершена, владелец выбирает вид вербовки.`,'accent');
+  }
   const completed=[];
   for(const id of constructionIds){
     const con=state.constructions.find(c=>c.id===id);
@@ -1477,9 +1524,28 @@ export function executeDelivery(state,plan){
   return {ok:true,cost,completed,hauler,source};
 }
 
+export function currentSailorRecruitment(state){
+  return (state.pendingSailorRecruitments||[]).map(id=>(state.constructions||[]).find(c=>c.id===id))
+    .find(con=>con&&con.status==='complete'&&con.projectId==='sailorlodging'&&con.sailorRecruitmentRound!==state.round)||null;
+}
+export function resolveSailorRecruitment(state,constructionId,mode){
+  const current=currentSailorRecruitment(state);
+  if(!current||current.id!==constructionId||state.phase!=='development')return {ok:false,reason:'no-pending'};
+  if(!['lawful','illegal'].includes(mode))return {ok:false,reason:'mode'};
+  const owner=state.players[current.playerId];
+  if(mode==='illegal'&&owner.influence<=0)return {ok:false,reason:'influence'};
+  const gain=mode==='illegal'?6:2;
+  const movement=mode==='illegal'?moveInfluence(state,owner.id,-1):null;
+  owner.capital+=gain;
+  current.sailorRecruitmentRound=state.round;
+  state.pendingSailorRecruitments.shift();
+  logEvent(state,`${owner.name} — ${mode==='illegal'?'незаконная вербовка':'законный найм'} в ${districtById(current.districtId).name}: +$${gain}${movement?', Влияние −1 шаг':''}.`,'accent');
+  return {ok:true,playerId:owner.id,capital:gain,mode,influenceSteps:movement?.steps||0};
+}
+
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0)+canneryIncomeBonus(state,c),0);
+    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0)+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0),0);
 }
 
 export function grossRoundIncome(state,playerId){
@@ -1828,6 +1894,7 @@ export function cleanupMarket(state,{rng=Math.random}={}){
       constructionIds:unfinishedConstructions(state,state.yearTransition.playerId).map(c=>c.id)};
   }
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
+  if((state.pendingSailorRecruitments||[]).length)return {ok:false,reason:'pending-recruitment'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   ensureNewspaper(state,{rng});
   resolveNewspaper(state);
