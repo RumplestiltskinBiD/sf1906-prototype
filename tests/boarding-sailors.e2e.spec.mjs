@@ -76,8 +76,12 @@ test('v0.50 replace wagon in a full district from map, preserve save on reload',
  await page.setViewportSize({width:390,height:844});
  const s=game();s.players[0].portfolio=['speculative'];s.constructions=[built('W','wagonboarding','sunset',0,{wagonLevel:3})];
  s.districts.sunset.landValue=0;s.players[0].workers[0].districtId='innersunset';
- s.pendingConstruction={playerId:0,projectId:'speculative'};s.selectedDistrictId='sunset';
+ s.selectedDistrictId='sunset';
  await seed(page,s);
+ // Save migration intentionally discards a half-completed construction selection.
+ // Start the project through the real player-facing UI after loading the save.
+ await page.locator('#officeBtn').click();
+ await page.locator('[data-start-project="speculative"]').click();
  await page.locator('[data-district="sunset"]').click({force:true});
  const button=page.locator('[data-redevelop-wagon="W"]');
  await expect(button).toBeVisible();await button.click();
