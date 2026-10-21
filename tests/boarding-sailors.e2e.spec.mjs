@@ -72,17 +72,20 @@ test('v0.50 mixed building card migration inserts 2+2 in old save only once',asy
  expect(stored.deck.filter(c=>c.id==='wagonboarding')).toHaveLength(2);
  expect(stored.deck.filter(c=>c.id==='sailorlodging')).toHaveLength(2);
 });
-test('v0.50 replace wagon in a full district from map, preserve save on reload',async({page})=>{
+test.only('v0.50 replace wagon in a full district from map, preserve save on reload',async({page})=>{
  await page.setViewportSize({width:390,height:844});
+ page.setDefaultTimeout(3500);
  const s=game();s.players[0].portfolio=['speculative'];s.constructions=[built('W','wagonboarding','sunset',0,{wagonLevel:3})];
  s.districts.sunset.landValue=0;s.players[0].workers[0].districtId='innersunset';
  s.selectedDistrictId='sunset';
  await seed(page,s);
  // Save migration intentionally discards a half-completed construction selection.
  // Start the project through the real player-facing UI after loading the save.
- await page.locator('#officeBtn').click();
- await page.locator('[data-start-project="speculative"]').click();
- await page.locator('[data-district="sunset"]').click({force:true});
+ console.log('redevelop: loaded');
+ await page.locator('#officeBtn').click(); console.log('redevelop: office opened');
+ await expect(page.locator('[data-start-project="speculative"]')).toBeEnabled(); console.log('redevelop: build enabled');
+ await page.locator('[data-start-project="speculative"]').click(); console.log('redevelop: started project');
+ await page.locator('[data-district="sunset"]').click({force:true}); console.log('redevelop: clicked sunset');
  const button=page.locator('[data-redevelop-wagon="W"]');
  await expect(button).toBeVisible();await button.click();
  const stored=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
