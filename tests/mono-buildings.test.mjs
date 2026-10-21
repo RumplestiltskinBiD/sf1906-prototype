@@ -21,7 +21,7 @@ function finish(s,id,pid,projectId,district){
 }
 
 test('four new mono-type projects complete five pure building types per category; temporary two-copy pool',()=>{
-  assert.equal(G.PROJECTS.length,27);
+  assert.equal(G.PROJECTS.length,29);
   assert.equal(G.PROJECT_COPIES,2);
   const pool=G.createProjectCardPool({rng:()=>0.1});
   assert.equal(pool.length,54);
