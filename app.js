@@ -1865,7 +1865,7 @@ $('#cancelWorkerAction').onclick=()=>{state.pendingWorkerAction=null;mobileConte
 }else if(pending){
 const pl=state.players[pending.playerId],pr=projectById(pending.projectId);
 mode.className='construction-mode active';
-mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите текущий или соседний район. Market Street больше не даёт быстрого перемещения. Подсветка учитывает Стоимость земли, ж/д, порт, пожарную защиту и клинику.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
+mode.innerHTML=`<div><strong>${pl.name}: ${pr.name}</strong><span>Выберите район. Если там есть ваш вагонный пансион, можно перестроить его без повторной покупки земли, использовав 1/2/3 Lumber. Требуется основное действие рабочего.</span></div><button class="ghost-btn" id="cancelConstruction">Отмена</button>`;
 $('#cancelConstruction').onclick=()=>{state.pendingConstruction=null;mobileContextOpen=false;render();};
 }else if(state.developmentComplete){
 mode.className='construction-mode complete';
@@ -1896,7 +1896,7 @@ if(workerAction?.type==='raiseCapital'&&reachableIds.has(id))g.classList.add('mo
 if(pending){
 if(reachableIds.has(id)){
 const check=constructionEligibility(state,pending.playerId,pending.projectId,id);
-g.classList.add(check.ok?'build-ok':'build-blocked');
+g.classList.add(canBuildOrRedevelop(pending,id)?'build-ok':'build-blocked');
 }else{
 g.classList.add('build-dim');
 }
@@ -1913,13 +1913,13 @@ const meta=$('#districtMetaLayer');
 if(meta){
 meta.innerHTML=DISTRICTS.map(d=>{
 const ds=state.districts[d.id],used=districtConstructionCount(state,d.id),[x,y]=DISTRICT_META_POS[d.id]||DISTRICT_POS[d.id],a=districtAccess(state,d.id);
-const pendingCheck=pending?constructionEligibility(state,pending.playerId,pending.projectId,d.id):null;
+const pendingCheck=pending?canBuildOrRedevelop(pending,d.id):false;
 const movementLegal=workerAction?.type==='raiseCapital'?reachableIds.has(d.id):null;
 const risk=d.buildable===false?null:districtRisk(state,d.id);
 const maxLevel=Math.max(risk?.earthquake?.level||0,risk?.fire?.level||0);
 const riskClass=riskViewActive?(maxLevel===3?' risk-critical':maxLevel===2?' risk-warning':maxLevel===1?' risk-watch':' risk-safe'):'';
 const klass=(d.passable===false?'district-meta special closed':d.buildable===false?'district-meta special passage':
-pending?(reachableIds.has(d.id)?(pendingCheck.ok?'district-meta eligible':'district-meta blocked'):'district-meta dimmed')
+pending?(reachableIds.has(d.id)?(pendingCheck?'district-meta eligible':'district-meta blocked'):'district-meta dimmed')
 :workerAction?.type==='raiseCapital'?(movementLegal?'district-meta eligible':'district-meta blocked')
 :'district-meta')+riskClass;
 const tags=[a.rail?'RL':'',a.port?'PT':'',a.fire?'FIRE':'',a.clinic?'CL':'',a.police?'POL':''].filter(Boolean).join('·');
@@ -2016,13 +2016,13 @@ state.view='city';state.selectedDistrictId=state.selectedDistrictId||'civic';
 mobileContextOpen=false;closeDrawers();render();
 showToast(`Выберите район для «${pr.name}»`);
 }
-function confirmConstructionInDistrict(){
+function confirmConstructionInDistrict(redevelopId=null){
 const pending=state.pendingConstruction;if(!pending)return;
-const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId);
+const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId,{redevelopId});
 if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
 mobileContextOpen=false;
 const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля $${r.cost}`;
-showToast(`Основное действие: стройка начата · ${land}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
+showToast(`Основное действие: ${r.redevelopment?'перестройка · Lumber ×'+r.redeemedLumber:'стройка начата'} · ${land}${r.completedImmediately?' · сразу завершено':''}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
 render();
 }
 function confirmRaiseCapitalInDistrict(targetDistrictId=state.selectedDistrictId){
@@ -2045,6 +2045,13 @@ mobileContextOpen=false;
 const fromName=districtById(from)?.name||from,toName=districtById(targetDistrictId)?.name||targetDistrictId;
 showToast(`Привлечь капитал +$${r.amount} · #${r.worker.number}: ${fromName}${from===targetDistrictId?'':` → ${toName}`}`);
 render();
+}
+function redevelopmentOptions(pending,districtId){
+ return (state.constructions||[]).filter(c=>c.playerId===pending.playerId&&c.projectId==='wagonboarding'&&c.status==='complete'&&c.districtId===districtId)
+   .map(con=>({con,check:constructionEligibility(state,pending.playerId,pending.projectId,districtId,{redevelopId:con.id})}));
+}
+function canBuildOrRedevelop(pending,districtId){
+ return constructionEligibility(state,pending.playerId,pending.projectId,districtId).ok||redevelopmentOptions(pending,districtId).some(x=>x.check.ok);
 }
 function renderContext(){
 const panel=$('#contextPanel');
@@ -2083,8 +2090,9 @@ workerActionHtml=`<div class="construction-confirm ${canMove?'ok':'blocked'}"><d
 let constructionHtml='';
 if(state.pendingConstruction){
 const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
+const redeemHtml=redevelopmentOptions(pending,d.id).map(({con,check:rc})=>'<div class="redevelop-option"><b>Перестроить «Виста-дель-Мар» · уровень '+(con.wagonLevel||1)+'</b><small>Без повторной покупки земли · Lumber ×'+rc.redeemedLumber+' · 1 рабочий</small><button class="primary-btn full" data-redevelop-wagon="'+con.id+'" '+(rc.ok?'':'disabled')+'>Перестроить на этом участке</button>'+(rc.ok?'':'<small>'+rc.reasons.join(' · ')+'</small>')+'</div>').join('');
 const priceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.cost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.cost}</b></span><span>Представитель <b>1</b></span>`;
-constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong><div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div>${constructionRiskPreviewHtml(d.id,pr.id)}<div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
+constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong><div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div>${constructionRiskPreviewHtml(d.id,pr.id)}<div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}${redeemHtml}</div>`;
 }
 const objects=builtHere.length?builtHere.map(x=>{
 const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
@@ -2101,7 +2109,8 @@ const soilLabel=soilClass==='poor'?'Неблагоприятный грунт':s
 const marketStreetNote=districtHasMarketStreet(d.id)?'<div class="access-source"><b>Market Street:</b> географическая отметка магистрали для требований будущих проектов; не ускоряет передвижение представителей.</div>':'';
 panel.innerHTML=`${close}<div class="detail-type">${d.buildable===false?'SPECIAL AREA':'DISTRICT'}</div><h3>${d.name}</h3>${statsHtml}${riskPanelHtml}${focusedHtml}<div class="detail-section"><div class="detail-label">Доступ и городские службы</div>${d.buildable===false?'':accessHtml}${marketStreetNote}<div class="access-neighbors">Соседние доступные зоны: ${neighborNames||'нет'}</div></div><div class="detail-section"><div class="detail-label">Грунт и характер района</div><div class="detail-text"><b>${soilLabel}</b> · ${d.hint}</div></div>${workerActionHtml}${constructionHtml}<div class="detail-section"><div class="detail-label">Объекты в районе</div><div class="detail-text">${objects}</div></div><div class="district-placeholder"><b>v0.43A:</b> обычные улицы больше не являются отдельным игровым доступом. Market Street — географическое свойство, а не транспортная связь представителей; Rail/Port заданы картой.</div>`;
 const confirmMove=$('#confirmRaiseCapital');if(confirmMove)confirmMove.onclick=()=>confirmRaiseCapitalInDistrict(d.id);
-const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=confirmConstructionInDistrict;
+const confirm=$('#confirmConstruction');if(confirm)confirm.onclick=()=>confirmConstructionInDistrict();
+$$('[data-redevelop-wagon]').forEach(b=>b.onclick=()=>confirmConstructionInDistrict(b.dataset.redevelopWagon));
 $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constructions.find(x=>x.id===b.dataset.openConstruction);if(!con)return;inspectedOffice=con.playerId;closeMobileContext();openDrawer('officeDrawer');renderOffice();});
 }
 wireContextClose();
