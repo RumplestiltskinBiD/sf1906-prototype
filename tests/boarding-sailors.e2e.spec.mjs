@@ -72,7 +72,7 @@ test('v0.50 mixed building card migration inserts 2+2 in old save only once',asy
  expect(stored.deck.filter(c=>c.id==='wagonboarding')).toHaveLength(2);
  expect(stored.deck.filter(c=>c.id==='sailorlodging')).toHaveLength(2);
 });
-test('v0.50 replace wagon in a full district from map, preserve save on reload',async({page})=>{
+test.only('v0.50 replace wagon in a full district from map, preserve save on reload',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  const s=game();s.players[0].portfolio=['speculative'];s.constructions=[built('W','wagonboarding','sunset',0,{wagonLevel:3})];
  s.districts.sunset.landValue=0;s.players[0].workers[0].districtId='innersunset';
@@ -85,6 +85,10 @@ test('v0.50 replace wagon in a full district from map, preserve save on reload',
  await page.locator('[data-start-project="speculative"]').click();
  await page.locator('[data-district="sunset"]').click({force:true});
  const button=page.locator('[data-redevelop-wagon="W"]');
+ console.log('DISTRICT_CONTEXT_DEBUG',JSON.stringify(await page.evaluate(()=>{
+ const p=document.querySelector('#contextPanel'),b=document.querySelector('[data-redevelop-wagon="W"]'),r=p?.getBoundingClientRect(),br=b?.getBoundingClientRect();
+ return {w:innerWidth,h:innerHeight,bodyClass:document.body.className,panelClass:p?.className,panelRect:r?.toJSON(),buttonRect:br?.toJSON(),scrollTop:p?.scrollTop,scrollHeight:p?.scrollHeight,clientHeight:p?.clientHeight,transform:getComputedStyle(p).transform};
+ })));
  await expect(button).toBeVisible();await button.click();
  const stored=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
  expect(stored.constructions.find(c=>c.id==='W').status).toBe('redeveloped');
