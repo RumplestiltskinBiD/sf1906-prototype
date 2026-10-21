@@ -214,6 +214,12 @@ export function projectRisk(projectId){
     fire:Number(project?.risk?.fire)||0
   };
 }
+// Effective pre-modernization fire risk can change as modular boarding houses grow.
+export function constructionFireRisk(construction){
+  const base=projectRisk(construction?.projectId).fire;
+  const wagons=construction?.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,construction.wagonLevel||1)-1):0;
+  return base+wagons;
+}
 export function riskLevel(value){
   const raw=Math.max(0,Math.floor(Number(value)||0));
   return raw===0?0:raw===1?1:raw===2?2:3;
@@ -228,8 +234,8 @@ export function districtRisk(state,districtId){
   for(const construction of state?.constructions||[]){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
     const base=projectRisk(construction.projectId);
-    const wagonFire=construction.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,construction.wagonLevel||1)-1):0;
-    const delta={earthquake:base.earthquake,fire:base.fire+wagonFire-(construction.fireSafetyModernized&&base.fire>0?1:0)};
+    const fire=constructionFireRisk(construction);
+    const delta={earthquake:base.earthquake,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
     if(!delta.earthquake&&!delta.fire)continue;
     const project=projectById(construction.projectId);
     sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':''),earthquake:delta.earthquake,fire:delta.fire});
@@ -1684,14 +1690,14 @@ export function firehouseUpgradeCandidates(state,playerId,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return [];
   return (state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===house.districtId
-    &&c.playerId===playerId&&!c.fireSafetyModernized&&projectRisk(c.projectId).fire>0);
+    &&c.playerId===playerId&&!c.fireSafetyModernized&&constructionFireRisk(c)>0);
 }
 export function firehouseInspectionTargets(state,firehouseId,districtId){
   if(!firehouseInspectionDistricts(state,firehouseId).includes(districtId))return [];
   const candidates=(state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===districtId
-    &&!c.fireSafetyModernized&&projectRisk(c.projectId).fire>=2);
-  const max=Math.max(0,...candidates.map(c=>projectRisk(c.projectId).fire));
-  return max>=2?candidates.filter(c=>projectRisk(c.projectId).fire===max):[];
+    &&!c.fireSafetyModernized&&constructionFireRisk(c)>=2);
+  const max=Math.max(0,...candidates.map(constructionFireRisk));
+  return max>=2?candidates.filter(c=>constructionFireRisk(c)===max):[];
 }
 // Main worker action; firehouse is a public action space, one use per year.
 // Every tied worst offender is upgraded, including the inspecting player's.
