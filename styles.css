@@ -2827,3 +2827,31 @@ body.delivery-route-build #deliveryRouteLayer *{
  .fire-target-options{max-height:42vh}
  .fire-target-panel{padding:9px}
 }
+
+/* v0.50: compact management of modular wagon boarding and modal sailor contracts */
+.wagon-upgrades{display:grid;gap:10px;margin:12px 0;padding:12px;border:1px solid #b39a75;border-radius:12px;background:#fff7e9}
+.wagon-upgrades>small{font-size:12px;line-height:1.4}
+.wagon-upgrade-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.86)}
+.wagon-upgrade-row>div{display:grid;gap:4px;min-width:160px;flex:1}
+.wagon-upgrade-row small{line-height:1.45;color:#685b4b;font-size:12px}
+.wagon-upgrade-row button{min-height:44px;white-space:normal}
+.redevelop-option{display:grid;gap:6px;padding:10px;margin:8px 0;border:1px solid #bda47a;border-radius:10px;background:#f8efdf}
+.redevelop-option b{font-size:13px;color:#2f2922}
+.redevelop-option small{font-size:12px;line-height:1.4;color:#6d5845}
+.redevelop-option button{min-height:46px}
+.sailor-recruitment-backdrop[hidden],.sailor-recruitment-sheet[hidden]{display:none!important}
+.sailor-recruitment-backdrop{position:fixed;inset:0;z-index:50000;background:rgba(11,16,19,.82)}
+.sailor-recruitment-sheet{position:fixed;z-index:50001;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94vw,520px);max-height:calc(100dvh - 28px);overflow-y:auto;overscroll-behavior:contain}
+.recruitment-card{display:grid;gap:13px;padding:24px;border-radius:16px;color:#292218;background:#f9f0df;box-shadow:0 20px 80px #0008}
+.recruitment-card>small{color:#654d3a;font-size:12px}
+.recruitment-card h2{font-size:clamp(22px,5vw,30px);margin:0}
+.recruitment-card p{margin:0;line-height:1.5}
+.recruitment-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.recruitment-actions button{min-height:62px;white-space:normal;line-height:1.35;padding:10px}
+@media(max-width:640px),(max-height:500px) and (max-width:960px){
+ .recruitment-card{padding:16px;gap:10px}
+ .recruitment-actions{grid-template-columns:1fr}
+ .recruitment-actions button{min-height:48px}
+ .sailor-recruitment-sheet{max-height:calc(100dvh - 12px);width:min(96vw,480px)}
+ .wagon-upgrade-row button{width:100%}
+}
