@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — v0.50 Boarding & Sailors</title>
-  <link rel="stylesheet" href="./styles.css?v=050-boarding" />
+  <title>San Francisco 1906 — v0.51 Newspaper & Night Shift</title>
+  <link rel="stylesheet" href="./styles.css?v=051-newspaper" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.50</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.51</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 6</strong></div>
@@ -185,7 +185,11 @@
 <div class="sailor-recruitment-backdrop" id="sailorRecruitmentBackdrop" hidden></div>
 <section class="sailor-recruitment-sheet" id="sailorRecruitmentSheet" role="dialog" aria-modal="true" aria-label="Матросская ночлежка — вербовка экипажа" hidden></section>
 
+<div class="v051-decision-backdrop workforce-backdrop" id="workforceLinkBackdrop" hidden></div>
+<section class="v051-decision-sheet workforce-sheet" id="workforceLinkSheet" role="dialog" aria-modal="true" aria-label="Рабочий корпус — выбор предприятия" hidden></section>
+<div class="v051-decision-backdrop press-backdrop" id="pressCampaignBackdrop" hidden></div>
+<section class="v051-decision-sheet press-sheet" id="pressCampaignSheet" role="dialog" aria-modal="true" aria-label="Газетный небоскрёб — выбор кампании" hidden></section>
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=050-boarding"></script>
+<script type="module" src="./app.js?v=051-newspaper"></script>
 </body>
 </html>

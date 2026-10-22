@@ -8,7 +8,7 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -252,6 +252,21 @@ if(!parsed.boardingExpansionV1){
   parsed.deck=deck;
   parsed.boardingExpansionV1=true;
 }
+if(!parsed.pressAndWorkersExpansionV1){
+ const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+  ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+  ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+  ...(parsed.constructions||[]).map(c=>c.projectId),...(parsed.deck||[]).map(c=>c?.id)];
+ const cards=[];
+ for(const id of ['press_tower','workers_complex'])for(let i=held.filter(x=>x===id).length;i<PROJECT_COPIES;i++)cards.push({uid:'V051-'+id+'-'+(i+1),id});
+ const deck=parsed.deck||[];
+ const step=Math.max(1,Math.floor((deck.length+cards.length)/(cards.length+1)));
+ cards.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+ parsed.deck=deck;parsed.pressAndWorkersExpansionV1=true;
+}
+parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.pendingWorkforceLinks.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)):[];
+parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
+parsed.pressCampaignQueuedRound=Number(parsed.pressCampaignQueuedRound)||0;
 parsed.pendingSailorRecruitments=Array.isArray(parsed.pendingSailorRecruitments)?parsed.pendingSailorRecruitments.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='sailorlodging'&&c.status==='complete')):[];
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -1239,10 +1254,38 @@ function renderSailorRecruitment(){
    showToast('Вербовка: +$'+r.capital+(r.mode==='illegal'?' · −1 Влияние':''));render();
  });
 }
+function renderNewProjectDecisions(){
+ const ws=$('#workforceLinkSheet'),wb=$('#workforceLinkBackdrop');
+ const worker=currentWorkforceLink(state);
+ if(ws&&wb){ws.hidden=!worker;wb.hidden=!worker;
+  if(worker){const targets=availableWorkforceTargets(state,worker.playerId,worker.districtId,worker.id);
+   ws.innerHTML='<div class="recruitment-card"><small>ФАБРИЧНЫЙ КОМПЛЕКС · ЗАВЕРШЕНО</small><h2>Выберите предприятие</h2><p>Рабочий корпус: '+state.players[worker.playerId].name+' · '+districtById(worker.districtId).name+'. Привязка постоянная, один корпус на предприятие.</p><div class="recruitment-actions">'+targets.map(c=>'<button class="primary-btn" data-workforce-target="'+c.id+'">'+projectById(c.projectId).name+' · текущий доход $'+((projectById(c.projectId).income||0)+canneryIncomeBonus(state,c))+'</button>').join('')+'</div></div>';
+   $$('[data-workforce-target]').forEach(b=>b.onclick=()=>{const r=resolveWorkforceLink(state,worker.id,b.dataset.workforceTarget);if(!r.ok){showToast('Нельзя привязать комплекс');return;}showToast('Ночная смена активна: доход предприятия ×2');render();});
+  }else ws.innerHTML='';
+ }
+ const ps=$('#pressCampaignSheet'),pb=$('#pressCampaignBackdrop');
+ const tower=currentPressCampaign(state);
+ if(ps&&pb){ps.hidden=!tower;pb.hidden=!tower;
+  if(tower){const owner=state.players[tower.playerId];
+   ps.innerHTML='<div class="recruitment-card"><small>THE SAN FRANCISCO CALL · ЕЖЕГОДНЫЙ ВЫПУСК</small><h2>Газетная кампания</h2><p>'+owner.name+' · '+districtById(tower.districtId).name+'. Итоги газеты подведены. Выбери один эффект небоскрёба без рабочего.</p><div class="recruitment-actions"><button class="primary-btn" data-press-choice="cash">Рекламный доход · +$2</button><button class="secondary-btn" data-press-choice="influence" '+(owner.capital>=2?'':'disabled')+'>Кампания · −$2 и +1 Влияние</button></div>'+
+     (owner.capital<2?'<small>Для политической кампании не хватает $2.</small>':'')+'</div>';
+   $$('[data-press-choice]').forEach(b=>b.onclick=()=>{
+     const r=resolvePressCampaign(state,tower.id,b.dataset.pressChoice);
+     if(!r.ok){showToast('Недоступная газетная кампания');return;}
+     if(!currentPressCampaign(state)){
+       const next=cleanupMarket(state);
+       if(next.ok){state.view=next.finished?'city':'hall';newsEmergencyMode=false;newsArchiveIndex=null;showToast(next.finished?'Фаза I завершена':'Год завершён · результаты газеты учтены');}
+       else if(next.reason!=='upkeep-choice'&&next.reason!=='pending-building-choice')showToast('Переход года: '+next.reason);
+     }
+     render();
+   });
+  }else ps.innerHTML='';
+ }
+}
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
@@ -2076,7 +2119,7 @@ focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title
 const inv=warehouseInventory(focusedHere);
 focusedHtml=`<div class="focused-object-detail warehouse"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>Склад</b><small>${owner.name} · ${d.name} · ${inv.length}/${WAREHOUSE_STORAGE_CAPACITY}</small></span></div><div class="focused-object-note">На складе: ${materialCountText(inv)}</div></div>`;
 }else{
-focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · готово</small></span></div><div class="focused-object-note">Престиж +${fp.prestige||0} VP · Доход +${(fp.income||0)+(focusedHere.projectId==='wagonboarding'?(focusedHere.wagonLevel||1)-1:0)} / раунд</div></div>`;
+focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · готово</small></span></div><div class="focused-object-note">Престиж +${fp.prestige||0} VP · Доход +${(fp.income||0)+(focusedHere.projectId==='wagonboarding'?(focusedHere.wagonLevel||1)-1:0)+canneryIncomeBonus(state,focusedHere)+workforceIncomeBonus(state,focusedHere)} / раунд</div></div>`;
 }
 }
 const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
@@ -2097,7 +2140,7 @@ constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><
 const objects=builtHere.length?builtHere.map(x=>{
 const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
 const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','publicworks','streetcar'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
-return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${(pr.income||0)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
+return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${(pr.income||0)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)+canneryIncomeBonus(state,x)+workforceIncomeBonus(state,x)}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
 }).join(''):'Пока нет.';
 const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
 const statsHtml=d.buildable===false
@@ -2155,7 +2198,7 @@ actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архи
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)+(con.projectId==='wagonboarding'?(con.wagonLevel||1)-1:0)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${con.projectId==='sailorlodging'?'<div class="warehouse-support">Вербовка: '+(con.sailorRecruitmentRound===state.round?'в этом году использована':'ожидает погрузки в местном порту')+' · законно +$2 или незаконно +$6 и −1 Влияние</div>':''}${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)+(con.projectId==='wagonboarding'?(con.wagonLevel||1)-1:0)+workforceIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${con.projectId==='workers_complex'?'<div class="warehouse-support">Ночная смена: '+(con.linkedIndustryId?(projectById(state.constructions.find(x=>x.id===con.linkedIndustryId)?.projectId)?.name||'предприятие')+' · удвоен доход, но не производство':'ожидается выбор предприятия')+'</div>':''}${con.projectId==='press_tower'?'<div class="warehouse-support">Газетная кампания: '+(con.pressCampaignRound===state.round?'использована':'срабатывает при завершении ежегодного газетного выпуска')+' · +$2 или −$2 / +1 Влияние</div>':''}${con.projectId==='sailorlodging'?'<div class="warehouse-support">Вербовка: '+(con.sailorRecruitmentRound===state.round?'в этом году использована':'ожидает погрузки в местном порту')+' · законно +$2 или незаконно +$6 и −1 Влияние</div>':''}${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+INDUSTRIAL_PRODUCTION[con.projectId].capacity+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const warehouses=completedWarehouses(state,p.id,con.districtId);
@@ -2257,6 +2300,8 @@ const r=cleanupMarket(state);
 if(!r.ok){
 if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');
 else if(r.reason==='upkeep-choice')showToast('Income начислен. Не хватает денег на простой — выберите стройку для закрытия.');
+ else if(r.reason==='pending-press-campaign')showToast('После газеты выберите эффект газетного небоскрёба.');
+ else if(r.reason==='pending-building-choice')showToast('Сначала привяжите рабочий корпус к фабрике или консервному заводу.');
 else showToast('Переход года сейчас недоступен');
 render();return;
 }
