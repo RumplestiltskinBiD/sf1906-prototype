@@ -42,7 +42,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
 test('v0.51 old saves receive two press tower and complex cards only once',async({page})=>{
  const s=state();s.pressAndWorkersExpansionV1=false;
  const exclude=(arr)=>(arr||[]).filter(c=>!['press_tower','workers_complex'].includes(c?.id));
- s.deck=exclude(s.deck);s.market=exclude(s.market);s.starterDraftHands=s.starterDraftHands.map(exclude);
+ s.deck=exclude(s.deck);s.market=s.market.map(m=>m&&['press_tower','workers_complex'].includes(m.id)?{...m,id:'tenement'}:m);s.starterDraftHands=s.starterDraftHands.map(exclude);
  await seed(page,s);
  let saved=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
  expect(saved.pressAndWorkersExpansionV1).toBe(true);
