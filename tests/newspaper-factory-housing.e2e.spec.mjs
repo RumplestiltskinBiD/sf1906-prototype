@@ -53,3 +53,26 @@ test('v0.51 old saves receive two press tower and complex cards only once',async
  expect(saved.deck.filter(c=>c.id==='press_tower')).toHaveLength(2);
  expect(saved.deck.filter(c=>c.id==='workers_complex')).toHaveLength(2);
 });
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('v0.52 night-shift output preview and expanded brickworks stock '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  const s=state();s.constructions=[built('BR','brickworks'),built('FO','foundry'),built('W','workers_complex')];
+  s.pendingWorkforceLinks=['W'];s.players[0].portfolio=[];
+  await seed(page,s);
+  const modal=page.locator('#workforceLinkSheet');await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-workforce-target="BR"]')).toContainText('выпуск 2→4 Masonry');
+  await expect(modal.locator('[data-workforce-target="FO"]')).toContainText('выпуск 1→2 Steel');
+  await modal.locator('[data-workforce-target="BR"]').click();
+  await expect(modal).toBeHidden();
+  await page.locator('#officeBtn').click();
+  const office=page.locator('#officeContent');
+  await expect(office).toContainText('Запас завода:');
+  await expect(office).toContainText('0/4');
+  const saved=JSON.parse(await page.evaluate(k=>localStorage.getItem(k),KEY));
+  expect(saved.constructions.find(c=>c.id==='W').linkedIndustryId).toBe('BR');
+  await page.reload();
+  await page.locator('#officeBtn').click();
+  await expect(page.locator('#officeContent')).toContainText('0/4');
+ });
+}
