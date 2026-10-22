@@ -2855,3 +2855,10 @@ body.delivery-route-build #deliveryRouteLayer *{
  .sailor-recruitment-sheet{max-height:calc(100dvh - 12px);width:min(96vw,480px)}
  .wagon-upgrade-row button{width:100%}
 }
+
+/* v0.51 automatic choices, overlay over other app drawers; 390x844 and 932x430 */
+.v051-decision-backdrop[hidden],.v051-decision-sheet[hidden]{display:none!important}
+.v051-decision-backdrop{position:fixed;inset:0;background:rgba(9,15,19,.84);z-index:50012}
+.v051-decision-sheet{position:fixed;z-index:50013;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,530px);max-height:calc(100dvh - 18px);overflow-y:auto;overscroll-behavior:contain}
+.v051-decision-sheet .recruitment-actions button{min-height:52px;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:640px),(max-height:500px) and (max-width:960px){.v051-decision-sheet{width:min(96vw,530px);max-height:calc(100dvh - 10px)}.v051-decision-sheet .recruitment-card{padding:14px;gap:9px}.v051-decision-sheet .recruitment-actions{grid-template-columns:1fr}}
