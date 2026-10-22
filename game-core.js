@@ -135,6 +135,8 @@ export const PROJECTS = [
   {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
   {prestige:0,income:1,id:'wagonboarding',types:['Жилое','Бизнес'],risk:{earthquake:0,fire:1},name:'Вагонный пансион «Виста-дель-Мар»',type:'Жильё',open:3,materials:['Lumber','Lumber'],requires:'Только западные районы: Outer/Inner Sunset, Outer/Inner Richmond',wagonDistricts:['sunset','innersunset','outerrichmond','innerrichmond'],effect:'Доход $1/$2/$3 · быстрое расширение за $2 · перестройка возвращает 1/2/3 Lumber',benefit:'Стартовый доход +$1/год · 0 VP; уровень II/III: +$2/+$3 дохода, П+2/П+3',actionName:'Пристройка / перестройка',actionText:'Быстрое действие без рабочего: $2, +1 уровень (раз в год). Основное действие рабочего: заменить пансион другим проектом на том же участке без повторной покупки земли, засчитав Lumber по уровню.',limits:'Максимум уровень III; один апгрейд в год на здание; максимум 3 Lumber при перестройке, без излишка, staging=3; нельзя перестроить в такой же пансион.'},
   {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и −1 Влияние',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и −1 шаг Политического влияния. Незаконная недоступна при Влиянии 0.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove, не вводит шкалу коррупции.'},
+  {prestige:3,income:4,id:'press_tower',types:['Бизнес','Промышленное'],risk:{earthquake:0,fire:1},name:'Газетный небоскрёб',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 3+; крупное здание, 5 материалов',landMin:3,effect:'Доход +$4/год · 3 VP · после годового газетного выпуска: +$2 ИЛИ −$2 и +1 Влияние',benefit:'Газетная кампания после каждого ежегодного выпуска · выбор без рабочего',actionName:'Газетная кампания',actionText:'После подведения итогов газеты автоматически выберите +$2 или уплатите $2, чтобы повысить Влияние на 1 шаг. Один раз за год на небоскрёб, включая 1905.',limits:'Выбор после газетных последствий, до годового дохода; платёж — из имеющихся денег, никаких авансов; без действия рабочего.'},
+  {prestige:0,income:0,id:'workers_complex',types:['Жилое','Промышленное'],risk:{earthquake:1,fire:2},name:'Фабричный рабочий корпус с ночной сменой',type:'Промышленность',open:3,materials:['Lumber','Lumber','Masonry'],requires:'В районе есть собственная завершённая Крупная фабрика или Консервный завод, не привязанные к другому корпусу',effect:'Нет собственного дохода · привязка к одной фабрике или консервному заводу · удваивает её ежегодный доход',benefit:'Рабочий корпус: ×2 базовый и районный доход выбранного предприятия, без двойного производства материалов',actionName:'Ночная смена',actionText:'При завершении выбрать одно собственное завершённое предприятие в этом районе: Крупная фабрика или Консервный завод. Бонус дохода равен текущему доходу этого предприятия; привязка постоянна, не складывается.',limits:'Не действует на другие виды промышленности, не удваивает награды за другие здания и выпуск материалов. Корпус сам не приносит дохода.'},
   {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · Престиж +2 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · +2 VP · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
 ]
 
@@ -400,13 +402,13 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
-  if((state.pendingSailorRecruitments||[]).length)return false;
+  if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
     &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
-  if((state.pendingSailorRecruitments||[]).length)return false;
+  if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId;
 }
 
@@ -519,6 +521,10 @@ export function createInitialState({rng=Math.random}={}){
     monoTradeExpansionV1:true,
     fireSafetyExpansionV1:true,
     boardingExpansionV1:true,
+    pressAndWorkersExpansionV1:true,
+    pendingWorkforceLinks:[],
+    pendingPressCampaigns:[],
+    pressCampaignQueuedRound:0,
     pendingSailorRecruitments:[],
     round:1,
     newsDeck,
@@ -846,6 +852,31 @@ export function upgradeWagonBoarding(state,playerId,constructionId){
   return {ok:true,level:con.wagonLevel,cost:WAGON_UPGRADE_PRICE};
 }
 
+export function availableWorkforceTargets(state,playerId,districtId,exceptComplexId=null){
+  const busy=new Set((state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='workers_complex'&&c.id!==exceptComplexId&&c.linkedIndustryId).map(c=>c.linkedIndustryId));
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&c.playerId===playerId&&c.districtId===districtId
+    &&['factory','cannery'].includes(c.projectId)&&!busy.has(c.id));
+}
+export function currentWorkforceLink(state){
+  return (state.pendingWorkforceLinks||[]).map(id=>(state.constructions||[]).find(c=>c.id===id))
+    .find(c=>c&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)||null;
+}
+export function resolveWorkforceLink(state,complexId,targetId){
+  const c=currentWorkforceLink(state);
+  if(!c||c.id!==complexId)return {ok:false,reason:'no-pending'};
+  const target=availableWorkforceTargets(state,c.playerId,c.districtId,c.id).find(x=>x.id===targetId);
+  if(!target)return {ok:false,reason:'not-eligible'};
+  c.linkedIndustryId=target.id;
+  state.pendingWorkforceLinks.shift();
+  logEvent(state,`${state.players[c.playerId].name} связывает рабочий корпус с «${projectById(target.projectId).name}» в ${districtById(c.districtId).name}; доход предприятия удваивается.`,'good');
+  return {ok:true,targetId};
+}
+export function workforceIncomeBonus(state,industry){
+  if(!industry||industry.status!=='complete'||!['factory','cannery'].includes(industry.projectId))return 0;
+  const linked=(state.constructions||[]).some(c=>c.projectId==='workers_complex'&&c.status==='complete'
+    &&c.playerId===industry.playerId&&c.districtId===industry.districtId&&c.linkedIndustryId===industry.id);
+  return linked?(projectById(industry.projectId)?.income||0)+canneryIncomeBonus(state,industry):0;
+}
 export function districtConstructionCount(state,districtId){
   return (state.constructions||[]).filter(c=>c.districtId===districtId&&!['abandoned','redeveloped'].includes(c.status)).length;
 }
@@ -887,6 +918,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   else if(ds&&used-(replacing?1:0)>=ds.sites) reasons.push('В районе нет свободных строительных площадок.');
   if(project?.id==='wagonboarding'&&!project.wagonDistricts?.includes(districtId))reasons.push('Вагонный пансион строится только в западных районах.');
   if(project?.id==='sailorlodging'&&!LOGISTICS_NODES.some(n=>n.districtId===districtId&&n.kind.includes('port')))reasons.push('Для матросской ночлежки нужен действующий портовый узел погрузки.');
+  if(project?.id==='workers_complex'&&!availableWorkforceTargets(state,playerId,districtId).length)reasons.push('Нужна собственная завершённая Крупная фабрика или Консервный завод в этом районе без другого рабочего корпуса.');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
 
@@ -1130,6 +1162,13 @@ export function completeConstruction(state,construction){
   construction.status='complete';
   construction.completedRound=state.round;
   if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
+  if(project.id==='workers_complex'){
+    state.pendingWorkforceLinks=state.pendingWorkforceLinks||[];
+    const targets=availableWorkforceTargets(state,construction.playerId,construction.districtId,construction.id);
+    if(targets.length===1){construction.linkedIndustryId=targets[0].id;
+      logEvent(state,`Рабочий корпус сразу связан с «${projectById(targets[0].projectId).name}»: ×2 ежегодный доход.`,'accent');}
+    else if(targets.length>1)state.pendingWorkforceLinks.push(construction.id);
+  }
   if(project.id==='warehouse'&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
@@ -1549,9 +1588,27 @@ export function resolveSailorRecruitment(state,constructionId,mode){
   return {ok:true,playerId:owner.id,capital:gain,mode,influenceSteps:movement?.steps||0};
 }
 
+export function currentPressCampaign(state){
+  return (state.pendingPressCampaigns||[]).map(id=>(state.constructions||[]).find(c=>c.id===id))
+    .find(c=>c&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==state.round)||null;
+}
+export function resolvePressCampaign(state,constructionId,choice){
+  const c=currentPressCampaign(state);
+  if(!c||c.id!==constructionId||state.phase!=='development'||!state.developmentComplete||state.newsLastResolvedRound!==state.round)return {ok:false,reason:'no-pending'};
+  if(!['cash','influence'].includes(choice))return {ok:false,reason:'choice'};
+  const player=state.players[c.playerId];
+  if(choice==='influence'&&player.capital<2)return {ok:false,reason:'capital'};
+  if(choice==='cash')player.capital+=2;
+  else{player.capital-=2;moveInfluence(state,player.id,1);}
+  c.pressCampaignRound=state.round;
+  state.pendingPressCampaigns.shift();
+  logEvent(state,`${player.name}: газетная кампания «${projectById(c.projectId).name}» — ${choice==='cash'?'+$2':'−$2, +1 Влияние'}.`,'accent');
+  return {ok:true,choice,playerId:c.playerId};
+}
+
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0)+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0),0);
+    .reduce((sum,c)=>sum+(projectById(c.projectId)?.income||0)+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
 export function grossRoundIncome(state,playerId){
@@ -1900,10 +1957,17 @@ export function cleanupMarket(state,{rng=Math.random}={}){
       constructionIds:unfinishedConstructions(state,state.yearTransition.playerId).map(c=>c.id)};
   }
   if(state.phase!=='development')return {ok:false,reason:'wrong-phase'};
-  if((state.pendingSailorRecruitments||[]).length)return {ok:false,reason:'pending-recruitment'};
+  if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length)return {ok:false,reason:'pending-building-choice'};
+  if((state.pendingPressCampaigns||[]).length)return {ok:false,reason:'pending-press-campaign'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   ensureNewspaper(state,{rng});
   resolveNewspaper(state);
+  if(state.pressCampaignQueuedRound!==state.round){
+    state.pressCampaignQueuedRound=state.round;
+    state.pendingPressCampaigns=(state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='press_tower'
+      &&c.pressCampaignRound!==state.round).map(c=>c.id);
+  }
+  if(state.pendingPressCampaigns.length)return {ok:false,reason:'pending-press-campaign'};
   const remaining=state.market.filter(m=>m&&!m.sold);
   const old=remaining.filter(m=>m.age===1);
   old.forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
