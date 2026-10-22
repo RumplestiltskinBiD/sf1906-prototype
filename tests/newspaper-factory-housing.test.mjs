@@ -122,7 +122,7 @@ test('night-shift doubles brickworks from 2 to 4 Masonry and foundry from 1 to 2
 });
 test('night shift affects output only at the chosen own factory and does not stack across players or districts',()=>{
  const s=state();
- const f1=build('F1',0,'foundry'),f2=build('F2',0,'foundry','soma',1),
+ const f1=build('F1',0,'foundry'),f2=build('F2',1,'foundry','soma'),
        f3=build('F3',0,'foundry','mission'),work=build('W',0,'workers_complex','soma',{linkedIndustryId:'F1'}),
        duplicate=build('W2',0,'workers_complex','soma',{linkedIndustryId:'F1',status:'under-construction'});
  s.constructions=[f1,f2,f3,work,duplicate];
