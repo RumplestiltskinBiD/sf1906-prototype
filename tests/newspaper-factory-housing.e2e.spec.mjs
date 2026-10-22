@@ -26,7 +26,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   const s=state();s.constructions=[built('P','press_tower','financial')];
   s.newsLastResolvedRound=1;s.pressCampaignQueuedRound=1;s.pendingPressCampaigns=['P'];
   s.newsArchive.push({year:1900,round:1,cardId:s.newsCurrentIds[0],title:'Итоги',entries:[],changes:{}});
-  s.players[0].capital=10;s.developmentComplete=true;s.developmentPlayer=null;
+  s.players[0].capital=10;s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});s.developmentComplete=true;s.developmentPlayer=null;
   await seed(page,s);
   const sheet=page.locator('#pressCampaignSheet');await expect(sheet).toBeVisible();
   const rect=await sheet.boundingBox();expect(rect.x).toBeGreaterThanOrEqual(-1);expect(rect.y).toBeGreaterThanOrEqual(-1);
