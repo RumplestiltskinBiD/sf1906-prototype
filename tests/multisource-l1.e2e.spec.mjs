@@ -116,7 +116,7 @@ test('desktop extra pickup uses same flow and persists after reload',async({page
  const s=await save(page);
  expect(s.constructions[0].warehouseInventory).toEqual(['Steel','Masonry']);
  expect(s.logisticsSupply.pacificmail).toEqual(['Steel','Lumber','Masonry']);
- await expect(page.locator('.version-badge')).toHaveText('v0.51');
+ await expect(page.locator('.version-badge')).toHaveText('v0.52');
 });
 test('canceling a drafted extra pickup never consumes city supply or money',async({page})=>{
  await page.setViewportSize({width:390,height:844});await seed(page,makeState());await begin(page);
