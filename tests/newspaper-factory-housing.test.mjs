@@ -85,3 +85,51 @@ test('political press option spends existing $2 and moves political influence on
  assert.equal(G.resolvePressCampaign(s,'P','influence').ok,true);
  assert.equal(s.players[0].capital,1);assert.ok(s.players[0].influence>inf);
 });
+
+test('workforce complex targets all five own completed factories/plants in the same district',()=>{
+ const eligible=['factory','brickworks','woodworks','foundry','cannery'];
+ assert.deepEqual(G.WORKFORCE_ELIGIBLE_PROJECTS,eligible);
+ for(const id of eligible){
+  const s=state(),plant=build('P',0,id),complex=build('W',0,'workers_complex','soma',{status:'under-construction'});
+  s.constructions=[plant,complex];s.players[0].portfolio=['workers_complex'];
+  assert.deepEqual(G.availableWorkforceTargets(s,0,'soma').map(c=>c.projectId),[id],id);
+  const r=G.completeConstruction(s,complex);assert.equal(r.ok,true,r.reason);
+  assert.equal(complex.linkedIndustryId,'P',id);
+  const base=G.projectById(id).income+G.canneryIncomeBonus(s,plant);
+  assert.equal(G.workforceIncomeBonus(s,plant),base,id+' income doubled');
+  assert.equal(G.buildingIncome(s,0),2*base,id+' total annual building income');
+  assert.equal(G.availableWorkforceTargets(s,0,'soma').length,0,id+' cannot link twice');
+ }
+});
+test('night-shift doubles brickworks from 2 to 4 Masonry and foundry from 1 to 2 Steel per year',()=>{
+ for(const [projectId,resource,baseCap,boostedCap] of [['brickworks','Masonry',2,4],['foundry','Steel',1,2]]){
+  const s=state(),plant=build('P',0,projectId),housing=build('W',0,'workers_complex','soma',{linkedIndustryId:'P'});
+  s.constructions=[plant,housing];
+  assert.equal(G.industrialProductionCapacity(s,plant),boostedCap,projectId);
+  assert.equal(G.replenishIndustrialProduction(s)[0].added,boostedCap);
+  assert.deepEqual(G.industrialInventory(plant),Array(boostedCap).fill(resource));
+  assert.deepEqual(G.replenishIndustrialProduction(s),[],'no stock stacking beyond boosted cap');
+  // Keep one unsold unit, then manufacture only the missing amount in the next year.
+  plant.industrialInventory.splice(0,boostedCap-1);
+  s.round=2;
+  assert.equal(G.replenishIndustrialProduction(s)[0].added,boostedCap-1);
+  assert.equal(G.industrialInventory(plant).length,boostedCap);
+  housing.status='redeveloped';s.round=3;
+  assert.equal(G.industrialProductionCapacity(s,plant),baseCap,'only completed linked housing counts');
+  // Old excess stock is not deleted; further production waits for space.
+  assert.deepEqual(G.replenishIndustrialProduction(s),[]);
+ }
+});
+test('night shift affects output only at the chosen own factory and does not stack across players or districts',()=>{
+ const s=state();
+ const f1=build('F1',0,'foundry'),f2=build('F2',1,'foundry','soma'),
+       f3=build('F3',0,'foundry','mission'),work=build('W',0,'workers_complex','soma',{linkedIndustryId:'F1'}),
+       duplicate=build('W2',0,'workers_complex','soma',{linkedIndustryId:'F1',status:'under-construction'});
+ s.constructions=[f1,f2,f3,work,duplicate];
+ assert.equal(G.industrialProductionCapacity(s,f1),2);
+ assert.equal(G.industrialProductionCapacity(s,f2),1);
+ assert.equal(G.industrialProductionCapacity(s,f3),1);
+ assert.equal(G.workforceIncomeBonus(s,f1),G.projectById('foundry').income);
+ assert.equal(G.availableWorkforceTargets(s,0,'soma').length,0);
+ assert.equal(G.availableWorkforceTargets(s,1,'soma').length,1,'rival may build their own complex but not share bonuses');
+});
