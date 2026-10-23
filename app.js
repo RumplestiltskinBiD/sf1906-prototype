@@ -767,7 +767,7 @@ function routeEarlyUnloadHtml(){
   if(!d.routeDropOpen&&!focus)html+='<button id="deliveryShowRouteDrops">↓ Разгрузить здесь</button>';
   else if(!focus){
     html+='<button id="deliveryHideRouteDrops" class="ghost-btn">× Закрыть</button>';
-    for(const t of targets)html+='<button data-early-drop-target="'+t.id+'">'+(t.id===FREIGHT_YARD.id?'Грузовой двор':t.projectId==='warehouse'?'Склад':'Стройка')+' · '+districtById(t.districtId)?.name+'</button>';
+    for(const t of targets)html+='<button data-early-drop-target="'+t.id+'">'+(t.id===FREIGHT_YARD.id?'Грузовой двор':isWarehouseConstruction(t)?'Склад':'Стройка')+' · '+districtById(t.districtId)?.name+'</button>';
   }else{
     const kind=deliveryRouteTargetKind(focus);
     html+='<strong>Разгрузить: '+districtById(focus.districtId)?.name+'</strong><div class="drop-buttons">';
@@ -2213,7 +2213,7 @@ if(['bank','bureau','shops','club','commission_house','firehouse'].includes(con.
 const occupant=actionSpaceOccupant(state,con.id);
 const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
-}else if(['firehouse','clinic','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(con.projectId)){
+}else if(['firehouse','clinic','police','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(con.projectId)){
 actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
