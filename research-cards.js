@@ -50,9 +50,9 @@ export const RESEARCH_CARDS = Object.freeze([
     name: 'Модернизация пожарного оборудования',
     fundingCost: 5,
     sponsorReward: { vp: 2, influence: 2 },
-    requirementText: 'В городе завершены минимум 2 пожарные части.',
+    requirementText: 'В городе завершены минимум 2 пожарных учреждения (посты или полноценные части, любого владельца).',
     effectText: 'Общегородская модернизация: действующие пожарные части снижают Пожароопасность своего района на 2 вместо 1. Радиус действия не расширяется.',
-    requirement: { completedCitywide: { projectId: 'firehouse', count: 2 } },
+    requirement: { completedCitywide: { serviceFamily: 'firehouse', projectIds: ['firehouse','std_fire'], count: 2 } },
     effect: {
       type: 'citywide-firehouse-upgrade',
       fireProtectionInOwnDistrictBefore: 1,
@@ -66,9 +66,9 @@ export const RESEARCH_CARDS = Object.freeze([
     name: 'Городская санитарная программа',
     fundingCost: 4,
     sponsorReward: { vp: 2, influence: 1 },
-    requirementText: 'В городе завершена минимум 1 клиника.',
+    requirementText: 'В городе завершено минимум 1 медицинское учреждение (амбулатория или клиника, любого владельца).',
     effectText: 'Каждая завершённая клиника приносит владельцу дополнительно $1 ежегодно, если в её районе или соседнем районе есть хотя бы одно завершённое жилое здание.',
-    requirement: { completedCitywide: { projectId: 'clinic', count: 1 } },
+    requirement: { completedCitywide: { serviceFamily: 'clinic', projectIds: ['clinic','std_clinic'], count: 1 } },
     effect: {
       type: 'clinic-income-if-near-residential',
       annualIncomePerEligibleClinic: 1,

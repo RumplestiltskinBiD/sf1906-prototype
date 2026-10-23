@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
-  <title>San Francisco 1906 — v0.52 Industrial Night Shift</title>
-  <link rel="stylesheet" href="./styles.css?v=052-industrial" />
+  <title>San Francisco 1906 — v0.53 Standard Infrastructure</title>
+  <link rel="stylesheet" href="./styles.css?v=053-standard" />
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <div class="brand-block">
       <div class="brand-kicker">ПРОТОТИП НАСТОЛЬНОЙ ИГРЫ</div>
-      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.52</span></div>
+      <div class="brand-line"><h1>San Francisco 1906</h1><span class="version-badge">v0.53</span></div>
     </div>
     <div class="round-hud" aria-label="Статус раунда">
       <div class="hud-item"><span>Раунд</span><strong id="roundStat">1 / 6</strong></div>
@@ -88,6 +88,7 @@
         </div>
         <div class="resource-supply" id="resourceSupply" aria-label="Цены ресурсов"></div>
         <div class="worker-dock" id="workerDock" aria-label="Представители активного игрока"></div>
+        <section id="standardProjects" class="standard-projects" aria-label="Постоянно доступные стандартные проекты"></section>
         <div class="city-actions" id="cityActions" aria-label="Городские действия"></div>
         <div class="construction-mode" id="constructionMode"></div>
         <div class="mobile-action-dock" id="mobileActionDock" aria-label="Быстрые действия"></div>
@@ -190,6 +191,6 @@
 <div class="v051-decision-backdrop press-backdrop" id="pressCampaignBackdrop" hidden></div>
 <section class="v051-decision-sheet press-sheet" id="pressCampaignSheet" role="dialog" aria-modal="true" aria-label="Газетный небоскрёб — выбор кампании" hidden></section>
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=052-industrial"></script>
+<script type="module" src="./app.js?v=053-standard"></script>
 </body>
 </html>

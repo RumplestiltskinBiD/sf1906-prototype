@@ -2862,3 +2862,20 @@ body.delivery-route-build #deliveryRouteLayer *{
 .v051-decision-sheet{position:fixed;z-index:50013;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,530px);max-height:calc(100dvh - 18px);overflow-y:auto;overscroll-behavior:contain}
 .v051-decision-sheet .recruitment-actions button{min-height:52px;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:640px),(max-height:500px) and (max-width:960px){.v051-decision-sheet{width:min(96vw,530px);max-height:calc(100dvh - 10px)}.v051-decision-sheet .recruitment-card{padding:14px;gap:9px}.v051-decision-sheet .recruitment-actions{grid-template-columns:1fr}}
+
+/* v0.53 basic city infrastructure: clear mobile-first builder, 44px+ actions. */
+.standard-projects{margin:10px 0 14px;padding:12px;border-radius:12px;border:1px solid var(--border,#b6a998);background:var(--panel,#f8f4ec)}
+.standard-projects[hidden]{display:none!important}
+.standard-projects-head{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.standard-projects-head strong{font-size:14px}
+.standard-projects-head span{font-size:11px;color:var(--muted,#666)}
+.standard-projects-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.standard-project-card{min-width:0;display:flex;flex-direction:column;gap:7px;border:1px solid var(--border,#a9aaac);padding:10px;border-radius:8px;background:var(--paper,#fff)}
+.standard-project-card.standard-selected{outline:2px solid #338f64}
+.standard-project-card-title{display:flex;flex-direction:column;gap:3px}
+.standard-project-card-title b{font-size:13px;line-height:1.15}
+.standard-project-card-title span,.standard-project-card small{font-size:11px;line-height:1.25;color:var(--muted,#666)}
+.standard-project-resource{overflow:hidden;min-height:23px}
+.standard-project-card .standard-project-button{margin-top:auto;min-height:44px;padding:9px 4px;font-size:12px;white-space:normal}
+@media(max-width:790px){.standard-projects-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.standard-projects{padding:9px}.standard-project-card{padding:8px}.standard-project-resource{min-height:23px}}
+@media(max-width:360px){.standard-project-card-title b{font-size:12px}.standard-project-card{padding:6px}}
