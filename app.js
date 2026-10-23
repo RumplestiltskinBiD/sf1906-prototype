@@ -918,7 +918,7 @@ html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.lengt
 for(const supplier of NEUTRAL_MATERIAL_SUPPLIERS){
 html+='<button class="delivery-source-card neutral-supplier-source" data-ds-supplier="'+supplier.id+'"><b>'+supplier.shortName+'</b><span>'+districtById(supplier.districtId)?.name+' · '+supplier.historical+'</span><small>'+materialLabel(supplier.resource)+' всегда доступен · $'+supplier.unitPrice+' / ед.</small></button>';
 }
-for(const w of completedWarehouses(state,pid)){const inv=warehouseInventory(w),cnt=deliveryCounts(inv);html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+warehouseStorageCapacity(wh)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
+for(const w of completedWarehouses(state,pid)){const inv=warehouseInventory(w),cnt=deliveryCounts(inv);html+='<button class="delivery-source-card warehouse-source" data-ds-wh="'+w.id+'" '+(inv.length?'':'disabled')+'><b>Склад</b><span>'+districtById(w.districtId)?.name+' · '+inv.length+'/'+warehouseStorageCapacity(w)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
 for(const plant of completedIndustrialProducers(state)){const inv=industrialInventory(plant),cnt=deliveryCounts(inv),capacity=industrialProductionCapacity(state,plant);
 const own=plant.playerId===pid,resource=INDUSTRIAL_PRODUCTION[plant.projectId].resource;
 const offer=resource==='Steel'?(own?'$1/Steel':'$2/Steel'):own?'$1 за 2 Masonry в одной погрузке (иначе $1/шт.)':'$1/Masonry';
