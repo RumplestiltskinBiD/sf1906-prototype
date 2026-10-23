@@ -17,7 +17,7 @@ export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
-export const LAND_VALUE_COMPLETION_CHANGE = {factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
 export const POOR_GROUND_DISTRICTS = Object.freeze(['marina','financial','soma','mission','missionbay']);
@@ -143,6 +143,19 @@ export const PROJECTS = [
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
 // Keep its historical definition only for rendering and completing those saves;
 // RETIRED_PROJECTS never enters the market, starter draft or new construction.
+/** Unlimited municipal basics, not in the auction/draft pool. */
+export const STANDARD_PROJECTS=Object.freeze([
+ {id:'std_warehouse',standard:true,types:['Торговое'],prestige:1,income:0,risk:{earthquake:0,fire:1},name:'Строительный склад',type:'Логистика',open:0,materials:['Lumber','Masonry','Steel'],warehouseCapacity:3,requires:'Без тендера. Любое число складов в районе.',effect:'Хранение 3 материалов, доступ владельца для доставок и строительства.',benefit:'1 VP · доход $0 · вместимость 3',actionName:'—',actionText:'Обычная строительная площадка.',limits:'Доступен всем игрокам в любое время; один рабочий для начала строительства.'},
+ {id:'std_fire',standard:true,service:'firehouse',types:['Общественное'],prestige:1,income:0,risk:{earthquake:0,fire:-1},name:'Пожарный пост',type:'Городская служба',open:0,materials:['Lumber','Masonry','Steel'],requires:'Нет другого пожарного учреждения любого уровня в районе.',effect:'П −1 и пожарная защита своего района для всех · земля +1',benefit:'1 VP · $0/год · общая пожарная защита',actionName:'—',actionText:'Пожарная защита своего района, без действия рыночной части.',limits:'В районе только один пожарный объект любого уровня.'},
+ {id:'std_police',standard:true,service:'police',types:['Общественное'],prestige:1,income:0,risk:{earthquake:0,fire:0},name:'Полицейский пост',type:'Городская служба',open:0,materials:['Lumber','Masonry','Steel'],requires:'Нет другого полицейского учреждения любого уровня в районе.',effect:'Полицейское присутствие своего района для всех · земля +1',benefit:'1 VP · $0/год · общая полиция',actionName:'—',actionText:'Полицейское присутствие своего района; газетные механики отдельно.',limits:'В районе только один полицейский объект любого уровня.'},
+ {id:'std_clinic',standard:true,service:'clinic',types:['Общественное'],prestige:1,income:0,risk:{earthquake:0,fire:0},name:'Районная амбулатория',type:'Городская служба',open:0,materials:['Lumber','Masonry','Steel'],requires:'Нет другого медицинского учреждения любого уровня в районе.',effect:'Медицинская помощь своего района для всех · земля +1',benefit:'1 VP · $0/год · общая медицина',actionName:'—',actionText:'Доступ к медицине своего района; газетные механики отдельно.',limits:'В районе только один медицинский объект любого уровня.'}
+]);
+export const STANDARD_SERVICE_FAMILIES=Object.freeze({firehouse:Object.freeze(['firehouse','std_fire']),police:Object.freeze(['police','std_police']),clinic:Object.freeze(['clinic','std_clinic'])});
+export function isStandardProject(id){return STANDARD_PROJECTS.some(p=>p.id===id);}
+export function warehouseStorageCapacity(c){return c?.projectId==='std_warehouse'?3:c?.projectId==='warehouse'?WAREHOUSE_STORAGE_CAPACITY:0;}
+export function isWarehouseConstruction(c){return warehouseStorageCapacity(c)>0;}
+export function serviceFamilyForProject(id){return Object.keys(STANDARD_SERVICE_FAMILIES).find(k=>STANDARD_SERVICE_FAMILIES[k].includes(id))||null;}
+export function completedCitywideServices(state,service){return (state.constructions||[]).filter(c=>c.status==='complete'&&STANDARD_SERVICE_FAMILIES[service]?.includes(c.projectId));}
 export const RETIRED_PROJECTS = Object.freeze([{...{prestige:3,income:0,id:'streetcar',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Трамвайное расширение и депо',type:'Инфраструктура',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',streetcarExtension:true,effect:'Трамвайное расширение · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · трамвайная инфраструктура',actionName:'—',actionText:'Связь с Market Street будет доступна через исследование электрификации.',limits:'Нет дополнительных ограничений.'},retired:true}]);
 
 export const DISTRICTS = [
@@ -199,7 +212,7 @@ export function shuffle(items, rng=Math.random){
   return a;
 }
 
-export function projectById(id){return PROJECTS.find(p=>p.id===id) || RETIRED_PROJECTS.find(p=>p.id===id) || null;}
+export function projectById(id){return PROJECTS.find(p=>p.id===id) || STANDARD_PROJECTS.find(p=>p.id===id) || RETIRED_PROJECTS.find(p=>p.id===id) || null;}
 export function projectTypes(projectOrId){
   const project=typeof projectOrId==='string'?projectById(projectOrId):projectOrId;
   return Array.isArray(project?.types)&&project.types.length?[...project.types]:[];
@@ -317,10 +330,11 @@ export function districtRoadAccess(state,districtId){
   return !!d&&d.buildable!==false;
 }
 export function serviceSources(state,districtId,serviceProjectId){
+  const family=serviceFamilyForProject(serviceProjectId)||serviceProjectId;
+  const ids=STANDARD_SERVICE_FAMILIES[family]||[serviceProjectId];
   const eligible=new Set([districtId,...districtNeighbors(districtId)]);
-  return (state.constructions||[]).filter(c=>
-    c.status==='complete'&&c.projectId===serviceProjectId&&eligible.has(c.districtId)
-  );
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&ids.includes(c.projectId)
+    &&(c.projectId.startsWith('std_')?c.districtId===districtId:eligible.has(c.districtId)));
 }
 export function districtAccess(state,districtId){
   const d=districtById(districtId);
@@ -904,7 +918,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   const access=districtAccess(state,districtId);
   if(state.phase!=='development') reasons.push('Строительство доступно только после тендеров.');
   if(!player||!project||!district||!ds) reasons.push('Недоступный игрок, проект или район.');
-  if(player&&project&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
+  if(player&&project&&!project.standard&&!player.portfolio.includes(projectId)) reasons.push('Проекта нет в доступном портфеле игрока.');
   if(project?.retired)reasons.push('Проект снят с рынка и недоступен для нового строительства.');
   if(player){
     const worker=activeWorker(state,playerId);
@@ -923,6 +937,10 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   if(project?.id==='wagonboarding'&&!project.wagonDistricts?.includes(districtId))reasons.push('Вагонный пансион строится только в западных районах.');
   if(project?.id==='sailorlodging'&&!LOGISTICS_NODES.some(n=>n.districtId===districtId&&n.kind.includes('port')))reasons.push('Для матросской ночлежки нужен действующий портовый узел погрузки.');
   if(project?.id==='workers_complex'&&!availableWorkforceTargets(state,playerId,districtId).length)reasons.push('Нужна собственная завершённая фабрика или завод в этом районе без другого рабочего корпуса.');
+  const serviceFamily=serviceFamilyForProject(projectId);
+  if(serviceFamily&&(state.constructions||[]).some(c=>c.districtId===districtId
+    &&!['abandoned','redeveloped'].includes(c.status)&&STANDARD_SERVICE_FAMILIES[serviceFamily].includes(c.projectId)))
+    reasons.push('В районе уже строится или действует учреждение этой службы (стандартное либо рыночное).');
   if(project&&ds&&project.landMin!=null&&ds.landValue<project.landMin) reasons.push(`Требуется Land Value ${project.landMin}+.`);
   if(project&&ds&&project.landMax!=null&&ds.landValue>project.landMax) reasons.push(`Требуется Land Value ≤${project.landMax}.`);
 
@@ -964,7 +982,7 @@ export function beginConstruction(state,playerId,projectId,districtId,{redevelop
   if(!check.ok)return {ok:false,...check};
   const player=state.players[playerId];
   const idx=player.portfolio.indexOf(projectId);
-  if(idx<0)return {ok:false,reasons:['Проект уже недоступен.']};
+  if(idx<0&&!isStandardProject(projectId))return {ok:false,reasons:['Проект уже недоступен.']};
   const consumed=consumeMainAction(state,playerId,districtId);
   if(!consumed.ok)return consumed;
   const former=check.redevelopment?state.constructions.find(c=>c.id===redevelopId):null;
@@ -981,7 +999,7 @@ export function beginConstruction(state,playerId,projectId,districtId,{redevelop
     ...(projectId==='wagonboarding'?{wagonLevel:1,wagonUpgradedRound:null}:{})
   };
   state.nextConstructionId=(state.nextConstructionId||1)+1;
-  player.portfolio.splice(idx,1);
+  if(!isStandardProject(projectId))player.portfolio.splice(idx,1);
   player.capital-=check.cost;
   if(check.bureauDiscount>0)player.bureauContracts=Math.max(0,(player.bureauContracts||0)-1);
   state.constructions=state.constructions||[];
@@ -1008,13 +1026,13 @@ export function deliveredMaterialCounts(construction){
 
 export function completedWarehouseCount(state,playerId,districtId){
   return (state.constructions||[]).filter(c=>
-    c.playerId===playerId&&c.districtId===districtId&&c.projectId==='warehouse'&&c.status==='complete'
+    c.playerId===playerId&&c.districtId===districtId&&isWarehouseConstruction(c)&&c.status==='complete'
   ).length;
 }
 
 export function completedWarehouses(state,playerId,districtId=null){
   return (state.constructions||[]).filter(c=>
-    c.playerId===playerId&&c.projectId==='warehouse'&&c.status==='complete'
+    c.playerId===playerId&&isWarehouseConstruction(c)&&c.status==='complete'
     &&(districtId==null||c.districtId===districtId)
   );
 }
@@ -1062,7 +1080,7 @@ export function canneryIncomeBonus(state,construction){
 }
 
 export function warehouseInventory(construction){
-  if(!construction||construction.projectId!=='warehouse'||construction.status!=='complete')return [];
+  if(!construction||!isWarehouseConstruction(construction)||construction.status!=='complete')return [];
   if(!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   return construction.warehouseInventory;
 }
@@ -1093,7 +1111,7 @@ export function constructionProgress(state,constructionId){
     remaining:Math.max(0,required-delivered),
     warehouseCount:warehouses.length,
     warehouseStored:warehouseMaterials.length,
-    warehouseCapacity:warehouses.length*WAREHOUSE_STORAGE_CAPACITY
+    warehouseCapacity:warehouses.reduce((sum,w)=>sum+warehouseStorageCapacity(w),0)
   };
 }
 
@@ -1180,7 +1198,7 @@ export function completeConstruction(state,construction){
       logEvent(state,`Рабочий корпус сразу связан с «${projectById(targets[0].projectId).name}»: ×2 ежегодный доход и выпуск материалов.`,'accent');}
     else if(targets.length>1)state.pendingWorkforceLinks.push(construction.id);
   }
-  if(project.id==='warehouse'&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
+  if(isWarehouseConstruction(construction)&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
   if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
   const vp=(project.prestige||0)+schoolHousingVp;
@@ -1295,7 +1313,7 @@ export function deliverySourceInfo(state,playerId,source){
       ownerId:plant.playerId,unitPrice:RESOURCE_PRICES[output.resource]};
   }
   if(source.kind==='warehouse'){
-    const wh=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId&&c.projectId==='warehouse'&&c.status==='complete');
+    const wh=(state.constructions||[]).find(c=>c.id===source.id&&c.playerId===playerId&&isWarehouseConstruction(c)&&c.status==='complete');
     if(!wh)return null;
     return {kind:'warehouse',id:wh.id,name:`Warehouse · ${districtById(wh.districtId)?.name||wh.districtId}`,districtId:wh.districtId,inventory:warehouseInventory(wh)};
   }
@@ -1477,10 +1495,10 @@ export function validateDeliveryPlan(state,plan){
       constructionDraft.set(con.id,staged);
     }else if(drop.kind==='warehouse'){
       const wh=(state.constructions||[]).find(c=>c.id===drop.id);
-      if(!wh||wh.playerId!==plan.playerId||wh.projectId!=='warehouse'||wh.status!=='complete')return {ok:false,reason:'target'};
+      if(!wh||wh.playerId!==plan.playerId||!isWarehouseConstruction(wh)||wh.status!=='complete')return {ok:false,reason:'target'};
       if(pickups.some(p=>p.source.kind==='warehouse'&&p.source.id===wh.id))return {ok:false,reason:'same-warehouse'};
       const stored=[...(warehouseDraft.get(wh.id)||warehouseInventory(wh)),...drop.materials];
-      if(stored.length>WAREHOUSE_STORAGE_CAPACITY)return {ok:false,reason:'target-capacity'};
+      if(stored.length>warehouseStorageCapacity(wh))return {ok:false,reason:'target-capacity'};
       warehouseDraft.set(wh.id,stored);
     }else if(drop.kind==='freight-yard'){
       if(drop.id!==FREIGHT_YARD.id||pickups.some(p=>p.source.kind==='freight-yard'))return {ok:false,reason:'same-freight-yard'};
@@ -2082,7 +2100,7 @@ function newsServiceSources(state,districtId,kind){
   // Unlike access requirements for Phase I projects, real fire protection
   // was agreed to apply only to the station's own district.
   if(kind==='firehouse')return completedActionSpaces(state,'firehouse').filter(c=>c.districtId===districtId);
-  if(kind==='clinic'||kind==='police')return serviceSources(state,districtId,kind);
+  if(kind==='clinic'||kind==='police')return completedActionSpaces(state,kind).filter(c=>c.districtId===districtId||districtNeighbors(districtId).includes(c.districtId));
   return [];
 }
 export function newsPreview(state){
