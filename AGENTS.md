@@ -6,7 +6,7 @@
 
 1. Прочитать `docs/PROJECT_STATUS.md` (текущее состояние и карта документов).
 2. Прочитать `docs/CORE_RULES.md` (базовый игровой цикл, с оговорками о статусе).
-3. Прочитать `docs/REJECTED_IDEAS.md` (чего не предлагать повторно) и последние записи `docs/DECISION_LOG.md`.
+3. Прочитать `docs/REJECTED_IDEAS.md` (чего не предлагать повторно), последние записи `docs/DECISION_LOG.md`; для спорных/старых тем также посмотреть `docs/CONTEXT_AUDIT_2026-10-24.md` (подтверждённые разрывы и источники).
 4. Затем читать только профильные документы для текущей задачи: `docs/buildings-master-registry.md`, `docs/card-rules-draft.md`, `docs/deferred-partnerships.md`, `docs/phase2-earthquake-fire-v01.md` и/или код.
 5. При начале задачи уточнить по файлам, что именно **реализовано**, что **утверждено к реализации**, а что **пока только концепт**. Не тратить контекст на полное чтение всего репозитория без необходимости.
 
@@ -52,4 +52,4 @@
 - Исследования и партнёрства: `research-cards.js`, `partnership-cards.js`, `docs/card-rules-draft.md`. Они пока **данные, не подключённая игровая логика**.
 - Газета: `newspaper-cards.js`; прототип катастрофы: `catastrophe-core.js`, `catastrophe-ui.js`, `catastrophe.html`.
 - Разработка и регрессия: `tests/`, `package.json`, `.github/workflows/`.
-- Архив/изменённые идеи: `docs/REJECTED_IDEAS.md`, `docs/DECISION_LOG.md`, тематические исторические заметки.
+- Архив/изменённые идеи: `docs/REJECTED_IDEAS.md`, `docs/DECISION_LOG.md`, `docs/CONTEXT_AUDIT_2026-10-24.md`, тематические исторические заметки.
