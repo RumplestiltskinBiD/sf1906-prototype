@@ -31,7 +31,9 @@ for(const viewport of [{width:1440,height:900},{width:1280,height:800},{width:86
         content:st.content,position:st.position};
     });
     expect(pseudo.position).toBe('absolute');
-    expect(pseudo.top).toBe('auto');
+    // Chromium resolves top:auto to the element's used pixel coordinate.
+    // Verify the gold label sits near the LOWER edge, not stretched from above.
+    expect(Number.parseFloat(pseudo.top)).toBeGreaterThan(18);
     expect(pseudo.bottom).toBe('-6px');
     expect(pseudo.height).toBeLessThanOrEqual(24);
     expect(pseudo.width).toBeLessThan(100);
