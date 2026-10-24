@@ -1508,6 +1508,12 @@ button.city-action-card{cursor:pointer}
 .city-overview-panel.active{
   display:block;position:sticky;top:calc(var(--hud-stack-h) + 7px);z-index:22
 }
+/* Desktop's cityView is document-scrolled. overflow:auto created an internal
+   sticky containing block without its own scroll, so the construction strip
+   disappeared as soon as the player moved down to the map. */
+@media(min-width:641px) and (min-height:501px){
+  #cityView.active{overflow:visible}
+}
 .overview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .overview-head>div:first-child{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;min-width:0}
 .overview-head .player-dot{grid-row:1/3}
