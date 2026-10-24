@@ -87,7 +87,7 @@ test('fresh project pool has no streetcar and Market Street remains a labeled lo
  expect(s.starterDraftHands.every(hand=>hand.every(c=>c.id!=='streetcar'))).toBe(true);
  await page.setViewportSize({width:390,height:844});
  const developed=base();developed.selectedDistrictId='noe';await loadSaved(page,developed);
- await expect(page.locator('.version-badge')).toHaveText('v0.53');
+ await expect(page.locator('.version-badge')).toHaveText('v0.53.1');
  await expect(page.locator('#contextPanel')).toContainText('Market Street');
  await expect(page.locator('#contextPanel')).not.toContainText('сеть быстрого перемещения');
 });
