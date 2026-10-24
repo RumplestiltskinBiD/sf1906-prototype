@@ -1491,9 +1491,12 @@ button.city-action-card{cursor:pointer}
   box-shadow:inset 0 0 0 1px rgba(215,184,109,.5)
 }
 .player-pill.overview::before{
-  content:'ОБЪЕКТЫ';position:absolute;left:9px;bottom:-6px;
+  /* dev-active/declare-active already define top:-6px on this same pseudo-element.
+     Clear that top anchor or the overview badge stretches over the HUD contents. */
+  content:'ОБЪЕКТЫ';position:absolute;left:9px;top:auto;bottom:-6px;
   padding:1px 5px;border-radius:5px;background:#e0c681;color:#352c20;
-  font-size:7px;font-weight:900;letter-spacing:.06em
+  font-size:7px;font-weight:900;letter-spacing:.06em;
+  height:auto;width:max-content;max-width:calc(100% - 18px);white-space:nowrap
 }
 .nav-rail{top:var(--hud-stack-h);height:calc(100vh - var(--hud-stack-h))}
 
