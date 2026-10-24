@@ -1,5 +1,7 @@
 # San Francisco 1906 — Board Game Prototype
 
+> **Актуальное состояние на 24.10.2026:** main v0.53.1 ([PR #41](https://github.com/RumplestiltskinBiD/sf1906-prototype/pull/41)). Разделы ниже — **история релизов**, а не исчерпывающий список возможностей последней версии. Для продолжения работы в новом чате сначала читать [AGENTS.md](AGENTS.md), [текущий статус](docs/PROJECT_STATUS.md), [базовые правила](docs/CORE_RULES.md), [решения](docs/DECISION_LOG.md) и [отклонённые идеи](docs/REJECTED_IDEAS.md). Реестр карт: [buildings-master-registry.md](docs/buildings-master-registry.md).
+
 **Единый реестр карт зданий и статусов:** [docs/buildings-master-registry.md](docs/buildings-master-registry.md). Здесь отмечены реализованные, утверждённые, отложенные и ещё обсуждаемые здания. Документы `docs/card-rules-draft.md` относятся к исследованиям и партнёрствам, а не заменяют реестр зданий.
 
 
