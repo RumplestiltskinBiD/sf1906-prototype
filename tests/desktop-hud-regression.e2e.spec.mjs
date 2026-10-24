@@ -56,6 +56,19 @@ for(const viewport of [{width:1440,height:900},{width:1280,height:800},{width:86
     expect(overlap.overviewWidth).toBeGreaterThan(200);
     expect(overlap.overviewHeight).toBeGreaterThan(80);
     expect(overlap.overviewUnderHud).toBe(true);
+    // The city's long list of standard projects should not push this panel
+    // out of sight. Once the player scrolls to the map it must stay pinned
+    // immediately below the newspaper strip with material pips still present.
+    await page.locator('#cityBoardScroll').scrollIntoViewIfNeeded();
+    const stuck=await page.evaluate(()=>{
+      const p=document.querySelector('#cityOverviewPanel').getBoundingClientRect();
+      const strip=document.querySelector('#newsStrip').getBoundingClientRect();
+      return {top:p.top,bottom:p.bottom,stripBottom:strip.bottom,viewport:innerHeight};
+    });
+    expect(stuck.top).toBeGreaterThanOrEqual(stuck.stripBottom-2);
+    expect(stuck.top).toBeLessThanOrEqual(stuck.stripBottom+25);
+    expect(stuck.bottom).toBeLessThan(stuck.viewport);
+    await expect(pips).toHaveCount(3);
   });
 }
 test('mobile overview remains compact and does not expose giant gold badge',async({page})=>{
