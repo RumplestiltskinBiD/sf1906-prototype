@@ -10,7 +10,7 @@ function built(id,projectId,districtId='civic',playerId=0,more={}){return {id,pr
 for(const viewport of [{width:390,height:844},{width:932,height:430}]){
  test('v0.53 standard projects are accessible and interactive '+viewport.width+'x'+viewport.height,async({page})=>{
   await page.setViewportSize(viewport);const s=state();await seed(page,s);
-  await expect(page.locator('.version-badge')).toHaveText('v0.53');
+  await expect(page.locator('.version-badge')).toHaveText('v0.53.1');
   const panel=page.locator('#standardProjects');await expect(panel).toBeVisible();
   await expect(panel.locator('[data-standard-build]')).toHaveCount(4);
   for(const id of ['std_warehouse','std_fire','std_police','std_clinic'])await expect(panel.locator('[data-standard-build="'+id+'"]')).toBeEnabled();
