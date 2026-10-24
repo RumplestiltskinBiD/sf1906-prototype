@@ -34,6 +34,8 @@
 | `npm test` | Сначала core, затем E2E | Не заменяет проверку нового сценария и реального поведения |
 | `npx playwright test tests/<имя>.e2e.spec.mjs` | Целевой E2E для изменённого модуля | Не заменяет полный прогон перед объединением |
 
+**ВАЖНО: `test:core` в `package.json` — фиксированный список файлов, не автоматический glob.** При создании нового `tests/*.test.mjs` необходимо добавить его в команду `test:core`, иначе полный `npm test` и GitHub Actions могут пройти **без нового теста**. Проверить это перед PR.
+
 **Текущее правило обнаружения Playwright:** `testMatch: ['**/e2e.spec.mjs', '**/*.e2e.spec.mjs']`. Новые файлы назвать соответственно; иначе они могут **не выполняться** при `npm run test:e2e`. Для браузерных тестов `playwright.config.mjs` запускает локальный веб-сервер через `python3 -m http.server 4173`; нужен установленный Chromium (`npx playwright install --with-deps chromium` в Linux CI).
 
 **CI:** [`Prototype QA`](../.github/workflows/qa.yml) на push в `main` и PR в `main` устанавливает Node 22/Chromium и запускает core + E2E. Отдельный [`Industrial buildings regression`](../.github/workflows/industry-regression.yml) запускается **только для заданных путей PR** и не заменяет общую проверку. Перед merge проверить **успех актуальных проверок на commit HEAD**, а не зелёный статус старого коммита. Если GitHub Actions недоступен или не запустился, написать «не проверено», не «всё прошло».
