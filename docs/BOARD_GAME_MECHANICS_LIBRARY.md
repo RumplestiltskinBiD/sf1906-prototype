@@ -250,7 +250,7 @@
 
 **Контрольный плейтест:** Прогнать дешёвый западный и дорогой центральный участки, старт/середину/конец, оценить VP/$ за действие.
 
-**Источник:** [правила / издатель / справочник](https://startub.ub.edu/en/games/magnate-the-first-city/).
+**Источник:** [правила / издатель / справочник](https://naylorgames.com/blogs/blog/magnate-the-first-city-a-visual-tour).
 
 ### 18. Carnegie · [P]
 
