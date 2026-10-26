@@ -79,6 +79,7 @@ test('real delivery stores one Lumber in bakery, rejects steel, overflow, rival 
  const done=G.executeDelivery(s,valid);assert.equal(done.ok,true,done.reason);
  assert.deepEqual(b.bakeryInventory,['Lumber']);
  assert.ok(s.players[0].capital<before,'purchase and route were paid');
+ s.logisticsSupply.broadway.push('Lumber');
  assert.equal(G.validateDeliveryPlan(s,valid).reason,'target-capacity');
  assert.equal(G.validateDeliveryPlan(s,delivery('B',['Steel'])).reason,'target-material');
  assert.equal(G.validateDeliveryPlan(s,{...delivery('B'),route:['northbeach','park']}).ok,false);
@@ -93,15 +94,15 @@ test('separate bakeries cannot consume each others stocks and both may act once'
  assert.equal(G.activateBakery(s,0,'B1','cash').ok,false);
 });
 test('catastrophe survival: damaged is rewarded, destroyed or burning is not; settlement is idempotent',()=>{
- const s=game(),o1=built('O1','orphanage',0,'civic'),o2=built('O2','orphanage',1,'soma');
+ const s=game(),o1=built('O1','orphanage',0,'outerrichmond'),o2=built('O2','orphanage',1,'soma');
  s.constructions=[o1,o2];
  const inp=C.fromGame(s);
  for(const id of C.DISTRICT_IDS)inp[id]={z:0,p:0,firehouse:false};
- inp.civic={z:2,p:0,firehouse:false}; // quake damage, no fire
+ inp.outerrichmond={z:2,p:0,firehouse:false}; // quake damage, too distant from SoMa blaze
  inp.soma={z:3,p:0,firehouse:false}; // quake destruction and source of fire
  const sim=C.run(C.begin(inp));
- assert.equal(sim.nodes.civic.quake,'damaged');
- assert.equal(sim.nodes.civic.burning,false);
+ assert.equal(sim.nodes.outerrichmond.quake,'damaged');
+ assert.equal(sim.nodes.outerrichmond.burning,false);
  assert.equal(sim.nodes.soma.burning,true);
  const before=s.players[0].prestige;
  const report=C.orphanageSurvivalResults(s,sim);
