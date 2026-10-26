@@ -106,6 +106,8 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
+  {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Престиж +1 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'1 VP при завершении · раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
+  {prestige:3,income:0,id:'orphanage',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Сиротский приют',type:'Жильё / Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Престиж +3 и Политическое влияние +1 при завершении · +4 VP после катастрофы 1906, если не уничтожен',benefit:'3 VP +1 Влияние при завершении · ещё 4 VP при выживании после землетрясения и пожаров',actionName:'Уцелевший приют',actionText:'После всех землетрясений и пожаров 1906 получите +4 VP, если приют цел или повреждён. Разрушенный или сгоревший не получает бонус.',limits:'Не является пожарным, полицейским или медицинским учреждением; бонус 1906 учитывается однократно после Фазы II.'},
   {prestige:1,income:2,id:'tenement',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +2 · много жителей · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нет дополнительных ограничений.'},
   {prestige:0,income:3,id:'speculative',types:["Жилое"],risk:{earthquake:1,fire:1},name:'Спекулятивный жилой комплекс',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Стоимость земли ≤2',effect:'Доход +3 · очень много жителей · высокий риск',landMax:2,benefit:'Доход +3 / раунд · Престиж 0 · очень много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Стоимость земли ≤2. Высокий риск в будущей катастрофе.'},
   {prestige:3,income:3,id:'luxury',types:["Жилое"],risk:{earthquake:0,fire:0},name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3 · Престиж +3',landMin:3,benefit:'Доход +3 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
@@ -1079,6 +1081,42 @@ export function canneryIncomeBonus(state,construction){
     &&projectTypes(c.projectId).includes('Жилое')).length);
 }
 
+export function bakeryInventory(construction){
+  if(!construction||construction.projectId!=='bakery'||construction.status!=='complete')return [];
+  if(!Array.isArray(construction.bakeryInventory))construction.bakeryInventory=[];
+  return construction.bakeryInventory;
+}
+
+export function bakeryFuelSources(state,playerId,bakeryId){
+  const bakery=(state.constructions||[]).find(c=>c.id===bakeryId&&c.projectId==='bakery'&&c.status==='complete'&&c.playerId===playerId);
+  if(!bakery)return [];
+  return [{kind:'bakery',id:bakery.id,inventory:bakeryInventory(bakery)},
+    ...completedWarehouses(state,playerId,bakery.districtId).map(w=>({kind:'warehouse',id:w.id,inventory:warehouseInventory(w)}))]
+    .filter(source=>source.inventory.includes('Lumber'))
+    .map(({kind,id})=>({kind,id}));
+}
+
+export function activateBakery(state,playerId,bakeryId,choice,source=null){
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  const bakery=(state.constructions||[]).find(c=>c.id===bakeryId&&c.projectId==='bakery'&&c.status==='complete'&&c.playerId===playerId);
+  if(!bakery)return {ok:false,reason:'bakery'};
+  if(bakery.bakeryUsedRound===state.round)return {ok:false,reason:'already-used'};
+  if(!['cash','vp'].includes(choice))return {ok:false,reason:'choice'};
+  const sources=bakeryFuelSources(state,playerId,bakeryId);
+  const selected=source==null?sources[0]:sources.find(s=>s.kind===source.kind&&s.id===source.id);
+  if(!selected)return {ok:false,reason:'lumber'};
+  const construction=(state.constructions||[]).find(c=>c.id===selected.id);
+  const inventory=selected.kind==='bakery'?bakeryInventory(construction):warehouseInventory(construction);
+  const pos=inventory.indexOf('Lumber');
+  if(pos<0)return {ok:false,reason:'lumber'};
+  inventory.splice(pos,1);
+  bakery.bakeryUsedRound=state.round;
+  const player=state.players[playerId];
+  if(choice==='cash')player.capital+=7;else player.prestige=(player.prestige||0)+1;
+  logEvent(state,`${player.name}: Пекарный сезон («${districtById(bakery.districtId).name}»), 1 Lumber из ${selected.kind==='bakery'?'пекарни':'склада'} → ${choice==='cash'?'$7':'+1 VP'}.`,'good');
+  return {ok:true,playerId,choice,capital:choice==='cash'?7:0,prestige:choice==='vp'?1:0,source:selected};
+}
+
 export function warehouseInventory(construction){
   if(!construction||!isWarehouseConstruction(construction)||construction.status!=='complete')return [];
   if(!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
@@ -1199,8 +1237,14 @@ export function completeConstruction(state,construction){
     else if(targets.length>1)state.pendingWorkforceLinks.push(construction.id);
   }
   if(isWarehouseConstruction(construction)&&!Array.isArray(construction.warehouseInventory))construction.warehouseInventory=[];
+  if(project.id==='bakery'&&!Array.isArray(construction.bakeryInventory))construction.bakeryInventory=[];
   if(INDUSTRIAL_PRODUCTION[project.id]&&!Array.isArray(construction.industrialInventory))construction.industrialInventory=[];
   const player=state.players[construction.playerId];
+  if(project.id==='orphanage'&&!construction.orphanageInfluenceAwarded){
+    const movement=moveInfluence(state,construction.playerId,1);
+    construction.orphanageInfluenceAwarded=true;
+    logEvent(state,`${player.name}: Сиротский приют завершён — +1 шаг Политического влияния${movement.steps===0?' (шкала не позволила продвижение)':''}.`,'good');
+  }
   const vp=(project.prestige||0)+schoolHousingVp;
   if(vp){
     player.prestige=(player.prestige||0)+vp;
@@ -1432,7 +1476,7 @@ function targetDistrictId(state,target){
   if(target.kind==='construction'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
-  if(target.kind==='warehouse'){
+  if(target.kind==='warehouse'||target.kind==='bakery'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
   if(target.kind==='freight-yard'&&target.id===FREIGHT_YARD.id)return FREIGHT_YARD.districtId;
@@ -1493,6 +1537,13 @@ export function validateDeliveryPlan(state,plan){
       const completesProject=multisetEquals(staged,recipe);
       if(staged.length>CONSTRUCTION_STAGING_CAPACITY&&!completesProject)return {ok:false,reason:'target-capacity'};
       constructionDraft.set(con.id,staged);
+    }else if(drop.kind==='bakery'){
+      const bakery=(state.constructions||[]).find(c=>c.id===drop.id);
+      if(!bakery||bakery.playerId!==plan.playerId||bakery.projectId!=='bakery'||bakery.status!=='complete')return {ok:false,reason:'target'};
+      if(drop.materials.some(t=>t!=='Lumber'))return {ok:false,reason:'target-material'};
+      const staged=[...(warehouseDraft.get('bakery:'+bakery.id)||bakeryInventory(bakery)),...drop.materials];
+      if(staged.length>1)return {ok:false,reason:'target-capacity'};
+      warehouseDraft.set('bakery:'+bakery.id,staged);
     }else if(drop.kind==='warehouse'){
       const wh=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!wh||wh.playerId!==plan.playerId||!isWarehouseConstruction(wh)||wh.status!=='complete')return {ok:false,reason:'target'};
@@ -1563,6 +1614,8 @@ export function executeDelivery(state,plan){
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
       if(!constructionIds.includes(con.id))constructionIds.push(con.id);
+    }else if(drop.kind==='bakery'){
+      bakeryInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
     }else if(drop.kind==='warehouse'){
       warehouseInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
     }else if(drop.kind==='freight-yard'){
@@ -1575,7 +1628,7 @@ export function executeDelivery(state,plan){
     const con=d.kind==='freight-yard'?null:state.constructions.find(c=>c.id===d.id);
     const districtName=d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
     const dest=d.kind==='freight-yard'?FREIGHT_YARD.name:
-      d.kind==='warehouse'?'Warehouse':'«'+(projectById(con?.projectId)?.name||'стройка')+'»';
+      d.kind==='warehouse'?'Warehouse':d.kind==='bakery'?'Пекарня':'«'+(projectById(con?.projectId)?.name||'стройка')+'»';
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
