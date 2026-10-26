@@ -5,7 +5,7 @@ projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCi
 createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
-constructionProgress,completedWarehouses,warehouseInventory,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
+constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
@@ -121,6 +121,9 @@ prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.s
 parsed.constructions=(parsed.constructions||[]).map(x=>({...x,
 materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),
 warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
+ bakeryInventory:x.projectId==='bakery'&&x.status==='complete'&&Array.isArray(x.bakeryInventory)?x.bakeryInventory.filter(t=>t==='Lumber').slice(0,1):[],
+ bakeryUsedRound:Number.isInteger(x.bakeryUsedRound)?x.bakeryUsedRound:null,
+ orphanageSurvivalVpAwarded:!!x.orphanageSurvivalVpAwarded,
 completedRound:x.completedRound??null,
 fireSafetyModernized:!!x.fireSafetyModernized,
  wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
@@ -263,6 +266,20 @@ if(!parsed.pressAndWorkersExpansionV1){
  const step=Math.max(1,Math.floor((deck.length+cards.length)/(cards.length+1)));
  cards.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
  parsed.deck=deck;parsed.pressAndWorkersExpansionV1=true;
+}
+if(!parsed.residentialMixedV1){
+ const ids=['bakery','orphanage'];
+ const locked=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+  ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+  ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+  ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+  ...(parsed.constructions||[]).map(c=>c.projectId)];
+ const cards=[];
+ for(const id of ids)for(let i=locked.filter(x=>x===id).length;i<PROJECT_COPIES;i++)cards.push({uid:'MIXED-2026-'+id+'-'+(i+1),id});
+ const deck=parsed.deck||[];
+ const spacing=Math.max(1,Math.floor((deck.length+cards.length)/(cards.length+1)));
+ cards.forEach((card,i)=>deck.splice(Math.min((i+1)*spacing,deck.length),0,card));
+ parsed.deck=deck;parsed.residentialMixedV1=true;
 }
 parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.pendingWorkforceLinks.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)):[];
 parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
@@ -810,6 +827,7 @@ const assigned=deliveryTarget(kind,id)?.materials||[];
 if(kind==='freight-yard')return id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
+if(kind==='bakery')return con.projectId==='bakery'&&con.status==='complete'&&type==='Lumber'&&bakeryInventory(con).length+assigned.length<1;
 if(kind==='warehouse')return isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)&&warehouseInventory(con).length+assigned.length<warehouseStorageCapacity(con);
 if(kind!=='construction'||con.status!=='under-construction')return false;
 const req=deliveryCounts(projectById(con.projectId)?.materials||[]),staged=[...(con.materialsDelivered||[]),...assigned],have=deliveryCounts(staged);
@@ -822,13 +840,14 @@ function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
 if(con.playerId!==deliveryDraft.playerId)return null;
-return con.status==='under-construction'?'construction':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
+return con.status==='under-construction'?'construction':con.projectId==='bakery'&&con.status==='complete'?'bakery':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
 function deliveryTargetKind(con){return deliveryDropPhase()?deliveryRouteTargetKind(con):null;}
 function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());return a;}
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='bakery')return bakeryInventory(con).length<1;
 if(kind==='warehouse')return warehouseInventory(con).length<warehouseStorageCapacity(con);
 const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryAllCargo(deliveryDraft));
 const missing=Object.fromEntries(RESOURCE_ORDER.map(t=>[t,Math.max(0,(req[t]||0)-(have[t]||0))]));
@@ -960,12 +979,13 @@ const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?rout
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
 if(!focus){
-html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</strong><span>Тапните подсвеченную стройку, склад или грузовой двор на карте.</span></div>'
+html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</strong><span>Тапните подсвеченную стройку, пекарню, склад или грузовой двор на карте.</span></div>'
 +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+warehouseStorageCapacity(focus);}
+else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/1';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,focus.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,focus.id)?.materials||[];
 html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
@@ -986,6 +1006,7 @@ for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+warehouseStorageCapacity(con);}
+else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/1';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,con.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,con.id)?.materials||[];
 html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
