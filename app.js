@@ -2285,12 +2285,12 @@ $('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-$('[data-bakery-choice]').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('[data-bakery-choice]').forEach(b=>b.onclick=()=>{
  const r=activateBakery(state,p.id,b.dataset.bakeryId,b.dataset.bakeryChoice);
  if(!r.ok){showToast(r.reason==='lumber'?'Привезите Дерево в пекарню или свой склад':r.reason==='already-used'?'Пекарный сезон уже завершён':'Действие пекарни сейчас недоступно');render();return;}
  showToast('Пекарный сезон: '+(r.choice==='cash'?'+$7':'+1 VP')+' · Дерево израсходовано');render();
 });
-$('[data-upgrade-wagon]').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('[data-upgrade-wagon]').forEach(b=>b.onclick=()=>{
  const r=upgradeWagonBoarding(state,p.id,b.dataset.upgradeWagon);
  if(!r.ok){showToast(r.reason==='already-upgraded'?'Этот пансион уже улучшался в этом году':r.reason==='capital'?'Нужны $2':r.reason==='max-level'?'Достигнут III уровень':'Улучшение недоступно');return;}
  showToast('Вагонный пансион: уровень '+r.level+' · −$2, без рабочего');render();
