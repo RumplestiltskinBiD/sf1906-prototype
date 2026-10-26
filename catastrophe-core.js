@@ -105,6 +105,42 @@ export function run(sim){
   while(!sim.done){next(sim);if(++count>DISTRICT_IDS.length)throw Error('Fire cycle');}
   return sim;
 }
+/** Final scoring adapter for the Phase II laboratory. Only a completed
+ * earthquake+fire simulation can award the orphanage survival VP. This
+ * does not automatically connect the separate laboratory to Phase I.
+ */
+export function orphanageSurvivalResults(game,simulation){
+  if(!simulation?.done)return {ok:false,reason:'simulation-incomplete',entries:[]};
+  const entries=(game?.constructions||[]).filter(c=>c.projectId==='orphanage'&&c.status==='complete')
+    .map(c=>{
+      const district=simulation.nodes?.[c.districtId];
+      const survived=!!district&&district.quake!=='destroyed'&&!district.burning;
+      return {constructionId:c.id,playerId:c.playerId,districtId:c.districtId,
+        survived,quake:district?.quake||null,burned:!!district?.burning,
+        bonus:survived?4:0};
+    });
+  return {ok:true,entries};
+}
+export function awardOrphanageSurvivalVp(game,simulation){
+  const result=orphanageSurvivalResults(game,simulation);
+  if(!result.ok)return result;
+  const awards=[];
+  for(const item of result.entries){
+    const c=(game.constructions||[]).find(x=>x.id===item.constructionId);
+    if(c.orphanageSurvivalVpAwarded)continue;
+    c.orphanageSurvivalVpAwarded=true;
+    if(item.bonus){
+      const player=game.players?.[item.playerId];
+      if(player){
+        player.prestige=(player.prestige||0)+item.bonus;
+        if(Array.isArray(game.log))game.log.push({cls:'good',msg:`${player.name}: Сиротский приют пережил катастрофу 1906 — +4 VP.`});
+        awards.push(item);
+      }
+    }
+  }
+  return {ok:true,awards,prestige:awards.reduce((n,x)=>n+x.bonus,0)};
+}
+
 export function stats(sim){
   const list=Object.values(sim.nodes);
   return {intact:list.filter(n=>n.quake==='intact').length,
