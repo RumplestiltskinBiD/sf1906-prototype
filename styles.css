@@ -2888,3 +2888,12 @@ body.delivery-route-build #deliveryRouteLayer *{
 .standard-project-card .standard-project-button{margin-top:auto;min-height:44px;padding:9px 4px;font-size:12px;white-space:normal}
 @media(max-width:790px){.standard-projects-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.standard-projects{padding:9px}.standard-project-card{padding:8px}.standard-project-resource{min-height:23px}}
 @media(max-width:360px){.standard-project-card-title b{font-size:12px}.standard-project-card{padding:6px}}
+
+/* Mixed residential buildings: compact season controls across mobile orientations. */
+.bakery-actions{min-width:0;max-width:100%}
+.bakery-action-row{min-width:0}
+.bakery-action-row>div:first-child{min-width:0;overflow-wrap:anywhere}
+.bakery-buttons{display:flex;flex-wrap:wrap;gap:8px;min-width:0;max-width:100%}
+.bakery-buttons button{min-height:44px;min-width:106px;flex:1 1 106px;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:440px){.bakery-action-row{display:grid;grid-template-columns:minmax(0,1fr)}.bakery-buttons{width:100%}.bakery-buttons button{min-width:0}}
+@media(max-height:470px) and (orientation:landscape){.bakery-actions{padding:9px}.bakery-action-row{padding:7px}}
