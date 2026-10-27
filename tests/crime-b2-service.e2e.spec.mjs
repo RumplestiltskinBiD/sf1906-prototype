@@ -74,3 +74,24 @@ test('B2 old save without slots resumes with a service opportunity and retains p
  expect(after.developmentSlotsUsed).toEqual([1,0,0]);
  expect(after.players[0].workers.every(w=>w.jailed)).toBe(true);
 });
+
+test('B2 tester shortcut simulates prison without editing saves on a phone',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const s=scenario();
+ for(const w of s.players[0].workers){w.jailed=false;w.arrestedRound=null;}
+ s.players[0].workersLeft=3;
+ await enter(page,s);
+ await page.locator('#settingsBtn').click();
+ const shortcut=page.locator('#settingsDrawer [data-b2-jail-all="0"]');
+ await expect(shortcut).toBeVisible();
+ await shortcut.click();
+ const jailed=await saved(page);
+ expect(jailed.players[0].workers.every(w=>w.jailed)).toBe(true);
+ expect(jailed.players[0].workersLeft).toBe(0);
+ await page.locator('#settingsDrawer [data-close-drawer]').click();
+ await expect(page.locator('#mobileActionDock [data-mobile-action="service-pass"]')).toBeVisible();
+ await page.locator('#mobileActionDock [data-mobile-action="service-pass"]').click();
+ const after=await saved(page);
+ expect(after.developmentSlotsUsed).toEqual([3,0,0]);
+ expect(after.developmentPlayer).toBe(1);
+});
