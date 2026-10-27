@@ -19,6 +19,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366
     s.market[0].id='cottages';
     s.market[1].id='brickapartments';
     s.market[2].id='school';
+    s.phase='declare';s.view='hall';s.declarationIndex=0; // Full project market is shown after the private draft.
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await seed(page,s);await page.goto('/');
     const market=page.locator('#projectMarket .project-card');

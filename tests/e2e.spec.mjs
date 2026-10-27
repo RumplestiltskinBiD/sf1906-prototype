@@ -1351,8 +1351,11 @@ test('tester Undo restores the previous gameplay state without undoing UI select
   expect(saved.activeWorkerId).toBe(w.id);
 });
 
-test('mobile market overview compares all five projects before card browsing',async({page})=>{
+test('mobile market overview compares all five projects during City Hall after draft',async({page})=>{
   await page.setViewportSize({width:390,height:844});
+  const s=createInitialState({rng:()=>0.1});
+  s.phase='declare';s.view='hall';s.declarationIndex=0;
+  await seed(page,s);
   await page.goto('/');
   const overview=page.locator('#marketOverview');
   await expect(overview).toBeVisible();
