@@ -9,7 +9,7 @@ function dev(){
   s.developmentComplete=false;s.activationMainActionUsed=false;
   return s;
 }
-const jailAll=(s,pid)=>{for(const w of s.players[pid].workers)assert.equal(G.jailWorker(s,pid,w.id).ok,true);};
+const jailAll=(s,pid)=>{for(const w of s.players[pid].workers)if(!w.jailed)assert.equal(G.jailWorker(s,pid,w.id).ok,true);};
 
 test('B2 fresh game has three persisted slots per player',()=>{
   const s=dev();
