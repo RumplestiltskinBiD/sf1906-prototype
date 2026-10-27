@@ -19,63 +19,43 @@ async function seed(page){
   await page.evaluate(([key,data])=>localStorage.setItem(key,JSON.stringify(data)),[KEY,s]);
   await page.reload();
 }
+// UI contract changed by user request: the full-width sticky overview must not
+// exist. Construction needs stay one click away via a compact map-toolbar shortcut.
 for(const viewport of [{width:1440,height:900},{width:1280,height:800},{width:863,height:768}]){
-  test('desktop player status and unfinished materials remain visible when active player is overview owner '+viewport.width,async({page})=>{
+  test('desktop HUD is readable, construction details accessible, and map not covered '+viewport.width,async({page})=>{
     await page.setViewportSize(viewport);await seed(page);
     await expect(page.locator('.version-badge')).toHaveText('v0.53.1');
-    const pill=page.locator('.player-pill.dev-active.overview').first();
+    const pill=page.locator('.player-pill.dev-active').first();
     await expect(pill).toBeVisible();
-    const pseudo=await pill.evaluate(el=>{
-      const st=getComputedStyle(el,'::before');
-      return {top:st.top,bottom:st.bottom,height:parseFloat(st.height),width:parseFloat(st.width),
-        content:st.content,position:st.position};
-    });
-    expect(pseudo.position).toBe('absolute');
-    // Chromium resolves top:auto to the element's used pixel coordinate.
-    // Verify the gold label sits near the LOWER edge, not stretched from above.
-    expect(Number.parseFloat(pseudo.top)).toBeGreaterThan(18);
-    expect(pseudo.bottom).toBe('-6px');
-    expect(pseudo.height).toBeLessThanOrEqual(24);
-    expect(pseudo.width).toBeLessThan(100);
     await expect(pill.locator('.player-stats')).toBeVisible();
     await expect(pill.locator('.player-money')).toContainText('$11');
-    const overview=page.locator('#cityOverviewPanel');
-    await expect(overview).toBeVisible();
-    await expect(overview).toContainText('Рабочий доходный дом');
-    const pips=overview.locator('[data-overview-construction="HUDBUILD"] .overview-materials .resource-pip');
-    await expect(pips).toHaveCount(projectById('tenement').materials.length);
-    const overlap=await page.evaluate(()=>{
-      const player=document.querySelector('.player-pill.dev-active.overview');
-      const stats=player.querySelector('.player-stats').getBoundingClientRect();
-      const overview=document.querySelector('#cityOverviewPanel').getBoundingClientRect();
-      const hud=document.querySelector('#playersBar').getBoundingClientRect();
-      return {statsHeight:stats.height,overviewWidth:overview.width,overviewHeight:overview.height,
-        overviewUnderHud:overview.top>=hud.bottom-2};
-    });
-    expect(overlap.statsHeight).toBeGreaterThan(0);
-    expect(overlap.overviewWidth).toBeGreaterThan(200);
-    expect(overlap.overviewHeight).toBeGreaterThan(80);
-    expect(overlap.overviewUnderHud).toBe(true);
-    // The city's long list of standard projects should not push this panel
-    // out of sight. Once the player scrolls to the map it must stay pinned
-    // immediately below the newspaper strip with material pips still present.
+    // The discarded gold "OBJECTS" badge is not displayed; ordinary turn badges remain.
+    const label=await pill.evaluate(el=>getComputedStyle(el,'::before').content);
+    expect(label).not.toContain('ОБЪЕКТЫ');
+    await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+    const shortcut=page.locator('#cityObjectsShortcut');
+    await expect(shortcut).toBeVisible();
+    await expect(shortcut).toHaveText('Стройки 1 · Склады 0');
+    await shortcut.click();
+    await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
+    const card=page.locator('#officeContent .construction-card.active-build').filter({hasText:'Рабочий доходный дом'});
+    await expect(card).toBeVisible();
+    await expect(card.locator('.project-material-line .resource-pip')).toHaveCount(projectById('tenement').materials.length);
+    await expect(card.locator('.construction-need-label')).toContainText('Дерево ×1');
+    await expect(card.locator('.construction-need-label')).toContainText('Камень ×1');
+    await page.locator('#officeDrawer [data-close-drawer]').click();
     await page.locator('#cityBoardScroll').scrollIntoViewIfNeeded();
-    const stuck=await page.evaluate(()=>{
-      const p=document.querySelector('#cityOverviewPanel').getBoundingClientRect();
-      const strip=document.querySelector('#newsStrip').getBoundingClientRect();
-      return {top:p.top,bottom:p.bottom,stripBottom:strip.bottom,viewport:innerHeight};
-    });
-    expect(stuck.top).toBeGreaterThanOrEqual(stuck.stripBottom-2);
-    expect(stuck.top).toBeLessThanOrEqual(stuck.stripBottom+25);
-    expect(stuck.bottom).toBeLessThan(stuck.viewport);
-    await expect(pips).toHaveCount(3);
+    await expect(page.locator('#cityBoardScroll')).toBeVisible();
   });
 }
-test('mobile overview remains compact and does not expose giant gold badge',async({page})=>{
+test('mobile overview remains compact; existing mobile object strip is the only construction summary',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seed(page);
-  const pill=page.locator('.player-pill.dev-active.overview').first();
+  const pill=page.locator('.player-pill.dev-active').first();
   await expect(pill).toBeVisible();
-  expect(await pill.evaluate(el=>getComputedStyle(el,'::before').display)).toBe('none');
+  const label=await pill.evaluate(el=>getComputedStyle(el,'::before').content);
+  expect(label).not.toContain('ОБЪЕКТЫ');
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#cityObjectsShortcut')).toBeHidden();
   await expect(page.locator('#mobileObjectStrip')).toContainText('Рабочий доходный дом');
   await expect(page.locator('#mobileObjectStrip')).toContainText('1/3');
 });

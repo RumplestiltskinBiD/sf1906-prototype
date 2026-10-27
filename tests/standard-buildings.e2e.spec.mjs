@@ -25,16 +25,20 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   expect(saved.constructions.some(c=>c.projectId==='std_warehouse'&&c.status==='under-construction')).toBe(true);
   expect(saved.players[0].portfolio).toHaveLength(0);
   expect(saved.players[0].workersLeft).toBe(2);
-  await page.reload();await expect(page.locator('#cityOverviewPanel')).toContainText('Строительный склад');
+  await page.reload();
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#mobileObjectStrip')).toContainText('Строительный склад');
  });
  test('v0.53 standard warehouse existing save stock appears in mobile logistics UI '+viewport.width+'x'+viewport.height,async({page})=>{
   await page.setViewportSize(viewport);const s=state();
   s.constructions=[built('W','std_warehouse','civic',0,{warehouseInventory:['Lumber','Masonry']})];
   await seed(page,s);
-  await expect(page.locator('#cityOverviewPanel')).toContainText('2/3');
-  await expect(page.locator('#mobileObjectStrip')).toContainText('2/3').catch(()=>{});
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#mobileObjectStrip')).toContainText('2/3');
   await page.locator('#officeBtn').click();
   await expect(page.locator('#officeContent')).toContainText('2/3');
-  await page.reload();await expect(page.locator('#cityOverviewPanel')).toContainText('2/3');
+  await page.reload();
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#mobileObjectStrip')).toContainText('2/3');
  });
 }

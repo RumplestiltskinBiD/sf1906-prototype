@@ -87,7 +87,6 @@
           <button class="primary-btn" id="endRoundBtn">Завершить тестовый раунд</button>
         </div>
         <div class="resource-supply" id="resourceSupply" aria-label="Цены ресурсов"></div>
-        <section class="city-overview-panel" id="cityOverviewPanel" aria-label="Стройки и склады игрока"></section>
         <div class="worker-dock" id="workerDock" aria-label="Представители активного игрока"></div>
         <section id="standardProjects" class="standard-projects" aria-label="Постоянно доступные стандартные проекты"></section>
         <div class="city-actions" id="cityActions" aria-label="Городские действия"></div>
@@ -97,6 +96,7 @@
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
             <span class="map-toolbar-label">КАРТА</span>
+            <button type="button" class="city-objects-shortcut" id="cityObjectsShortcut" aria-label="Открыть список строек, складов и необходимых материалов" hidden>Стройки 0 · Склады 0</button>
             <span class="map-risk-controls"><button type="button" id="riskViewBtn" aria-pressed="false">РИСК</button></span>
             <span class="map-zoom-controls"><button type="button" id="mapZoomFit">ОБЗОР</button><button type="button" id="mapZoomDetail">ДЕТАЛИ</button></span>
           </div>
