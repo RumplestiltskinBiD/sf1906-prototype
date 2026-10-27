@@ -16,6 +16,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366
     const s=createInitialState({rng:()=>0.1});
     const ids=['wholesale_market','commission_house','pub','skyscraper'];
     ids.forEach((id,i)=>s.market[i].id=id);
+    s.phase='declare';s.view='hall';s.declarationIndex=0; // Market cards are expanded after the private draft.
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await seed(page,s);await page.goto('/');
     const cards=page.locator('#projectMarket .project-card');
