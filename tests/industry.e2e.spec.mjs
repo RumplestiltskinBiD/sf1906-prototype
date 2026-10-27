@@ -58,6 +58,28 @@ test('all new industrial cards display in market with correct colors and recipes
   await expect(industrialCards).toHaveCount(5);
 });
 
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  test('industrial compact market remains accessible and draft confirmation stays on selected card at '+viewport.width+'x'+viewport.height,async({page})=>{
+    await page.setViewportSize(viewport);
+    const s=createInitialState({rng:()=>0.1});
+    for(let i=0;i<4;i++)s.market[i].id=['brickworks','woodworks','foundry','cannery'][i];
+    await seed(page,s);await page.goto('/');
+    await expect(page.locator('#hallActionBar')).toBeHidden();
+    await expect(page.locator('.draft-market-ref')).toContainText('Кирпичный завод');
+    await page.locator('#revealStarterDraft').click();
+    await page.locator('.draft-card').nth(0).locator('[data-draft-card]').click();
+    await expect(page.locator('.draft-card').nth(0).locator('.age-badge')).toHaveText('✓ 1/2');
+    await page.locator('.draft-card').nth(1).locator('[data-draft-card]').click();
+    await expect(page.locator('.draft-card').nth(1).locator('.age-badge')).toHaveText('✓ 2/2');
+    await expect(page.locator('.draft-card').nth(1).locator('#confirmStarterDraft')).toBeVisible();
+    await expect(page.locator('#hallActionBar')).toBeHidden();
+    await page.locator('.draft-card').nth(1).locator('#confirmStarterDraft').click();
+    await expect(page.locator('#revealStarterDraft')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2)).toBe(false);
+  });
+}
+
 for(const viewport of [
   {width:390,height:844},
   {width:932,height:430},
