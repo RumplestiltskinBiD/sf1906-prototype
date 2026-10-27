@@ -452,6 +452,22 @@ export function turnOrder(state){
   return stored.length===state.players?.length?[...stored]:setYearTurnOrderFromInfluence(state);
 }
 export function currentDeclarer(state){return state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
+// B2: a player's three annual activation opportunities exist even while staff is jailed.
+// Kept independent of workersLeft: a service turn must not silently disappear.
+export function ensureDevelopmentSlots(state){
+  if(!Array.isArray(state.developmentSlotsUsed)||state.developmentSlotsUsed.length!==state.players.length){
+    state.developmentSlotsUsed=state.players.map(p=>{
+      const used=(p.workers||[]).filter(w=>w.used).length;
+      return Math.min(WORKERS_PER_PLAYER,Math.max(0,used-(state.phase==='development'&&state.developmentPlayer===p.id&&state.activationMainActionUsed?1:0)));
+    });
+  }
+  state.developmentSlotsUsed=state.developmentSlotsUsed.map(n=>Math.max(0,Math.min(WORKERS_PER_PLAYER,Number.isInteger(n)?n:0)));
+  return state.developmentSlotsUsed;
+}
+export function developmentSlotsRemaining(state,playerId){
+  const slots=ensureDevelopmentSlots(state);
+  return Math.max(0,WORKERS_PER_PLAYER-(slots[playerId]||0));
+}
 export function currentDeveloper(state){return state.phase==='development'&&!state.developmentComplete?state.developmentPlayer:null;}
 export function activeLoans(state,playerId){return state.players[playerId]?.loans||[];}
 export function loanInterest(state,playerId){return activeLoans(state,playerId).length;}
@@ -462,11 +478,11 @@ export function canTakeMainAction(state,playerId){
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
-    &&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
+    &&developmentSlotsRemaining(state,playerId)>0&&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
-  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId;
+  return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
 }
 
 export function consumeMainAction(state,playerId,targetDistrictId=null){
@@ -483,10 +499,15 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
   return {ok:true,workersLeft,worker,from,to:worker.districtId,moved:from!==worker.districtId};
 }
 
-export function endActivation(state,playerId){
+export function endActivation(state,playerId,{skipRemainingService=false}={}){
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
   if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
-  if(!state.activationMainActionUsed)return {ok:false,reason:'main-action-required'};
+  const remaining=developmentSlotsRemaining(state,playerId);
+  if(!remaining)return {ok:false,reason:'no-activation-slots'};
+  const available=availableWorkers(state,playerId).length;
+  const serviceOnly=!state.activationMainActionUsed&&available===0;
+  if(!state.activationMainActionUsed&&!serviceOnly)return {ok:false,reason:'main-action-required'};
+  if(skipRemainingService&&!serviceOnly)return {ok:false,reason:'service-only'};
   const player=state.players[playerId];
   if((state.procurementRemaining||0)>0){
     logEvent(state,`${player.name} завершает Procurement; неиспользовано материалов: ${state.procurementRemaining}.`);
@@ -495,21 +516,25 @@ export function endActivation(state,playerId){
   state.procurementSource=null;
   state.activeWorkerId=null;
   state.pendingWorkerAction=null;
-  if(state.players.every(p=>(p.workersLeft??0)<=0)){
+  const consumed=skipRemainingService?remaining:1;
+  const slots=ensureDevelopmentSlots(state);
+  slots[playerId]+=consumed;
+  if(state.players.every(p=>developmentSlotsRemaining(state,p.id)===0)){
     state.developmentPlayer=null;
     state.activationMainActionUsed=false;
     state.developmentComplete=true;
-    logEvent(state,'Все представители использованы. Development Phase можно завершить.','accent');
-    return {ok:true,complete:true,nextPlayer:null};
+    logEvent(state,'Все девять окон активации завершены. Можно закончить Development Phase.','accent');
+    return {ok:true,complete:true,nextPlayer:null,serviceOnly,slotsConsumed:consumed};
   }
-  const order=turnOrder(state),at=Math.max(0,order.indexOf(playerId));
+  const order=turnOrder(state),at=order.indexOf(playerId);
+  if(at<0)return {ok:false,reason:'turn-order'};
   for(let step=1;step<=order.length;step++){
     const pid=order[(at+step)%order.length];
-    if((state.players[pid].workersLeft??0)>0){
+    if(developmentSlotsRemaining(state,pid)>0){
       state.developmentPlayer=pid;
       state.activationMainActionUsed=false;
-      logEvent(state,`${player.name} завершает активацию. Следующий: ${state.players[pid].name}.`);
-      return {ok:true,complete:false,nextPlayer:pid};
+      logEvent(state,`${player.name} ${serviceOnly?'завершает сервисное окно':'завершает активацию'}${skipRemainingService?' и пропускает оставшиеся окна года':''}. Следующий: ${state.players[pid].name}.`);
+      return {ok:true,complete:false,nextPlayer:pid,serviceOnly,slotsConsumed:consumed};
     }
   }
   return {ok:false,reason:'no-next-player'};
@@ -621,6 +646,7 @@ export function createInitialState({rng=Math.random}={}){
     developmentPlayer:null,
     yearTransition:null,
     developmentComplete:false,
+    developmentSlotsUsed:players.map(()=>0),
     activationMainActionUsed:false,
     activeWorkerId:null,
     pendingWorkerAction:null,
@@ -871,6 +897,7 @@ export function resolveTenders(state,{rng=Math.random}={}){
   });
   const goalRefresh=refreshCityGoalMarket(state,{rng});
   state.phase='development';
+  state.developmentSlotsUsed=state.players.map(()=>0);
   state.developmentPlayer=state.firstPlayer;
   state.developmentComplete=false;
   state.activationMainActionUsed=false;
@@ -2017,7 +2044,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
     p.workers.forEach(w=>{w.used=false;});
     restoreExpiredJailedWorkerSlots(state,p.id);
   });
-  state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
+  state.developmentPlayer=null;state.developmentComplete=false;state.developmentSlotsUsed=state.players.map(()=>0);state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
