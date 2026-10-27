@@ -98,7 +98,9 @@ let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
 number:w.number||i+1,
 districtId:w.districtId||'civic',
-used:!!w.used
+used:!!w.used,
+jailed:!!w.jailed,
+arrestedRound:w.jailed?(Number.isInteger(w.arrestedRound)?w.arrestedRound:parsed.round):null
 })):createWorkers(p.id);
 if(originalVersion!=='0.24'&&(!Array.isArray(p.workers)||!p.workers.length)){
 const legacyLeft=Math.max(0,Math.min(WORKERS_PER_PLAYER,p.workersLeft??WORKERS_PER_PLAYER));
@@ -108,7 +110,7 @@ workers=workers.map((w,i)=>({...w,used:i<usedCount}));
 return {
 ...p,
 workers,
-workersLeft:workers.filter(w=>!w.used).length,
+workersLeft:workers.filter(w=>!w.used&&!w.jailed).length,
 portfolio:p.portfolio||[],
 loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
@@ -1326,7 +1328,7 @@ pill.dataset.office=i;
 const debt=(p.loans||[]).length;
 const orderPos=Math.max(0,order.indexOf(p.id))+1;
 const upkeep=constructionUpkeepDue(state,p.id);
-const workerPlaces=[...new Set(playerWorkers(state,p.id).map(w=>districtById(w.districtId)?.name).filter(Boolean))];
+const workerPlaces=[...new Set(playerWorkers(state,p.id).filter(w=>!w.jailed).map(w=>districtById(w.districtId)?.name).filter(Boolean))];
 const activeEffect=dev===i&&(state.procurementRemaining||0)>0?`Закупка ×${state.procurementRemaining}`:'';
 const flags=[`Порядок года #${orderPos}`,upkeep?`Простой −$${upkeep}`:'',`Проекты ${p.portfolio.length}/${HAND_LIMIT}`,`Представители: ${workerPlaces.join(' / ')}`,debt?`Кредиты ${debt}`:'',(p.bureauContracts||0)>0?'Контракт':'',activeEffect].filter(Boolean).join(' · ');
 pill.innerHTML=`<span class="turn-order-badge" title="Порядок зафиксирован до следующего года">#${orderPos}</span><span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Вл ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span>${upkeep?`<span class="upkeep-mini">−$${upkeep} простой</span>`:''}</span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
@@ -1693,7 +1695,7 @@ const pid=currentDeveloper(state),p=state.players[pid],workers=playerWorkers(sta
 el.classList.add('active');
 const buttons=workers.map(w=>{
 const isSelected=selected?.id===w.id;
-return `<button class="dock-worker token-${p.key} ${isSelected?'selected':''} ${w.used?'used':''}" data-dock-worker="${w.id}" ${w.used||state.activationMainActionUsed?'disabled':''}><span>#${w.number}</span><b>${shortDistrictName(w.districtId)}</b><small>${w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН':'ГОТОВ'}</small></button>`;
+return `<button class="dock-worker token-${p.key} ${isSelected?'selected':''} ${w.jailed?'used':''} ${w.used?'used':''}" data-dock-worker="${w.id}" ${w.jailed||w.used||state.activationMainActionUsed?'disabled':''}><span>#${w.number}</span><b>${w.jailed?'ТЮРЬМА':shortDistrictName(w.districtId)}</b><small>${w.jailed?'АРЕСТ · '+(1899+w.arrestedRound):w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН':'ГОТОВ'}</small></button>`;
 }).join('');
 const reach=selected?workerReachableDistricts(state,pid,selected.id).map(shortDistrictName).join(' · '):'Выберите представителя';
 el.innerHTML=`<div class="worker-dock-head"><span class="player-dot ${p.key}"></span><div><b>${p.name} · представители</b><small>${selected?`#${selected.number}: ${districtById(selected.districtId)?.name} · соседний район${districtHasMarketStreet(selected.districtId)?' или любой район вдоль Market Street':''}`:'Выберите одного из трёх. Позиции сохраняются между раундами.'}</small></div></div><div class="worker-dock-grid">${buttons}</div><div class="worker-dock-reach"><b>Доступ:</b> ${reach}</div>`;
@@ -1739,7 +1741,7 @@ const contract=(p.bureauContracts||0)>0;
 const procurement=state.procurementRemaining||0;
 const workerButtons=workers.map(w=>{
 const d=districtById(w.districtId),isSelected=selected?.id===w.id;
-return `<button class="worker-choice token-${p.key} ${isSelected?'selected':''} ${w.used?'used':''}" data-select-worker="${w.id}" ${w.used||mainUsed?'disabled':''}><span>#${w.number}</span><b>${d?.name||w.districtId}</b><small>${w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН · переход ≤ 1 район':'доступен'}</small></button>`;
+return `<button class="worker-choice token-${p.key} ${isSelected?'selected':''} ${w.jailed||w.used?'used':''}" data-select-worker="${w.id}" ${w.jailed||w.used||mainUsed?'disabled':''}><span>#${w.number}</span><b>${w.jailed?'ТЮРЬМА':d?.name||w.districtId}</b><small>${w.jailed?'АРЕСТОВАН · '+(1899+w.arrestedRound):w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН · переход ≤ 1 район':'доступен'}</small></button>`;
 }).join('');
 const reachText=selected?reachable.map(id=>districtById(id)?.name).filter(Boolean).join(' · '):'Сначала выберите представителя';
 const actionReach=con=>!!selected&&workerCanReachDistrict(state,pid,con.districtId,selected.id);
@@ -2015,7 +2017,7 @@ return `<text class="${klass}" x="${x}" y="${y}">${label}</text>`;
 const workerLayer=$('#workerLayer');
 if(workerLayer){
 const grouped={};
-state.players.forEach(p=>playerWorkers(state,p.id).forEach(w=>(grouped[w.districtId] ||= []).push({p,w})));
+state.players.forEach(p=>playerWorkers(state,p.id).filter(w=>!w.jailed).forEach(w=>(grouped[w.districtId] ||= []).push({p,w})));
 let workerHtml='';
 Object.entries(grouped).forEach(([districtId,items])=>{
 const [cx,cy]=DISTRICT_POS[districtId]||[0,0];
