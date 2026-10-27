@@ -1616,7 +1616,7 @@ const q=currentBidTask(state),pl=q?state.players[q.player]:null;bar.innerHTML=`<
 bar.innerHTML='<div class="sticky-copy"><strong>Ставки собраны</strong><span>При равной сумме выигрывает большее Влияние; затем более ранняя заявка.</span></div><div class="sticky-actions"><button class="primary-btn" id="resolveTender">Вскрыть ставки</button></div>';$('#resolveTender').onclick=()=>{resolveTenders(state);state.view='city';render();};
 }else if(state.phase==='development'){
 if(state.developmentComplete){
-bar.innerHTML='<div class="sticky-copy"><strong>Development завершён</strong><span>Все представители использованы.</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>';$('#enterCity').onclick=()=>{state.view='city';render();};
+bar.innerHTML='<div class="sticky-copy"><strong>Development завершён</strong><span>Все окна активации завершены.</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>';$('#enterCity').onclick=()=>{state.view='city';render();};
 }else{
 const dev=currentDeveloper(state),used=state.activationMainActionUsed,service=!used&&state.players[dev].workersLeft===0;
 bar.innerHTML=`<div class="sticky-copy"><strong>${service?'Сервисный ход':'Активация'}: ${state.players[dev].name} · 👤 ${state.players[dev].workersLeft}/3 · ${WORKERS_PER_PLAYER-developmentSlotsRemaining(state,dev)+1}/3</strong><span>${service?'Нет свободных представителей. Можно выполнить законные свободные действия или передать ход.':used?'Основное действие использовано — доступны свободные действия или завершение активации.':'Свободные действия можно выполнять до или после основного действия.'}</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>`;$('#enterCity').onclick=()=>{state.view='city';render();};
@@ -1721,7 +1721,7 @@ el.innerHTML='<div class="city-actions-empty">Городские действи�
 return;
 }
 if(state.developmentComplete){
-el.innerHTML='<div class="city-turn-complete"><strong>Development Phase завершена</strong><span>Все 9 представителей использованы. Их позиции сохранятся на следующий раунд.</span></div>';
+el.innerHTML='<div class="city-turn-complete"><strong>Development Phase завершена</strong><span>Все окна активации завершены. Позиции представителей сохранятся на следующий раунд.</span></div>';
 return;
 }
 const pid=currentDeveloper(state),p=state.players[pid];
@@ -1916,7 +1916,7 @@ const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
 +button('free','Свободные',false,'secondary')
-+(serviceOnly?button('service-pass','✓ Пас / год',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
++(serviceOnly?button('service-pass','✓ Мои ходы завершены',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
 el.className='mobile-action-dock active persistent-turn-dock';
 el.innerHTML='<div class="mobile-turn-status"><span class="player-dot '+p.key+'"></span><span><b>'+p.name+(serviceOnly?' · сервисное окно':' · активация')+'</b><small>'+(serviceOnly?'Нет рабочих · окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'Основное ✓ использовано':selected?'Основное доступно · #'+selected.number:'Выберите представителя для основного')+'</small></span></div><div class="mobile-action-buttons">'+html+'</div>';
 $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
