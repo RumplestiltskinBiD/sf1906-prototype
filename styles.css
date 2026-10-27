@@ -2830,3 +2830,38 @@ body.delivery-route-build #deliveryRouteLayer *{
 .bakery-buttons button{min-height:44px;min-width:106px;flex:1 1 106px;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:440px){.bakery-action-row{display:grid;grid-template-columns:minmax(0,1fr)}.bakery-buttons{width:100%}.bakery-buttons button{min-width:0}}
 @media(max-height:470px) and (orientation:landscape){.bakery-actions{padding:9px}.bakery-action-row{padding:7px}}
+
+
+/* Starter draft: tap cards instead of a floating selection/confirmation sheet. */
+#hallActionBar[hidden]{display:none!important}
+#hallView.draft-mode #cityGoalMarket,
+#hallView.draft-mode .market-track-head,
+#hallView.draft-mode #marketOverview,
+#hallView.draft-mode #projectMarket{display:none!important}
+#hallView.draft-mode .starter-draft{margin-bottom:12px}
+#hallView .draft-card{cursor:pointer}
+#hallView .draft-card .draft-card-hit{
+  position:absolute;inset:0;z-index:2;width:100%;height:100%;
+  padding:0;border:0;background:transparent;cursor:pointer;
+  touch-action:pan-x pan-y;
+}
+#hallView .draft-card:focus-within{outline:2px solid #276a56;outline-offset:2px}
+#hallView .draft-card.selected .age-badge{
+  color:#fff;background:#2f7659;letter-spacing:.04em;font-size:12px
+}
+#hallView .draft-card.selected::after{display:none!important}
+#hallView .draft-card-confirm-row{position:relative;z-index:3;margin:8px 0 0;pointer-events:none}
+#hallView .draft-inline-confirm{
+  display:block;width:100%;min-height:42px;padding:8px 10px;
+  border:1px solid #265d4b;border-radius:8px;
+  background:#2f7659;color:white;font-size:13px;font-weight:850;
+  pointer-events:auto;cursor:pointer
+}
+#hallView .draft-inline-confirm:focus-visible{outline:3px solid #d9b566;outline-offset:2px}
+@media(max-width:640px){
+  #hallView.draft-mode{padding-bottom:calc(76px + env(safe-area-inset-bottom))!important}
+  #hallView.draft-mode .draft-head p{font-size:11px}
+}
+@media(orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #hallView.draft-mode{padding-bottom:72px!important}
+}
