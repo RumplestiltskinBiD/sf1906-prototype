@@ -1408,6 +1408,7 @@ $('#mobileObjectsBack')?.addEventListener('click',()=>{overviewPlayerId=null;foc
 function setView(view){state.view=view;$$('.nav-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));$('#hallView').classList.toggle('active',view==='hall');$('#cityView').classList.toggle('active',view==='city');saveState();renderContext();}
 function renderViews(){
 setViewSilently(state.view||'hall');
+$('#hallView').classList.toggle('draft-mode',state.phase==='draft');
 const btn=$('#endRoundBtn');
 btn.disabled=state.phase!=='development'||state.finished||!state.developmentComplete;
 const used=(state.players||[]).flatMap(p=>p.workers||[]).filter(w=>w.used).length;
@@ -1430,12 +1431,13 @@ return `<div class="card-rules">
 <div class="card-rule limits"><b>ОГРАНИЧЕНИЯ</b><span>${p.limits||'—'}</span></div>
 </div>`;
 }
-function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',priceValue=null,selected=false,extraClass='',footer=''}={}){
+function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',priceValue=null,selected=false,extraClass='',extraTop='',footer=''}={}){
 const price=priceValue==null?p.open:priceValue;
 return `<article class="project-card full-info typed-project ${typeClass(p)} ${selected?'selected':''} ${extraClass}" ${projectTypeStyle(p)}>
 <div class="card-stripe"></div>
 <div class="project-inner">
 <div class="card-top"><span class="slot-mark">${topLeft}</span><span class="age-badge">${topRight}</span></div>
+${extraTop}
 <div class="project-title">${p.name}</div>
 <div class="project-type">${projectTypeLabel(p)}</div>
 <div class="card-value-row"><div class="opening-price">$${price}<small>${priceLabel}</small></div><span class="prestige-chip">VP ${p.prestige||0}</span></div>
@@ -1555,36 +1557,47 @@ $('#revealStarterDraft').onclick=()=>{revealStarterDraft(state);render();};
 return;
 }
 const hand=state.starterDraftHands?.[pid]||[];
-const selected=new Set(state.draftSelection||[]);
+const chosen=state.draftSelection||[];
+const selected=new Set(chosen);
 const cards=hand.map((card,i)=>{
-const p=projectById(card.id),isSelected=selected.has(card.uid);
-const footer=`<button class="draft-keep-btn ${isSelected?'selected':''}" data-draft-card="${card.uid}">${isSelected?'ОСТАВЛЯЮ ✓':'Оставить эту карту'}</button>`;
-return projectCoreCard(p,{topLeft:`START ${i+1}`,topRight:'KEEP 2 / 5',priceLabel:'starter right',priceValue:0,selected:isSelected,extraClass:'draft-card',footer});
+  const p=projectById(card.id),order=chosen.indexOf(card.uid),isSelected=order>=0;
+  const confirmOnThisCard=isSelected&&chosen.length===STARTER_KEEP&&order===STARTER_KEEP-1;
+  // One invisible full-card hit target: tapping anywhere selects/deselects.
+  // The confirmation button is a separate, higher-layer control INSIDE the 2/2 card.
+  const hit='<button type="button" class="draft-card-hit" data-draft-card="'+card.uid+'" aria-pressed="'+isSelected+'" aria-label="'+(isSelected?'Снять выбор: ':'Выбрать карту: ')+p.name+'"></button>';
+  const confirm=confirmOnThisCard?'<div class="draft-card-confirm-row"><button type="button" class="draft-inline-confirm" id="confirmStarterDraft">Подтвердить 2 ✓</button></div>':'';
+  return projectCoreCard(p,{
+    topLeft:'START '+(i+1),topRight:isSelected?'✓ '+(order+1)+'/'+STARTER_KEEP:'ВЫБРАТЬ',
+    priceLabel:'starter right',priceValue:0,selected:isSelected,
+    extraClass:'draft-card',extraTop:confirm,footer:hit
+  });
 }).join('');
-el.innerHTML=`<div class="draft-head"><div><span class="draft-kicker">STARTING DRAFT · ${player.name}</span><h3>Оставьте 2 проекта из 5</h3><p>Стартовые права на выбранные проекты стоят $0; землю и материалы вы оплачиваете позже при строительстве. Выбрано: <b>${selected.size}/${STARTER_KEEP}</b>. Лимит руки: <b>${HAND_LIMIT}</b>.</p></div><button class="primary-btn" id="confirmStarterDraft" ${selected.size===STARTER_KEEP?'':'disabled'}>Оставить 2 и передать дальше</button></div>${marketRef}<div class="starter-draft-cards">${cards}</div>`;
+el.innerHTML=`<div class="draft-head"><div><span class="draft-kicker">STARTING DRAFT · ${player.name}</span><h3>Выберите 2 карты из 5</h3><p>Нажмите на карту для выбора; повторное нажатие отменяет его.</p></div></div>${marketRef}<div class="starter-draft-cards">${cards}</div>`;
 $$('[data-draft-card]').forEach(b=>b.onclick=()=>{
-const r=toggleStarterDraftCard(state,b.dataset.draftCard);
-if(!r.ok&&r.reason==='keep-limit'){showToast('Можно оставить ровно 2 карты');return;}
-render();
+  const oldCarousel=$('.starter-draft-cards');
+  const oldX=oldCarousel?.scrollLeft||0,oldY=window.scrollY;
+  const r=toggleStarterDraftCard(state,b.dataset.draftCard);
+  if(!r.ok&&r.reason==='keep-limit'){showToast('Сначала отмените выбор одной из двух карт');return;}
+  render();
+  // Rebuilding the cards must not send the mobile carousel back to the first card.
+  const carousel=$('.starter-draft-cards');
+  if(carousel)carousel.scrollLeft=oldX;
+  window.scrollTo(0,oldY);
 });
-$('#confirmStarterDraft').onclick=()=>{
-const r=confirmStarterDraft(state);
-if(!r.ok){showToast('Выберите ровно 2 карты');return;}
-showToast(r.complete?'Стартовый драфт завершён':`Передайте устройство: ${state.players[r.nextPlayer].name}`);
-render();
-};
+$('#confirmStarterDraft')?.addEventListener('click',e=>{
+  e.stopPropagation();
+  const r=confirmStarterDraft(state);
+  if(!r.ok){showToast('Выберите ровно 2 карты');return;}
+  showToast(r.complete?'Стартовый драфт завершён':`Передайте устройство: ${state.players[r.nextPlayer].name}`);
+  render();
+});
 }
 function renderActionBar(){
 const bar=$('#hallActionBar');
+bar.hidden=state.phase==='draft';
 if(state.phase==='draft'){
-const pid=currentDraftPlayer(state),player=state.players[pid],selected=(state.draftSelection||[]).length;
-if(!state.draftRevealed){
-bar.innerHTML=`<div class="sticky-copy"><strong>Стартовый драфт · ${player.name}</strong><span>Рынок открыт. Покажите только свои 5 стартовых карт.</span></div><div class="sticky-actions"><button class="secondary-btn" id="draftRevealSticky">Показать карты</button></div>`;
-$('#draftRevealSticky').onclick=()=>{revealStarterDraft(state);render();};
-}else{
-bar.innerHTML=`<div class="sticky-copy"><strong>${player.name}: оставить 2 из 5 · выбрано ${selected}/${STARTER_KEEP}</strong><span>Стартовые карты бесплатны; остальные 3 сбрасываются.</span></div><div class="sticky-actions"><button class="primary-btn" id="draftConfirmSticky" ${selected===STARTER_KEEP?'':'disabled'}>Подтвердить 2</button></div>`;
-$('#draftConfirmSticky').onclick=()=>{const r=confirmStarterDraft(state);if(!r.ok){showToast('Выберите ровно 2 карты');return;}render();};
-}
+  // No floating selection bar. The 1/2 / 2/2 state and confirmation live on the cards.
+  bar.innerHTML='';
 }else if(state.phase==='declare'){
 const pid=currentDeclarer(state);
 if(pid==null){bar.innerHTML=`<div class="sticky-copy"><strong>Все заявки сделаны</strong><span>Перейдите к закрытым ставкам. Если конкуренции нет, сразу к вскрытию.</span></div><div class="sticky-actions"><button class="secondary-btn" id="nextTenderStage">Перейти к ставкам</button></div>`;$('#nextTenderStage').onclick=()=>{beginBidding(state);render();};}
