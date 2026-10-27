@@ -2,7 +2,7 @@ import {
 PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,currentDeclarer,currentDeveloper,openingPrice,
-createWorkers,playerWorkers,activeWorker,workerCanReachDistrict,workerReachableDistricts,selectWorker,
+createWorkers,playerWorkers,activeWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
@@ -331,13 +331,15 @@ if(!['0.43b','0.44'].includes(originalVersion)||!Array.isArray(parsed.yearTurnOr
 normalizeInfluenceTrack(parsed);
 }
 if(parsed.phase==='development'){
+ensureDevelopmentSlots(parsed);
 const order=turnOrder(parsed);
-const candidate=order.find(pid=>(parsed.players[pid]?.workersLeft??0)>0);
+const candidate=order.find(pid=>developmentSlotsRemaining(parsed,pid)>0);
 parsed.developmentComplete=candidate==null;
-parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlayer!=null&&(parsed.players[parsed.developmentPlayer]?.workersLeft??0)>0?parsed.developmentPlayer:candidate);
+parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlayer!=null&&developmentSlotsRemaining(parsed,parsed.developmentPlayer)>0?parsed.developmentPlayer:candidate);
 }else{
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
+parsed.developmentSlotsUsed=parsed.players.map(()=>0);
 }
 if(!['0.22','0.23','0.24','0.25','0.28','0.30a','0.43a','0.43b','0.44'].includes(originalVersion)&&parsed.phase==='draft')parsed.phase='declare';
 ensureNewspaper(parsed);
@@ -1610,8 +1612,8 @@ bar.innerHTML='<div class="sticky-copy"><strong>Ставки собраны</str
 if(state.developmentComplete){
 bar.innerHTML='<div class="sticky-copy"><strong>Development завершён</strong><span>Все представители использованы.</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>';$('#enterCity').onclick=()=>{state.view='city';render();};
 }else{
-const dev=currentDeveloper(state),used=state.activationMainActionUsed;
-bar.innerHTML=`<div class="sticky-copy"><strong>Активация: ${state.players[dev].name} · 👤 ${state.players[dev].workersLeft}/3 · рука ${state.players[dev].portfolio.length}/${HAND_LIMIT}</strong><span>${used?'Основное действие использовано — доступны свободные действия или завершение активации.':'Свободные действия можно выполнять до или после основного действия.'}</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">${used?'Продолжить активацию':'Городские действия'}</button></div>`;$('#enterCity').onclick=()=>{state.view='city';render();};
+const dev=currentDeveloper(state),used=state.activationMainActionUsed,service=!used&&state.players[dev].workersLeft===0;
+bar.innerHTML=`<div class="sticky-copy"><strong>${service?'Сервисный ход':'Активация'}: ${state.players[dev].name} · 👤 ${state.players[dev].workersLeft}/3 · ${WORKERS_PER_PLAYER-developmentSlotsRemaining(state,dev)+1}/3</strong><span>${service?'Нет свободных представителей. Можно выполнить законные свободные действия или передать ход.':used?'Основное действие использовано — доступны свободные действия или завершение активации.':'Свободные действия можно выполнять до или после основного действия.'}</span></div><div class="sticky-actions"><button class="secondary-btn" id="enterCity">Открыть город</button></div>`;$('#enterCity').onclick=()=>{state.view='city';render();};
 }
 }else if(state.phase==='upkeep'){
 bar.innerHTML='<div class="sticky-copy"><strong>Переход года · простой строек</strong><span>Income уже начислен. Завершите обязательный выбор закрываемого объекта.</span></div><div class="sticky-actions"></div>';
@@ -1689,7 +1691,7 @@ const buttons=workers.map(w=>{
 const isSelected=selected?.id===w.id;
 return `<button class="dock-worker token-${p.key} ${isSelected?'selected':''} ${w.jailed?'used':''} ${w.used?'used':''}" data-dock-worker="${w.id}" ${w.jailed||w.used||state.activationMainActionUsed?'disabled':''}><span>#${w.number}</span><b>${w.jailed?'ТЮРЬМА':shortDistrictName(w.districtId)}</b><small>${w.jailed?'АРЕСТ · '+(1899+w.arrestedRound):w.used?'ИСПОЛЬЗОВАН':isSelected?'ВЫБРАН':'ГОТОВ'}</small></button>`;
 }).join('');
-const reach=selected?workerReachableDistricts(state,pid,selected.id).map(shortDistrictName).join(' · '):'Выберите представителя';
+const reach=selected?workerReachableDistricts(state,pid,selected.id).map(shortDistrictName).join(' · '):p.workersLeft===0?'Все представители недоступны — быстрые действия остаются в меню «Свободные».':'Выберите представителя';
 el.innerHTML=`<div class="worker-dock-head"><span class="player-dot ${p.key}"></span><div><b>${p.name} · представители</b><small>${selected?`#${selected.number}: ${districtById(selected.districtId)?.name} · соседний район${districtHasMarketStreet(selected.districtId)?' или любой район вдоль Market Street':''}`:'Выберите одного из трёх. Позиции сохраняются между раундами.'}</small></div></div><div class="worker-dock-grid">${buttons}</div><div class="worker-dock-reach"><b>Доступ:</b> ${reach}</div>`;
 $$('[data-dock-worker]').forEach(b=>b.onclick=()=>{
 const r=selectWorker(state,pid,b.dataset.dockWorker);
@@ -1718,6 +1720,8 @@ return;
 }
 const pid=currentDeveloper(state),p=state.players[pid];
 const mainUsed=!!state.activationMainActionUsed;
+const serviceOnly=!mainUsed&&p.workersLeft===0;
+const workerSlot=WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1;
 const workers=playerWorkers(state,pid);
 const selected=activeWorker(state,pid);
 const reachable=selected?workerReachableDistricts(state,pid,selected.id):[];
@@ -1810,11 +1814,11 @@ if(fireActionDraft){
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const capitalDisabled=mainUsed||!selected;
 const deliveryDisabled=!canUseFreeAction(state,pid);
-el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>АКТИВАЦИЯ</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Проекты ${availableProjects} · Кредиты ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Контракт':''}${procurement?` · Закупка ${procurement}`:''}</span></div><span class="activation-state">${mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':selected?`ПРЕДСТАВИТЕЛЬ #${selected.number} ГОТОВ`:'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'}</span></div>
-<div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>
-<div class="action-legend"><b>${mainUsed?'СВОБОДНЫЕ ДЕЙСТВИЯ / ЗАВЕРШЕНИЕ АКТИВАЦИИ':'ОСНОВНОЕ ДЕЙСТВИЕ'}</b><span>${procurement?`Закупка: ещё ${procurement} бесплатн. материала при следующей покупке`:mainUsed?'Доставка и погашение кредита доступны до завершения активации':selected?'Выберите основное действие или выполните доставку':'Доставку можно выполнить и до выбора представителя'}</span><em>СВОБОДНЫЕ: Доставка · Достройка вагонного пансиона · Завершить со склада · Погасить кредит</em></div>
-${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':''}
-<div class="city-action-grid ${mainUsed?'main-action-used':''}">
+el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>${serviceOnly?'СЕРВИСНОЕ ОКНО':'АКТИВАЦИЯ'} ${workerSlot}/3</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Проекты ${availableProjects} · Кредиты ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Контракт':''}${procurement?` · Закупка ${procurement}`:''}</span></div><span class="activation-state">${serviceOnly?'НЕТ СВОБОДНЫХ РАБОТНИКОВ':mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':selected?`ПРЕДСТАВИТЕЛЬ #${selected.number} ГОТОВ`:'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'}</span></div>
+${serviceOnly?'<div class="service-turn-hint">Работников нет. Вы можете выполнить законные быстрые действия или передать ход. Новое основное действие без работника не появляется.</div>':`<div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>`}
+<div class="action-legend"><b>${serviceOnly?'СВОБОДНЫЕ ДЕЙСТВИЯ И ПАС':mainUsed?'СВОБОДНЫЕ ДЕЙСТВИЯ / ЗАВЕРШЕНИЕ АКТИВАЦИИ':'ОСНОВНОЕ ДЕЙСТВИЕ'}</b><span>${serviceOnly?'Доставка, пекарня, погашение кредита и другие законные свободные действия доступны сейчас.':procurement?`Закупка: ещё ${procurement} бесплатн. материала при следующей покупке`:mainUsed?'Доставка и погашение кредита доступны до завершения активации':selected?'Выберите основное действие или выполните доставку':'Доставку можно выполнить и до выбора представителя'}</span><em>СВОБОДНЫЕ: Доставка · Достройка вагонного пансиона · Завершить со склада · Погасить кредит</em></div>
+${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':serviceOnly?'<div class="service-turn-actions"><button class="end-activation-btn" id="actionEndActivation">Пас · следующий игрок</button><button class="secondary-btn" id="actionPassRemaining">Завершить мои ходы этого года</button></div>':''}
+<div class="city-action-grid ${mainUsed?'main-action-used':''} ${serviceOnly?'service-only':''}">
 <button class="city-action-card build ${buildDisabled?'':'action-available'}" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
 <button class="city-action-card capital ${capitalDisabled?'':'action-available'}" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Привлечь капитал</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ РАЙОН'}</strong></button>
 <button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Несколько источников по пути (+$1 за дополнительную погрузку)</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
@@ -1842,15 +1846,17 @@ closeDrawers();closeMobileContext();
 render();
 showToast('Привлечь капитал: выберите текущий или соседний район на карте');
 };
-const end=$('#actionEndActivation');if(end)end.onclick=()=>{
+const finishActivation=(skipRemainingService=false)=>{
 deliveryDraft=null;fireActionDraft=null;
-const r=endActivation(state,pid);
+const r=endActivation(state,pid,{skipRemainingService});
 if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
 overviewPlayerId=null;focusedConstructionId=null;
 closeDrawers();closeMobileContext();
-showToast(r.complete?'Все представители использованы':`Ход: ${state.players[r.nextPlayer].name} · выберите представителя`);
+showToast(r.complete?'Все окна активации завершены':`Ход: ${state.players[r.nextPlayer].name}`);
 render();
 };
+const end=$('#actionEndActivation');if(end)end.onclick=()=>finishActivation(false);
+const passAll=$('#actionPassRemaining');if(passAll)passAll.onclick=()=>finishActivation(true);
 $$('[data-fire-mode]').forEach(b=>b.onclick=()=>{
   fireActionDraft={pid,workerId:activeWorker(state,pid)?.id,firehouseId:b.dataset.firehouseId,kind:b.dataset.fireMode};
   renderCityActions();
@@ -1900,18 +1906,19 @@ const blocked=!isMobile()||state.view!=='city'||state.phase!=='development'||sta
 ||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||pid==null;
 document.body.classList.toggle('mobile-turn-dock-active',!blocked);
 if(blocked){el.className='mobile-action-dock';el.innerHTML='';return;}
-const p=state.players[pid],mainUsed=!!state.activationMainActionUsed;
+const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly=!mainUsed&&p.workersLeft===0;
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
 +button('free','Свободные',false,'secondary')
-+(mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
++(serviceOnly?button('service-pass','✓ Пас / год',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
 el.className='mobile-action-dock active persistent-turn-dock';
-el.innerHTML='<div class="mobile-turn-status"><span class="player-dot '+p.key+'"></span><span><b>'+p.name+' · активация</b><small>'+(mainUsed?'Основное ✓ использовано':selected?'Основное доступно · #'+selected.number:'Выберите представителя для основного')+'</small></span></div><div class="mobile-action-buttons">'+html+'</div>';
+el.innerHTML='<div class="mobile-turn-status"><span class="player-dot '+p.key+'"></span><span><b>'+p.name+(serviceOnly?' · сервисное окно':' · активация')+'</b><small>'+(serviceOnly?'Нет рабочих · окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'Основное ✓ использовано':selected?'Основное доступно · #'+selected.number:'Выберите представителя для основного')+'</small></span></div><div class="mobile-action-buttons">'+html+'</div>';
 $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
 const action=b.dataset.mobileAction;
 if(action==='delivery')startDeliveryFlow(pid);
 else if(action==='free')openActiveFreeActions();
 else if(action==='end')$('#actionEndActivation')?.click();
+else if(action==='service-pass')$('#actionPassRemaining')?.click();
 else{
 $('#cityActions')?.scrollIntoView({behavior:'smooth',block:'start'});
 $('#cityActions')?.classList.add('ux-focus');
