@@ -331,6 +331,12 @@ if(!['0.43b','0.44'].includes(originalVersion)||!Array.isArray(parsed.yearTurnOr
 normalizeInfluenceTrack(parsed);
 }
 if(parsed.phase==='development'){
+// Older saves and focused E2E fixtures did not have independent activation slots.
+if(parsed.developmentComplete){
+  parsed.developmentSlotsUsed=parsed.players.map(()=>WORKERS_PER_PLAYER);
+}else if(!Array.isArray(parsed.developmentSlotsUsed)||parsed.developmentSlotsUsed.length!==parsed.players.length||parsed.developmentSlotsUsed.every(x=>x===0)){
+  parsed.developmentSlotsUsed=parsed.players.map(p=>Math.max(0,(p.workers||[]).filter(w=>w.used).length-(parsed.developmentPlayer===p.id&&parsed.activationMainActionUsed?1:0)));
+}
 ensureDevelopmentSlots(parsed);
 const order=turnOrder(parsed);
 const candidate=order.find(pid=>developmentSlotsRemaining(parsed,pid)>0);
