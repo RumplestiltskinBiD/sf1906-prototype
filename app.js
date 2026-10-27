@@ -2321,8 +2321,8 @@ $('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Valu
 $$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
 $$('[data-inf]').forEach(b=>b.onclick=()=>{moveInfluence(state,+b.dataset.inf,+b.dataset.delta);render();});
 $$('[data-workers]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.workers;state.players[pid].workersLeft=3;if(state.phase==='development'){state.developmentComplete=false;if(currentDeveloper(state)==null){state.developmentPlayer=pid;state.activationMainActionUsed=false;}}render();});
-$('[data-b2-jail-all]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.b2JailAll;if(state.phase!=='development'||currentDeveloper(state)!==pid)return;for(const w of playerWorkers(state,pid)){if(!w.jailed)jailWorker(state,pid,w.id);}showToast('Тестер B2: сотрудники под стражей без штрафов. Сервисный ход доступен.');render();});
-$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
+$$('[data-b2-jail-all]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.b2JailAll;if(state.phase!=='development'||currentDeveloper(state)!==pid)return;for(const w of playerWorkers(state,pid)){if(!w.jailed)jailWorker(state,pid,w.id);}showToast('Тестер B2: сотрудники под стражей без штрафов. Сервисный ход доступен.');render();});
+$$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
 }
 function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
