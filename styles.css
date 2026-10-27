@@ -1486,6 +1486,11 @@ button.city-action-card{cursor:pointer}
   position:sticky;top:var(--topbar-h);z-index:29;
   box-shadow:0 5px 15px rgba(0,0,0,.16)
 }
+/* Keep the previously established document scroll on desktop, while removing
+   the sticky construction banner that covered the map. */
+@media(min-width:641px) and (min-height:501px){
+  #cityView.active{overflow:visible}
+}
 /* Desktop construction access lives in the map toolbar; nothing overlays the map. */
 .nav-rail{top:var(--hud-stack-h);height:calc(100vh - var(--hud-stack-h))}
 .city-objects-shortcut{
