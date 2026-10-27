@@ -32,7 +32,18 @@ function game(){
 test('all new industrial cards display in market with correct colors and recipes',async({page})=>{
   const s=createInitialState({rng:()=>0.1});
   for(let i=0;i<4;i++)s.market[i].id=['brickworks','woodworks','foundry','cannery'][i];
+  // During the private draft the large market is replaced by its compact reference.
+  // After draft, the full market must still contain all industrial cards/recipes.
   await seed(page,s);await page.goto('/');
+  const compact=page.locator('.draft-market-ref');
+  await expect(compact).toBeVisible();
+  for(const name of ['Кирпичный завод','Деревообрабатывающая фабрика','Литейно-механический завод','Консервный завод']){
+    await expect(compact).toContainText(name);
+  }
+  await expect(page.locator('#projectMarket')).toBeHidden();
+  const declare={...s,phase:'declare',view:'hall',declarationIndex:0,starterDraftPlayer:null,draftRevealed:false};
+  await page.evaluate(([key,value])=>localStorage.setItem(key,JSON.stringify(value)),[STORE,declare]);
+  await page.reload();
   const cards=page.locator('#projectMarket .project-card');
   await expect(cards.filter({hasText:'Кирпичный завод'}).first()).toBeVisible();
   await expect(cards.filter({hasText:'Деревообрабатывающая фабрика'}).first()).toBeVisible();
