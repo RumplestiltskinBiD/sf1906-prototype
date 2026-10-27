@@ -855,7 +855,9 @@ test('Delivery source cards expose Russian node type and profile without losing 
   await expect(union).toContainText('Д 20% · К 25% · С 55%');
 });
 
-test('persistent object overview keeps active objects visible and player pills open Office',async({page})=>{
+// Accepted UX change: no desktop sticky construction banner. Keep quick access
+// via map toolbar, and ensure selecting a rival in Office still works.
+test('desktop compact construction shortcut opens Office and follows object owner',async({page})=>{
   const s=makeDevState();
   s.constructions=[
     con('C1',0,'insurance','soma','under-construction',['Masonry']),
@@ -864,34 +866,34 @@ test('persistent object overview keeps active objects visible and player pills o
   ];
   await seed(page,s);
   await page.goto('/');
-
-  const overview=page.locator('#cityOverviewPanel');
-  await expect(overview).toHaveClass(/active/);
-  await expect(overview).toContainText('Объекты: Синий');
-  await expect(overview).toContainText('Страховая компания');
-  await expect(overview).toContainText('Склад');
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#cityObjectsShortcut')).toHaveText('Стройки 1 · Склады 1');
+  await page.locator('#cityObjectsShortcut').click();
+  await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
+  await expect(page.locator('#officeTitle')).toContainText('Синий');
+  await expect(page.locator('#officeContent')).toContainText('Страховая компания');
+  await expect(page.locator('#officeContent')).toContainText('Распределительный склад');
+  await page.locator('#officeDrawer [data-close-drawer]').click();
 
   await page.locator('.player-pill[data-office="1"]').click();
-  await expect(page.locator('#officeDrawer')).toHaveClass(/open/);
   await expect(page.locator('#officeTitle')).toContainText('Красный');
   await expect(page.locator('#showOfficeObjectsMap')).toBeVisible();
   await page.locator('#showOfficeObjectsMap').click();
-
   await expect(page.locator('#officeDrawer')).not.toHaveClass(/open/);
-  await expect(overview).toContainText('Просмотр: Красный');
-  await expect(overview).toContainText('Рабочий доходный дом');
-  await page.locator('#overviewBackActive').click();
-  await expect(overview).toContainText('Объекты: Синий');
+  await expect(page.locator('#cityObjectsShortcut')).toHaveText('Стройки 1 · Склады 0');
+  await expect(page.locator('#cityObjectsShortcut')).toHaveAttribute('aria-label',/Красный/);
+  await page.locator('#cityObjectsShortcut').click();
+  await expect(page.locator('#officeTitle')).toContainText('Красный');
+  await expect(page.locator('#officeContent')).toContainText('Рабочий доходный дом');
 });
-
-test('clicking overview construction focuses its district and map token',async({page})=>{
+test('map construction token remains clickable and focuses its district after removing overview banner',async({page})=>{
   const s=makeDevState();
   s.selectedDistrictId='civic';
   s.constructions=[con('C1',0,'insurance','soma','under-construction',['Masonry'])];
   await seed(page,s);
   await page.goto('/');
-
-  await page.locator('[data-overview-construction="C1"]').click();
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await page.locator('[data-construction-token="C1"]').click();
   await expect(page.locator('[data-construction-token="C1"]')).toHaveClass(/focus-pulse/);
   await expect(page.locator('#contextPanel')).toContainText('SoMa');
   await expect(page.locator('.focused-object-detail')).toContainText('Страховая компания');
@@ -953,7 +955,10 @@ test('available main and building actions are visibly highlighted including Shop
   await expect(page.locator('[data-shops-action="SHOP"]')).toHaveClass(/available-action/);
 
   await page.locator('[data-shops-action="SHOP"]').click();
-  await expect(page.locator('#cityOverviewPanel')).toContainText('Закупка активна: 2');
+  // The old cityOverviewPanel was deliberately removed; Procurement remains
+  // visible in Office and persists in game state.
+  await page.locator('#officeBtn').click();
+  await expect(page.locator('#officeContent')).toContainText('Procurement · 2 materials at $0');
   const saved=await stored(page);
   expect(saved.procurementRemaining).toBe(2);
 });
@@ -983,7 +988,8 @@ test('portrait mobile keeps objects in the top HUD and player taps still open Of
   await seed(page,s);
   await page.goto('/');
 
-  await expect(page.locator('#cityOverviewPanel')).toBeHidden();
+  await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
+  await expect(page.locator('#cityObjectsShortcut')).toBeHidden();
   const strip=page.locator('#mobileObjectStrip');
   await expect(strip).toBeVisible();
   await expect(strip).toContainText('Объекты: Синий');
