@@ -1360,46 +1360,25 @@ function renderStandardProjects(){
  el.querySelectorAll('[data-standard-build]').forEach(b=>b.onclick=()=>{if(pid!=null)startConstructionFlow(pid,b.dataset.standardBuild);});
 }
 function renderCityOverview(){
-const el=$('#cityOverviewPanel');if(!el)return;
-if(state.view!=='city'||state.phase==='draft'){
-el.classList.remove('active');el.innerHTML='';return;
-}
-const pid=currentOverviewPlayerId(),p=state.players[pid];
-if(!p){el.classList.remove('active');el.innerHTML='';return;}
-el.classList.add('active');
-const activePid=currentDeveloper(state);
-const builds=(state.constructions||[]).filter(x=>x.playerId===pid&&x.status==='under-construction');
-const warehouses=completedWarehouses(state,pid);
-const buildHtml=builds.map(con=>{
-const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
-const missing=missingConstructionMaterials(con);
-const finish=canCompleteConstruction(state,con.id);
-const ready=finish.ok&&finish.warehouseUse>0;
-return '<button class="overview-object build-object typed-project type-stripe-compact '+(focusedConstructionId===con.id?'focused':'')+'" '+projectTypeStyle(pr)+' data-overview-construction="'+con.id+'">'
-+'<span class="overview-object-head"><b>'+pr.name+'</b><em>'+d.name+'</em></span>'
-+'<span class="overview-materials">'+resourcePills(pr.materials,con.materialsDelivered||[])+'</span>'
-+'<span class="overview-object-foot"><strong>'+prog.delivered+'/'+prog.required+'</strong><small>'+(ready?'Склад может завершить':missing.length?'Нужно: '+missing.join(', '):'Комплект собран')+'</small></span>'
-+'</button>';
-}).join('');
-const warehouseHtml=warehouses.map(wh=>{
-const d=districtById(wh.districtId),inv=warehouseInventory(wh),counts=deliveryCounts(inv);
-const supported=builds.filter(x=>x.districtId===wh.districtId).map(x=>projectById(x.projectId)?.name).filter(Boolean);
-const warehouseProject=projectById(wh.projectId);
-return '<button class="overview-object warehouse-object typed-project type-stripe-compact '+(focusedConstructionId===wh.id?'focused':'')+'" '+projectTypeStyle(warehouseProject)+' data-overview-construction="'+wh.id+'">'
-+'<span class="overview-object-head"><b>Склад</b><em>'+d.name+'</em></span>'
-+'<span class="warehouse-counts"><i class="lumber">Д '+(counts.Lumber||0)+'</i><i class="masonry">К '+(counts.Masonry||0)+'</i><i class="steel">С '+(counts.Steel||0)+'</i><strong>'+inv.length+'/'+warehouseStorageCapacity(wh)+'</strong></span>'
-+'<span class="overview-object-foot"><small>'+(supported.length?'Поддерживает: '+supported.join(', '):'Нет активной стройки в районе')+'</small></span>'
-+'</button>';
-}).join('');
-const viewingOpponent=activePid!=null&&pid!==activePid;
-const procurement=activePid===pid?(state.procurementRemaining||0):0;
-el.innerHTML='<div class="overview-head"><div><span class="player-dot '+p.key+'"></span><b>'+(viewingOpponent?'Просмотр: ':'Объекты: ')+p.name+'</b><small>'+builds.length+' строек · '+warehouses.length+' складов</small></div>'
-+'<div class="overview-head-actions">'+(viewingOpponent?'<button class="overview-active-btn" id="overviewBackActive">Активный игрок</button>':'')+'<button class="overview-office-btn" id="overviewOpenOffice">Офис</button></div></div>'
-+(procurement?'<div class="overview-effect">Закупка активна: <b>'+procurement+'</b> материала по $0 в следующих доставках этой активации</div>':'')
-+'<div class="overview-scroll">'+(buildHtml||'<div class="overview-empty">Незавершённых строек нет</div>')+warehouseHtml+'</div>';
-$$('[data-overview-construction]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.overviewConstruction));
-$('#overviewBackActive')?.addEventListener('click',()=>{overviewPlayerId=null;renderPlayers();renderCityOverview();});
-$('#overviewOpenOffice')?.addEventListener('click',()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();});
+  // Desktop: the full-width sticky construction overview was covering the map.
+  // Keep project details one click away in the existing Office drawer instead.
+  const btn=$('#cityObjectsShortcut');
+  if(!btn)return;
+  const visible=state.view==='city'&&state.phase!=='draft'&&!isMobile();
+  btn.hidden=!visible;
+  if(!visible)return;
+  const pid=currentOverviewPlayerId(),player=state.players[pid];
+  if(!player){btn.hidden=true;return;}
+  const builds=playerConstructionNeeds(pid);
+  const warehouses=completedWarehouses(state,pid);
+  btn.textContent='Стройки '+builds.length+' · Склады '+warehouses.length;
+  btn.setAttribute('aria-label','Стройки и склады игрока '+player.name+': '+builds.length+' строек, '+warehouses.length+' складов. Открыть необходимые материалы в Офисе');
+  btn.onclick=()=>{
+    inspectedOffice=pid;
+    openDrawer('officeDrawer');
+    renderOffice();
+    requestAnimationFrame(()=>$('#officeConstructionsTitle')?.scrollIntoView({block:'start'}));
+  };
 }
 function renderMobileObjectStrip(){
 const el=$('#mobileObjectStrip');if(!el)return;
@@ -2244,6 +2223,8 @@ actionNote='<div class="factory-building-note">После завершения �
 return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)+(con.projectId==='wagonboarding'?(con.wagonLevel||1)-1:0)+workforceIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${con.projectId==='workers_complex'?'<div class="warehouse-support">Ночная смена: '+(con.linkedIndustryId?(projectById(state.constructions.find(x=>x.id===con.linkedIndustryId)?.projectId)?.name||'предприятие')+' · удвоены доход и выпуск материалов':'ожидается выбор предприятия')+'</div>':''}${con.projectId==='press_tower'?'<div class="warehouse-support">Газетная кампания: '+(con.pressCampaignRound===state.round?'использована':'срабатывает при завершении ежегодного газетного выпуска')+' · +$2 или −$2 / +1 Влияние</div>':''}${con.projectId==='bakery'?'<div class="warehouse-support">🥖 Пекарный сезон: '+(con.bakeryUsedRound===state.round?'использован':'доступен при наличии Дерева')+' · в пекарне '+bakeryInventory(con).length+'/1 · в местном складе '+completedWarehouses(state,p.id,con.districtId).reduce((n,w)=>n+warehouseInventory(w).filter(t=>t==='Lumber').length,0)+' Дерево</div>':''}${con.projectId==='orphanage'?'<div class="warehouse-support">🏛 Приют: +1 Влияние при завершении · +4 VP после катастрофы 1906 при выживании (Фаза II отдельно)</div>':''}${con.projectId==='sailorlodging'?'<div class="warehouse-support">Вербовка: '+(con.sailorRecruitmentRound===state.round?'в этом году использована':'ожидает погрузки в местном порту')+' · законно +$2 или незаконно +$6 и −1 Влияние</div>':''}${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+industrialProductionCapacity(state,con)+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
+const remainingMaterials=missingConstructionMaterials(con);
+const remainingText=remainingMaterials.length?'Осталось привезти: '+remainingMaterials.join(', '):'Все материалы доставлены';
 const warehouses=completedWarehouses(state,p.id,con.districtId);
 const stored=warehouses.reduce((sum,w)=>sum+warehouseInventory(w).length,0);
 const needsWarehouse=pr.materials.length>CONSTRUCTION_STAGING_CAPACITY;
@@ -2253,7 +2234,7 @@ const warehouseLine=warehouses.length
 const finishBtn=isActive&&finish.ok
 ?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
 :'';
-return `<div class="portfolio-card construction-card active-build typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${finishBtn}</div>`;
+return `<div class="portfolio-card construction-card active-build typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="construction-need-label">${remainingText}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${finishBtn}</div>`;
 }).join('');
 const contract=(p.bureauContracts||0)>0?'<span class="contract-chip">Construction Contract · −$2 next paid land</span>':'<span class="contract-chip empty">No Construction Contract</span>';
 const procurementChip=procurement?`<span class="procurement-chip">Procurement · ${procurement} material${procurement===1?'':'s'} at $0</span>`:'';
@@ -2283,7 +2264,7 @@ const bakeryQuick=bakeryRows?'<div class="wagon-upgrades bakery-actions"><b>🥖
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead" id="officeConstructionsTitle">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
