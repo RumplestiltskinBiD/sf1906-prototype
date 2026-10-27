@@ -278,27 +278,67 @@ export function createWorkers(playerId,{districtId=STARTING_WORKER_DISTRICT}={})
     id:`P${playerId+1}W${i+1}`,
     number:i+1,
     districtId,
-    used:false
+    used:false,
+    jailed:false,
+    arrestedRound:null
   }));
 }
 export function playerWorkers(state,playerId){return state.players?.[playerId]?.workers||[];}
-export function availableWorkers(state,playerId){return playerWorkers(state,playerId).filter(w=>!w.used);}
+// B1: imprisonment is an independent status, not an alias for used.
+export function availableWorkers(state,playerId){return playerWorkers(state,playerId).filter(w=>!w.used&&!w.jailed);}
+// B1 low-level transition only: suspicion/influence/VP penalties will be applied atomically in C1.
+export function jailWorker(state,playerId,workerId){
+  const player=state.players?.[playerId];
+  if(!player)return {ok:false,reason:'player'};
+  const worker=playerWorkers(state,playerId).find(w=>w.id===workerId);
+  if(!worker)return {ok:false,reason:'worker'};
+  if(worker.jailed)return {ok:false,reason:'already-jailed'};
+  if(!Number.isInteger(state.round)||state.round<1)return {ok:false,reason:'round'};
+  worker.jailed=true;
+  worker.arrestedRound=state.round;
+  if(state.activeWorkerId===worker.id){
+    state.activeWorkerId=null;
+    state.pendingWorkerAction=null;
+    state.pendingConstruction=null;
+  }
+  syncWorkersLeft(state,playerId);
+  logEvent(state,`${player.name}: представитель #${worker.number} арестован (год ${1899+state.round}).`,'bad');
+  return {ok:true,worker,arrestedRound:worker.arrestedRound};
+}
+// Free replacement after a full following year: arrested in Y, jailed in Y+1, replaced in Y+2.
+// The worker ID denotes a *staff slot*; a replacement retains the slot ID but resets location.
+export function restoreExpiredJailedWorkerSlots(state,playerId){
+  const player=state.players?.[playerId];
+  if(!player)return {ok:false,reason:'player'};
+  const restored=[];
+  for(const worker of playerWorkers(state,playerId)){
+    if(!worker.jailed||!Number.isInteger(worker.arrestedRound)||state.round<worker.arrestedRound+2)continue;
+    worker.jailed=false;
+    worker.arrestedRound=null;
+    worker.districtId=STARTING_WORKER_DISTRICT;
+    worker.used=false;
+    restored.push(worker.id);
+    logEvent(state,`${player.name}: после полного срока заключения штат бесплатно пополнен представителем #${worker.number} в Civic Center.`,'good');
+  }
+  syncWorkersLeft(state,playerId);
+  return {ok:true,restored};
+}
 export function activeWorker(state,playerId){
   const id=state.activeWorkerId;
   if(!id)return null;
   const worker=playerWorkers(state,playerId).find(w=>w.id===id);
-  return worker&&!worker.used?worker:null;
+  return worker&&!worker.used&&!worker.jailed?worker:null;
 }
 export function workerCanReachDistrict(state,playerId,targetDistrictId,workerId=null){
   const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
   const target=districtById(targetDistrictId);
-  if(!worker||worker.used||!target||target.passable===false)return false;
+  if(!worker||worker.used||worker.jailed||!target||target.passable===false)return false;
   const local=worker.districtId===targetDistrictId||districtNeighbors(worker.districtId).includes(targetDistrictId);
   return local;
 }
 export function workerReachableDistricts(state,playerId,workerId=null){
   const worker=workerId?playerWorkers(state,playerId).find(w=>w.id===workerId):activeWorker(state,playerId);
-  if(!worker||worker.used)return [];
+  if(!worker||worker.used||worker.jailed)return [];
   const ids=[worker.districtId,...districtNeighbors(worker.districtId)];
   return [...new Set(ids)].filter(id=>districtById(id)?.passable!==false);
 }
@@ -308,6 +348,7 @@ export function selectWorker(state,playerId,workerId){
   if(state.activationMainActionUsed)return {ok:false,reason:'main-used'};
   const worker=playerWorkers(state,playerId).find(w=>w.id===workerId);
   if(!worker)return {ok:false,reason:'worker'};
+  if(worker.jailed)return {ok:false,reason:'jailed'};
   if(worker.used)return {ok:false,reason:'used'};
   state.activeWorkerId=worker.id;
   return {ok:true,worker};
@@ -1972,8 +2013,9 @@ function finishYearTransition(state,{rng=Math.random}={}){
   setYearTurnOrderFromInfluence(state);
   state.players.forEach(p=>{
     p.workers=p.workers?.length?p.workers:createWorkers(p.id);
-    p.workers.forEach(w=>w.used=false);
-    p.workersLeft=p.workers.length;
+    // A jailed worker must stay jailed on Y+1; restore only at the start of Y+2.
+    p.workers.forEach(w=>{w.used=false;});
+    restoreExpiredJailedWorkerSlots(state,p.id);
   });
   state.developmentPlayer=null;state.developmentComplete=false;state.activationMainActionUsed=false;state.activeWorkerId=null;state.pendingWorkerAction=null;
   state.procurementRemaining=0;state.procurementSource=null;
