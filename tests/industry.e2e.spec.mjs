@@ -41,9 +41,13 @@ test('all new industrial cards display in market with correct colors and recipes
     await expect(compact).toContainText(name);
   }
   await expect(page.locator('#projectMarket')).toBeHidden();
-  const declare={...s,phase:'declare',view:'hall',declarationIndex:0,starterDraftPlayer:null,draftRevealed:false};
-  await page.evaluate(([key,value])=>localStorage.setItem(key,JSON.stringify(value)),[STORE,declare]);
-  await page.reload();
+  for(let player=0;player<3;player++){
+    await page.locator('#revealStarterDraft').click();
+    await page.locator('.draft-card').nth(0).locator('[data-draft-card]').click();
+    await page.locator('.draft-card').nth(1).locator('[data-draft-card]').click();
+    await page.locator('#confirmStarterDraft').click();
+  }
+  await expect(page.locator('#passTender')).toBeVisible();
   const cards=page.locator('#projectMarket .project-card');
   await expect(cards.filter({hasText:'Кирпичный завод'}).first()).toBeVisible();
   await expect(cards.filter({hasText:'Деревообрабатывающая фабрика'}).first()).toBeVisible();
