@@ -629,7 +629,7 @@ export function confirmStarterDraft(state){
 
 
 // Crime C1.1: company-wide suspicion, not a per-worker stat.
-// State only: criminal effects, arrest sanctions and yearly fines are NOT enabled here.
+// State persists independently of annual fines and criminal reward cards.
 export function normalizeSuspicion(value){
   if(!Number.isSafeInteger(value))return 0;
   return Math.max(0,Math.min(MAX_SUSPICION,value));
@@ -654,6 +654,81 @@ export function changeSuspicion(state,playerId,delta){
   return setSuspicion(state,playerId,to);
 }
 
+// C1.3: a legal quick action, available even when all staff is imprisoned.
+export function legalCaseOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const p=state.players[playerId],level=suspicionLevel(state,playerId);
+  const used=p.caseSettledRound===state.round;
+  const active=canUseFreeAction(state,playerId);
+  const influencePreview={...state,players:state.players.map(x=>({...x}))};
+  const influenceMove=moveInfluence(influencePreview,playerId,-2);
+  const influenceSteps=Math.abs(influenceMove.steps);
+  const cash=active&&!used&&level>0&&p.capital>=4;
+  const influence=active&&!used&&level>0&&influenceSteps===2;
+  return {ok:true,playerId,level,used,active,cash,influence,influenceSteps,
+    capitalCost:4,influenceCost:2};
+}
+export function settleLegalCase(state,playerId,payment){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  if(payment!=='cash'&&payment!=='influence')return {ok:false,reason:'payment'};
+  const options=legalCaseOptions(state,playerId);
+  if(!options.active)return {ok:false,reason:'not-active-player'};
+  if(options.used)return {ok:false,reason:'already-used'};
+  if(options.level===0)return {ok:false,reason:'no-suspicion'};
+  if(!options[payment])return {ok:false,reason:payment==='cash'?'capital':'influence'};
+  const p=state.players[playerId],before=options.level;
+  if(payment==='cash')p.capital-=4;
+  else moveInfluence(state,playerId,-2);
+  setSuspicion(state,playerId,before-1);
+  p.caseSettledRound=state.round;
+  logEvent(state,`${p.name} уладил дело: ${payment==='cash'?'−$4':'−2 шага Influence'}, подозрение ${before}→${p.suspicion}.`,'accent');
+  return {ok:true,playerId,payment,before,after:p.suspicion,
+    cost:payment==='cash'?4:2,mainActionUsed:!!state.activationMainActionUsed};
+}
+
+// C1.3 integration contract for future APPROVED illegal actions.
+// The callback resolves the already-designed benefit and costs on a *draft*
+// state; only successful results commit. No criminal building is wired yet.
+// This prevents failed actions from raising suspicion or arresting a worker.
+export function resolveCriminalAction(state,playerId,{mode,workerId=null,arrestWorkerId=null,suspicionGain,perform}={}){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  if(mode!=='main'&&mode!=='free')return {ok:false,reason:'mode'};
+  if(!Number.isSafeInteger(suspicionGain)||suspicionGain<1)return {ok:false,reason:'suspicion-gain'};
+  if(typeof perform!=='function')return {ok:false,reason:'action'};
+  if(mode==='main'&&!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
+  if(mode==='free'&&!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  const staff=playerWorkers(state,playerId),uncaptured=staff.filter(w=>!w.jailed);
+  if(!uncaptured.length)return {ok:false,reason:'no-free-worker'};
+  const actor=mode==='main'?activeWorker(state,playerId):null;
+  if(mode==='main'&&(!actor||!workerId||actor.id!==workerId))return {ok:false,reason:'acting-worker'};
+  const prior=suspicionLevel(state,playerId),caught=prior===MAX_SUSPICION;
+  const offenderId=caught?(mode==='main'?workerId:arrestWorkerId):null;
+  if(caught&&!uncaptured.some(w=>w.id===offenderId))return {ok:false,reason:'arrest-worker'};
+  const slotsBefore=JSON.stringify(state.developmentSlotsUsed);
+  // State contains JSON-serializable game data only, as required by saves.
+  const draft=structuredClone(state);
+  let effect;
+  try{effect=perform(draft);}catch{return {ok:false,reason:'action-error'};}
+  if(!effect||effect.ok!==true)return {ok:false,reason:effect?.reason||'action-failed'};
+  if(draft.round!==state.round||draft.phase!==state.phase||draft.developmentPlayer!==state.developmentPlayer
+    ||suspicionLevel(draft,playerId)!==prior)return {ok:false,reason:'action-contract'};
+  if(mode==='main'){
+    const afterWorker=playerWorkers(draft,playerId).find(w=>w.id===workerId);
+    if(!afterWorker?.used||!draft.activationMainActionUsed||state.activationMainActionUsed
+      ||JSON.stringify(draft.developmentSlotsUsed)!==slotsBefore)return {ok:false,reason:'main-action-required'};
+  }else if(draft.activationMainActionUsed!==state.activationMainActionUsed
+    ||JSON.stringify(draft.developmentSlotsUsed)!==slotsBefore)return {ok:false,reason:'free-action-contract'};
+  let arrest=null;
+  if(caught){
+    arrest=arrestWorkerWithSanctions(draft,playerId,offenderId);
+    if(!arrest.ok)return {ok:false,reason:'arrest-failed'};
+  }else changeSuspicion(draft,playerId,suspicionGain);
+  // Apply only after benefit, suspicion and any resulting arrest all succeed.
+  Object.assign(state,draft);
+  return {ok:true,playerId,mode,suspicionBefore:prior,suspicionAfter:suspicionLevel(state,playerId),
+    gainedSuspicion:!caught,arrested:caught,workerId:offenderId,effect,arrest};
+}
+
 export function createInitialState({rng=Math.random}={}){
   const pool=createProjectCardPool({rng});
   const market=pool.splice(0,5).map(emptyMarketCard);
@@ -666,7 +741,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
