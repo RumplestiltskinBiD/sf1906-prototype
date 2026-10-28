@@ -58,8 +58,9 @@ for(const viewport of viewports){
   s.logisticsSupply.broadway=['Lumber','Lumber'];s.players[0].capital=80;
   await seed(page,s);
   await page.locator('#actionDelivery').dispatchEvent('click');
-  await page.locator('#deliveryShowSourceList').click();
-  await page.locator('[data-ds-node="broadway"]').click();
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('[data-delivery-node="broadway"]')).toHaveClass(/source-available/);
+  await page.locator('[data-delivery-node="broadway"]').click();
   await page.locator('[data-hauler="standard"]').click();
   await page.locator('[data-load="Lumber"]').click();
   await page.locator('#deliveryBeginRoute').click();
