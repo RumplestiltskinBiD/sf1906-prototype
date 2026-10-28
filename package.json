@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:core": "node --test tests/multisource-l1.test.mjs tests/core.test.mjs tests/static.test.mjs tests/catastrophe.test.mjs tests/newspaper.test.mjs tests/industry.test.mjs tests/housing-school.test.mjs tests/mono-buildings.test.mjs tests/fire-safety.test.mjs tests/boarding-sailors.test.mjs tests/newspaper-factory-housing.test.mjs tests/standard-buildings.test.mjs tests/residential-mixed.test.mjs tests/crime-b1-workers.test.mjs tests/crime-b2-activations.test.mjs",
+    "test:core": "node --test tests/multisource-l1.test.mjs tests/core.test.mjs tests/static.test.mjs tests/catastrophe.test.mjs tests/newspaper.test.mjs tests/industry.test.mjs tests/housing-school.test.mjs tests/mono-buildings.test.mjs tests/fire-safety.test.mjs tests/boarding-sailors.test.mjs tests/newspaper-factory-housing.test.mjs tests/standard-buildings.test.mjs tests/residential-mixed.test.mjs tests/crime-b1-workers.test.mjs tests/crime-b2-activations.test.mjs tests/crime-c1-suspicion.test.mjs",
     "test:e2e": "playwright test",
     "test": "npm run test:core && npm run test:e2e"
   },
