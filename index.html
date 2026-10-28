@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
   <title>San Francisco 1906 — v0.53.1 Desktop HUD Fix</title>
-  <link rel="stylesheet" href="./styles.css?v=0532-draft-card" />
+  <link rel="stylesheet" href="./styles.css?v=0533-mobile-toolbar" />
 </head>
 <body>
 <div class="app-shell">
@@ -43,6 +43,7 @@
     <button type="button" class="news-strip-map" id="newsMapBtn" aria-pressed="false">НА КАРТЕ</button>
     <button type="button" class="news-strip-cancel" id="newsEmergencyCancel" hidden>ОТМЕНА МЕР</button>
   </section>
+  <div class="mobile-action-dock" id="mobileActionDock" aria-label="Действия активного игрока"></div>
 
   <div class="workspace">
     <nav class="nav-rail" aria-label="Основная навигация">
@@ -91,11 +92,11 @@
         <section id="standardProjects" class="standard-projects" aria-label="Постоянно доступные стандартные проекты"></section>
         <div class="city-actions" id="cityActions" aria-label="Городские действия"></div>
         <div class="construction-mode" id="constructionMode"></div>
-        <div class="mobile-action-dock" id="mobileActionDock" aria-label="Быстрые действия"></div>
         <div class="delivery-panel" id="deliveryPanel" aria-live="polite"></div>
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
             <span class="map-toolbar-label">КАРТА</span>
+            <button type="button" class="news-emergency-cancel-mobile" id="newsEmergencyCancelMobile" hidden>Отменить экстренные меры</button>
             <button type="button" class="city-objects-shortcut" id="cityObjectsShortcut" aria-label="Открыть список строек, складов и необходимых материалов" hidden>Стройки 0 · Склады 0</button>
             <span class="map-risk-controls"><button type="button" id="riskViewBtn" aria-pressed="false">РИСК</button></span>
             <span class="map-zoom-controls"><button type="button" id="mapZoomFit">ОБЗОР</button><button type="button" id="mapZoomDetail">ДЕТАЛИ</button></span>
@@ -191,6 +192,6 @@
 <div class="v051-decision-backdrop press-backdrop" id="pressCampaignBackdrop" hidden></div>
 <section class="v051-decision-sheet press-sheet" id="pressCampaignSheet" role="dialog" aria-modal="true" aria-label="Газетный небоскрёб — выбор кампании" hidden></section>
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=0532-draft-card"></script>
+<script type="module" src="./app.js?v=0533-mobile-toolbar"></script>
 </body>
 </html>
