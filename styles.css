@@ -2979,9 +2979,8 @@ body.delivery-route-build #deliveryRouteLayer *{
     overflow:hidden!important;
     text-align:left!important;
   }
-  #playersBar .player-pill-compact.first::after,
-  #playersBar .player-pill-compact.declare-active::before,
-  #playersBar .player-pill-compact.dev-active::before{
+  #playersBar .player-pill-compact::after,
+  #playersBar .player-pill-compact::before{
     display:none!important;
     content:none!important;
   }
