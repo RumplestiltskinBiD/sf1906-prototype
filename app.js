@@ -1340,28 +1340,37 @@ $('#roundStat').textContent=state.finished?`${MAX_ROUNDS} / ${MAX_ROUNDS}`:`${st
 $('#firstStat').textContent=state.players[state.firstPlayer].name;
 $('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':'Тест завершён';
 }
+// Original handcuff pictogram, independent of the Flaticon visual reference.
+const arrestedWorkerIcon='<svg class="arrested-worker-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="7.5" height="9.5" rx="3.3"/><rect x="14" y="4" width="7.5" height="9.5" rx="3.3"/><path d="M3.4 10.4h5.7M14.9 10.4h5.7M6.25 13.5v2.9l3.4 2.8 2.35-1.8 2.35 1.8 3.4-2.8v-2.9"/><path d="M9.6 19.2h4.8"/></svg>';
 function renderPlayers(){
-const el=$('#playersBar');el.innerHTML='';const cd=currentDeclarer(state),dev=currentDeveloper(state),overviewPid=state.view==='city'?currentOverviewPlayerId():null,order=turnOrder(state);
-state.players.forEach((p,i)=>{
-const declareActive=state.phase==='declare'&&cd===i;
-const devActive=state.phase==='development'&&dev===i;
-const overviewActive=state.view==='city'&&overviewPid===i;
-const pill=document.createElement('button');
-pill.className=`player-pill ${declareActive||devActive?'active':''} ${declareActive?'declare-active':''} ${devActive?'dev-active':''} ${overviewActive?'overview':''} ${state.firstPlayer===i?'first':''}`;
-pill.dataset.office=i;
-const debt=(p.loans||[]).length;
-const orderPos=Math.max(0,order.indexOf(p.id))+1;
-const upkeep=constructionUpkeepDue(state,p.id);
-const workerPlaces=[...new Set(playerWorkers(state,p.id).filter(w=>!w.jailed).map(w=>districtById(w.districtId)?.name).filter(Boolean))];
-const activeEffect=dev===i&&(state.procurementRemaining||0)>0?`Закупка ×${state.procurementRemaining}`:'';
-const flags=[`Порядок года #${orderPos}`,upkeep?`Простой −$${upkeep}`:'',`Проекты ${p.portfolio.length}/${HAND_LIMIT}`,`Представители: ${workerPlaces.join(' / ')}`,debt?`Кредиты ${debt}`:'',(p.bureauContracts||0)>0?'Контракт':'',activeEffect].filter(Boolean).join(' · ');
-pill.innerHTML=`<span class="turn-order-badge" title="Порядок зафиксирован до следующего года">#${orderPos}</span><span class="player-dot ${p.key}"></span><span class="player-main"><span class="player-name">${p.name}</span><span class="player-stats"><span>👤 ${p.workersLeft??0}</span><span>VP ${p.prestige||0}</span><span>Вл ${p.influence}</span><span>+$${roundIncome(state,p.id)}</span>${upkeep?`<span class="upkeep-mini">−$${upkeep} простой</span>`:''}</span>${flags?`<span class="player-flags">${flags}</span>`:''}</span><span class="player-money">$${p.capital}</span>`;
-pill.onclick=()=>{
-if(state.phase==='draft'){showToast('Стартовые руки скрыты до завершения драфта');return;}
-inspectedOffice=i;openDrawer('officeDrawer');renderOffice();
-};
-el.appendChild(pill);
-});
+  const el=$('#playersBar');el.innerHTML='';
+  const cd=currentDeclarer(state),dev=currentDeveloper(state),overviewPid=state.view==='city'?currentOverviewPlayerId():null,order=turnOrder(state),compact=isMobile();
+  state.players.forEach((p,i)=>{
+    const declareActive=state.phase==='declare'&&cd===i;
+    const devActive=state.phase==='development'&&dev===i;
+    const overviewActive=state.view==='city'&&overviewPid===i;
+    const pill=document.createElement('button');pill.type='button';
+    pill.className='player-pill '+(compact?'player-pill-compact ':'')+(declareActive||devActive?'active ':'')+(declareActive?'declare-active ':'')+(devActive?'dev-active ':'')+(overviewActive?'overview ':'')+(state.firstPlayer===i?'first':'');
+    pill.dataset.office=i;
+    const debt=(p.loans||[]).length,orderPos=Math.max(0,order.indexOf(p.id))+1,upkeep=constructionUpkeepDue(state,p.id);
+    const workers=playerWorkers(state,p.id),jailed=workers.filter(w=>w.jailed).length,free=p.workersLeft??0;
+    const workerPlaces=[...new Set(workers.filter(w=>!w.jailed).map(w=>districtById(w.districtId)?.name).filter(Boolean))];
+    const activeEffect=dev===i&&(state.procurementRemaining||0)>0?'Закупка ×'+state.procurementRemaining:'';
+    const flags=['Порядок года #'+orderPos,upkeep?'Простой −$'+upkeep:'','Проекты '+p.portfolio.length+'/'+HAND_LIMIT,'Представители: '+workerPlaces.join(' / '),debt?'Кредиты '+debt:'',(p.bureauContracts||0)>0?'Контракт':'',activeEffect].filter(Boolean).join(' · ');
+    pill.setAttribute('aria-label',p.name+'. Порядок хода '+orderPos+'. Деньги $'+p.capital+'. Победные очки '+(p.prestige||0)+'. Влияние '+p.influence+'. Свободных работников '+free+'. Арестовано '+jailed+'. Открыть офис.');
+    if(compact){
+      pill.innerHTML='<span class="compact-player-head"><span class="compact-order" title="Порядок года #'+orderPos+'">#'+orderPos+'</span><span class="player-dot '+p.key+'"></span><span class="compact-player-name">'+p.name+'</span><span class="compact-player-money">$'+p.capital+'</span></span>'
+        +'<span class="compact-player-stats"><span title="Победные очки">VP '+(p.prestige||0)+'</span><span title="Влияние">Вл '+p.influence+'</span></span>'
+        +'<span class="compact-player-workers"><span class="compact-free-worker" title="Свободных работников: '+free+'">👤 <b>'+free+'</b></span>'+(jailed?'<span class="compact-jailed-worker" title="Арестовано: '+jailed+'">'+arrestedWorkerIcon+'<b>'+jailed+'</b></span>':'')+'</span>';
+    }else{
+      pill.innerHTML='<span class="turn-order-badge" title="Порядок зафиксирован до следующего года">#'+orderPos+'</span><span class="player-dot '+p.key+'"></span><span class="player-main"><span class="player-name">'+p.name+'</span><span class="player-stats"><span>👤 '+free+'</span>'+(jailed?'<span class="player-jailed-count" title="Арестовано: '+jailed+'">'+arrestedWorkerIcon+jailed+'</span>':'')+'<span>VP '+(p.prestige||0)+'</span><span>Вл '+p.influence+'</span><span>+$'+roundIncome(state,p.id)+'</span>'+(upkeep?'<span class="upkeep-mini">−$'+upkeep+' простой</span>':'')+'</span>'+(flags?'<span class="player-flags">'+flags+'</span>':'')+'</span><span class="player-money">$'+p.capital+'</span>';
+    }
+    pill.onclick=()=>{
+      if(state.phase==='draft'){showToast('Стартовые руки скрыты до завершения драфта');return;}
+      inspectedOffice=i;openDrawer('officeDrawer');renderOffice();
+    };
+    el.appendChild(pill);
+  });
 }
 function renderStandardProjects(){
  const el=$('#standardProjects');if(!el)return;
