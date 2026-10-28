@@ -1264,7 +1264,7 @@ if(crime){
   const buttons=crime.canPay
     ? '<div class="crime-payment-options">'
       +(crime.cash?'<button class="primary-btn" data-crime-payment="cash">Заплатить $'+crime.cost+'</button>':'')
-      +(crime.influence?'<button class="secondary-btn" data-crime-payment="influence">Потерять '+crime.steps+' шаг(а) влияния</button>':'')
+      +(crime.influence?'<button class="secondary-btn" data-crime-payment="influence">−'+crime.steps+' '+(crime.steps===1?'шаг':'шага')+' влияния</button>':'')
       +(crime.mixed?'<button class="secondary-btn" data-crime-payment="mixed">$3 и 1 шаг влияния</button>':'')
       +'</div>'
     : '<div class="crime-payment-options">'+crime.unjailed.map(id=>{const w=playerWorkers(state,crime.playerId).find(x=>x.id===id);return '<button class="secondary-btn" data-crime-arrest="'+id+'">Арестовать представителя #'+w.number+(w.used?' · уже использован':'')+'</button>';}).join('')+'</div>';
@@ -1355,7 +1355,8 @@ function renderNewProjectDecisions(){
      if(!currentPressCampaign(state)){
        const next=cleanupMarket(state);
        if(next.ok){state.view=next.finished?'city':'hall';newsEmergencyMode=false;newsArchiveIndex=null;showToast(next.finished?'Фаза I завершена':'Год завершён · результаты газеты учтены');}
-       else if(next.reason!=='upkeep-choice'&&next.reason!=='pending-building-choice')showToast('Переход года: '+next.reason);
+       else if(next.reason==='crime-choice')showToast('Проверка подозрения: выберите оплату штрафа или сотрудника для ареста');
+        else if(next.reason!=='upkeep-choice'&&next.reason!=='pending-building-choice')showToast('Переход года: '+next.reason);
      }
      render();
    });
