@@ -32,7 +32,11 @@ for(const vp of [{width:390,height:844},{width:932,height:430},{width:1440,heigh
   expect(checkpoint.players[0].capital).toBe(startingCash);
   await page.reload();
   await expect(page.locator('[data-crime-payment="cash"]')).toBeVisible();
-  expect((await saved(page)).players[0].capital).toBe(startingCash);
+  const resumed=await saved(page);
+  expect(resumed.players[0].capital).toBe(startingCash);
+  expect(resumed.phase).toBe('crime-assessment');
+  expect(resumed.developmentComplete).toBe(true);
+  expect(resumed.developmentSlotsUsed).toEqual([3,3,3]);
   const geom=await page.evaluate(()=>{
     const el=document.querySelector('#yearTransitionSheet'),r=el.getBoundingClientRect();
     return {left:r.left,right:r.right,width:document.documentElement.scrollWidth,screen:innerWidth};
