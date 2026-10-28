@@ -95,14 +95,21 @@ for(const viewport of [
     const open=page.locator(mobile?'[data-mobile-action="delivery"]':'#actionDelivery');
     await expect(open).toBeVisible();
     await open.click();
-    if(mobile)await page.locator('#deliveryShowSourceList').click();
-    const factory=page.locator('[data-ds-plant="BR"]');
-    await expect(factory).toBeVisible();
-    await expect(factory).toContainText('Кирпичный завод');
-    await expect(factory).toContainText('2/2');
-    await expect(page.locator('[data-ds-plant="FO"]')).toContainText('1/1');
-    if(mobile)await expect(page.locator('[data-delivery-industry="BR"]')).toHaveCount(1);
-    await factory.click();
+    if(mobile){
+      await expect(page.locator('#deliveryPanel')).toBeHidden();
+      const factory=page.locator('[data-delivery-industry="BR"]');
+      await expect(factory).toHaveClass(/source-available/);
+      await expect(factory).toContainText('2/2');
+      await expect(page.locator('[data-delivery-industry="FO"]')).toContainText('1/1');
+      await factory.click();
+    }else{
+      const factory=page.locator('[data-ds-plant="BR"]');
+      await expect(factory).toBeVisible();
+      await expect(factory).toContainText('Кирпичный завод');
+      await expect(factory).toContainText('2/2');
+      await expect(page.locator('[data-ds-plant="FO"]')).toContainText('1/1');
+      await factory.click();
+    }
     await expect(page.locator('[data-load="Masonry"]')).toBeVisible();
     await page.locator('[data-hauler="standard"]').click();
     await page.locator('[data-load="Masonry"]').click();
@@ -129,14 +136,20 @@ for(const viewport of [
     await page.goto('/');
     const mobile=viewport.width<=640||(viewport.height<=500&&viewport.width<=960);
     await page.locator(mobile?'[data-mobile-action="delivery"]':'#actionDelivery').click();
-    if(mobile)await page.locator('#deliveryShowSourceList').click();
-    const brick=page.locator('[data-ds-plant="BR"]');
-    await expect(brick).toBeVisible();
-    await expect(brick).toContainText('Синий'); // Owned by P1 while P2 buys
-    await expect(brick).toContainText('$1/Masonry');
-    await expect(page.locator('[data-ds-plant="FO"]')).toContainText('$2/Steel');
-    await expect(page.locator('[data-delivery-industry="BR"]')).toHaveCount(1);
-    await brick.click();
+    if(mobile){
+      await expect(page.locator('#deliveryPanel')).toBeHidden();
+      const brick=page.locator('[data-delivery-industry="BR"]');
+      await expect(brick).toHaveClass(/source-available/);
+      await brick.click();
+      await expect(page.locator('[data-load="Masonry"]')).toContainText('$1');
+    }else{
+      const brick=page.locator('[data-ds-plant="BR"]');
+      await expect(brick).toBeVisible();
+      await expect(brick).toContainText('Синий'); // Owned by P1 while P2 buys
+      await expect(brick).toContainText('$1/Masonry');
+      await expect(page.locator('[data-ds-plant="FO"]')).toContainText('$2/Steel');
+      await brick.click();
+    }
     await page.locator('[data-hauler="standard"]').click();
     await page.locator('[data-load="Masonry"]').click();
     await page.locator('[data-load="Masonry"]').click();
