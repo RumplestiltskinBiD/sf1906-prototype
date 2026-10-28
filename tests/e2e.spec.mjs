@@ -404,7 +404,7 @@ test('mobile object strip keeps the Freight Yard capacity and rent state visible
   await expect(chip).toBeVisible();
   await expect(chip).toContainText('1/2');
   await expect(chip).toContainText('С1');
-  await expect(chip).toContainText('аренда активна');
+  await expect(chip).toContainText('размещение оплачено');
 });
 
 test('same-district Delivery works end-to-end with $0 road cost and live unload buttons',async({page})=>{
