@@ -793,6 +793,9 @@ export function createInitialState({rng=Math.random}={}){
     nextLoanId:1,
     developmentPlayer:null,
     yearTransition:null,
+    crimeAssessment:null,
+    crimeAssessedRound:0,
+    finalPrisonPenaltyApplied:false,
     developmentComplete:false,
     developmentSlotsUsed:players.map(()=>0),
     activationMainActionUsed:false,
@@ -2249,6 +2252,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 }
 
 export function cleanupMarket(state,{rng=Math.random}={}){
+  if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
   if(state.phase==='upkeep'&&state.yearTransition){
     return {ok:false,reason:'upkeep-choice',playerId:state.yearTransition.playerId,
       due:constructionUpkeepDue(state,state.yearTransition.playerId),
@@ -2267,6 +2271,8 @@ export function cleanupMarket(state,{rng=Math.random}={}){
       &&c.pressCampaignRound!==state.round).map(c=>c.id);
   }
   if(state.pendingPressCampaigns.length)return {ok:false,reason:'pending-press-campaign'};
+  const crime=beginAnnualCrimeAssessment(state);
+  if(!crime.ok)return crime;
   const remaining=state.market.filter(m=>m&&!m.sold);
   const old=remaining.filter(m=>m.age===1);
   old.forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сгорел: последний шанс истёк.`,'bad');});
@@ -2276,6 +2282,7 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
 
   if(state.round>=MAX_ROUNDS){
+    applyFinalPrisonPenalty(state);
     // Final City Hall report: 1905 completions still count before incomplete contracts are penalized.
     state.round=MAX_ROUNDS+1;
     reportCompletedCityGoals(state);
@@ -2306,6 +2313,90 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   state.yearTransition={stage:'upkeep',fromRound:state.round,cursor:0,playerId:null,due:0,playerOrder:turnOrder(state)};
   return advanceConstructionUpkeep(state,{rng});
 }
+// C2: one mandatory annual assessment after newspaper/press, before income.
+// Payment options are all-or-nothing. Influence uses actual leap-over steps.
+export function annualCrimeOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const p=state.players[playerId],level=suspicionLevel(state,playerId);
+  const cost=level===2?3:level===3?6:0,steps=level===2?1:level===3?2:0;
+  const probe={...state,players:state.players.map(x=>({...x}))};
+  const availableSteps=Math.abs(moveInfluence(probe,playerId,-steps).steps);
+  const cash=cost>0&&p.capital>=cost;
+  const influence=steps>0&&availableSteps>=steps;
+  const mixed=level===3&&p.capital>=3&&availableSteps>=1;
+  const canPay=cash||influence||mixed;
+  return {ok:true,playerId,level,cost,steps,availableSteps,cash,influence,mixed,
+    canPay,unjailed:playerWorkers(state,playerId).filter(w=>!w.jailed).map(w=>w.id)};
+}
+export function currentAnnualCrimeAssessment(state){
+  const check=state?.crimeAssessment;
+  if(state?.phase!=='crime-assessment'||!check||check.round!==state.round)return null;
+  const playerId=check.order?.[check.cursor];
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return null;
+  return {...annualCrimeOptions(state,playerId),round:check.round};
+}
+function continueAnnualCrimeAssessment(state){
+  if(!state.crimeAssessment||state.crimeAssessment.round!==state.round)return {ok:false,reason:'no-crime-assessment'};
+  const assessment=state.crimeAssessment;
+  for(;assessment.cursor<assessment.order.length;assessment.cursor++){
+    const pid=assessment.order[assessment.cursor],options=annualCrimeOptions(state,pid);
+    if(options.level<2)continue;
+    if(options.canPay||options.unjailed.length){
+      state.phase='crime-assessment';
+      return {ok:false,reason:'crime-choice',playerId:pid,options:currentAnnualCrimeAssessment(state)};
+    }
+    // Fourth arrest impossible: -3 VP, no clearing of suspicion.
+    state.players[pid].prestige=(state.players[pid].prestige||0)-3;
+    logEvent(state,`${state.players[pid].name}: все представители заключены и нечем оплатить годовой штраф; −3 VP, подозрение остаётся ${options.level}.`,'bad');
+  }
+  state.crimeAssessedRound=state.round;
+  state.crimeAssessment=null;
+  state.phase='development';
+  return {ok:true,complete:true};
+}
+function beginAnnualCrimeAssessment(state){
+  if(state.crimeAssessedRound===state.round)return {ok:true,complete:true};
+  if(!state.crimeAssessment||state.crimeAssessment.round!==state.round){
+    state.crimeAssessment={round:state.round,order:turnOrder(state),cursor:0};
+  }
+  return continueAnnualCrimeAssessment(state);
+}
+export function resolveAnnualCrimeAssessment(state,playerId,choice,workerId=null,{rng=Math.random}={}){
+  const active=currentAnnualCrimeAssessment(state);
+  if(!active||active.playerId!==playerId)return {ok:false,reason:'not-current-player'};
+  const p=state.players[playerId];
+  if(active.canPay){
+    if(!['cash','influence','mixed'].includes(choice)||!active[choice])return {ok:false,reason:'payment'};
+    if(choice==='cash')p.capital-=active.cost;
+    else if(choice==='influence')moveInfluence(state,playerId,-active.steps);
+    else{p.capital-=3;moveInfluence(state,playerId,-1);}
+    logEvent(state,`${p.name} оплачивает годовой штраф за ${active.level} ★: ${choice==='cash'?'−$'+active.cost:choice==='influence'?'−'+active.steps+' шага Influence':'−$3 и −1 шаг Influence'}. Подозрение сохраняется.`,'bad');
+  }else{
+    if(choice!=='arrest'||!active.unjailed.includes(workerId))return {ok:false,reason:'arrest-worker'};
+    const r=arrestWorkerWithSanctions(state,playerId,workerId);
+    if(!r.ok)return {ok:false,reason:'arrest-failed'};
+  }
+  state.crimeAssessment.cursor++;
+  const step=continueAnnualCrimeAssessment(state);
+  if(!step.ok)return step;
+  // Exactly once: the completed round is marked before entering income/upkeep.
+  return cleanupMarket(state,{rng});
+}
+export function applyFinalPrisonPenalty(state){
+  if(state.finalPrisonPenaltyApplied)return {ok:true,applied:false,total:0};
+  if(state.round!==MAX_ROUNDS||!state.developmentComplete)return {ok:false,reason:'not-final'};
+  let total=0;
+  for(const p of state.players){
+    const count=playerWorkers(state,p.id).filter(w=>w.jailed).length;
+    if(!count)continue;
+    p.prestige=(p.prestige||0)-5*count;
+    total+=5*count;
+    logEvent(state,`${p.name}: финальная ответственность за ${count} заключённых штатных работников — −${5*count} VP.`,'bad');
+  }
+  state.finalPrisonPenaltyApplied=true;
+  return {ok:true,applied:true,total};
+}
+
 export function tenderSummary(state){
   return state.market.filter(Boolean).map(m=>({
     uid:m.uid,
