@@ -348,6 +348,11 @@ const order=turnOrder(parsed);
 const candidate=order.find(pid=>developmentSlotsRemaining(parsed,pid)>0);
 parsed.developmentComplete=candidate==null;
 parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlayer!=null&&developmentSlotsRemaining(parsed,parsed.developmentPlayer)>0?parsed.developmentPlayer:candidate);
+}else if(parsed.phase==='crime-assessment'){
+  // Already completed development: preserve it while awaiting a mandatory annual fine.
+  parsed.developmentPlayer=null;
+  parsed.developmentComplete=true;
+  parsed.developmentSlotsUsed=parsed.players.map(()=>WORKERS_PER_PLAYER);
 }else{
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
