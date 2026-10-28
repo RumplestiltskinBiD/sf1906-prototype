@@ -52,7 +52,7 @@ for(const vp of [{width:390,height:844},{width:932,height:430},{width:1440,heigh
  });
 }
 test('C2 three-star fine with only mixed payment offers only that choice',async({page})=>{
- const s=fixture();s.players[0].suspicion=3;s.players[0].capital=3;s.players[0].influence=2;s.players[1].influence=1;s.players[2].influence=0;
+ const s=fixture();s.players[0].suspicion=3;s.players[0].capital=3;s.players[0].influence=1;s.players[1].influence=4;s.players[2].influence=5;
  await page.setViewportSize({width:390,height:844});await start(page,s);
  await page.locator('#endRoundBtn').click();
  await expect(page.locator('[data-crime-payment="mixed"]')).toBeVisible();
