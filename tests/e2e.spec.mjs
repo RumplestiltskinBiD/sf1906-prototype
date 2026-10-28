@@ -1368,15 +1368,28 @@ test('mobile market overview compares all five projects during City Hall after d
   await expect(first).toHaveClass(/selected/);
 });
 
-test('persistent mobile turn dock keeps free actions visible before and after the main action',async({page})=>{
+test('mobile action toolbar replaces newspaper strip above the map and stays usable after main action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
   await seed(page,s);await page.goto('/');
   const dock=page.locator('#mobileActionDock');
+  await expect(page.locator('#newsStrip')).toBeHidden();
   await expect(dock).toBeVisible();
   await expect(dock).toContainText('Доставка');
+  await expect(dock).toContainText('Свободные');
   await expect(dock).toContainText('Основные');
-  await expect(dock).toContainText('Выберите представителя');
+  await expect(dock).toHaveAttribute('aria-label',/выберите представителя/);
+  const position=await page.evaluate(()=>{
+    const bar=document.querySelector('#mobileActionDock');
+    const player=document.querySelector('#playersBar');
+    const box=bar.getBoundingClientRect(),top=player.getBoundingClientRect();
+    const style=getComputedStyle(bar);
+    return {top:box.top,playerBottom:top.bottom,position:style.position,bottom:style.bottom};
+  });
+  expect(position.position).toBe('sticky');
+  expect(position.bottom).toBe('auto');
+  expect(position.top).toBeGreaterThanOrEqual(position.playerBottom-2);
+  expect(position.top).toBeLessThanOrEqual(position.playerBottom+5);
 
   const w=s.players[0].workers[0];
   await page.locator('[data-dock-worker="'+w.id+'"]').click();
@@ -1384,12 +1397,10 @@ test('persistent mobile turn dock keeps free actions visible before and after th
   await page.locator('[data-district="civic"]').click();
 
   await expect(dock).toBeVisible();
-  await expect(dock).toContainText('Основное ✓ использовано');
+  await expect(dock).toHaveAttribute('aria-label',/основное действие использовано/);
   await expect(dock).toContainText('Доставка');
   await expect(dock).toContainText('Завершить');
-  const box=await dock.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box.y+box.height).toBeLessThanOrEqual(844-55);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
 });
 
 test('mobile construction strip shows remaining needs instead of delivered zero counts',async({page})=>{
