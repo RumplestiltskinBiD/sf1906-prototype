@@ -2959,3 +2959,76 @@ body.delivery-route-build #deliveryRouteLayer *{
     min-height:40px!important;
   }
 }
+
+
+/* Mobile player HUD: order is an inline value, not a floating overlay.
+   Single compact card: rank + identity + cash / VP + Influence / free + arrested. */
+.arrested-worker-icon{display:inline-block;flex:0 0 auto;width:14px;height:14px;vertical-align:middle}
+.player-jailed-count{display:inline-flex;align-items:center;gap:3px;color:#efbfa6}
+@media (max-width:640px), (orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #playersBar .player-pill.player-pill-compact{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+    align-content:center!important;
+    justify-items:stretch!important;
+    gap:2px!important;
+    min-width:0!important;
+    min-height:58px!important;
+    padding:5px 5px!important;
+    overflow:hidden!important;
+    text-align:left!important;
+  }
+  #playersBar .player-pill-compact.first::after,
+  #playersBar .player-pill-compact.declare-active::before,
+  #playersBar .player-pill-compact.dev-active::before{
+    display:none!important;
+    content:none!important;
+  }
+  #playersBar .compact-player-head{
+    display:flex;align-items:center;gap:3px;
+    min-width:0;max-width:100%;width:100%;white-space:nowrap;line-height:1.1;
+  }
+  #playersBar .compact-order{
+    position:static;display:inline-flex;align-items:center;justify-content:center;
+    flex:0 0 auto;min-width:17px;min-height:15px;
+    padding:1px 2px;border-radius:4px;
+    background:#d8c28e;color:#2d261d;
+    font-size:9px;line-height:1;font-weight:900;
+  }
+  #playersBar .compact-player-head .player-dot{
+    flex:0 0 auto;width:7px!important;height:7px!important;
+  }
+  #playersBar .compact-player-name{
+    display:inline-block;flex:1 1 auto;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    color:#eee5d8;font-size:9px;font-weight:800;letter-spacing:-.15px;
+  }
+  #playersBar .compact-player-money{
+    flex:0 0 auto;margin-left:auto;
+    white-space:nowrap;color:#f5eee1;font-size:10px;
+    line-height:1.1;font-weight:900;
+  }
+  #playersBar .compact-player-stats{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    min-width:0;gap:3px;white-space:nowrap;
+    font-size:9px;line-height:1.15;color:#c9c2b7;
+  }
+  #playersBar .compact-player-workers{
+    display:flex;align-items:center;justify-content:flex-start;gap:9px;
+    min-width:0;white-space:nowrap;color:#ece3d4;font-size:10px;line-height:1.1;
+  }
+  #playersBar .compact-free-worker,#playersBar .compact-jailed-worker{
+    display:inline-flex;gap:3px;align-items:center;white-space:nowrap;
+  }
+  #playersBar .compact-player-workers b{font-size:10px}
+  #playersBar .compact-jailed-worker{color:#f0b998}
+  #playersBar .compact-jailed-worker .arrested-worker-icon{width:16px;height:16px}
+}
+@media (orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #playersBar .player-pill.player-pill-compact{min-height:49px!important;padding:3px 6px!important;gap:0!important}
+  #playersBar .compact-player-head{gap:4px}
+  #playersBar .compact-player-name{font-size:10px}
+  #playersBar .compact-player-money{font-size:11px}
+  #playersBar .compact-player-stats{font-size:9px}
+}
