@@ -89,6 +89,9 @@ test('C1.1 game ending in 1905 does not clear suspicion or apply prematurely cri
   const s=fresh();
   s.round=G.MAX_ROUNDS;
   prepareDevelopment(s);
+  // Already resolved current year's newspaper: only the C1.1 integration boundary is under test.
+  s.newsLastResolvedRound=G.MAX_ROUNDS;
+  s.pressCampaignQueuedRound=G.MAX_ROUNDS;
   s.players[0].capital=20;
   G.setSuspicion(s,0,3);
   const p=s.players[0],start={cash:p.capital,vp:p.prestige,inf:p.influence};
