@@ -4,6 +4,7 @@ import * as G from '../game-core.js';
 const fresh=()=>G.createInitialState({rng:()=>0.1});
 function stage(s,round=1){
  s.phase='development';s.view='city';s.developmentComplete=true;s.round=round;
+ s.yearTurnOrder=[0,1,2];
  s.newsLastResolvedRound=round;s.pressCampaignQueuedRound=round;s.pendingPressCampaigns=[];
  s.pendingSailorRecruitments=[];s.pendingWorkforceLinks=[];s.constructions=[];
 }
