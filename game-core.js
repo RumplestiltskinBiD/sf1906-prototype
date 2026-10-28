@@ -287,7 +287,7 @@ export function createWorkers(playerId,{districtId=STARTING_WORKER_DISTRICT}={})
 export function playerWorkers(state,playerId){return state.players?.[playerId]?.workers||[];}
 // B1: imprisonment is an independent status, not an alias for used.
 export function availableWorkers(state,playerId){return playerWorkers(state,playerId).filter(w=>!w.used&&!w.jailed);}
-// B1 low-level transition only: suspicion/influence/VP penalties will be applied atomically in C1.
+// B1 low-level worker transition retained for fixtures; public C1.2 arrestWorkerWithSanctions applies game penalties.
 export function jailWorker(state,playerId,workerId){
   const player=state.players?.[playerId];
   if(!player)return {ok:false,reason:'player'};
@@ -448,6 +448,51 @@ export function moveInfluence(state,playerId,steps){
   player.influence=current;
   return {ok:true,from,to:current,steps:moved,delta:current-from};
 }
+// C1.2: preview actual transitions rather than printed Influence coordinates.
+// moveInfluence skips occupied positions: 3 on the track != 3 free steps.
+export function arrestSanctionPreview(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const from=Math.max(0,Math.floor(Number(state.players[playerId].influence)||0));
+  const simulated={...state,players:state.players.map(p=>({...p}))};
+  const move=moveInfluence(simulated,playerId,-3);
+  const availableSteps=Math.abs(move.steps);
+  const fullyPaid=availableSteps===3;
+  // Approved fallback forces Influence to zero, even if another player
+  // occupies 0 (a temporary tie at the floor); VP can be negative.
+  const influenceAfter=fullyPaid?move.to:0;
+  return {ok:true,playerId,availableSteps,from,influenceAfter,
+    influenceDelta:influenceAfter-from,vpPenalty:fullyPaid?0:3,suspicionAfter:0};
+}
+
+// Single public C1.2 entry point for future criminal actions and year fines.
+// B1 jailWorker remains a low-level transition for old fixtures/migrations.
+export function arrestWorkerWithSanctions(state,playerId,workerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const worker=playerWorkers(state,playerId).find(w=>w.id===workerId);
+  if(!worker)return {ok:false,reason:'worker'};
+  if(worker.jailed)return {ok:false,reason:'already-jailed'};
+  if(!Number.isInteger(state.round)||state.round<1)return {ok:false,reason:'round'};
+  const preview=arrestSanctionPreview(state,playerId);
+  if(!preview.ok)return preview;
+  const jail=jailWorker(state,playerId,workerId);
+  if(!jail.ok)return jail;
+  const player=state.players[playerId];
+  const suspicionBefore=suspicionLevel(state,playerId);
+  setSuspicion(state,playerId,0);
+  if(preview.vpPenalty===0){
+    moveInfluence(state,playerId,-3);
+  }else{
+    // 0, 1 or 2 available downward steps => Influence=0 and -3 VP.
+    player.influence=0;
+    player.prestige=(Number(player.prestige)||0)-3;
+  }
+  logEvent(state,`${player.name}: после ареста представителя #${worker.number} подозрение ${suspicionBefore}→0; влияние ${preview.from}→${player.influence} (${preview.availableSteps} доступных шагов вниз); ${preview.vpPenalty?'−3 VP':'без штрафа VP'}.`,'bad');
+  return {ok:true,playerId,workerId:worker.id,worker,arrestedRound:jail.arrestedRound,
+    suspicionBefore,suspicionAfter:0,availableInfluenceSteps:preview.availableSteps,
+    influenceBefore:preview.from,influenceAfter:player.influence,
+    influenceDelta:player.influence-preview.from,vpPenalty:preview.vpPenalty};
+}
+
 export function turnOrder(state){
   const stored=Array.isArray(state?.yearTurnOrder)?state.yearTurnOrder.filter(id=>state.players?.[id]):[];
   return stored.length===state.players?.length?[...stored]:setYearTurnOrderFromInfluence(state);
