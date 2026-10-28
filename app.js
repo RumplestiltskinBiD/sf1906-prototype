@@ -928,6 +928,11 @@ el.className='delivery-panel active'
 +(mobile&&step==='unload'?' mobile-unload':'')
 +(mobile&&step==='unload'&&deliveryDraft.focusTargetId?' unload-target-open':'')
 +(mobile&&deliveryDraft.listOpen?' list-open':'');
+if(mobile&&step==='source'){
+  el.className='delivery-panel';
+  el.innerHTML='';
+  return;
+}
 const pid=deliveryDraft.playerId,p=state.players[pid];
 let html=(mobile&&(step==='route'||step==='unload'))?'':'<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ · ДОСТАВКА</small><strong>'+p.name+'</strong></div><button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>';
 if(step==='source'){
@@ -1407,20 +1412,15 @@ el.className='mobile-object-strip';el.innerHTML='';return;
 const pid=currentOverviewPlayerId(),p=state.players[pid],activePid=currentDeveloper(state);
 if(!p){el.className='mobile-object-strip';el.innerHTML='';return;}
 const builds=(state.constructions||[]).filter(x=>x.playerId===pid&&x.status==='under-construction');
-const warehouses=completedWarehouses(state,pid);
 const viewingOpponent=activePid!=null&&pid!==activePid;
 const items=[];
 for(const con of builds){
 const pr=projectById(con.projectId),d=districtById(con.districtId),prog=constructionProgress(state,con.id);
-items.push('<button class="mobile-object-chip build construction-needs-chip typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong> · простой $1</span></button>');
+items.push('<button class="mobile-object-chip build construction-needs-chip typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong></span></button>');
 }
-for(const wh of warehouses){const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv),pr=projectById(wh.projectId);items.push('<button class="mobile-object-chip warehouse typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+wh.id+'"><b>Склад · '+d.name+'</b><span>'+inv.length+'/'+warehouseStorageCapacity(wh)+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');}
-const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);items.push('<span class="mobile-object-chip freight-yard"><b>Грузовой двор · Western</b><span>'+yi.length+'/2 · '+(yi.length?'Д'+(yc.Lumber||0)+' К'+(yc.Masonry||0)+' С'+(yc.Steel||0)+' · размещение оплачено':'пусто · первое размещение $2')+'</span></span>');
-const procurement=activePid===pid?(state.procurementRemaining||0):0;
-if(procurement)items.unshift('<span class="mobile-effect-chip"><b>Закупка ×'+procurement+'</b><span>материалы по $0</span></span>');
-if(!items.length)items.push('<span class="mobile-empty-chip">Нет активных строек и складов</span>');
+if(!builds.length){el.className='mobile-object-strip';el.innerHTML='';return;}
 el.className='mobile-object-strip active';
-el.innerHTML='<div class="mobile-object-owner"><span class="player-dot '+p.key+'"></span><span><b>'+(viewingOpponent?'Просмотр: ':'Объекты: ')+p.name+'</b><small>'+builds.length+' стр. · '+warehouses.length+' скл.</small></span>'+(viewingOpponent?'<button id="mobileObjectsBack" aria-label="Вернуться к активному игроку">×</button>':'')+'</div><div class="mobile-object-scroll">'+items.join('')+'</div>';
+el.innerHTML='<div class="mobile-object-owner"><span class="player-dot '+p.key+'"></span><span><b>'+(viewingOpponent?'Просмотр: ':'Стройки: ')+p.name+'</b><small>'+builds.length+' строек</small></span>'+(viewingOpponent?'<button id="mobileObjectsBack" aria-label="Вернуться к активному игроку">×</button>':'')+'</div><div class="mobile-object-scroll">'+items.join('')+'</div>';
 $$('[data-mobile-object]').forEach(b=>b.onclick=()=>focusConstruction(b.dataset.mobileObject));
 $('#mobileObjectsBack')?.addEventListener('click',()=>{overviewPlayerId=null;focusedConstructionId=null;renderPlayers();renderCityOverview();renderMobileObjectStrip();});
 }
@@ -1920,9 +1920,16 @@ const el=$('#mobileActionDock');if(!el)return;
 const pid=currentDeveloper(state);
 const selected=pid!=null?activeWorker(state,pid):null;
 const blocked=!isMobile()||state.view!=='city'||state.phase!=='development'||state.developmentComplete
-||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||pid==null;
+||(deliveryDraft&&deliveryDraft.step!=='source')||state.pendingConstruction||state.pendingWorkerAction||pid==null;
 document.body.classList.toggle('mobile-turn-dock-active',!blocked);
 if(blocked){el.className='mobile-action-dock';el.innerHTML='';return;}
+if(deliveryDraft?.step==='source'){
+  el.className='mobile-action-dock active persistent-turn-dock delivery-source-top';
+  el.setAttribute('aria-label','Выбор источника доставки на карте');
+  el.innerHTML='<div class="mobile-action-buttons"><button type="button" class="mobile-action-shortcut primary" data-mobile-action="cancel-delivery">← Отменить доставку</button></div>';
+  el.querySelector('[data-mobile-action="cancel-delivery"]').onclick=cancelDeliveryFlow;
+  return;
+}
 const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly=!mainUsed&&p.workersLeft===0;
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')

@@ -68,12 +68,10 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
-test('mobile freight yard spells out $2 first placement fee instead of ambiguous entry',async({page})=>{
+test('mobile empty construction strip stays hidden even while the freight yard exists on the map',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await load(page,cityScenario());
-  const chip=page.locator('#mobileObjectStrip .freight-yard');
-  await expect(chip).toContainText('0/2');
-  await expect(chip).toContainText('первое размещение $2');
-  await expect(chip).not.toContainText('вход $2');
-  await expect(chip).not.toContainText('Д0 К0 С0');
+  await expect(page.locator('#mobileObjectStrip')).toBeHidden();
+  await expect(page.locator('#mobileObjectStrip .freight-yard')).toHaveCount(0);
+  await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toBeVisible();
 });

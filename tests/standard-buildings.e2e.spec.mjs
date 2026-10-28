@@ -34,11 +34,13 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   s.constructions=[built('W','std_warehouse','civic',0,{warehouseInventory:['Lumber','Masonry']})];
   await seed(page,s);
   await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
-  await expect(page.locator('#mobileObjectStrip')).toContainText('2/3');
+  await expect(page.locator('#mobileObjectStrip')).toBeHidden();
+   await expect(page.locator('[data-construction-token="W"] .warehouse-token-title')).toContainText('2/3');
   await page.locator('#officeBtn').click();
   await expect(page.locator('#officeContent')).toContainText('2/3');
   await page.reload();
   await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
-  await expect(page.locator('#mobileObjectStrip')).toContainText('2/3');
+  await expect(page.locator('#mobileObjectStrip')).toBeHidden();
+   await expect(page.locator('[data-construction-token="W"] .warehouse-token-title')).toContainText('2/3');
  });
 }

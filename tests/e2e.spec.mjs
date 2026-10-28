@@ -292,25 +292,19 @@ test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Deliv
   await expect(page.locator('[data-delivery-supplier="gray-quarry"]')).toHaveClass(/source-available/);
 });
 
-test('mobile source list shows all three historical suppliers without overflow',async({page})=>{
+test('mobile map-only source selection exposes all three historical suppliers without a panel',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  const s=makeDevState();
-  await seed(page,s);await page.goto('/');
+  const s=makeDevState();await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
-  await expect(page.locator('[data-delivery-supplier="gray-quarry"]')).toHaveClass(/source-available/);
-  await page.locator('#deliveryShowSourceList').click();
-  for(const [id,name,price] of [
-    ['gray-quarry','Gray Bros. Quarry','$3'],
-    ['engle-lumber','Engle & Son','$3'],
-    ['axford-iron','Axford Bros.','$5']
-  ]){
-    const card=page.locator('[data-ds-supplier="'+id+'"]');
-    await expect(card).toBeVisible();
-    await expect(card).toContainText(name);
-    await expect(card).toContainText(price);
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
+  await expect(page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]')).toBeVisible();
+  for(const id of ['gray-quarry','engle-lumber','axford-iron']){
+    await expect(page.locator('[data-delivery-supplier="'+id+'"]')).toHaveClass(/source-available/);
   }
-  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]').click();
+  await expect(page.locator('#mobileActionDock [data-mobile-action="delivery"]')).toBeVisible();
 });
 test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
   const s=makeDevState();
@@ -362,10 +356,8 @@ test('stored Freight Yard materials are selectable as an already-paid Delivery s
   await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toHaveClass(/source-available/);
-  await page.locator('#deliveryShowSourceList').click();
-  const yardSource=page.locator('[data-ds-yard="freightyard"]');
-  await expect(yardSource).toBeEnabled();
-  await yardSource.click();
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await page.locator('[data-delivery-freight-yard="freightyard"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
   await expect(page.locator('[data-load="Masonry"]')).toContainText('ОПЛАЧЕНО');
 });
@@ -396,17 +388,21 @@ test('mobile final Delivery completes a five-resource Factory from staging 3 wit
   expect(saved.constructions.find(c=>c.id==='F1').status).toBe('complete');
 });
 
-test('mobile object strip keeps the Freight Yard capacity and rent state visible',async({page})=>{
+test('mobile strip contains unfinished constructions only, no Freight Yard or owned warehouses',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();s.freightYardInventories=[['Steel'],[],[]];
   await seed(page,s);await page.goto('/');
-  const chip=page.locator('.mobile-object-chip.freight-yard');
-  await expect(chip).toBeVisible();
-  await expect(chip).toContainText('1/2');
-  await expect(chip).toContainText('С1');
-  await expect(chip).toContainText('размещение оплачено');
+  await expect(page.locator('#mobileObjectStrip')).toBeHidden();
+  s.constructions=[con('C1',0,'club','soma','under-construction',['Masonry'])];
+  await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
+  await page.reload();
+  await expect(page.locator('#mobileObjectStrip')).toBeVisible();
+  await expect(page.locator('#mobileObjectStrip [data-mobile-object="C1"]')).toBeVisible();
+  await expect(page.locator('#mobileObjectStrip')).not.toContainText('Грузовой двор');
+  await expect(page.locator('#mobileObjectStrip')).not.toContainText('Склад');
+  await expect(page.locator('#mobileObjectStrip')).not.toContainText('первое размещение');
+  await expect(page.locator('#mobileObjectStrip')).not.toContainText('простой');
 });
-
 test('same-district Delivery works end-to-end with $0 road cost and live unload buttons',async({page})=>{
   const s=makeDevState();
   s.selectedDistrictId='soma';
@@ -516,37 +512,22 @@ test('Office Begin Construction button works and creates a construction through 
   expect(saved.activationMainActionUsed).toBe(true);
 });
 
-test('mobile Delivery starts map-first and source list is only an optional fallback',async({page})=>{
+test('mobile Delivery starts with map only; source selection opens the required hauler + cargo choices',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  const s=makeDevState();
-  s.constructions=[con('C1',0,'insurance','soma')];
-  await seed(page,s);
-  await page.goto('/');
-
+  const s=makeDevState();s.constructions=[con('C1',0,'insurance','soma')];
+  await seed(page,s);await page.goto('/');
   await page.locator('#actionDelivery').click();
-  await expect(page.locator('#deliveryPanel')).toHaveClass(/mobile-map-source/);
-  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
-  await expect(page.locator('[data-ds-node="pacificmail"]')).toHaveCount(0);
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
   await expect(page.locator('[data-delivery-node="pacificmail"]')).toHaveClass(/source-available/);
-
-  const promptBox=await page.locator('#deliveryPanel').boundingBox();
-  expect(promptBox).not.toBeNull();
-  expect(promptBox.height).toBeLessThan(150);
-
-  await page.locator('#deliveryShowSourceList').click();
-  await expect(page.locator('[data-ds-node="pacificmail"]')).toBeVisible();
-  await page.locator('#deliveryHideSourceList').click();
-  await expect(page.locator('[data-ds-node="pacificmail"]')).toHaveCount(0);
-
+  await expect(page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]')).toBeVisible();
   await page.locator('[data-delivery-node="pacificmail"]').click();
-  for(const selector of ['#cancelDelivery','[data-hauler="dray2a"]']){
-    const box=await page.locator(selector).boundingBox();
-    expect(box).not.toBeNull();
-    expect(box.height).toBeGreaterThanOrEqual(40);
-  }
+  await expect(page.locator('[data-hauler="dray2a"]')).toBeVisible();
+  await expect(page.locator('#deliveryPanel')).toBeVisible();
+  await expect(page.locator('#cancelDelivery')).toBeVisible();
+  await page.locator('#cancelDelivery').click();
+  await expect(page.locator('#mobileActionDock [data-mobile-action="delivery"]')).toBeVisible();
 });
-
-
 test('mobile Delivery UX3 separates route building from unloading',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();
@@ -992,9 +973,10 @@ test('portrait mobile keeps objects in the top HUD and player taps still open Of
   await expect(page.locator('#cityObjectsShortcut')).toBeHidden();
   const strip=page.locator('#mobileObjectStrip');
   await expect(strip).toBeVisible();
-  await expect(strip).toContainText('Объекты: Синий');
+  await expect(strip).toContainText('Стройки: Синий');
   await expect(strip).toContainText('Страховая компания');
-  await expect(strip).toContainText('Склад · SoMa');
+  await expect(strip).not.toContainText('Склад · SoMa');
+  await expect(page.locator('[data-construction-token="W1"] .warehouse-token-stock')).toContainText('Д1 К0 С1');
 
   const layout=await page.evaluate(()=>{
     const strip=document.querySelector('#mobileObjectStrip').getBoundingClientRect();
@@ -1018,7 +1000,7 @@ test('portrait mobile keeps objects in the top HUD and player taps still open Of
   await expect(strip).toContainText('Просмотр: Красный');
   await expect(strip).toContainText('Рабочий доходный дом');
   await page.locator('#mobileObjectsBack').click();
-  await expect(strip).toContainText('Объекты: Синий');
+  await expect(strip).toContainText('Стройки: Синий');
 
   await page.locator('[data-mobile-object="C1"]').click();
   await expect(page.locator('#cityBoardScroll')).toHaveClass(/detail/);
@@ -1059,10 +1041,10 @@ test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>
   expect(before.navTop).toBeGreaterThan(300);
 
   await page.locator('#actionDelivery').click();
-  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
-  await expect(page.locator('[data-ds-node="broadway"]')).toHaveCount(0);
-  const sourcePanel=await page.locator('#deliveryPanel').boundingBox();
-  expect(sourcePanel.height).toBeLessThan(135);
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
+  await expect(page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]')).toBeVisible();
+  await expect(page.locator('[data-delivery-node="broadway"]')).toHaveClass(/source-available/);
 
   await page.locator('[data-delivery-node="broadway"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
