@@ -2432,6 +2432,7 @@ body.drawer-open .mobile-action-dock{
 .full-sf-map.news-map .district.news-protected path{stroke:#30b377!important;stroke-width:7!important;stroke-dasharray:12 5;
   filter:drop-shadow(0 0 7px rgba(31,145,87,.45))}
 .full-sf-map .call-building-node{cursor:pointer;pointer-events:all}
+.full-sf-map .call-building-hit{fill:transparent;pointer-events:all}
 .full-sf-map .call-building-pin{fill:#f3deb1;stroke:#493d29;stroke-width:3}
 .full-sf-map .call-building-text{font:900 11px Georgia,serif;fill:#382b20;pointer-events:none}
 .full-sf-map .call-building-node:hover .call-building-pin,.full-sf-map .call-building-node:focus-visible .call-building-pin{
