@@ -2,8 +2,10 @@ import {test,expect} from '@playwright/test';
 import {createInitialState} from '../game-core.js';
 const KEY='sf1906_phase1_ui_v030a';
 const seed=async(page,s)=>{
-  await page.addInitScript(({key,value})=>localStorage.setItem(key,value),{key:KEY,value:JSON.stringify(s)});
   await page.goto('/');
+  // Seed only once: addInitScript would overwrite gameplay state again on every reload.
+  await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:KEY,value:JSON.stringify(s)});
+  await page.reload();
 };
 async function saved(page){
   return page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
