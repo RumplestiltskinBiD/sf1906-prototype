@@ -394,7 +394,8 @@ test('mobile strip contains unfinished constructions only, no Freight Yard or ow
   await seed(page,s);await page.goto('/');
   await expect(page.locator('#mobileObjectStrip')).toBeHidden();
   s.constructions=[con('C1',0,'club','soma','under-construction',['Masonry'])];
-  await seed(page,s);await page.reload();
+  await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
+  await page.reload();
   await expect(page.locator('#mobileObjectStrip')).toBeVisible();
   await expect(page.locator('#mobileObjectStrip [data-mobile-object="C1"]')).toBeVisible();
   await expect(page.locator('#mobileObjectStrip')).not.toContainText('Грузовой двор');
