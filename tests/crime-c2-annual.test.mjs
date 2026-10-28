@@ -72,7 +72,8 @@ test('C2 payment is mandatory if any full option exists, invalid and unavailable
  assert.equal(check.reason,'crime-choice');assert.equal(check.options.cash,false);
  assert.equal(check.options.influence,false);assert.equal(check.options.mixed,false);
  const before=JSON.stringify(s);
- for(const invalid of ['cash','influence','mixed','arrest'])assert.equal(paid(s,0,invalid).ok,invalid==='arrest'?true:false);
+ for(const invalid of ['cash','influence','mixed','arrest'])assert.equal(paid(s,0,invalid).ok,false);
+ assert.equal(JSON.stringify(s),before);
  // explicit reset fixture for an independent positive-payment test
  const q=fresh();stage(q);G.setSuspicion(q,0,3);
  assert.equal(finish(q).reason,'crime-choice');
