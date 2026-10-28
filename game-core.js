@@ -15,6 +15,7 @@ export const HAND_LIMIT = 5;
 export const STARTER_DRAFT_SIZE = 5;
 export const STARTER_KEEP = 2;
 export const WORKERS_PER_PLAYER = 3;
+export const MAX_SUSPICION = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
@@ -581,6 +582,33 @@ export function confirmStarterDraft(state){
   state.starterDraftPlayer=pid+1;return {ok:true,complete:false,nextPlayer:state.starterDraftPlayer};
 }
 
+
+// Crime C1.1: company-wide suspicion, not a per-worker stat.
+// State only: criminal effects, arrest sanctions and yearly fines are NOT enabled here.
+export function normalizeSuspicion(value){
+  if(!Number.isSafeInteger(value))return 0;
+  return Math.max(0,Math.min(MAX_SUSPICION,value));
+}
+export function suspicionLevel(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return null;
+  return normalizeSuspicion(state.players[playerId].suspicion);
+}
+export function setSuspicion(state,playerId,level){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  if(!Number.isSafeInteger(level))return {ok:false,reason:'suspicion-level'};
+  const player=state.players[playerId],from=normalizeSuspicion(player.suspicion),to=normalizeSuspicion(level);
+  player.suspicion=to;
+  return {ok:true,playerId,from,to,change:to-from};
+}
+export function changeSuspicion(state,playerId,delta){
+  if(!Number.isSafeInteger(delta))return {ok:false,reason:'suspicion-delta'};
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const from=suspicionLevel(state,playerId);
+  // Clamp before adding to avoid unsafe numeric overflow for very large signed deltas.
+  const to=delta>=0?Math.min(MAX_SUSPICION,from+Math.min(delta,MAX_SUSPICION)):Math.max(0,from+Math.max(delta,-MAX_SUSPICION));
+  return setSuspicion(state,playerId,to);
+}
+
 export function createInitialState({rng=Math.random}={}){
   const pool=createProjectCardPool({rng});
   const market=pool.splice(0,5).map(emptyMarketCard);
@@ -593,7 +621,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
