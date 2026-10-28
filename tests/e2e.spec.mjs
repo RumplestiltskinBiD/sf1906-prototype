@@ -973,9 +973,10 @@ test('portrait mobile keeps objects in the top HUD and player taps still open Of
   await expect(page.locator('#cityObjectsShortcut')).toBeHidden();
   const strip=page.locator('#mobileObjectStrip');
   await expect(strip).toBeVisible();
-  await expect(strip).toContainText('Объекты: Синий');
+  await expect(strip).toContainText('Стройки: Синий');
   await expect(strip).toContainText('Страховая компания');
-  await expect(strip).toContainText('Склад · SoMa');
+  await expect(strip).not.toContainText('Склад · SoMa');
+  await expect(page.locator('[data-construction-token="W1"] .warehouse-token-stock')).toContainText('Д1 К0 С1');
 
   const layout=await page.evaluate(()=>{
     const strip=document.querySelector('#mobileObjectStrip').getBoundingClientRect();
@@ -1040,10 +1041,10 @@ test('landscape mobile keeps HUD compact and Delivery map-first',async({page})=>
   expect(before.navTop).toBeGreaterThan(300);
 
   await page.locator('#actionDelivery').click();
-  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
-  await expect(page.locator('[data-ds-node="broadway"]')).toHaveCount(0);
-  const sourcePanel=await page.locator('#deliveryPanel').boundingBox();
-  expect(sourcePanel.height).toBeLessThan(135);
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
+  await expect(page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]')).toBeVisible();
+  await expect(page.locator('[data-delivery-node="broadway"]')).toHaveClass(/source-available/);
 
   await page.locator('[data-delivery-node="broadway"]').click();
   await page.locator('[data-hauler="dray2a"]').click();
