@@ -2937,3 +2937,25 @@ body.delivery-route-build #deliveryRouteLayer *{
   #mobileActionDock .mobile-action-shortcut{min-height:36px!important;font-size:11px!important}
   #cityView.active{padding-bottom:58px!important}
 }
+
+
+/* Mobile cleanup: the top line is ONLY unfinished constructions and materials still needed.
+   Delivery source selection has no list/sheet/overlay; cancellation lives in the existing header slot. */
+@media (max-width:640px), (orientation:landscape) and (max-width:960px) and (max-height:500px){
+  body.delivery-active #mobileActionDock.active.delivery-source-top{
+    display:block!important;
+    position:sticky!important;
+    top:var(--news-top-h)!important;
+    bottom:auto!important;
+    transform:none!important;
+    z-index:28!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+  #mobileActionDock.delivery-source-top .mobile-action-buttons{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  #mobileActionDock.delivery-source-top .mobile-action-shortcut{
+    min-height:40px!important;
+  }
+}
