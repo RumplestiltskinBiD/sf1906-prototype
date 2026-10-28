@@ -1000,7 +1000,7 @@ test('portrait mobile keeps objects in the top HUD and player taps still open Of
   await expect(strip).toContainText('Просмотр: Красный');
   await expect(strip).toContainText('Рабочий доходный дом');
   await page.locator('#mobileObjectsBack').click();
-  await expect(strip).toContainText('Объекты: Синий');
+  await expect(strip).toContainText('Стройки: Синий');
 
   await page.locator('[data-mobile-object="C1"]').click();
   await expect(page.locator('#cityBoardScroll')).toHaveClass(/detail/);
