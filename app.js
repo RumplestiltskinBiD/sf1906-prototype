@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -93,6 +93,10 @@ return createInitialState();
 function migrateState(parsed){
 const originalVersion=parsed.version;
 parsed.version='0.44';
+parsed.crimeAssessedRound=Number.isInteger(parsed.crimeAssessedRound)&&parsed.crimeAssessedRound>=0&&parsed.crimeAssessedRound<=parsed.round?parsed.crimeAssessedRound:0;
+parsed.finalPrisonPenaltyApplied=!!parsed.finalPrisonPenaltyApplied;
+parsed.crimeAssessment=parsed.phase==='crime-assessment'&&parsed.crimeAssessment?.round===parsed.round&&Array.isArray(parsed.crimeAssessment.order)&&Number.isInteger(parsed.crimeAssessment.cursor)?parsed.crimeAssessment:null;
+if(parsed.phase==='crime-assessment'&&!parsed.crimeAssessment){parsed.phase='development';parsed.crimeAssessedRound=0;}
 parsed.players=(parsed.players||[]).map(p=>{
 let workers=Array.isArray(p.workers)&&p.workers.length?p.workers.map((w,i)=>({
 id:w.id||`P${p.id+1}W${i+1}`,
@@ -344,6 +348,11 @@ const order=turnOrder(parsed);
 const candidate=order.find(pid=>developmentSlotsRemaining(parsed,pid)>0);
 parsed.developmentComplete=candidate==null;
 parsed.developmentPlayer=parsed.developmentComplete?null:(parsed.developmentPlayer!=null&&developmentSlotsRemaining(parsed,parsed.developmentPlayer)>0?parsed.developmentPlayer:candidate);
+}else if(parsed.phase==='crime-assessment'){
+  // Already completed development: preserve it while awaiting a mandatory annual fine.
+  parsed.developmentPlayer=null;
+  parsed.developmentComplete=true;
+  parsed.developmentSlotsUsed=parsed.players.map(()=>WORKERS_PER_PLAYER);
 }else{
 parsed.developmentPlayer=null;
 parsed.developmentComplete=false;
@@ -1242,9 +1251,36 @@ function newsCardByHistory(id){
   return NEWS_CARDS.find(c=>c.id===id)||null;
 }
 
+function applyCrimeChoice(playerId,choice,workerId=null){
+  const result=resolveAnnualCrimeAssessment(state,playerId,choice,workerId);
+  if(result.ok){newsEmergencyMode=false;newsArchiveIndex=null;state.view=result.finished?'city':'hall';showToast(result.finished?'Фаза I завершена':'Годовой штраф учтён; начался следующий год');}
+  else if(result.reason==='crime-choice')showToast('Следующий игрок: обязательная проверка');
+  else if(result.reason==='upkeep-choice')showToast('Штраф учтён. Не хватает денег на простой — выберите стройку');
+  else showToast('Нельзя подтвердить годовой штраф');
+  render();
+}
 function renderYearTransition(){
 const sheet=$('#yearTransitionSheet'),backdrop=$('#yearTransitionBackdrop');
 if(!sheet||!backdrop)return;
+const crime=currentAnnualCrimeAssessment(state);
+if(crime){
+  sheet.hidden=false;backdrop.hidden=false;document.body.classList.add('year-transition-open');
+  const player=state.players[crime.playerId],year=1899+state.round;
+  const buttons=crime.canPay
+    ? '<div class="crime-payment-options">'
+      +(crime.cash?'<button class="primary-btn" data-crime-payment="cash">Заплатить $'+crime.cost+'</button>':'')
+      +(crime.influence?'<button class="secondary-btn" data-crime-payment="influence">−'+crime.steps+' '+(crime.steps===1?'шаг':'шага')+' влияния</button>':'')
+      +(crime.mixed?'<button class="secondary-btn" data-crime-payment="mixed">$3 и 1 шаг влияния</button>':'')
+      +'</div>'
+    : '<div class="crime-payment-options">'+crime.unjailed.map(id=>{const w=playerWorkers(state,crime.playerId).find(x=>x.id===id);return '<button class="secondary-btn" data-crime-arrest="'+id+'">Арестовать представителя #'+w.number+(w.used?' · уже использован':'')+'</button>';}).join('')+'</div>';
+  sheet.innerHTML='<div class="year-transition-card crime-assessment-card"><div class="year-transition-head"><span>'+year+' · ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА</span><h2>Годовой штраф · '+player.name+'</h2></div>'
+   +'<p>Подозрение: <b>'+('★'.repeat(crime.level))+'</b>. '+(crime.canPay?'Выберите один полный вариант оплаты. Арест вместо доступного платежа запрещён.':'Полная оплата невозможна — выберите работника для ареста. Никаких частичных платежей.')+'</p>'
+   +'<div class="upkeep-summary"><div><span>Капитал</span><b>$'+player.capital+'</b></div><div><span>Influence</span><b>'+player.influence+'</b></div><div><span>Доступных шагов</span><b>'+crime.availableSteps+'</b></div></div>'
+   +buttons+'<small class="crime-assessment-note">Проверка проводится один раз после газеты, до дохода. При оплате подозрение остаётся прежним; при аресте немедленно сбрасывается до 0.</small></div>';
+  $$('[data-crime-payment]').forEach(b=>b.onclick=()=>applyCrimeChoice(crime.playerId,b.dataset.crimePayment));
+  $$('[data-crime-arrest]').forEach(b=>b.onclick=()=>applyCrimeChoice(crime.playerId,'arrest',b.dataset.crimeArrest));
+  return;
+}
 const active=state.phase==='upkeep'&&state.yearTransition?.playerId!=null;
 sheet.hidden=!active;backdrop.hidden=!active;
 document.body.classList.toggle('year-transition-open',active);
@@ -1324,7 +1360,8 @@ function renderNewProjectDecisions(){
      if(!currentPressCampaign(state)){
        const next=cleanupMarket(state);
        if(next.ok){state.view=next.finished?'city':'hall';newsEmergencyMode=false;newsArchiveIndex=null;showToast(next.finished?'Фаза I завершена':'Год завершён · результаты газеты учтены');}
-       else if(next.reason!=='upkeep-choice'&&next.reason!=='pending-building-choice')showToast('Переход года: '+next.reason);
+       else if(next.reason==='crime-choice')showToast('Проверка подозрения: выберите оплату штрафа или сотрудника для ареста');
+        else if(next.reason!=='upkeep-choice'&&next.reason!=='pending-building-choice')showToast('Переход года: '+next.reason);
      }
      render();
    });
@@ -1340,7 +1377,7 @@ if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendin
 function renderTop(){
 $('#roundStat').textContent=state.finished?`${MAX_ROUNDS} / ${MAX_ROUNDS}`:`${state.round} / ${MAX_ROUNDS}`;
 $('#firstStat').textContent=state.players[state.firstPlayer].name;
-$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':'Тест завершён';
+$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':state.phase==='crime-assessment'?'Конец года · годовой штраф':'Тест завершён';
 }
 // Original handcuff pictogram, independent of the Flaticon visual reference.
 const arrestedWorkerIcon='<svg class="arrested-worker-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="7.5" height="9.5" rx="3.3"/><rect x="14" y="4" width="7.5" height="9.5" rx="3.3"/><path d="M3.4 10.4h5.7M14.9 10.4h5.7M6.25 13.5v2.9l3.4 2.8 2.35-1.8 2.35 1.8 3.4-2.8v-2.9"/><path d="M9.6 19.2h4.8"/></svg>';
@@ -2402,6 +2439,7 @@ const r=cleanupMarket(state);
 if(!r.ok){
 if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');
 else if(r.reason==='upkeep-choice')showToast('Income начислен. Не хватает денег на простой — выберите стройку для закрытия.');
+ else if(r.reason==='crime-choice')showToast('Годовая криминальная проверка: выберите полный платёж или сотрудника для ареста.');
  else if(r.reason==='pending-press-campaign')showToast('После газеты выберите эффект газетного небоскрёба.');
  else if(r.reason==='pending-building-choice')showToast('Сначала привяжите рабочий корпус к фабрике или консервному заводу.');
 else showToast('Переход года сейчас недоступен');

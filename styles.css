@@ -3039,3 +3039,17 @@ body.delivery-route-build #deliveryRouteLayer *{
 .legal-case-buttons button{min-width:0;min-height:44px;white-space:normal;overflow-wrap:break-word}
 @media(max-width:640px){.legal-case-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.legal-case-buttons button{font-size:12px;padding:7px 5px}}
 @media(orientation:landscape) and (max-width:960px) and (max-height:500px){.legal-case-buttons button{min-height:38px}}
+
+/* C2: obligatory once-a-year choices reuse the existing year transition sheet.
+   They never become persistent HUD panels and do not cover the map during play. */
+.crime-assessment-card .crime-payment-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:8px}
+.crime-assessment-card .crime-payment-options button{min-width:0;white-space:normal;overflow-wrap:break-word;min-height:44px}
+.crime-assessment-card .crime-assessment-note{display:block;line-height:1.4;color:#726959}
+@media(max-width:640px){
+ .crime-assessment-card .crime-payment-options{grid-template-columns:minmax(0,1fr);gap:7px}
+ .crime-assessment-card .crime-payment-options button{min-height:44px;text-align:center}
+}
+@media(orientation:landscape) and (max-width:960px) and (max-height:500px){
+ .crime-assessment-card .crime-payment-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .crime-assessment-card .crime-payment-options button{min-height:38px}
+}
