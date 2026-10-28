@@ -81,5 +81,5 @@ test('desktop retains player order and gains an arrest count without changing ot
  await expect(card.locator('.player-money')).toHaveText('$1234');
  await expect(card.locator('.player-stats')).toContainText('VP 15');
  await expect(card.locator('.player-jailed-count')).toContainText('1');
- await expect(card.locator('.player-pill-compact')).toHaveCount(0);
+ await expect(card).not.toHaveClass(/player-pill-compact/);
 });
