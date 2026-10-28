@@ -1928,7 +1928,6 @@ const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-sho
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
 +button('free','Свободные',false,'secondary')
 +(serviceOnly?button('service-pass','✓ Все мои ходы',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
-if(newsEmergencyMode)html=button('cancel-emergency','Отменить меры',false,'secondary')+html;
 el.className='mobile-action-dock active persistent-turn-dock';
 el.setAttribute('aria-label',p.name+' · '+(serviceOnly?'сервисное окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'основное действие использовано':selected?'представитель #'+selected.number:'выберите представителя')+' · действия');
 el.innerHTML='<div class="mobile-action-buttons">'+html+'</div>';
@@ -1938,7 +1937,6 @@ if(action==='delivery')startDeliveryFlow(pid);
 else if(action==='free')openActiveFreeActions();
 else if(action==='end')$('#actionEndActivation')?.click();
 else if(action==='service-pass')$('#actionPassRemaining')?.click();
-else if(action==='cancel-emergency'){$('#newsEmergencyCancelMobile')?.click();}
 else{
 $('#cityActions')?.scrollIntoView({behavior:'smooth',block:'start'});
 $('#cityActions')?.classList.add('ux-focus');
