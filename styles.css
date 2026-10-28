@@ -2883,3 +2883,57 @@ body.delivery-route-build #deliveryRouteLayer *{
  .service-turn-hint{padding:6px 9px}
  .service-turn-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Mobile action location v0.53: use the former newspaper strip position.
+   This toolbar is in document flow (sticky at the top HUD), NEVER a bottom overlay. */
+.news-emergency-cancel-mobile{display:none}
+.news-emergency-cancel-mobile[hidden]{display:none!important}
+.news-issue-map-action{display:none}
+@media (max-width:640px), (orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #newsStrip{display:none!important}
+  #mobileActionDock.active.persistent-turn-dock{
+    display:block!important;
+    position:sticky!important;
+    top:var(--news-top-h)!important;
+    bottom:auto!important;left:auto!important;right:auto!important;
+    transform:none!important;
+    width:100%!important;max-width:100%!important;
+    z-index:28!important;
+    box-sizing:border-box!important;
+    margin:0!important;padding:5px 8px!important;
+    border:0!important;border-bottom:2px solid #a89169!important;
+    border-radius:0!important;
+    background:#ded1b6!important;
+    box-shadow:none!important;
+  }
+  #mobileActionDock .mobile-action-buttons{
+    width:100%;min-width:0;display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  #mobileActionDock .mobile-action-shortcut{
+    min-width:0!important;min-height:40px!important;
+    padding:5px 6px!important;font-size:11px!important;line-height:1.15!important;
+    white-space:normal;overflow-wrap:break-word;
+    border-radius:7px!important;
+  }
+  #mobileActionDock .mobile-turn-status{display:none!important}
+  #cityView.active{padding-bottom:calc(66px + env(safe-area-inset-bottom))!important}
+  .news-issue-map-action{
+    display:block;width:100%;min-height:44px;margin:10px 0;padding:9px;
+    background:#f9efdd;color:#355a50;border:1px solid #7b9c89;
+    border-radius:8px;font-size:13px;font-weight:800;
+  }
+  .news-emergency-cancel-mobile:not([hidden]){
+    display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+    min-height:32px;padding:5px 8px;border:1px solid #905e54;border-radius:7px;
+    background:#fff0e7;color:#823a2c;font-weight:800;font-size:11px;
+  }
+  body.context-open #mobileActionDock,body.delivery-active #mobileActionDock,
+  body.drawer-open #mobileActionDock{display:none!important}
+}
+@media(orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #mobileActionDock .mobile-action-shortcut{min-height:36px!important;font-size:11px!important}
+  #cityView.active{padding-bottom:58px!important}
+}

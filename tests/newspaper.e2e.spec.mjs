@@ -55,9 +55,10 @@ test('police article forecasts correct protected and exposed locations on game m
 test('mobile emergency measures use map tap, ordinary worker movement and existing action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await seededGame(page,{news:'C01',constructions:[{projectId:'shops',districtId:'civic',playerId:1}]});
-  await page.locator('#newsOpenBtn').click();
+  await expect(page.locator('#newsStrip')).toBeHidden();
+   await page.locator('#callBuildingNode').click();
   await page.locator('#newsEmergencyStart').click();
-  await expect(page.locator('#newsEmergencyCancel')).toBeVisible();
+  await expect(page.locator('#newsEmergencyCancelMobile')).toBeVisible();
   await expect(page.locator('#newsSheet')).toBeHidden();
   await page.locator('[data-district="civic"] path').click();
   const s=await page.evaluate(storage=>JSON.parse(localStorage.getItem(storage)),storage);
@@ -65,10 +66,10 @@ test('mobile emergency measures use map tap, ordinary worker movement and existi
   expect(s.activationMainActionUsed).toBe(true);
   expect(s.players[0].capital).toBe(29);
   expect(s.players[0].workers[0].used).toBe(true);
-  await expect(page.locator('#newsEmergencyCancel')).toBeHidden();
+  await expect(page.locator('#newsEmergencyCancelMobile')).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth))
     .toBeLessThanOrEqual(393);
-  await page.locator('#newsOpenBtn').click();
+  await page.locator('#callBuildingNode').click();
   await expect(page.locator('#newsSheetContent')).toContainText('ЗАЩИЩЕНО');
 });
 test('news settles once on end of year, next issue and archive remain accessible',async({page})=>{
@@ -95,7 +96,9 @@ test('news settles once on end of year, next issue and archive remain accessible
 test('phone landscape news sheet fits screen, closes on Escape, never causes page overflow',async({page})=>{
   await page.setViewportSize({width:844,height:390});
   await page.goto('/');
-  await page.locator('#newsOpenBtn').click();
+  await expect(page.locator('#newsStrip')).toBeHidden();
+   await page.locator('.nav-btn[data-view="city"]').click();
+   await page.locator('#callBuildingNode').click();
   const dim=await page.evaluate(()=>{
     const el=document.querySelector('#newsSheet');
     const r=el.getBoundingClientRect();

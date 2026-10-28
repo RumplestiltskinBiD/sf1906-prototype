@@ -571,14 +571,15 @@ return `<div class="risk-preview-box ${qCross||fCross?'crosses-level':''}">
 </div>`;
 }
 function syncStickyLayout(){
-const top=$('.topbar'),players=$('#playersBar'),news=$('#newsStrip');
+const top=$('.topbar'),players=$('#playersBar'),news=$('#newsStrip'),mobileActions=$('#mobileActionDock');
 if(!top||!players)return;
 const topH=Math.ceil(top.getBoundingClientRect().height);
 const playersH=Math.ceil(players.getBoundingClientRect().height);
 const newsH=Math.ceil(news?.getBoundingClientRect().height||0);
+const actionsH=isMobile()?Math.ceil(mobileActions?.getBoundingClientRect().height||0):0;
 document.documentElement.style.setProperty('--topbar-h',topH+'px');
 document.documentElement.style.setProperty('--news-top-h',(topH+playersH)+'px');
-document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH+newsH)+'px');
+document.documentElement.style.setProperty('--hud-stack-h',(topH+playersH+newsH+actionsH)+'px');
 }
 function showObjectsOnMap(playerId){
 overviewPlayerId=playerId===currentDeveloper(state)?null:playerId;
@@ -1093,7 +1094,7 @@ function closeNewspaper(){
   newsSheetOpen=false;newsArchiveIndex=null;
   $('#newsSheet').hidden=true;$('#newsBackdrop').hidden=true;
   document.body.classList.remove('news-sheet-open');
-  $('#newsOpenBtn')?.focus();
+  (isMobile()?$('#callBuildingNode'):$('#newsOpenBtn'))?.focus();
 }
 function startNewsEmergency(){
   const news=activeNewspaper(state);
@@ -1107,6 +1108,13 @@ function startNewsEmergency(){
   showToast('Выберите представителя, затем район на карте · $1 и основное действие');
   requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
 }
+function toggleNewspaperMap(){
+  newsMapVisible=!newsMapVisible;
+  if(newsMapVisible)state.view='city';
+  if(newsSheetOpen)closeNewspaper();
+  render();
+  if(newsMapVisible)requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
+}
 function renderNewspaper(){
   const card=activeNewspaper(state),forecast=newsPreview(state);
   const year=1899+state.round;
@@ -1118,6 +1126,7 @@ function renderNewspaper(){
     :latest?'1906 близко · '+latest.year+' · Итоги: '+latest.title:'Нет выпуска';
   $('#newsMapBtn').setAttribute('aria-pressed',newsMapVisible?'true':'false');
   $('#newsEmergencyCancel').hidden=!newsEmergencyMode;
+  $('#newsEmergencyCancelMobile').hidden=!newsEmergencyMode;
   if(newsEmergencyMode)$('#newsStripLabel').textContent='ЭКСТРЕННЫЕ МЕРЫ: выберите район на карте · $1 + действие';
   const board=$('.city-board');
   board?.classList.toggle('news-map',newsMapVisible);
@@ -1202,10 +1211,12 @@ function renderNewspaper(){
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
+    (!archived?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
   $('#newsEmergencyStart')?.addEventListener('click',startNewsEmergency);
+  $('#newsIssueMapToggle')?.addEventListener('click',toggleNewspaperMap);
   $('#newsCopyOutcome')?.addEventListener('click',async()=>{
     const txt='THE SAN FRANCISCO CALL · '+archived.year+' · '+archived.title+'\n'+
       JSON.stringify(archived,null,2);
@@ -1404,7 +1415,7 @@ const pr=projectById(con.projectId),d=districtById(con.districtId),prog=construc
 items.push('<button class="mobile-object-chip build construction-needs-chip typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+con.id+'"><b>'+pr.name+'</b><span>'+d.name+' · '+prog.delivered+'/'+prog.required+' · <strong>'+compactConstructionNeed(con,{prefix:true})+'</strong> · простой $1</span></button>');
 }
 for(const wh of warehouses){const d=districtById(wh.districtId),inv=warehouseInventory(wh),cnt=deliveryCounts(inv),pr=projectById(wh.projectId);items.push('<button class="mobile-object-chip warehouse typed-project type-stripe-compact" '+projectTypeStyle(pr)+' data-mobile-object="'+wh.id+'"><b>Склад · '+d.name+'</b><span>'+inv.length+'/'+warehouseStorageCapacity(wh)+' · Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)+'</span></button>');}
-const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);items.push('<span class="mobile-object-chip freight-yard"><b>Грузовой двор · Western</b><span>'+yi.length+'/2 · Д'+(yc.Lumber||0)+' К'+(yc.Masonry||0)+' С'+(yc.Steel||0)+' · '+(yi.length?'аренда активна':'вход $2')+'</span></span>');
+const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);items.push('<span class="mobile-object-chip freight-yard"><b>Грузовой двор · Western</b><span>'+yi.length+'/2 · '+(yi.length?'Д'+(yc.Lumber||0)+' К'+(yc.Masonry||0)+' С'+(yc.Steel||0)+' · размещение оплачено':'пусто · первое размещение $2')+'</span></span>');
 const procurement=activePid===pid?(state.procurementRemaining||0):0;
 if(procurement)items.unshift('<span class="mobile-effect-chip"><b>Закупка ×'+procurement+'</b><span>материалы по $0</span></span>');
 if(!items.length)items.push('<span class="mobile-empty-chip">Нет активных строек и складов</span>');
@@ -1916,9 +1927,10 @@ const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
 +button('free','Свободные',false,'secondary')
-+(serviceOnly?button('service-pass','✓ Мои ходы завершены',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
++(serviceOnly?button('service-pass','✓ Все мои ходы',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
 el.className='mobile-action-dock active persistent-turn-dock';
-el.innerHTML='<div class="mobile-turn-status"><span class="player-dot '+p.key+'"></span><span><b>'+p.name+(serviceOnly?' · сервисное окно':' · активация')+'</b><small>'+(serviceOnly?'Нет рабочих · окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'Основное ✓ использовано':selected?'Основное доступно · #'+selected.number:'Выберите представителя для основного')+'</small></span></div><div class="mobile-action-buttons">'+html+'</div>';
+el.setAttribute('aria-label',p.name+' · '+(serviceOnly?'сервисное окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'основное действие использовано':selected?'представитель #'+selected.number:'выберите представителя')+' · действия');
+el.innerHTML='<div class="mobile-action-buttons">'+html+'</div>';
 $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
 const action=b.dataset.mobileAction;
 if(action==='delivery')startDeliveryFlow(pid);
@@ -2335,10 +2347,9 @@ $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
 $('#newsOpenBtn').onclick=()=>openNewspaper();
 $('#newsCloseBtn').onclick=closeNewspaper;
 $('#newsBackdrop').onclick=closeNewspaper;
-$('#newsMapBtn').onclick=()=>{newsMapVisible=!newsMapVisible;if(newsMapVisible)state.view='city';render();
-  if(newsMapVisible)requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
-};
+$('#newsMapBtn').onclick=toggleNewspaperMap;
 $('#newsEmergencyCancel').onclick=()=>{newsEmergencyMode=false;render();};
+$('#newsEmergencyCancelMobile').onclick=()=>{newsEmergencyMode=false;render();};
 const callNode=$('#callBuildingNode');
 if(callNode){
   callNode.addEventListener('click',()=>openNewspaper());
