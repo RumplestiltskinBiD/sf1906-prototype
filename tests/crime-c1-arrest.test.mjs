@@ -139,12 +139,12 @@ test('C1.2 arbitrary five-player test preserves order, fixed 3 worker slots and 
   const s=fresh();
   for(let id=3;id<5;id++)s.players.push({...s.players[0],id,name:'Tester '+id,key:'test',
     workers:G.createWorkers(id),workersLeft:3,suspicion:0,prestige:0,loans:[],portfolio:[]});
-  setInfluences(s,9,8,7,6,5);
+  setInfluences(s,9,8,7,6,1);
   s.yearTurnOrder=[3,0,4,1,2];s.firstPlayer=3;
   G.setSuspicion(s,4,3);
   const before=s.players.map(p=>JSON.stringify(p));
   const r=G.arrestWorkerWithSanctions(s,4,s.players[4].workers[2].id);
-  assert.equal(r.ok,true);assert.equal(r.vpPenalty,3,'only two downward transitions from 5 after leap over occupied 4?');
+  assert.equal(r.ok,true);assert.equal(r.vpPenalty,3,'only one real downward transition from influence 1');
   assert.equal(s.players[4].workers.length,3);
   for(let id=0;id<4;id++)assert.equal(JSON.stringify(s.players[id]),before[id]);
   assert.deepEqual(s.yearTurnOrder,[3,0,4,1,2]);
