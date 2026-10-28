@@ -79,13 +79,19 @@ test('C1.1 JSON round-trip retains levels and a year change does not clear suspi
   const revived=JSON.parse(JSON.stringify(s));
   assert.deepEqual(revived.players.map(p=>p.suspicion),[1,2,3]);
   prepareDevelopment(revived);
-  const result=G.cleanupMarket(revived,{rng:()=>0.1});
+  const first=G.cleanupMarket(revived,{rng:()=>0.1});
+  assert.equal(first.reason,'crime-choice');
+  assert.equal(first.options.playerId,1);
+  const second=G.resolveAnnualCrimeAssessment(revived,1,'cash',null,{rng:()=>0.1});
+  assert.equal(second.reason,'crime-choice');
+  assert.equal(second.options.playerId,2);
+  const result=G.resolveAnnualCrimeAssessment(revived,2,'cash',null,{rng:()=>0.1});
   assert.equal(result.ok,true,JSON.stringify(result));
   assert.deepEqual(revived.players.map(p=>p.suspicion),[1,2,3]);
   assert.equal(G.suspicionLevel(revived,1),2);
 });
 
-test('C1.1 game ending in 1905 does not clear suspicion or apply prematurely criminal fines',()=>{
+test('C1.1 game ending in 1905 retains suspicion after mandatory C2 fine, and never double-charges',()=>{
   const s=fresh();
   s.round=G.MAX_ROUNDS;
   prepareDevelopment(s);
@@ -95,9 +101,11 @@ test('C1.1 game ending in 1905 does not clear suspicion or apply prematurely cri
   s.players[0].capital=20;
   G.setSuspicion(s,0,3);
   const p=s.players[0],start={cash:p.capital,vp:p.prestige,inf:p.influence};
-  const result=G.cleanupMarket(s,{rng:()=>0.1});
+  const pending=G.cleanupMarket(s,{rng:()=>0.1});
+  assert.equal(pending.reason,'crime-choice');
+  const result=G.resolveAnnualCrimeAssessment(s,0,'cash',null,{rng:()=>0.1});
   assert.equal(result.ok,true,JSON.stringify(result));
   assert.equal(result.finished,true);
   assert.equal(p.suspicion,3);
-  assert.deepEqual({cash:p.capital,vp:p.prestige,inf:p.influence},start);
+  assert.deepEqual({cash:p.capital,vp:p.prestige,inf:p.influence},{...start,cash:start.cash-6});
 });
