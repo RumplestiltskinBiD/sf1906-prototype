@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -1268,6 +1268,8 @@ const crime=currentAnnualCrimeAssessment(state);
 if(crime){
   sheet.hidden=false;backdrop.hidden=false;document.body.classList.add('year-transition-open');
   const player=state.players[crime.playerId],year=1899+state.round;
+  const sanction=crime.canPay?null:arrestSanctionPreview(state,crime.playerId);
+  const arrestWarning=sanction?.ok?'<p class="crime-arrest-warning" data-crime-arrest-warning="true">Последствие ареста: '+(sanction.vpPenalty?'влияние до 0 и −3 VP':'−3 реальных шага влияния')+(state.round===MAX_ROUNDS?' · в финале 1905 ещё −5 VP за этого заключённого':'')+'. Подозрение сбросится до 0.</p>':'';
   const buttons=crime.canPay
     ? '<div class="crime-payment-options">'
       +(crime.cash?'<button class="primary-btn" data-crime-payment="cash">Заплатить $'+crime.cost+'</button>':'')
@@ -1278,7 +1280,7 @@ if(crime){
   sheet.innerHTML='<div class="year-transition-card crime-assessment-card"><div class="year-transition-head"><span>'+year+' · ОБЯЗАТЕЛЬНАЯ ПРОВЕРКА</span><h2>Годовой штраф · '+player.name+'</h2></div>'
    +'<p>Подозрение: <b>'+('★'.repeat(crime.level))+'</b>. '+(crime.canPay?'Выберите один полный вариант оплаты. Арест вместо доступного платежа запрещён.':'Полная оплата невозможна — выберите работника для ареста. Никаких частичных платежей.')+'</p>'
    +'<div class="upkeep-summary"><div><span>Капитал</span><b>$'+player.capital+'</b></div><div><span>Influence</span><b>'+player.influence+'</b></div><div><span>Доступных шагов</span><b>'+crime.availableSteps+'</b></div></div>'
-   +buttons+'<small class="crime-assessment-note">Проверка проводится один раз после газеты, до дохода. При оплате подозрение остаётся прежним; при аресте немедленно сбрасывается до 0.</small></div>';
+   +arrestWarning+buttons+'<small class="crime-assessment-note">Проверка проводится один раз после газеты, до дохода. При оплате подозрение остаётся прежним; при аресте немедленно сбрасывается до 0.</small></div>';
   $$('[data-crime-payment]').forEach(b=>b.onclick=()=>applyCrimeChoice(crime.playerId,b.dataset.crimePayment));
   $$('[data-crime-arrest]').forEach(b=>b.onclick=()=>applyCrimeChoice(crime.playerId,'arrest',b.dataset.crimeArrest));
   return;
@@ -1885,10 +1887,12 @@ if(fireActionDraft){
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const capitalDisabled=mainUsed||!selected;
 const deliveryDisabled=!canUseFreeAction(state,pid);
+const paidHire=paidReplacementOptions(state,pid);
+const hireReady=paidHire.ok&&paidHire.active&&paidHire.affordable&&paidHire.eligible.length>0;
 el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>${serviceOnly?'СЕРВИСНОЕ ОКНО':'АКТИВАЦИЯ'} ${workerSlot}/3</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Проекты ${availableProjects} · Кредиты ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Контракт':''}${procurement?` · Закупка ${procurement}`:''}</span></div><span class="activation-state">${serviceOnly?'НЕТ СВОБОДНЫХ РАБОТНИКОВ':mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':selected?`ПРЕДСТАВИТЕЛЬ #${selected.number} ГОТОВ`:'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'}</span></div>
-${serviceOnly?'<div class="service-turn-hint">Работников нет. Вы можете выполнить законные быстрые действия или передать ход. Новое основное действие без работника не появляется.</div>':`<div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>`}
+${serviceOnly?'<div class="service-turn-hint">Работников нет. Вы можете выполнить законные быстрые действия или передать ход. Новое основное действие без работника не появляется.'+(hireReady?' Доступен наём за $7: откройте Офис через «Свободные» до пропуска оставшихся ходов.':'')+'</div>':`<div class="worker-selector"><div class="worker-selector-head"><b>3 REPRESENTATIVES · позиции сохраняются между раундами</b><span>Действие: текущий район или 1 соседний. После действия представитель остаётся там.</span></div><div class="worker-choice-row">${workerButtons}</div><div class="worker-reach"><b>Доступ за эту активацию:</b> ${reachText}</div></div>`}
 <div class="action-legend"><b>${serviceOnly?'СВОБОДНЫЕ ДЕЙСТВИЯ И ПАС':mainUsed?'СВОБОДНЫЕ ДЕЙСТВИЯ / ЗАВЕРШЕНИЕ АКТИВАЦИИ':'ОСНОВНОЕ ДЕЙСТВИЕ'}</b><span>${serviceOnly?'Доставка, пекарня, погашение кредита и другие законные свободные действия доступны сейчас.':procurement?`Закупка: ещё ${procurement} бесплатн. материала при следующей покупке`:mainUsed?'Доставка и погашение кредита доступны до завершения активации':selected?'Выберите основное действие или выполните доставку':'Доставку можно выполнить и до выбора представителя'}</span><em>СВОБОДНЫЕ: Доставка · Достройка вагонного пансиона · Завершить со склада · Погасить кредит</em></div>
-${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':serviceOnly?'<div class="service-turn-actions"><button class="end-activation-btn" id="actionEndActivation">Пас · следующий игрок</button><button class="secondary-btn" id="actionPassRemaining">Завершить мои ходы этого года</button></div>':''}
+${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':serviceOnly?'<div class="service-turn-actions"><button class="end-activation-btn" id="actionEndActivation">Пас · следующий игрок</button><button class="secondary-btn" id="actionPassRemaining">'+(hireReady?'Пропустить найм · завершить ходы':'Завершить мои ходы этого года')+'</button></div>':''}
 <div class="city-action-grid ${mainUsed?'main-action-used':''} ${serviceOnly?'service-only':''}">
 <button class="city-action-card build ${buildDisabled?'':'action-available'}" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
 <button class="city-action-card capital ${capitalDisabled?'':'action-available'}" id="actionRaiseCapital" ${capitalDisabled?'disabled':''}><b>Привлечь капитал</b><span>+$3 и можно остаться или перейти в 1 соседний район</span><strong>${capitalDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ РАЙОН'}</strong></button>
@@ -1985,13 +1989,16 @@ if(deliveryDraft?.step==='source'){
   return;
 }
 const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly=!mainUsed&&p.workersLeft===0;
+const paidHire=paidReplacementOptions(state,pid);
+const hireReady=paidHire.ok&&paidHire.active&&paidHire.affordable&&paidHire.eligible.length>0;
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
 let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
 +button('free','Свободные',false,'secondary')
-+(serviceOnly?button('service-pass','✓ Все мои ходы',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
++(serviceOnly?button('service-pass',hireReady?'✓ Без найма':'✓ Все мои ходы',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
 el.className='mobile-action-dock active persistent-turn-dock';
 el.setAttribute('aria-label',p.name+' · '+(serviceOnly?'сервисное окно '+(WORKERS_PER_PLAYER-developmentSlotsRemaining(state,pid)+1)+'/3':mainUsed?'основное действие использовано':selected?'представитель #'+selected.number:'выберите представителя')+' · действия');
 el.innerHTML='<div class="mobile-action-buttons">'+html+'</div>';
+if(hireReady)el.querySelector('[data-mobile-action="service-pass"]')?.setAttribute('aria-label','Пропустить оставшиеся ходы и доступный наём за $7');
 $$('[data-mobile-action]').forEach(b=>b.onclick=()=>{
 const action=b.dataset.mobileAction;
 if(action==='delivery')startDeliveryFlow(pid);
@@ -2398,10 +2405,11 @@ const hireInfo=hireOptions.ok&&hireOptions.jailed.length
   +hireOptions.jailed.map(w=>{
     const ready=w.eligible&&hireOptions.active&&hireOptions.affordable;
     const year=1899+w.arrestedRound;
+    const remainingSlots=developmentSlotsRemaining(state,p.id);
     const status=!w.eligible?(w.arrestedRound>=MAX_ROUNDS?'В Фазе I наём недоступен':state.round>w.arrestedRound+1?'Период платного найма завершён':'Наём с '+(year+1)+' года, после мэрии')
       :!hireOptions.active?'Только в собственную активацию города'
       :!hireOptions.affordable?'Нужно $7'
-      :state.activationMainActionUsed?'Новый сотрудник действует в следующем доступном окне':'Можно использовать основное действие в этой активации';
+      :state.activationMainActionUsed?(remainingSlots>1?'Новый сотрудник действует в следующем доступном окне':'Нового основного действия в этом году уже не будет'):'Можно использовать основное действие в этой активации';
     return '<div class="paid-replacement-row"><span><b>Представитель #'+w.number+'</b><small>Арест '+year+' · '+status+'</small></span>'
       +'<button type="button" class="secondary-btn" data-hire-worker="'+escapeHtml(w.id)+'" '+(ready?'':'disabled')+'>Нанять · $7</button></div>';
   }).join('')+'</section>'

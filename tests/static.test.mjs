@@ -12,8 +12,8 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
-  assert.match(html,/app\.js\?v=0539-crime-d31-office-roster/);
-  assert.match(html,/styles\.css\?v=0539-crime-d31-office-roster/);
+  assert.match(html,/app\.js\?v=0540-crime-d32-endtoend-ux/);
+  assert.match(html,/styles\.css\?v=0540-crime-d32-endtoend-ux/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
