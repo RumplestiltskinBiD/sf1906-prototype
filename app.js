@@ -2398,7 +2398,7 @@ const hireInfo=hireOptions.ok&&hireOptions.jailed.length
   +hireOptions.jailed.map(w=>{
     const ready=w.eligible&&hireOptions.active&&hireOptions.affordable;
     const year=1899+w.arrestedRound;
-    const status=!w.eligible?'Наём с '+(year+1)+' года, после мэрии'
+    const status=!w.eligible?(w.arrestedRound>=MAX_ROUNDS?'В Фазе I наём недоступен':state.round>w.arrestedRound+1?'Период платного найма завершён':'Наём с '+(year+1)+' года, после мэрии')
       :!hireOptions.active?'Только в собственную активацию города'
       :!hireOptions.affordable?'Нужно $7'
       :state.activationMainActionUsed?'Новый сотрудник действует в следующем доступном окне':'Можно использовать основное действие в этой активации';
