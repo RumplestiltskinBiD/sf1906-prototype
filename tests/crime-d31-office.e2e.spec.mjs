@@ -89,6 +89,8 @@ for(const size of sizes.slice(0,2)){
   await expect(page.locator('[data-hire-worker="P1W1"]')).toBeEnabled();
   await expect(page.locator('[data-hire-worker="P1W2"]')).toBeDisabled();
   await expect(page.locator('[data-hire-worker="P1W3"]')).toBeDisabled();
+  await expect(page.locator('.paid-replacement-row').nth(1)).toContainText('В Фазе I наём недоступен');
+  await expect(page.locator('.paid-replacement-actions')).not.toContainText('Наём с 1906');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
  });
 }
