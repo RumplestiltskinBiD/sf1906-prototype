@@ -324,6 +324,47 @@ export function restoreExpiredJailedWorkerSlots(state,playerId){
   syncWorkersLeft(state,playerId);
   return {ok:true,restored};
 }
+// D2: a $7 free action replaces a jailed staff SLOT, never creates a fourth worker.
+// Eligibility exists only during the city phase of the immediately following year.
+export const PAID_REPLACEMENT_COST=7;
+export function paidReplacementOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const p=state.players[playerId],active=canUseFreeAction(state,playerId);
+  const jailed=playerWorkers(state,playerId).filter(w=>w.jailed).map(w=>({
+    id:w.id,number:w.number,arrestedRound:w.arrestedRound,
+    eligible:Number.isInteger(w.arrestedRound)&&w.arrestedRound===state.round-1
+  }));
+  return {ok:true,playerId,cost:PAID_REPLACEMENT_COST,active,
+    affordable:p.capital>=PAID_REPLACEMENT_COST,
+    jailed,eligible:jailed.filter(w=>w.eligible).map(w=>w.id)};
+}
+export function hireReplacementWorker(state,playerId,workerId){
+  const options=paidReplacementOptions(state,playerId);
+  if(!options.ok)return options;
+  if(!options.active)return {ok:false,reason:'not-active-turn'};
+  const player=state.players[playerId];
+  if(playerWorkers(state,playerId).length!==WORKERS_PER_PLAYER)return {ok:false,reason:'staff-slots'};
+  const worker=playerWorkers(state,playerId).find(w=>w.id===workerId);
+  if(!worker)return {ok:false,reason:'worker'};
+  if(!worker.jailed)return {ok:false,reason:'not-jailed'};
+  if(worker.arrestedRound===state.round)return {ok:false,reason:'same-year'};
+  if(!options.eligible.includes(worker.id))return {ok:false,reason:'not-eligible-year'};
+  if(!options.affordable)return {ok:false,reason:'capital'};
+  const arrestedRound=worker.arrestedRound;
+  player.capital-=PAID_REPLACEMENT_COST;
+  // The ID/number represents the slot; the prisoner leaves the company's roster.
+  worker.jailed=false;
+  worker.arrestedRound=null;
+  worker.used=false;
+  worker.districtId=STARTING_WORKER_DISTRICT;
+  syncWorkersLeft(state,playerId);
+  logEvent(state,`${player.name}: наём нового представителя #${worker.number} за $7 в Civic Center; осуждённый (арест ${1899+arrestedRound}) исключён из штата и финального штрафа.`,'good');
+  return {ok:true,playerId,workerId:worker.id,arrestedRound,cost:PAID_REPLACEMENT_COST,
+    districtId:worker.districtId,workersLeft:player.workersLeft,
+    remainingActivations:developmentSlotsRemaining(state,playerId),
+    mainActionAvailable:!state.activationMainActionUsed&&developmentSlotsRemaining(state,playerId)>0};
+}
+
 export function activeWorker(state,playerId){
   const id=state.activeWorkerId;
   if(!id)return null;
