@@ -1331,16 +1331,25 @@ function renderSailorRecruitment(){
  sheet.hidden=!active;backdrop.hidden=!active;
  if(!active){sheet.innerHTML='';return;}
  const owner=state.players[con.playerId],district=districtById(con.districtId);
+ const stars=normalizeSuspicion(owner.suspicion),available=playerWorkers(state,con.playerId).filter(w=>!w.jailed);
+ const caught=stars===3,illegalEnabled=available.length>0;
+ const illegalChoices=caught&&illegalEnabled
+   ?'<div class="sailor-arrest-choices"><b>Незаконная вербовка · +$6 → арест</b><small>При ★★★ выберите, кто примет вину. Сначала получите $6, затем подозрение обнулится и применится санкция ареста.</small>'
+     +available.map(w=>'<button class="secondary-btn" data-recruit-mode="illegal" data-arrest-worker="'+escapeHtml(w.id)+'">Незаконно · +$6 · арест #'+w.number+'</button>').join('')+'</div>'
+   :'<button class="secondary-btn" data-recruit-mode="illegal" '+(illegalEnabled?'':'disabled')+'>Незаконная вербовка · +$6 / +1 ★</button>';
+ const note=!illegalEnabled?'Незаконный вариант недоступен: все представители в заключении. Законный найм остаётся доступен.'
+   :caught?'Три звезды: следующее преступление после выплаты приведёт к аресту. Сотрудника для ареста выбирает владелец.'
+   :'Текущее подозрение: '+('★'.repeat(stars)+'☆'.repeat(3-stars))+' · незаконная вербовка добавит одну звезду; влияние не уменьшается.';
  sheet.innerHTML='<div class="recruitment-card"><small>ПОРТОВОЙ БИЗНЕС · ВЫБОР ВЛАДЕЛЬЦА</small>'+
  '<h2>Матросская ночлежка</h2><p><b>'+owner.name+'</b> · '+district.name+'</p>'+
  '<p>После погрузки в местном порту владелец выбирает найм экипажа. Рабочий не расходуется.</p>'+
  '<div class="recruitment-actions"><button class="primary-btn" data-recruit-mode="lawful">Законный найм · +$2</button>'+
- '<button class="secondary-btn" data-recruit-mode="illegal" '+(owner.influence>0?'':'disabled')+'>Незаконная вербовка · +$6 / −1 Влияние</button></div>'+
- (owner.influence<=0?'<small>Незаконная вербовка недоступна при Влиянии 0.</small>':'<small>Влияние уменьшается на один шаг.</small>')+'</div>';
+ illegalChoices+'</div><small class="sailor-risk-note">'+note+'</small></div>';
  $$('[data-recruit-mode]').forEach(b=>b.onclick=()=>{
-   const r=resolveSailorRecruitment(state,con.id,b.dataset.recruitMode);
-   if(!r.ok){showToast('Вербовка сейчас недоступна');return;}
-   showToast('Вербовка: +$'+r.capital+(r.mode==='illegal'?' · −1 Влияние':''));render();
+   const r=resolveSailorRecruitment(state,con.id,b.dataset.recruitMode,b.dataset.arrestWorker||null);
+   if(!r.ok){showToast(r.reason==='arrest-worker'?'Выберите представителя для ареста':r.reason==='no-free-worker'?'Незаконная вербовка: все работники заключены':'Вербовка сейчас недоступна');return;}
+   showToast('Вербовка: +$'+r.capital+(r.arrested?' · арест · подозрение → 0':r.mode==='illegal'?' · подозрение +1 ★':''));
+   render();
  });
 }
 function renderNewProjectDecisions(){
