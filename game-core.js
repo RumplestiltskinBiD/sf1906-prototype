@@ -137,7 +137,7 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает Пиво. +$1 за каждую успешно доставленную партию по общему правилу торговли (после включения системы Товары).',limits:'Приём пива активируется вместе с системой розовых торговых кубиков. До этого действует базовый доход.'},
   {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
   {prestige:0,income:1,id:'wagonboarding',types:['Жилое','Бизнес'],risk:{earthquake:0,fire:1},name:'Вагонный пансион «Виста-дель-Мар»',type:'Жильё',open:3,materials:['Lumber','Lumber'],requires:'Только западные районы: Outer/Inner Sunset, Outer/Inner Richmond',wagonDistricts:['sunset','innersunset','outerrichmond','innerrichmond'],effect:'Доход $1/$2/$3 · быстрое расширение за $2 · перестройка возвращает 1/2/3 Lumber',benefit:'Стартовый доход +$1/год · 0 VP; уровень II/III: +$2/+$3 дохода, П+2/П+3',actionName:'Пристройка / перестройка',actionText:'Быстрое действие без рабочего: $2, +1 уровень (раз в год). Основное действие рабочего: заменить пансион другим проектом на том же участке без повторной покупки земли, засчитав Lumber по уровню.',limits:'Максимум уровень III; один апгрейд в год на здание; максимум 3 Lumber при перестройке, без излишка, staging=3; нельзя перестроить в такой же пансион.'},
-  {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и −1 Влияние',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и −1 шаг Политического влияния. Незаконная недоступна при Влиянии 0.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove, не вводит шкалу коррупции.'},
+  {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и +1 ★ подозрения',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и +1 ★. При ★★★ после выплаты — арест выбранного незаключённого сотрудника, подозрение → 0 и санкции C1.2.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove; незаконный вариант требует хотя бы одного неарестованного сотрудника.'},
   {prestige:3,income:4,id:'press_tower',types:['Бизнес','Промышленное'],risk:{earthquake:0,fire:1},name:'Газетный небоскрёб',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 3+; крупное здание, 5 материалов',landMin:3,effect:'Доход +$4/год · 3 VP · после годового газетного выпуска: +$2 ИЛИ −$2 и +1 Влияние',benefit:'Газетная кампания после каждого ежегодного выпуска · выбор без рабочего',actionName:'Газетная кампания',actionText:'После подведения итогов газеты автоматически выберите +$2 или уплатите $2, чтобы повысить Влияние на 1 шаг. Один раз за год на небоскрёб, включая 1905.',limits:'Выбор после газетных последствий, до годового дохода; платёж — из имеющихся денег, никаких авансов; без действия рабочего.'},
   {prestige:0,income:0,id:'workers_complex',types:['Жилое','Промышленное'],risk:{earthquake:1,fire:2},name:'Фабричный рабочий корпус с ночной сменой',type:'Промышленность',open:3,materials:['Lumber','Lumber','Masonry'],requires:'В районе есть собственная завершённая фабрика или завод, не привязанные к другому корпусу',effect:'Нет собственного дохода · удваивает ежегодный доход выбранной фабрики/завода и её выпуск строительных материалов',benefit:'Ночная смена ×2: доход одной фабрики/завода; Brickworks 2→4 Masonry/год, Foundry 1→2 Steel/год',actionName:'Ночная смена',actionText:'При завершении выбрать одну собственную завершённую фабрику или завод в том же районе. Удваиваются ежегодный доход предприятия и производственная мощность (если производит материалы). Привязка постоянна и не суммируется.',limits:'Подходят Крупная фабрика, Кирпичный завод, Деревообрабатывающая фабрика, Литейно-механический и Консервный завод. Две ночные смены на одно предприятие запрещены; разовая премия деревообработки не удваивается. Комплекс сам не приносит дохода.'},
   {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · Престиж +2 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · +2 VP · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
@@ -1951,19 +1951,35 @@ export function currentSailorRecruitment(state){
   return (state.pendingSailorRecruitments||[]).map(id=>(state.constructions||[]).find(c=>c.id===id))
     .find(con=>con&&con.status==='complete'&&con.projectId==='sailorlodging'&&con.sailorRecruitmentRound!==state.round)||null;
 }
-export function resolveSailorRecruitment(state,constructionId,mode){
+// Stage E / sailors: an automatic choice after ANY player's port pickup is not
+// an ordinary own-turn free action. Reuse the common C1.2 arrest sanction, but
+// retain the original off-turn, once-per-building port-trigger contract.
+export function resolveSailorRecruitment(state,constructionId,mode,arrestWorkerId=null){
   const current=currentSailorRecruitment(state);
   if(!current||current.id!==constructionId||state.phase!=='development')return {ok:false,reason:'no-pending'};
   if(!['lawful','illegal'].includes(mode))return {ok:false,reason:'mode'};
   const owner=state.players[current.playerId];
-  if(mode==='illegal'&&owner.influence<=0)return {ok:false,reason:'influence'};
-  const gain=mode==='illegal'?6:2;
-  const movement=mode==='illegal'?moveInfluence(state,owner.id,-1):null;
+  if(!owner)return {ok:false,reason:'owner'};
+  const illegal=mode==='illegal';
+  const unjailed=playerWorkers(state,owner.id).filter(w=>!w.jailed);
+  if(illegal&&!unjailed.length)return {ok:false,reason:'no-free-worker'};
+  const suspicionBefore=suspicionLevel(state,owner.id);
+  const caught=illegal&&suspicionBefore===MAX_SUSPICION;
+  if(caught&&!unjailed.some(w=>w.id===arrestWorkerId))return {ok:false,reason:'arrest-worker'};
+  const gain=illegal?6:2;
+  // Validate first so a rejected choice cannot consume a trigger or grant cash.
+  // Criminal benefit resolves before the C1.2 arrest, even on 3 stars.
   owner.capital+=gain;
+  let arrest=null;
+  if(caught){
+    arrest=arrestWorkerWithSanctions(state,owner.id,arrestWorkerId);
+    if(!arrest.ok)throw new Error('Sailor arrest invariant violated after validation');
+  }else if(illegal)changeSuspicion(state,owner.id,1);
   current.sailorRecruitmentRound=state.round;
   state.pendingSailorRecruitments.shift();
-  logEvent(state,`${owner.name} — ${mode==='illegal'?'незаконная вербовка':'законный найм'} в ${districtById(current.districtId).name}: +$${gain}${movement?', Влияние −1 шаг':''}.`,'accent');
-  return {ok:true,playerId:owner.id,capital:gain,mode,influenceSteps:movement?.steps||0};
+  logEvent(state,`${owner.name} — ${illegal?'незаконная вербовка':'законный найм'} в ${districtById(current.districtId).name}: +$${gain}${illegal?(caught?', арест представителя #'+arrest.worker.number+' (подозрение → 0)':' и подозрение '+suspicionBefore+'→'+owner.suspicion):''}.`,illegal?'bad':'accent');
+  return {ok:true,playerId:owner.id,capital:gain,mode,
+    suspicionBefore,suspicionAfter:suspicionLevel(state,owner.id),arrested:caught,arrest};
 }
 
 export function currentPressCampaign(state){
