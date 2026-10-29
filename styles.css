@@ -2790,6 +2790,17 @@ body.delivery-route-build #deliveryRouteLayer *{
 .recruitment-card p{margin:0;line-height:1.5}
 .recruitment-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .recruitment-actions button{min-height:62px;white-space:normal;line-height:1.35;padding:10px}
+/* Stage E: sailor risk stays inside the existing port choice sheet. */
+.sailor-arrest-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-column:1/-1;min-width:0}
+.sailor-arrest-choices>b,.sailor-arrest-choices>small{grid-column:1/-1}
+.sailor-arrest-choices>b{font-size:13px}
+.sailor-arrest-choices>small,.sailor-risk-note{font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+.recruitment-actions .sailor-arrest-choices button{min-height:42px;padding:7px;font-size:11px}
+@media(max-width:640px),(max-height:500px) and (max-width:960px){
+ .sailor-arrest-choices{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .recruitment-actions .sailor-arrest-choices button{min-height:38px;padding:5px;font-size:10px}
+}
+
 @media(max-width:640px),(max-height:500px) and (max-width:960px){
  .recruitment-card{padding:16px;gap:10px}
  .recruitment-actions{grid-template-columns:1fr}

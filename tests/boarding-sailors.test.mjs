@@ -91,7 +91,8 @@ test('port delivery queues owner recruitment; lawful and illegal choice are once
  const influence=s.players[0].influence,cash=s.players[0].capital;
  assert.equal(G.resolveSailorRecruitment(s,'S','illegal').ok,true);
  assert.equal(s.players[0].capital,cash+6);
- assert.ok(s.players[0].influence<influence);
+ assert.equal(s.players[0].influence,influence,'illegal mode no longer reduces influence');
+ assert.equal(s.players[0].suspicion,1,'illegal recruitment raises suspicion exactly once');
  assert.equal(s.constructions[0].sailorRecruitmentRound,s.round);
  assert.equal(G.currentSailorRecruitment(s),null);
  assert.equal(G.executeDelivery(s,make()).ok,true);
@@ -101,16 +102,26 @@ test('port delivery queues owner recruitment; lawful and illegal choice are once
  assert.equal(G.resolveSailorRecruitment(s,'S','lawful').ok,true);
  assert.equal(s.players[0].capital,cash+8);
 });
-test('zero influence disables illegal recruitment; failed/industrial loading never creates port business',()=>{
+test('zero influence allows illegal recruitment; no worker forbids it, lawful remains',()=>{
  const s=game(1,'northbeach');s.players[0].influence=0;
  s.constructions=[built('S','sailorlodging','northbeach',0),built('WH','warehouse','northbeach',1)];
  s.logisticsSupply.broadway=['Lumber'];
  const plan={playerId:1,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Lumber'],route:['northbeach'],drops:[{kind:'warehouse',id:'WH',routeIndex:0,materials:['Lumber']}]};
- const bad={...plan,source:{kind:'node',id:'pacificmail'}};assert.equal(G.executeDelivery(s,bad).ok,false);
+ const bad={...plan,source:{kind:'node',id:'pacificmail'}};
+ assert.equal(G.executeDelivery(s,bad).ok,false);
  assert.deepEqual(s.pendingSailorRecruitments,[]);
  assert.equal(G.executeDelivery(s,plan).ok,true);
- assert.equal(G.resolveSailorRecruitment(s,'S','illegal').reason,'influence');
+ assert.equal(G.resolveSailorRecruitment(s,'S','illegal').ok,true);
+ assert.equal(s.players[0].capital,106);
+ assert.equal(s.players[0].suspicion,1);
+ assert.equal(s.players[0].influence,0);
+ s.round=2;s.pendingSailorRecruitments=['S'];s.constructions[0].sailorRecruitmentRound=1;
+ for(const w of s.players[0].workers)G.jailWorker(s,0,w.id);
+ const before=JSON.stringify(s);
+ assert.equal(G.resolveSailorRecruitment(s,'S','illegal').reason,'no-free-worker');
+ assert.equal(JSON.stringify(s),before);
  assert.equal(G.resolveSailorRecruitment(s,'S','lawful').ok,true);
+ assert.equal(s.players[0].suspicion,1);
 });
 
 test('wagon fire risk escalates from P+1 to P+3 and becomes inspectable at levels II/III',()=>{
