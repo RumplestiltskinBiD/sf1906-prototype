@@ -60,12 +60,14 @@ test('sailor E: 3 ★ needs chosen non-prisoner, never consumes trigger on inval
  assert.equal(JSON.stringify(s),frozen);
  assert.equal(act(s,'illegal','unknown').reason,'arrest-worker');
  assert.equal(JSON.stringify(s),frozen);
+ const preview=G.arrestSanctionPreview(s,0);
  assert.equal(act(s,'illegal','P1W1').ok,true);
  assert.equal(staff(s)[0].jailed,true);
  assert.equal(staff(s)[0].arrestedRound,2);
  assert.equal(s.players[0].suspicion,0);
  assert.equal(s.players[0].capital,16);
- assert.equal(s.players[0].influence,2);
+ assert.equal(s.players[0].influence,preview.influenceAfter);
+ assert.equal(s.players[0].prestige,-preview.vpPenalty);
  assert.equal(staff(s).length,3);
  assert.equal(s.pendingSailorRecruitments.length,0);
 });
