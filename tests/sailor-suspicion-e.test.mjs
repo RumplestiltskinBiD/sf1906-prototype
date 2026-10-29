@@ -67,7 +67,7 @@ test('sailor E: 3 ★ needs chosen non-prisoner, never consumes trigger on inval
  assert.equal(s.players[0].suspicion,0);
  assert.equal(s.players[0].capital,16);
  assert.equal(s.players[0].influence,preview.influenceAfter);
- assert.equal(s.players[0].prestige,-preview.vpPenalty);
+ assert.equal(s.players[0].prestige,preview.vpPenalty===0?0:-preview.vpPenalty);
  assert.equal(staff(s).length,3);
  assert.equal(s.pendingSailorRecruitments.length,0);
 });
