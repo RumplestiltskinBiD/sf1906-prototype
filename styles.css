@@ -3053,3 +3053,27 @@ body.delivery-route-build #deliveryRouteLayer *{
  .crime-assessment-card .crime-payment-options{grid-template-columns:repeat(2,minmax(0,1fr))}
  .crime-assessment-card .crime-payment-options button{min-height:38px}
 }
+
+/* D1: suspicion lives inside the existing player cards and Office, never above the map. */
+.suspicion-stars{
+  display:inline-flex;flex:0 0 auto;align-items:center;
+  white-space:nowrap;letter-spacing:-.4px;line-height:1.1;
+  font-size:12px;font-weight:900;color:#d9c697
+}
+.suspicion-stars[data-suspicion-level="0"]{color:#b7b2a9}
+.suspicion-stars[data-suspicion-level="3"]{color:#f2af8f}
+.office-suspicion-details{
+  display:block;margin-top:6px;line-height:1.4;
+  color:#625443;overflow-wrap:break-word
+}
+.office-suspicion-details b{font-size:13px;letter-spacing:-.4px;color:#8c562c}
+@media (max-width:640px), (orientation:landscape) and (max-width:960px) and (max-height:500px){
+  #playersBar .compact-player-stats{
+    grid-template-columns:max-content max-content minmax(0,1fr);
+    gap:3px;min-width:0
+  }
+  #playersBar .compact-player-stats .suspicion-stars{
+    justify-self:end;align-self:center;
+    font-size:10px;letter-spacing:-.6px
+  }
+}
