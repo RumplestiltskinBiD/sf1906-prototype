@@ -28,19 +28,24 @@ async function openOffice(page,width){
 for(const size of [{width:390,height:844},{width:932,height:430},{width:1440,height:900}]){
  test('D2 hires next-year prisoner from Office and creates a real main-action worker '+size.width+'x'+size.height,async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const trace=label=>{if(size.width===1440)console.log('D2_DESKTOP_STEP '+label);};
   const s=game({allJailed:true,capital:21});
   await page.setViewportSize(size);await enter(page,s);
+  trace('seeded');
   const worker=page.locator('[data-dock-worker="P1W1"]');
   await expect(worker).toBeDisabled();
   await expect(page.locator('[data-worker-token="P1W1"]')).toHaveCount(0);
   await openOffice(page,size.width);
+  trace('office-open');
   const box=page.locator('#officeContent .paid-replacement-actions');
   await expect(box).toBeVisible();
   await expect(box.locator('[data-hire-worker]')).toHaveCount(3);
   await expect(box).toContainText('Civic Center');
   const hire=box.locator('[data-hire-worker="P1W1"]');
   await expect(hire).toBeEnabled();
+  trace('hire-enabled');
   await hire.click();
+  trace('hired');
   let next=await saved(page);
   expect(next.players[0].capital).toBe(14);
   expect(next.players[0].suspicion).toBe(2);
@@ -53,6 +58,7 @@ for(const size of [{width:390,height:844},{width:932,height:430},{width:1440,hei
   await expect(page.locator('#playersBar .player-pill[data-office="0"] .compact-jailed-worker, #playersBar .player-pill[data-office="0"] .player-jailed-count')).toContainText('2');
   await expect(box.locator('[data-hire-worker="P1W1"]')).toHaveCount(0);
   await page.locator('#officeDrawer [data-close-drawer]').click();
+  trace('office-closed');
   await expect(worker).toBeEnabled();
   await expect(page.locator('[data-worker-token="P1W1"]')).toHaveCount(1);
   if(size.width!==1440){
@@ -61,10 +67,13 @@ for(const size of [{width:390,height:844},{width:932,height:430},{width:1440,hei
    await page.locator('#mobileActionDock [data-mobile-action="main"]').click();
   }
   await worker.click();
+  trace('worker-selected');
   await expect(page.locator('#actionRaiseCapital')).toBeEnabled();
   await page.locator('#actionRaiseCapital').click();
+  trace('raiseCapital-clicked');
   // Raise Capital is spatial: click the new employee's Civic Center origin.
   await page.locator('[data-district="civic"]').click();
+  trace('civic-clicked');
   next=await saved(page);
   expect(next.activationMainActionUsed).toBe(true);
   expect(next.players[0].workers[0].used).toBe(true);
