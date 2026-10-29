@@ -281,7 +281,9 @@ export function createWorkers(playerId,{districtId=STARTING_WORKER_DISTRICT}={})
     districtId,
     used:false,
     jailed:false,
-    arrestedRound:null
+    arrestedRound:null,
+    replacementKind:null,
+    replacementRound:null
   }));
 }
 export function playerWorkers(state,playerId){return state.players?.[playerId]?.workers||[];}
@@ -318,6 +320,8 @@ export function restoreExpiredJailedWorkerSlots(state,playerId){
     worker.arrestedRound=null;
     worker.districtId=STARTING_WORKER_DISTRICT;
     worker.used=false;
+    worker.replacementKind='free';
+    worker.replacementRound=state.round;
     restored.push(worker.id);
     logEvent(state,`${player.name}: после полного срока заключения штат бесплатно пополнен представителем #${worker.number} в Civic Center.`,'good');
   }
@@ -357,12 +361,44 @@ export function hireReplacementWorker(state,playerId,workerId){
   worker.arrestedRound=null;
   worker.used=false;
   worker.districtId=STARTING_WORKER_DISTRICT;
+  worker.replacementKind='paid';
+  worker.replacementRound=state.round;
   syncWorkersLeft(state,playerId);
   logEvent(state,`${player.name}: наём нового представителя #${worker.number} за $7 в Civic Center; осуждённый (арест ${1899+arrestedRound}) исключён из штата и финального штрафа.`,'good');
   return {ok:true,playerId,workerId:worker.id,arrestedRound,cost:PAID_REPLACEMENT_COST,
     districtId:worker.districtId,workersLeft:player.workersLeft,
     remainingActivations:developmentSlotsRemaining(state,playerId),
     mainActionAvailable:!state.activationMainActionUsed&&developmentSlotsRemaining(state,playerId)>0};
+}
+
+// D3.1: read-only staff overview for Office; never advance prison terms by rendering.
+// Only current replacement metadata is retained; no register of former prisoners.
+export function workerRosterPreview(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const round=Number.isInteger(state.round)?state.round:1;
+  const options=paidReplacementOptions(state,playerId);
+  const workers=playerWorkers(state,playerId).map(w=>{
+    const jailed=!!w.jailed;
+    const arrestRound=jailed&&Number.isInteger(w.arrestedRound)?w.arrestedRound:null;
+    const paidRound=arrestRound!==null&&arrestRound+1<=MAX_ROUNDS?arrestRound+1:null;
+    const freeRound=arrestRound!==null&&arrestRound+2<=MAX_ROUNDS?arrestRound+2:null;
+    const kind=!jailed&&['paid','free'].includes(w.replacementKind)
+      &&Number.isInteger(w.replacementRound)&&w.replacementRound>=1&&w.replacementRound<=round
+      ?w.replacementKind:null;
+    const replacementRound=kind?w.replacementRound:null;
+    const status=jailed?'jailed':kind==='paid'?'replaced-paid':kind==='free'?'replaced-free':w.used?'used':'ready';
+    return {id:w.id,number:w.number,status,jailed,used:!!w.used,districtId:w.districtId,
+      arrestRound,arrestYear:arrestRound!==null?1899+arrestRound:null,
+      paidRound,paidYear:paidRound!==null?1899+paidRound:null,
+      freeRound,freeYear:freeRound!==null?1899+freeRound:null,
+      eligibleNow:options.eligible.includes(w.id),hireEnabled:options.active&&options.affordable&&options.eligible.includes(w.id),
+      replacementKind:kind,replacementRound,
+      replacementYear:replacementRound!==null?1899+replacementRound:null};
+  });
+  return {ok:true,playerId,year:1899+round,workers,
+    ready:workers.filter(w=>!w.jailed&&!w.used).length,
+    jailed:workers.filter(w=>w.jailed).length,
+    used:workers.filter(w=>!w.jailed&&w.used).length};
 }
 
 export function activeWorker(state,playerId){

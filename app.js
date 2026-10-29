@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
-projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,paidReplacementOptions,hireReplacementWorker,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
+projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -104,7 +104,9 @@ number:w.number||i+1,
 districtId:w.districtId||'civic',
 used:!!w.used,
 jailed:!!w.jailed,
-arrestedRound:w.jailed?(Number.isInteger(w.arrestedRound)?w.arrestedRound:parsed.round):null
+arrestedRound:w.jailed?(Number.isInteger(w.arrestedRound)?w.arrestedRound:parsed.round):null,
+replacementKind:['paid','free'].includes(w.replacementKind)&&Number.isInteger(w.replacementRound)&&w.replacementRound>=1&&w.replacementRound<=parsed.round?w.replacementKind:null,
+replacementRound:['paid','free'].includes(w.replacementKind)&&Number.isInteger(w.replacementRound)&&w.replacementRound>=1&&w.replacementRound<=parsed.round?w.replacementRound:null
 })):createWorkers(p.id);
 if(originalVersion!=='0.24'&&(!Array.isArray(p.workers)||!p.workers.length)){
 const legacyLeft=Math.max(0,Math.min(WORKERS_PER_PLAYER,p.workersLeft??WORKERS_PER_PLAYER));
@@ -2367,6 +2369,28 @@ const suspicionLevelNow=normalizeSuspicion(p.suspicion);
   :'в конце года: $6, −2 шага влияния либо $3 и −1 шаг влияния';
  const suspicionInfo='<span class="office-suspicion-details" data-office-suspicion="'+suspicionLevelNow+'">Подозрение <b>'+suspicionStars(suspicionLevelNow)+'</b> · '+fineText+(suspicionLevelNow>=2?'; если ни один полный платёж недоступен — арест':'')+'. После оплаты звёзды сохраняются.</span>';
  const caseInfo=caseVisible?'<div class="wagon-upgrades legal-case-actions"><b>⚖ Уладить дело · '+('★'.repeat(caseOptions.level)||'☆☆☆')+'</b><small>'+(caseUsed?'В этом году уже использовано':caseOptions.active?'Свободное действие, один раз за год: снизить подозрение на 1':'Доступно в собственный ход')+'</small>'+(caseUsed?'':'<div class="legal-case-buttons"><button type="button" class="secondary-btn" data-legal-case="cash" '+(caseOptions.cash?'':'disabled')+'>−$4 · −1 ★</button><button type="button" class="secondary-btn" data-legal-case="influence" '+(caseOptions.influence?'':'disabled')+'>−2 шага Вл · −1 ★</button></div>')+'</div>':'';
+// D3.1: keep the full roster in this Office; no new map, player-HUD or floating layer.
+const roster=workerRosterPreview(state,p.id);
+const rosterHtml=roster.ok?'<section class="office-staff-roster" aria-label="Штат и сроки заключения">'
+  +'<div class="office-staff-head"><b>Штат · 3 представителя</b><small>Готовы '+roster.ready+' · арестованы '+roster.jailed+' · использованы '+roster.used+'</small></div>'
+  +roster.workers.map(w=>{
+    const location=districtById(w.districtId)?.name||w.districtId||'Civic Center';
+    const title=w.jailed?'В заключении':w.replacementKind==='paid'?'Новый · наём за $7':w.replacementKind==='free'?'Новый · бесплатно':w.used?'Действие использовано':'Готов';
+    let detail;
+    if(w.jailed){
+      const arrest=w.arrestYear===null?'Год ареста неизвестен':'Арест '+w.arrestYear;
+      const paid=w.paidYear===null?'платный наём до конца Фазы I недоступен':'наём за $7: '+w.paidYear+' после мэрии';
+      const free=w.freeYear===null?'бесплатной замены до конца Фазы I нет':'бесплатная замена: начало '+w.freeYear;
+      detail=arrest+' · '+paid+' · '+free;
+    }else if(w.replacementKind){
+      detail=(w.replacementKind==='paid'?'Заменён за $7':'Штат пополнен бесплатно')
+        +' в '+w.replacementYear+' · сейчас: '+location+' · '+(w.used?'действие использовано':'работник не использован');
+    }else{
+      detail='Сейчас: '+location+' · '+(w.used?'основное действие использовано':'работник не использован');
+    }
+    return '<div class="office-staff-row '+(w.jailed?'jailed':w.replacementKind?'replaced':'regular')+'" data-office-worker="'+escapeHtml(w.id)+'" data-office-worker-status="'+w.status+'">'
+      +'<span class="office-staff-number">#'+w.number+'</span><span class="office-staff-main"><b>'+title+'</b><small>'+detail+'</small></span></div>';
+  }).join('')+'</section>':'';
 // D2: reuse the existing Office / mobile "Свободные" drawer for paid hires.
 const hireOptions=paidReplacementOptions(state,p.id);
 const hireInfo=hireOptions.ok&&hireOptions.jailed.length
@@ -2374,7 +2398,7 @@ const hireInfo=hireOptions.ok&&hireOptions.jailed.length
   +hireOptions.jailed.map(w=>{
     const ready=w.eligible&&hireOptions.active&&hireOptions.affordable;
     const year=1899+w.arrestedRound;
-    const status=!w.eligible?'Наём с '+(year+1)+' года, после мэрии'
+    const status=!w.eligible?(w.arrestedRound>=MAX_ROUNDS?'В Фазе I наём недоступен':state.round>w.arrestedRound+1?'Период платного найма завершён':'Наём с '+(year+1)+' года, после мэрии')
       :!hireOptions.active?'Только в собственную активацию города'
       :!hireOptions.affordable?'Нужно $7'
       :state.activationMainActionUsed?'Новый сотрудник действует в следующем доступном окне':'Можно использовать основное действие в этой активации';
@@ -2385,7 +2409,7 @@ const hireInfo=hireOptions.ok&&hireOptions.jailed.length
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${caseInfo}${hireInfo}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.${suspicionInfo}</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead" id="officeConstructionsTitle">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${rosterHtml}${caseInfo}${hireInfo}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>Престиж</span><strong>${p.prestige||0} VP</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.${suspicionInfo}</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead" id="officeConstructionsTitle">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $$('[data-hire-worker]').forEach(b=>b.onclick=()=>{
  const result=hireReplacementWorker(state,p.id,b.dataset.hireWorker);
