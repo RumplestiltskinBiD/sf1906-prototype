@@ -54,7 +54,8 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   const stored=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
   expect(stored.pendingSailorRecruitments).toEqual([]);
   expect(stored.players[0].capital).toBe(86);
-  expect(stored.players[0].influence).toBeLessThan(5);
+  expect(stored.players[0].influence).toBe(5);
+  expect(stored.players[0].suspicion).toBe(1);
   await page.reload();await expect(modal).toBeHidden();
  });
 }
