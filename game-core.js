@@ -1878,10 +1878,12 @@ export function validateDeliveryPlan(state,plan){
       if(!wh||wh.playerId!==plan.playerId||!isWarehouseConstruction(wh)||wh.status!=='complete')return {ok:false,reason:'target'};
       if(pickups.some(p=>p.source.kind==='warehouse'&&p.source.id===wh.id))return {ok:false,reason:'same-warehouse'};
       const stored=[...(warehouseDraft.get(wh.id)||warehouseInventory(wh)),...drop.materials];
+      if(drop.materials.some(t=>!(t in RESOURCE_PRICES)))return {ok:false,reason:'target-material'};
       if(stored.length>warehouseStorageCapacity(wh))return {ok:false,reason:'target-capacity'};
       warehouseDraft.set(wh.id,stored);
     }else if(drop.kind==='freight-yard'){
       if(drop.id!==FREIGHT_YARD.id||pickups.some(p=>p.source.kind==='freight-yard'))return {ok:false,reason:'same-freight-yard'};
+      if(drop.materials.some(t=>!(t in RESOURCE_PRICES)))return {ok:false,reason:'target-material'};
       freightYardDraft.push(...drop.materials);
       if(freightYardDraft.length>FREIGHT_YARD.capacityPerPlayer)return {ok:false,reason:'target-capacity'};
     }else return {ok:false,reason:'target'};
@@ -1915,8 +1917,11 @@ export function validateDeliveryPlan(state,plan){
 
 export function executeDelivery(state,plan){
   const criminal=deliveryAllCargo(plan).includes(CONTRABAND_CARGO);
-  if(criminal)return resolveCriminalAction(state,plan.playerId,{mode:'free',arrestWorkerId:plan.arrestWorkerId,suspicionGain:1,
-    perform:draft=>executeDeliveryCore(draft,plan)});
+  if(criminal){
+    const result=resolveCriminalAction(state,plan.playerId,{mode:'free',arrestWorkerId:plan.arrestWorkerId,suspicionGain:1,
+      perform:draft=>executeDeliveryCore(draft,plan)});
+    return result.ok?{...result.effect,criminal:result,arrested:result.arrested}:result;
+  }
   return executeDeliveryCore(state,plan);
 }
 function executeDeliveryCore(state,plan){
