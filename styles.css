@@ -1412,7 +1412,7 @@ button.city-action-card{cursor:pointer}
   border:1px solid #c4b59d;border-radius:999px;background:#fff8ec;padding:5px 8px;cursor:pointer
 }
 .load-resource>span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:900}
-.load-resource.lumber>span{background:#8a633f}.load-resource.masonry>span{background:#a75c49}.load-resource.steel>span{background:#66727a}
+.load-resource.lumber>span{background:#8a633f}.load-resource.masonry>span{background:#a75c49}.load-resource.steel>span{background:#66727a}.load-resource.contraband>span{background:#8055b8}
 .load-resource small{grid-column:2/4;font-size:8px;color:#7a6d5c}
 .load-resource:disabled{opacity:.35;cursor:not-allowed}
 .cargo-box{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 9px;border-radius:10px;background:#e8dcc8;font-size:10px}
