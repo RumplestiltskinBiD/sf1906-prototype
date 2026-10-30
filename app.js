@@ -476,7 +476,7 @@ const RESOURCE_ORDER=['Lumber','Masonry','Steel'];
 const CARGO_ORDER=[...RESOURCE_ORDER,CONTRABAND_CARGO];
 function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь',Contraband:'Контрабанда'}[x]||x;}
 function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С',Contraband:'Ф'}[x]||'?';}
-function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel'}[x]||'';}
+function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel',Contraband:'contraband'}[x]||'';}
 function logisticsKindLabel(kind){
 return {port:'Порт',rail:'Ж/д станция','rail-port':'Порт + ж/д','industrial-rail-port':'Порт + ж/д · промышленный'}[kind]||kind;
 }
@@ -714,6 +714,7 @@ if(!h||!src)return;
 if(deliveryDraft.cargo.length>=h.capacity){showToast('Перевозчик заполнен');return;}
 const have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
 if((used[type]||0)>=(have[type]||0)){showToast('Больше такого ресурса нет');return;}
+if(type===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
 deliveryDraft.cargo.push(type);render();
 }
 function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.cargo=[];render();}}
@@ -775,6 +776,7 @@ function addExtraPickupCargo(type){
   const info=deliverySourceInfo(state,d.playerId,d.pickupSource);
   const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId),at=d.route.length-1;
   if(!info||!hauler||!info.inventory.includes(type))return;
+if(type===CONTRABAND_CARGO&&deliveryAllCargo(d).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
   if(deliveryOnboardAt(at).length>=hauler.capacity){showToast('Перевозчик заполнен: сначала разгрузите груз');return;}
   const total=[{source:d.source,cargo:d.cargo},...(d.pickups||[])]
      .filter(p=>p.source?.kind===d.pickupSource.kind&&p.source?.id===d.pickupSource.id)
@@ -805,7 +807,7 @@ function pickupSelectorHtml(){
         const loadHere=d.pickups.find(p=>p.routeIndex===d.route.length-1&&p.source.kind===src.kind&&p.source.id===src.id)?.cargo||[];
         const price=src.kind==='industry'?deliveryMaterialCost(state,src,[...loadHere,t],d.playerId).cost-deliveryMaterialCost(state,src,loadHere,d.playerId).cost:
           src.kind==='node'?RESOURCE_PRICES[t]:src.kind==='supplier'?info.unitPrice:0;
-        html+='<button data-extra-cargo="'+t+'" '+((n===0||free<=0)?'disabled':'')+'>'+materialLabel(t)+' · '+n+' · $'+price+'</button>';
+        html+='<button data-extra-cargo="'+t+'" '+((n===0||free<=0||(t===CONTRABAND_CARGO&&deliveryAllCargo(d).includes(CONTRABAND_CARGO)))?'disabled':'')+'>'+materialLabel(t)+' · '+n+' · $'+price+'</button>';
       }
       html+='</div>';
     }else for(const src of sources){
@@ -864,7 +866,7 @@ function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
-if(kind==='freight-yard')return id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='freight-yard')return type!==CONTRABAND_CARGO&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||!deliveryDraft.route.includes(con.districtId))return false;
 if(kind==='contraband-sale')return con.projectId==='rare_goods_shop'&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
@@ -1002,7 +1004,7 @@ html+='<div class="delivery-instruction">2. Перевозчик + груз из
 for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
 html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-grid">';
 for(const t of CARGO_ORDER){
-const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity;
+const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
 const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
   srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:srcKind==='contraband'?'$0':'ОПЛАЧЕНО';
