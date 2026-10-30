@@ -20,19 +20,19 @@ function finish(s,id,pid,projectId,district){
   return G.completeConstruction(s,c);
 }
 
-test('four new mono-type projects complete five pure building types per category; temporary two-copy pool',()=>{
-  assert.equal(G.PROJECTS.length,33);
+test('customs and rare-goods additions expand trading and mixed catalog; two-copy pool',()=>{
+  assert.equal(G.PROJECTS.length,35);
   assert.equal(G.PROJECT_COPIES,2);
   const pool=G.createProjectCardPool({rng:()=>0.1});
-  assert.equal(pool.length,66);
+  assert.equal(pool.length,70);
   for(const card of G.PROJECTS){
     assert.equal(pool.filter(c=>c.id===card.id).length,2,card.id);
   }
   for(const category of G.BUILDING_TYPES){
     const pure=G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]===category);
-    assert.equal(pure.length,5,category);
+    assert.equal(pure.length,category==='Торговое'?6:5,category);
   }
-  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,8);
+  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,9);
 });
 
 test('new mono-type card recipes, income, prestige, hazards and large-building rules',()=>{
