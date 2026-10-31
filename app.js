@@ -1048,7 +1048,7 @@ for(const t of CARGO_ORDER){
 const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
 const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
-  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:srcKind==='contraband'?'$0':'ОПЛАЧЕНО';
+  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:['contraband','goods'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
 const stockText=deliveryDraft.source.kind==='supplier'?'∞ доступно':left+' ост.';
 html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+sourcePrice+'</strong><small>'+stockText+' · нужно '+(totalNeeds[t]||0)+'</small></button>';
 }
@@ -1072,7 +1072,7 @@ const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?rout
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
 if(!focus){
-html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, пекарню, склад или грузовой двор на карте.</span></div>'
+html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, пивную, пекарню, склад или грузовой двор на карте.</span></div>'
 +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
@@ -1096,7 +1096,7 @@ const hasCurrentTarget=actionableTargets.some(con=>con.districtId===last);
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. В районе есть подходящая точка разгрузки.':'3. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
 deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Ф '+(left.Contraband||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
+html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Ф '+(left.Contraband||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
 for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
@@ -1978,7 +1978,7 @@ if(fireActionDraft){
 }
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const capitalDisabled=mainUsed||!selected;
-const deliveryDisabled=!canUseFreeAction(state,pid);
+const deliveryDisabled=!canUseFreeAction(state,pid)||state.lastDeliveryKey===currentDeliveryKey(state,pid);
 const paidHire=paidReplacementOptions(state,pid);
 const hireReady=paidHire.ok&&paidHire.active&&paidHire.affordable&&paidHire.eligible.length>0;
 el.innerHTML=`<div class="turn-banner player-${p.key} ${mainUsed?'main-used':''}"><span class="player-dot ${p.key}"></span><div><small>${serviceOnly?'СЕРВИСНОЕ ОКНО':'АКТИВАЦИЯ'} ${workerSlot}/3</small><strong>${p.name}</strong><span>👤 ${p.workersLeft}/3 · VP ${p.prestige||0} · Проекты ${availableProjects} · Кредиты ${debt}/${MAX_ACTIVE_LOANS}${contract?' · Контракт':''}${procurement?` · Закупка ${procurement}`:''}</span></div><span class="activation-state">${serviceOnly?'НЕТ СВОБОДНЫХ РАБОТНИКОВ':mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':selected?`ПРЕДСТАВИТЕЛЬ #${selected.number} ГОТОВ`:'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'}</span></div>
@@ -2084,7 +2084,7 @@ const p=state.players[pid],mainUsed=!!state.activationMainActionUsed,serviceOnly
 const paidHire=paidReplacementOptions(state,pid);
 const hireReady=paidHire.ok&&paidHire.active&&paidHire.affordable&&paidHire.eligible.length>0;
 const button=(id,label,disabled=false,cls='')=>'<button class="mobile-action-shortcut '+cls+'" data-mobile-action="'+id+'" '+(disabled?'disabled':'')+'>'+label+'</button>';
-let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid),'free')
+let html=button('delivery','🚚 Доставка',!canUseFreeAction(state,pid)||state.lastDeliveryKey===currentDeliveryKey(state,pid),'free')
 +button('free','Свободные',false,'secondary')
 +(serviceOnly?button('service-pass',hireReady?'✓ Без найма':'✓ Все мои ходы',false,'primary'):mainUsed?button('end','✓ Завершить',false,'primary'):button('main','Основные',false,'primary'));
 el.className='mobile-action-dock active persistent-turn-dock';
