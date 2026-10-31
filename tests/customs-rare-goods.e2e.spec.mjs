@@ -103,6 +103,7 @@ test('shop fixed income survives changing land and future rival business in save
  await seed(page,s);
  await page.locator('#officeBtn').click();
  await expect(page.locator('#officeContent')).toContainText('Лавка редких товаров');
+ await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
  const after=await saved(page);
  expect(after.constructions.find(c=>c.id==='S').fixedIncome).toBe(2);
 });
