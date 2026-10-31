@@ -6,7 +6,7 @@ createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,devel
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
-availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,
+availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,
 roundIncome,grossRoundIncome,buildingIncome,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
@@ -137,6 +137,8 @@ warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
 completedRound:x.completedRound??null,
 fireSafetyModernized:!!x.fireSafetyModernized,
  wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
+contrabandStock:x.projectId==='customs_warehouse'&&x.status==='complete'?Math.max(0,Math.min(2,Number.isInteger(x.contrabandStock)?x.contrabandStock:2)):0,
+fixedIncome:x.projectId==='rare_goods_shop'&&x.status==='complete'?(Number.isInteger(x.fixedIncome)?x.fixedIncome:1):x.fixedIncome,
 lostMaterials:Array.isArray(x.lostMaterials)?x.lostMaterials:[]
 }));
 parsed.market=(parsed.market||[]).map((m,i)=>m?({...m,uid:m.uid||`MIG-M-${i}-${m.id}`}):null);
@@ -276,6 +278,19 @@ if(!parsed.pressAndWorkersExpansionV1){
  const step=Math.max(1,Math.floor((deck.length+cards.length)/(cards.length+1)));
  cards.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
  parsed.deck=deck;parsed.pressAndWorkersExpansionV1=true;
+}
+if(!parsed.criminalTradeV1){
+  const ids=['customs_warehouse','rare_goods_shop'];
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const additions=[];
+  for(const id of ids)for(let i=held.filter(x=>x===id).length;i<PROJECT_COPIES;i++)additions.push({uid:'CRIME-GOODS-'+id+'-'+(i+1),id});
+  parsed.deck=parsed.deck||[];
+  parsed.deck.unshift(...additions);
+  parsed.criminalTradeV1=true;
 }
 if(!parsed.residentialMixedV1){
  const ids=['bakery','orphanage'];
@@ -458,9 +473,10 @@ type==='Торговое'||type==='Логистика'?'type-logistics':
 type==='Общественное'||type==='Городская служба'?'type-civic':'type-infra';
 }
 const RESOURCE_ORDER=['Lumber','Masonry','Steel'];
-function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь'}[x]||x;}
-function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С'}[x]||'?';}
-function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel'}[x]||'';}
+const CARGO_ORDER=[...RESOURCE_ORDER,CONTRABAND_CARGO];
+function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь',Contraband:'Контрабанда'}[x]||x;}
+function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С',Contraband:'Ф'}[x]||'?';}
+function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel',Contraband:'contraband'}[x]||'';}
 function logisticsKindLabel(kind){
 return {port:'Порт',rail:'Ж/д станция','rail-port':'Порт + ж/д','industrial-rail-port':'Порт + ж/д · промышленный'}[kind]||kind;
 }
@@ -698,6 +714,7 @@ if(!h||!src)return;
 if(deliveryDraft.cargo.length>=h.capacity){showToast('Перевозчик заполнен');return;}
 const have=deliveryCounts(src.inventory),used=deliveryCounts(deliveryDraft.cargo);
 if((used[type]||0)>=(have[type]||0)){showToast('Больше такого ресурса нет');return;}
+if(type===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
 deliveryDraft.cargo.push(type);render();
 }
 function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.cargo=[];render();}}
@@ -715,7 +732,7 @@ function deliveryTargetDistrict(drop){
 function deliveryPickupSources(){
   const d=deliveryDraft;if(d?.step!=='route')return [];
   const visit=d.route.length-1,district=d.route[visit];
-  const sources=[...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
+  const sources=[...completedCustomsWarehouses(state).filter(c=>contrabandInventory(c).length).map(c=>({kind:'contraband',id:c.id})),...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
     ...NEUTRAL_MATERIAL_SUPPLIERS.map(n=>({kind:'supplier',id:n.id})),
     ...completedWarehouses(state,d.playerId).map(w=>({kind:'warehouse',id:w.id})),
     ...completedIndustrialProducers(state).map(p=>({kind:'industry',id:p.id})),
@@ -731,7 +748,7 @@ function deliveryPickupSources(){
       .flatMap(p=>p.cargo||[]);
     if(info.unlimited)return true;
     const used=deliveryCounts(previous),stock=deliveryCounts(info.inventory);
-    return RESOURCE_ORDER.some(t=>(used[t]||0)<(stock[t]||0));
+    return CARGO_ORDER.some(t=>(used[t]||0)<(stock[t]||0));
   });
 }
 function deliveryOnboardAt(stop){
@@ -759,6 +776,7 @@ function addExtraPickupCargo(type){
   const info=deliverySourceInfo(state,d.playerId,d.pickupSource);
   const hauler=DELIVERY_HAULERS.find(h=>h.id===d.haulerId),at=d.route.length-1;
   if(!info||!hauler||!info.inventory.includes(type))return;
+if(type===CONTRABAND_CARGO&&deliveryAllCargo(d).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
   if(deliveryOnboardAt(at).length>=hauler.capacity){showToast('Перевозчик заполнен: сначала разгрузите груз');return;}
   const total=[{source:d.source,cargo:d.cargo},...(d.pickups||[])]
      .filter(p=>p.source?.kind===d.pickupSource.kind&&p.source?.id===d.pickupSource.id)
@@ -784,12 +802,12 @@ function pickupSelectorHtml(){
       const src=d.pickupSource,info=deliverySourceInfo(state,d.playerId,src),used=deliveryCounts([{source:d.source,cargo:d.cargo},...d.pickups].filter(p=>p.source.kind===src.kind&&p.source.id===src.id).flatMap(p=>p.cargo));
       const stock=deliveryCounts(info.inventory);
       html+='<b>'+info.name+'</b><div class="delivery-extra-load-buttons">';
-      for(const t of RESOURCE_ORDER){
+      for(const t of CARGO_ORDER){
         const n=info.unlimited?'∞':Math.max(0,(stock[t]||0)-(used[t]||0));
         const loadHere=d.pickups.find(p=>p.routeIndex===d.route.length-1&&p.source.kind===src.kind&&p.source.id===src.id)?.cargo||[];
         const price=src.kind==='industry'?deliveryMaterialCost(state,src,[...loadHere,t],d.playerId).cost-deliveryMaterialCost(state,src,loadHere,d.playerId).cost:
           src.kind==='node'?RESOURCE_PRICES[t]:src.kind==='supplier'?info.unitPrice:0;
-        html+='<button data-extra-cargo="'+t+'" '+((n===0||free<=0)?'disabled':'')+'>'+materialLabel(t)+' · '+n+' · $'+price+'</button>';
+        html+='<button data-extra-cargo="'+t+'" '+((n===0||free<=0||(t===CONTRABAND_CARGO&&deliveryAllCargo(d).includes(CONTRABAND_CARGO)))?'disabled':'')+'>'+materialLabel(t)+' · '+n+' · $'+price+'</button>';
       }
       html+='</div>';
     }else for(const src of sources){
@@ -812,7 +830,7 @@ function routeEarlyUnloadHtml(){
   }else{
     const kind=deliveryRouteTargetKind(focus);
     html+='<strong>Разгрузить: '+districtById(focus.districtId)?.name+'</strong><div class="drop-buttons">';
-    for(const type of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+type+'" '+(deliveryCanDrop(kind,focus.id,type)?'':'disabled')+'>+'+materialShort(type)+'</button>';
+    for(const type of CARGO_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+type+'" '+(deliveryCanDrop(kind,focus.id,type)?'':'disabled')+'>+'+materialShort(type)+'</button>';
     html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button>';
   }
   return html+'</div>';
@@ -848,9 +866,11 @@ function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
-if(kind==='freight-yard')return id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='freight-yard')return type!==CONTRABAND_CARGO&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
-if(!con||con.playerId!==deliveryDraft.playerId||!deliveryDraft.route.includes(con.districtId))return false;
+if(!con||!deliveryDraft.route.includes(con.districtId))return false;
+if(kind==='contraband-sale')return con.projectId==='rare_goods_shop'&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
+if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO)return false;
 if(kind==='bakery')return con.projectId==='bakery'&&con.status==='complete'&&type==='Lumber'&&bakeryInventory(con).length+assigned.length<1;
 if(kind==='warehouse')return isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)&&warehouseInventory(con).length+assigned.length<warehouseStorageCapacity(con);
 if(kind!=='construction'||con.status!=='under-construction')return false;
@@ -863,6 +883,7 @@ return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(cc[t]||0))<=(left[t]||0))
 function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
+if(con.status==='complete'&&con.projectId==='rare_goods_shop')return 'contraband-sale';
 if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='bakery'&&con.status==='complete'?'bakery':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
@@ -871,6 +892,7 @@ function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deli
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='contraband-sale')return deliveryCanDrop(kind,con.id,CONTRABAND_CARGO);
 if(kind==='bakery')return bakeryInventory(con).length<1;
 if(kind==='warehouse')return warehouseInventory(con).length<warehouseStorageCapacity(con);
 const req=deliveryCounts(projectById(con.projectId)?.materials||[]),have=deliveryCounts(con.materialsDelivered||[]),cargo=deliveryCounts(deliveryAllCargo(deliveryDraft));
@@ -878,7 +900,7 @@ const missing=Object.fromEntries(RESOURCE_ORDER.map(t=>[t,Math.max(0,(req[t]||0)
 if(!RESOURCE_ORDER.some(t=>(cargo[t]||0)>0&&(missing[t]||0)>0))return false;
 return (con.materialsDelivered||[]).length<3||RESOURCE_ORDER.every(t=>(cargo[t]||0)>=(missing[t]||0));
 }
-function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&RESOURCE_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
+function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&CARGO_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
 function openDeliveryTargetFromMap(id){if(!isMobile()||!['unload','route'].includes(deliveryDraft?.step))return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
 function addDeliveryDrop(kind,id,type){
 if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
@@ -888,7 +910,7 @@ function clearDeliveryDrops(){
 if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
 }
 function deliveryPlan(){
-return {playerId:deliveryDraft.playerId,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials]}))};
+return {playerId:deliveryDraft.playerId,arrestWorkerId:deliveryDraft.arrestWorkerId||null,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials]}))};
 }
 function confirmDeliveryRoute(){
 if(!isMobile()||deliveryDraft?.step!=='route')return;
@@ -913,7 +935,7 @@ if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 function confirmDelivery(){
 if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
 if(!check.ok){showToast(({unassigned:'Разгрузите весь груз',capital:'Недостаточно денег',capacity:'Превышена вместимость','source-stock':'Недостаточно ресурсов', 'unload-before-pickup':'Груз разгружен раньше погрузки','duplicate-pickup':'Повторная погрузка из одного источника на той же остановке'}[check.reason])||'Маршрут недопустим: '+check.reason);return;}
-const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена');return;}
+const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена: '+r.reason);return;}
 deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
 render();
 }
@@ -972,6 +994,7 @@ const own=plant.playerId===pid,resource=INDUSTRIAL_PRODUCTION[plant.projectId].r
 const offer=resource==='Steel'?(own?'$1/Steel':'$2/Steel'):own?'$1 за 2 Masonry в одной погрузке (иначе $1/шт.)':'$1/Masonry';
 html+='<button class="delivery-source-card warehouse-source" data-ds-plant="'+plant.id+'" '+(inv.length?'':'disabled')+'><b>'+projectById(plant.projectId).name+'</b><span>'+districtById(plant.districtId)?.name+' · '+inv.length+'/'+capacity+' · '+state.players[plant.playerId].name+'</span><small>'+offer+' · '+(own?'свой':'владельцу +$1 за покупку')+' · Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
 const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);
+for(const wh of completedCustomsWarehouses(state)){const stock=contrabandInventory(wh).length;html+='<button class="delivery-source-card" data-ds-contraband="'+wh.id+'" '+(stock?'':'disabled')+'><b>Таможенный пакгауз</b><span>'+districtById(wh.districtId)?.name+' · владелец '+state.players[wh.playerId].name+'</span><small>Фиолетовых кубиков: '+stock+'/2 · продажа +$6 и +1 ★</small></button>';}
 html+='<button class="delivery-source-card freight-yard-source" data-ds-yard="'+FREIGHT_YARD.id+'" '+(yi.length?'':'disabled')+'><b>Грузовой двор</b><span>Western Addition · ваша секция '+yi.length+'/2</span><small>Д '+(yc.Lumber||0)+' · К '+(yc.Masonry||0)+' · С '+(yc.Steel||0)+' · уже оплачено</small></button></div>';
 }
 }else if(step==='load'){
@@ -980,11 +1003,11 @@ const totalNeeds=aggregateConstructionNeeds(pid);
 html+='<div class="delivery-instruction">2. Перевозчик + груз из <b>'+src.name+'</b>.</div><div class="hauler-grid">';
 for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
 html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-grid">';
-for(const t of RESOURCE_ORDER){
-const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity;
+for(const t of CARGO_ORDER){
+const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
 const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
-  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:'ОПЛАЧЕНО';
+  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:srcKind==='contraband'?'$0':'ОПЛАЧЕНО';
 const stockText=deliveryDraft.source.kind==='supplier'?'∞ доступно':left+' ост.';
 html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+sourcePrice+'</strong><small>'+stockText+' · нужно '+(totalNeeds[t]||0)+'</small></button>';
 }
@@ -1008,17 +1031,18 @@ const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?rout
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
 if(!focus){
-html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</strong><span>Тапните подсвеченную стройку, пекарню, склад или грузовой двор на карте.</span></div>'
+html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, пекарню, склад или грузовой двор на карте.</span></div>'
 +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+warehouseStorageCapacity(focus);}
 else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/1';}
+else if(kind==='contraband-sale'){label='Лавка редких товаров';cap='Нелегальный сбыт · +$6 и +1 ★';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,focus.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,focus.id)?.materials||[];
 html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
-for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,focus.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
+for(const t of CARGO_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+focus.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,focus.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
 html+='</div><button id="deliveryCloseTarget" class="ghost-btn">Готово</button></div>';
 }
 html+='<div class="ux3-unload-footer"><span>Итого <b>$'+(cost?.total||0)+'</b>'+(cost?.yardRentCost?'<small> · аренда $'+cost.yardRentCost+'</small>':'')+'</span><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить доставку · $'+(cost?.total||0)+'</button><button id="cancelDelivery" class="ux3-route-cancel">Отмена</button></div></div>';
@@ -1030,16 +1054,17 @@ const hasCurrentTarget=actionableTargets.some(con=>con.districtId===last);
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. В районе есть подходящая точка разгрузки.':'3. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
 deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
+html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Ф '+(left.Contraband||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
 for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
 else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehouseInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+warehouseStorageCapacity(con);}
 else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/1';}
+else if(kind==='contraband-sale'){label='Лавка редких товаров';cap='Нелегальный сбыт · +$6 и +1 ★';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,con.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,con.id)?.materials||[];
 html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
-for(const t of RESOURCE_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
+for(const t of CARGO_ORDER)html+='<button data-drop-kind="'+kind+'" data-drop-id="'+con.id+'" data-drop-type="'+t+'" '+(deliveryCanDrop(kind,con.id,t)?'':'disabled')+'>+'+materialShort(t)+'</button>';
 html+='</div></div>';
 }
 if(!routeTargets.length)html+='<div class="delivery-target-empty">На маршруте пока нет подходящей точки разгрузки.</div>';
@@ -1048,7 +1073,13 @@ next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">
 html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
 html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><span>Догрузки <b>$'+(cost?.loadingCost||0)+'</b></span>'+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
 }
+if(deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)&&state.players[pid].suspicion===3&&step==='unload'){
+ const available=playerWorkers(state,pid).filter(w=>!w.jailed);
+ html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после продажи</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
+   available.map(w=>'<option value="'+w.id+'" '+(deliveryDraft.arrestWorkerId===w.id?'selected':'')+'>Работник #'+w.number+'</option>').join('')+'</select></label>';
+}
 el.innerHTML=html;
+$('#contrabandArrestChoice')?.addEventListener('change',e=>{deliveryDraft.arrestWorkerId=e.target.value||null;render();});
 $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
 $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
 $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
@@ -1057,6 +1088,7 @@ $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'su
 $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
 $$('[data-ds-plant]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'industry',id:b.dataset.dsPlant}));
 $$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
+$$('[data-ds-contraband]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'contraband',id:b.dataset.dsContraband}));
 $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
 $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
 $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
@@ -1508,6 +1540,13 @@ $('#tenderSteps').innerHTML=steps.map(([id,label],idx)=>`<span class="step-chip 
 const yearOrder=turnOrder(state).map((pid,i)=>`${i+1}. ${state.players[pid].name}`).join(' → ');
 $('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. В свою очередь можно взять до 1 городской цели, затем заявить проект или пасовать.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
 }
+function projectIncomeText(p,con=null){
+  if(p.id==='rare_goods_shop')return con?.status==='complete'?'$'+(Number.isInteger(con.fixedIncome)?con.fixedIncome:1):'$1–3';
+  return '$'+(p.income||0);
+}
+function completedConstructionBaseIncome(pr,con){
+  return con.projectId==='rare_goods_shop'?(Number.isInteger(con.fixedIncome)?con.fixedIncome:1):(pr.income||0);
+}
 function projectCardRules(p){
 return `<div class="card-rules">
 <div class="card-rule benefit"><b>ДАЁТ</b><span>${p.benefit||p.effect||'—'}</span></div>
@@ -1632,7 +1671,7 @@ el.classList.add('active');
 const pid=currentDraftPlayer(state),player=state.players[pid];
 const marketStrip=(state.market||[]).filter(Boolean).map((m,i)=>{
 const p=projectById(m.id);
-return `<div class="draft-market-item typed-project type-stripe-compact ${typeClass(p)}" ${projectTypeStyle(p)}><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${p.income||0} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
+return `<div class="draft-market-item typed-project type-stripe-compact ${typeClass(p)}" ${projectTypeStyle(p)}><span class="draft-market-slot">M${i+1}</span><b>${p.name}</b><small>$${openingPrice(m)} open · +$${projectIncomeText(p)} income · ${p.prestige||0} VP</small><div class="draft-market-materials">${resourcePills(p.materials)}</div></div>`;
 }).join('');
 const marketRef=`<div class="draft-market-ref"><div class="draft-market-ref-head"><b>OPEN MARKET</b><span>Публичный рынок уже открыт — учитывайте его при выборе стартовой стратегии.</span></div><div class="draft-market-strip">${marketStrip}</div></div>`;
 if(!state.draftRevealed){
@@ -2143,19 +2182,21 @@ const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
 const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
 const complete=con.status==='complete',isWarehouse=complete&&isWarehouseConstruction(con);
 const isProducer=complete&&!!INDUSTRIAL_PRODUCTION[con.projectId];
+const isContrabandSource=complete&&con.projectId==='customs_warehouse'&&contrabandInventory(con).length>0;
 const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
 const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
 const plantSource=deliveryMode?.step==='source'&&isProducer&&industrialInventory(con).length?` data-delivery-industry="${con.id}"`:``;
+const contrabandSource=deliveryMode?.step==='source'&&isContrabandSource?` data-delivery-contraband="${con.id}"`:``;
 const dropAvailable=deliveryMode?.step==='unload'&&isMobile()&&deliveryTargetAcceptsAny(con);
 const dropAttr=dropAvailable?` data-delivery-drop-target="${con.id}"`:``;
-const interactionHit=whSource||plantSource
+const interactionHit=whSource||plantSource||contrabandSource
 ?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>'
 :dropAvailable?'<rect class="construction-drop-hit" x="-46" y="-34" width="92" height="68" rx="17"/>':'';
 let content='';
-if(isWarehouse||isProducer){
-const inv=isWarehouse?warehouseInventory(con):industrialInventory(con),cnt=deliveryCounts(inv);
-const capacity=isWarehouse?warehouseStorageCapacity(con):industrialProductionCapacity(state,con);
-content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">Д${cnt.Lumber||0} К${cnt.Masonry||0} С${cnt.Steel||0}</text>`;
+if(isWarehouse||isProducer||isContrabandSource){
+const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):contrabandInventory(con),cnt=deliveryCounts(inv);
+const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):2;
+content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
 const showNeed=!!deliveryMode&&!complete;
@@ -2167,7 +2208,7 @@ content=showNeed
 const title=complete
 ?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:isProducer?`${pl.name}: ${pr.name} · запас ${materialCountText(industrialInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
 :`${pl.name}: ${pr.name} · ${prog.delivered}/${prog.required} · ${missingConstructionMaterials(con).join(', ')}`;
-html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource||plantSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${plantSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
+html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource||plantSource||contrabandSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${plantSource}${contrabandSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
 });
 });
 layer.innerHTML=html;
@@ -2181,6 +2222,7 @@ focusConstruction(g.dataset.constructionToken);
 });
 $$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
 $$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
+$$('[data-delivery-contraband]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'contraband',id:g.dataset.deliveryContraband});});
 }
 renderDeliveryRouteOverlay();
 }
@@ -2256,7 +2298,7 @@ focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title
 const inv=warehouseInventory(focusedHere);
 focusedHtml=`<div class="focused-object-detail warehouse"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>Склад</b><small>${owner.name} · ${d.name} · ${inv.length}/${warehouseStorageCapacity(focusedHere)}</small></span></div><div class="focused-object-note">На складе: ${materialCountText(inv)}</div></div>`;
 }else{
-focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · готово</small></span></div><div class="focused-object-note">Престиж +${fp.prestige||0} VP · Доход +${(fp.income||0)+(focusedHere.projectId==='wagonboarding'?(focusedHere.wagonLevel||1)-1:0)+canneryIncomeBonus(state,focusedHere)+workforceIncomeBonus(state,focusedHere)} / раунд</div></div>`;
+focusedHtml=`<div class="focused-object-detail"><div class="focused-object-title"><span class="player-dot ${owner.key}"></span><span><b>${fp.name}</b><small>${owner.name} · готово</small></span></div><div class="focused-object-note">Престиж +${fp.prestige||0} VP · Доход +${completedConstructionBaseIncome(fp,focusedHere)+(focusedHere.projectId==='wagonboarding'?(focusedHere.wagonLevel||1)-1:0)+canneryIncomeBonus(state,focusedHere)+workforceIncomeBonus(state,focusedHere)} / раунд</div></div>`;
 }
 }
 const fireSource=serviceSourceText(access.fireSources),clinicSource=serviceSourceText(access.clinicSources);
@@ -2277,7 +2319,7 @@ constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><
 const objects=builtHere.length?builtHere.map(x=>{
 const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
 const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','police','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
-return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${(pr.income||0)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)+canneryIncomeBonus(state,x)+workforceIncomeBonus(state,x)}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
+return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${completedConstructionBaseIncome(pr,x)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)+canneryIncomeBonus(state,x)+workforceIncomeBonus(state,x)}${land}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
 }).join(''):'Пока нет.';
 const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
 const statsHtml=d.buildable===false
@@ -2335,7 +2377,7 @@ actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архи
 }else if(con.projectId==='factory'){
 actionNote='<div class="factory-building-note">После завершения фабрика снизила стоимость земли района на $1.</div>';
 }
-return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${(pr.income||0)+canneryIncomeBonus(state,con)+(con.projectId==='wagonboarding'?(con.wagonLevel||1)-1:0)+workforceIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${con.projectId==='workers_complex'?'<div class="warehouse-support">Ночная смена: '+(con.linkedIndustryId?(projectById(state.constructions.find(x=>x.id===con.linkedIndustryId)?.projectId)?.name||'предприятие')+' · удвоены доход и выпуск материалов':'ожидается выбор предприятия')+'</div>':''}${con.projectId==='press_tower'?'<div class="warehouse-support">Газетная кампания: '+(con.pressCampaignRound===state.round?'использована':'срабатывает при завершении ежегодного газетного выпуска')+' · +$2 или −$2 / +1 Влияние</div>':''}${con.projectId==='bakery'?'<div class="warehouse-support">🥖 Пекарный сезон: '+(con.bakeryUsedRound===state.round?'использован':'доступен при наличии Дерева')+' · в пекарне '+bakeryInventory(con).length+'/1 · в местном складе '+completedWarehouses(state,p.id,con.districtId).reduce((n,w)=>n+warehouseInventory(w).filter(t=>t==='Lumber').length,0)+' Дерево</div>':''}${con.projectId==='orphanage'?'<div class="warehouse-support">🏛 Приют: +1 Влияние при завершении · +4 VP после катастрофы 1906 при выживании (Фаза II отдельно)</div>':''}${con.projectId==='sailorlodging'?'<div class="warehouse-support">Вербовка: '+(con.sailorRecruitmentRound===state.round?'в этом году использована':'ожидает погрузки в местном порту')+' · законно +$2 или незаконно +$6 и +1 ★ (на ★★★ — арест)</div>':''}${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+industrialProductionCapacity(state,con)+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
+return `<div class="portfolio-card construction-card completed typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge done">ГОТОВО</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="completed-effect"><b>+${(pr.prestige||0)+(con.schoolHousingVpAwarded||0)} VP</b> · Доход +${completedConstructionBaseIncome(pr,con)+canneryIncomeBonus(state,con)+(con.projectId==='wagonboarding'?(con.wagonLevel||1)-1:0)+workforceIncomeBonus(state,con)} / год · ${pr.effect}${con.cottageBonusAwarded?' · освоение +$'+con.cottageBonusAwarded:''}${con.schoolHousingVpAwarded?' · школа +'+con.schoolHousingVpAwarded+' VP за соседнее жильё':''}</div>${con.projectId==='workers_complex'?'<div class="warehouse-support">Ночная смена: '+(con.linkedIndustryId?(projectById(state.constructions.find(x=>x.id===con.linkedIndustryId)?.projectId)?.name||'предприятие')+' · удвоены доход и выпуск материалов':'ожидается выбор предприятия')+'</div>':''}${con.projectId==='press_tower'?'<div class="warehouse-support">Газетная кампания: '+(con.pressCampaignRound===state.round?'использована':'срабатывает при завершении ежегодного газетного выпуска')+' · +$2 или −$2 / +1 Влияние</div>':''}${con.projectId==='bakery'?'<div class="warehouse-support">🥖 Пекарный сезон: '+(con.bakeryUsedRound===state.round?'использован':'доступен при наличии Дерева')+' · в пекарне '+bakeryInventory(con).length+'/1 · в местном складе '+completedWarehouses(state,p.id,con.districtId).reduce((n,w)=>n+warehouseInventory(w).filter(t=>t==='Lumber').length,0)+' Дерево</div>':''}${con.projectId==='orphanage'?'<div class="warehouse-support">🏛 Приют: +1 Влияние при завершении · +4 VP после катастрофы 1906 при выживании (Фаза II отдельно)</div>':''}${con.projectId==='sailorlodging'?'<div class="warehouse-support">Вербовка: '+(con.sailorRecruitmentRound===state.round?'в этом году использована':'ожидает погрузки в местном порту')+' · законно +$2 или незаконно +$6 и +1 ★ (на ★★★ — арест)</div>':''}${wh}${INDUSTRIAL_PRODUCTION[con.projectId]?'<div class="warehouse-support">Запас завода: <b>'+industrialInventory(con).length+'/'+industrialProductionCapacity(state,con)+'</b> · вывоз обычной доставкой · пополнение в следующем году</div>':''}${fireMarker}${actionNote}</div>`;
 }
 const finish=canCompleteConstruction(state,con.id);
 const remainingMaterials=missingConstructionMaterials(con);
