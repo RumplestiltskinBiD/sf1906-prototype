@@ -1827,13 +1827,14 @@ export function validateDeliveryPlan(state,plan){
   const player=state.players[plan.playerId];
   if(!player)return {ok:false,reason:'player'};
   if(!canUseFreeAction(state,plan.playerId))return {ok:false,reason:'not-active-player'};
+  if(state.lastDeliveryKey===currentDeliveryKey(state,plan.playerId))return {ok:false,reason:'delivery-once-per-activation'};
   const hauler=DELIVERY_HAULERS.find(h=>h.id===plan.haulerId);
   if(!hauler)return {ok:false,reason:'hauler'};
   if(hauler.limited&&(state.haulersUsed||[]).includes(hauler.id))return {ok:false,reason:'hauler-used'};
   const pickups=deliveryPickups(plan);
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
-  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO)))return {ok:false,reason:'pickup-cargo'};
+  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||t===BEER_CARGO)))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
@@ -1848,6 +1849,9 @@ export function validateDeliveryPlan(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     const idx=pickup.routeIndex;
     if(!src||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==src.districtId)return {ok:false,reason:'pickup-route'};
+    if(src.kind==='goods'&&!pickup.cargo.every(t=>t===BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='goods'&&pickup.cargo.includes(BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='contraband'&&pickup.cargo.includes(CONTRABAND_CARGO))return {ok:false,reason:'source-contraband'};
     const key=src.kind+':'+src.id;
     const visitKey=key+':'+idx;
     if(seenStops.has(visitKey))return {ok:false,reason:'duplicate-pickup'};
@@ -1871,7 +1875,12 @@ export function validateDeliveryPlan(state,plan){
     if(!districtId||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==districtId)return {ok:false,reason:'target-route'};
     if(!dropsByStop.has(idx))dropsByStop.set(idx,[]);
     dropsByStop.get(idx).push(...drop.materials);
-    if(drop.kind==='contraband-sale'){
+    if(drop.kind==='goods-sale'){
+      const target=(state.constructions||[]).find(c=>c.id===drop.id);
+      if(!target||target.status!=='complete'||!['pub','club'].includes(target.projectId)
+        ||drop.materials.some(t=>t!==BEER_CARGO)||!Array.isArray(drop.goodsSourceIds)
+        ||drop.goodsSourceIds.length!==drop.materials.length)return {ok:false,reason:'goods-buyer'};
+    }else if(drop.kind==='contraband-sale'){
       const shop=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!shop||shop.projectId!=='rare_goods_shop'||shop.status!=='complete'||drop.materials.length!==1||drop.materials[0]!==CONTRABAND_CARGO)return {ok:false,reason:'contraband-buyer'};
     }else if(drop.kind==='construction'){
@@ -1909,21 +1918,32 @@ export function validateDeliveryPlan(state,plan){
   // At each stop, unload existing cargo before loading more; this allows a full
   // wagon to replenish in the same district without exceeding its capacity.
   let onBoard=[];
+  // Preserve producer identity on every pink cube, including multi-source
+  // routes and unloading before additional pickups at the same stop.
+  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:t===BEER_CARGO?p.source.id:null}));
   for(let idx=0;idx<route.length;idx++){
     if(idx===0){
-      onBoard.push(...plan.cargo);
+      onBoard.push(...pickupUnits(pickups[0]));
       if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
     }
     const remaining=[];
-    for(const type of dropsByStop.get(idx)||[]){
-      const pos=onBoard.indexOf(type);
-      if(pos>=0)onBoard.splice(pos,1);
-      else remaining.push(type);
+    for(const drop of drops.filter(d=>(d.routeIndex??route.indexOf(targetDistrictId(state,d)))===idx)){
+      for(let k=0;k<drop.materials.length;k++){
+        const type=drop.materials[k],sourceId=type===BEER_CARGO?drop.goodsSourceIds?.[k]:null;
+        if(type===BEER_CARGO&&!sourceId)return {ok:false,reason:'source-goods'};
+        const pos=onBoard.findIndex(unit=>unit.type===type&&(type!==BEER_CARGO||unit.sourceId===sourceId));
+        if(pos>=0)onBoard.splice(pos,1);
+        else remaining.push({type,sourceId});
+      }
     }
-    const extras=pickups.slice(1).filter(p=>p.routeIndex===idx).flatMap(p=>p.cargo);
+    const extras=pickups.slice(1).filter(p=>p.routeIndex===idx).flatMap(pickupUnits);
     onBoard.push(...extras);
     if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
-    if(!removeMaterials(onBoard,remaining))return {ok:false,reason:'unload-before-pickup'};
+    for(const item of remaining){
+      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(item.type!==BEER_CARGO||unit.sourceId===item.sourceId));
+      if(pos<0)return {ok:false,reason:'unload-before-pickup'};
+      onBoard.splice(pos,1);
+    }
   }
   if(onBoard.length)return {ok:false,reason:'unassigned'};
   const cost=deliveryPlanCost(state,plan);
@@ -1951,11 +1971,14 @@ function executeDeliveryCore(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     if(src.kind==='supplier')continue;
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
-      src.kind==='contraband'?null:
+      src.kind==='contraband'||src.kind==='goods'?null:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
       src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
         freightYardInventory(state,plan.playerId);
-    if(src.kind==='contraband'){
+    if(src.kind==='goods'){
+      const brewery=state.constructions.find(c=>c.id===src.id);
+      brewery.beerStock=Math.max(0,(brewery.beerStock||0)-pickup.cargo.length);
+    }else if(src.kind==='contraband'){
       const con=state.constructions.find(c=>c.id===src.id);
       con.contrabandStock=Math.max(0,(con.contrabandStock||0)-pickup.cargo.length);
     }else removeMaterials(inv,pickup.cargo);
@@ -1977,6 +2000,15 @@ function executeDeliveryCore(state,plan){
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
       if(!constructionIds.includes(con.id))constructionIds.push(con.id);
+    }else if(drop.kind==='goods-sale'){
+      const receiving=state.constructions.find(c=>c.id===drop.id);
+      for(const sourceId of drop.goodsSourceIds){
+        const brewery=state.constructions.find(c=>c.id===sourceId);
+        player.capital+=BEER_CARRIER_PAYMENT;
+        state.players[brewery.playerId].capital+=1;
+        state.players[receiving.playerId].capital+=1;
+        logEvent(state,`${player.name}: пиво от «${projectById(brewery.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
+      }
     }else if(drop.kind==='contraband-sale'){
       const receiving=state.constructions.find(c=>c.id===drop.id);
       const origin=pickups.find(p=>p.cargo.includes(CONTRABAND_CARGO));
@@ -1994,6 +2026,7 @@ function executeDeliveryCore(state,plan){
       freightYardInventory(state,plan.playerId).push(...drop.materials);
     }
   }
+  state.lastDeliveryKey=currentDeliveryKey(state,plan.playerId);
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
   const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
