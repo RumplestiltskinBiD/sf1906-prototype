@@ -16,7 +16,7 @@ test('four unlimited standard public projects have fixed recipes and remain out 
    assert.equal(G.projectById(project.id).id,project.id);
    assert.equal(G.createProjectCardPool({rng:()=>0.3}).filter(c=>c.id===project.id).length,0);
  }
- assert.equal(G.PROJECTS.length,35);assert.equal(G.PROJECTS.filter(p=>p.id==='warehouse').length,1);
+ assert.equal(G.PROJECTS.length,36);assert.equal(G.PROJECTS.filter(p=>p.id==='warehouse').length,1);
 });
 
 test('standard construction starts without purchased card, consumes one worker and land, stays out of portfolio',()=>{

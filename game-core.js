@@ -5,6 +5,9 @@ export const PLAYER_KEYS = ['blue','red','green'];
 export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const CONTRABAND_CARGO = 'Contraband';
+export const BEER_CARGO = 'Beer';
+export const BREWERY_STOCK_CAPACITY = 2;
+export const BEER_CARRIER_PAYMENT = 3;
 export const CONTRABAND_STOCK_CAPACITY = 2;
 export const CONTRABAND_CARRIER_PAYMENT = 6;
 export const BASE_ROUND_INCOME = 3;
@@ -110,7 +113,8 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
-  {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
+  {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Успешная доставка в Городскую пивную или Ресторан и клуб: перевозчик +$3, производитель и получатель по +$1.',limits:'Пиво не складируется: за один рейс должен быть выбран завершённый получатель. Обычные повозки, граф районов и транспортные расходы.'},
+  {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
   {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · +1 VP · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду · +1 VP',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Престиж +1 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'1 VP при завершении · раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
   {prestige:3,income:0,id:'orphanage',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Сиротский приют',type:'Жильё / Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Престиж +3 и Политическое влияние +1 при завершении · +4 VP после катастрофы 1906, если не уничтожен',benefit:'3 VP +1 Влияние при завершении · ещё 4 VP при выживании после землетрясения и пожаров',actionName:'Уцелевший приют',actionText:'После всех землетрясений и пожаров 1906 получите +4 VP, если приют цел или повреждён. Разрушенный или сгоревший не получает бонус.',limits:'Не является пожарным, полицейским или медицинским учреждением; бонус 1906 учитывается однократно после Фазы II.'},
@@ -122,7 +126,7 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Престиж +1',landMin:1,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации.',limits:'Нужна незавершённая стройка · 1 использование / здание / раунд · при чужом использовании $1 получает владелец.'},
   {prestige:3,income:4,id:'hotel',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4 · Престиж +3',landMin:3,benefit:'Доход +4 / раунд · Престиж +3',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
   {prestige:1,income:2,id:'bank',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Банковский кредит» · Престиж +1',landMin:2,benefit:'Доход +2 / раунд · Престиж +1',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
-  {prestige:2,income:2,id:'club',types:["Бизнес","Торговое"],risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Престиж +2',landMin:2,benefit:'Доход +2 / раунд · Престиж +2',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние.',limits:'1 использование / здание / раунд · если использует соперник, его $1 получает владелец.'},
+  {prestige:2,income:2,id:'club',types:["Бизнес","Торговое"],risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Престиж +2 · Принимает: Пиво',landMin:2,benefit:'Доход +2 / раунд · Престиж +2 · Принимает: Пиво',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние. Принимает Пиво: владелец получает +$1 за доставленный кубик по общему правилу торговли.',limits:'1 использование действия «Ужин и связи» / здание / раунд · если использует соперник, его $1 получает владелец. Приём пива не требует действия рабочего.'},
   {prestige:1,income:2,id:'warehouse',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Распределительный склад',type:'Логистика',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · Хранение 5 · Престиж +1',benefit:'Доход +2 / раунд · Престиж +1 · хранит до 5 ресурсов и снабжает стройки в этом районе',actionName:'—',actionText:'Может быть источником и точкой разгрузки Доставка.',limits:'Хранение 5 ресурсов.'},
   {prestige:0,income:5,id:'factory',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Крупная фабрика',type:'Промышленность',open:5,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Доступ к ж/д или порту',accessAny:['rail','port'],effect:'Доход +5 · Стоимость земли −1',benefit:'Доход +5 / раунд · Престиж 0 · после завершения Стоимость земли района −1',actionName:'—',actionText:'Отдельного действия нет.',limits:'Только Доступ к ж/д или порту. Стоимость земли не падает ниже 0.'},
 
@@ -139,7 +143,7 @@ export const PROJECTS = [
   {prestige:3,income:0,id:'publicworks',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Депо городских работ',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Инфраструктура воды / газа / ремонта · Стоимость земли +1 · Престиж +3',benefit:'Престиж +3 · Стоимость земли района +1 · Инфраструктура воды / газа / ремонта',actionName:'—',actionText:'Отдельное действие ещё не активно.',limits:'Полные воды / газа / ремонта правила будут добавлены позже.'},
   {prestige:1,income:1,id:'wholesale_market',types:['Торговое'],risk:{earthquake:0,fire:2},name:'Городской оптовый рынок',type:'Коммерция',open:3,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +$3 за новую категорию здания в районе',benefit:'Доход +$1/год · +1 VP · +$3 владельцу за новую категорию',actionName:'Новые отрасли',actionText:'После завершения любого другого здания в этом районе, если появилась ранее отсутствовавшая категория, получите $3. Для смешанного здания максимум $3.',limits:'Учитываются постройки всех игроков; повторные категории не оплачиваются. Бонус не начисляется за постройки, завершённые до открытия рынка.'},
   {prestige:1,income:2,id:'commission_house',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Комиссионный торговый дом',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · продажа неначатого проекта за $4',benefit:'Доход +$2/год · +1 VP · продажа проекта',actionName:'Перепродажа проекта',actionText:'1 представитель → сбросьте одну карту неначатого проекта из своей руки и получите $4.',limits:'Любая карта руки, включая стартовую и купленную на аукционе. Требуется доступ представителя к району здания. Одна активация ячейки здания за год.'},
-  {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает Пиво. +$1 за каждую успешно доставленную партию по общему правилу торговли (после включения системы Товары).',limits:'Приём пива активируется вместе с системой розовых торговых кубиков. До этого действует базовый доход.'},
+  {prestige:1,income:2,id:'pub',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Городская пивная',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$2/год · принимает пиво (+$1 владельцу за партию)',benefit:'Доход +$2/год · +1 VP · принимает пиво',actionName:'Приём пива',actionText:'Принимает: Пиво. +$1 владельцу за каждый успешно доставленный кубик по общему правилу торговли, без действия рабочего.',limits:'Принимает продукцию любой завершённой Пивоварни; обычный пассивный доход +$2 сохраняется.'},
   {prestige:4,income:7,id:'skyscraper',types:['Бизнес'],largeBuilding:true,risk:{earthquake:0,fire:1},name:'Стальной деловой небоскрёб',type:'Коммерция',open:7,materials:['Lumber','Masonry','Masonry','Steel','Steel','Steel'],requires:'Стоимость земли 3+ · склад для завершения',landMin:3,effect:'Крупное здание · Доход +$7/год · 4 VP · занимает 1 место',benefit:'Крупное здание · Доход +$7/год · +4 VP',actionName:'—',actionText:'Отдельного действия нет. 6 материалов требуют хранения сверх лимита стройплощадки 3.',limits:'Стоимость земли 3+ · одно место в районе. Для завершения нужен собственный склад в том же районе.'},
   {prestige:0,income:1,id:'wagonboarding',types:['Жилое','Бизнес'],risk:{earthquake:0,fire:1},name:'Вагонный пансион «Виста-дель-Мар»',type:'Жильё',open:3,materials:['Lumber','Lumber'],requires:'Только западные районы: Outer/Inner Sunset, Outer/Inner Richmond',wagonDistricts:['sunset','innersunset','outerrichmond','innerrichmond'],effect:'Доход $1/$2/$3 · быстрое расширение за $2 · перестройка возвращает 1/2/3 Lumber',benefit:'Стартовый доход +$1/год · 0 VP; уровень II/III: +$2/+$3 дохода, П+2/П+3',actionName:'Пристройка / перестройка',actionText:'Быстрое действие без рабочего: $2, +1 уровень (раз в год). Основное действие рабочего: заменить пансион другим проектом на том же участке без повторной покупки земли, засчитав Lumber по уровню.',limits:'Максимум уровень III; один апгрейд в год на здание; максимум 3 Lumber при перестройке, без излишка, staging=3; нельзя перестроить в такой же пансион.'},
   {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и +1 ★ подозрения',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и +1 ★. При ★★★ после выплаты — арест выбранного незаключённого сотрудника, подозрение → 0 и санкции C1.2.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove; незаконный вариант требует хотя бы одного неарестованного сотрудника.'},
@@ -1538,6 +1542,7 @@ export function completeConstruction(state,construction){
     construction.fixedIncome=Math.max(1,Math.min(3,Math.max(land,1+business)));
   }
   if(project.id==='customs_warehouse')construction.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  if(project.id==='brewery')construction.beerStock=BREWERY_STOCK_CAPACITY;
   if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
   if(project.id==='workers_complex'){
     state.pendingWorkforceLinks=state.pendingWorkforceLinks||[];
@@ -1643,11 +1648,20 @@ export function deliveryNeighbors(districtId){
   return districtNeighbors(districtId).filter(deliveryTraversableDistrict);
 }
 
+export function completedBreweries(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='brewery');}
+export function beerInventory(c){return Array.from({length:Math.max(0,Math.min(BREWERY_STOCK_CAPACITY,Number.isInteger(c?.beerStock)?c.beerStock:0))},()=>BEER_CARGO);}
+export function currentDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
 export function completedCustomsWarehouses(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='customs_warehouse');}
 export function contrabandInventory(c){return Array.from({length:Math.max(0,Math.min(CONTRABAND_STOCK_CAPACITY,Number.isInteger(c?.contrabandStock)?c.contrabandStock:0))},()=>CONTRABAND_CARGO);}
 export function currentContrabandDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
 export function deliverySourceInfo(state,playerId,source){
   if(!source)return null;
+  if(source.kind==='goods'){
+    const brewery=completedBreweries(state).find(c=>c.id===source.id);
+    if(!brewery)return null;
+    return {kind:'goods',id:brewery.id,name:projectById(brewery.projectId).name+' · '+(districtById(brewery.districtId)?.name||brewery.districtId),
+      districtId:brewery.districtId,inventory:beerInventory(brewery),ownerId:brewery.playerId,unitPrice:0};
+  }
   if(source.kind==='contraband'){
     const wh=completedCustomsWarehouses(state).find(c=>c.id===source.id);
     if(!wh)return null;
@@ -1795,6 +1809,9 @@ function targetDistrictId(state,target){
   if(target.kind==='construction'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
+  if(target.kind==='goods-sale'){
+    return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
+  }
   if(target.kind==='contraband-sale'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
@@ -1810,13 +1827,14 @@ export function validateDeliveryPlan(state,plan){
   const player=state.players[plan.playerId];
   if(!player)return {ok:false,reason:'player'};
   if(!canUseFreeAction(state,plan.playerId))return {ok:false,reason:'not-active-player'};
+  if(state.lastDeliveryKey===currentDeliveryKey(state,plan.playerId))return {ok:false,reason:'delivery-once-per-activation'};
   const hauler=DELIVERY_HAULERS.find(h=>h.id===plan.haulerId);
   if(!hauler)return {ok:false,reason:'hauler'};
   if(hauler.limited&&(state.haulersUsed||[]).includes(hauler.id))return {ok:false,reason:'hauler-used'};
   const pickups=deliveryPickups(plan);
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
-  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO)))return {ok:false,reason:'pickup-cargo'};
+  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||t===BEER_CARGO)))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
@@ -1831,6 +1849,9 @@ export function validateDeliveryPlan(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     const idx=pickup.routeIndex;
     if(!src||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==src.districtId)return {ok:false,reason:'pickup-route'};
+    if(src.kind==='goods'&&!pickup.cargo.every(t=>t===BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='goods'&&pickup.cargo.includes(BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='contraband'&&pickup.cargo.includes(CONTRABAND_CARGO))return {ok:false,reason:'source-contraband'};
     const key=src.kind+':'+src.id;
     const visitKey=key+':'+idx;
     if(seenStops.has(visitKey))return {ok:false,reason:'duplicate-pickup'};
@@ -1854,7 +1875,12 @@ export function validateDeliveryPlan(state,plan){
     if(!districtId||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==districtId)return {ok:false,reason:'target-route'};
     if(!dropsByStop.has(idx))dropsByStop.set(idx,[]);
     dropsByStop.get(idx).push(...drop.materials);
-    if(drop.kind==='contraband-sale'){
+    if(drop.kind==='goods-sale'){
+      const target=(state.constructions||[]).find(c=>c.id===drop.id);
+      if(!target||target.status!=='complete'||!['pub','club'].includes(target.projectId)
+        ||drop.materials.some(t=>t!==BEER_CARGO)||!Array.isArray(drop.goodsSourceIds)
+        ||drop.goodsSourceIds.length!==drop.materials.length)return {ok:false,reason:'goods-buyer'};
+    }else if(drop.kind==='contraband-sale'){
       const shop=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!shop||shop.projectId!=='rare_goods_shop'||shop.status!=='complete'||drop.materials.length!==1||drop.materials[0]!==CONTRABAND_CARGO)return {ok:false,reason:'contraband-buyer'};
     }else if(drop.kind==='construction'){
@@ -1892,21 +1918,32 @@ export function validateDeliveryPlan(state,plan){
   // At each stop, unload existing cargo before loading more; this allows a full
   // wagon to replenish in the same district without exceeding its capacity.
   let onBoard=[];
+  // Preserve producer identity on every pink cube, including multi-source
+  // routes and unloading before additional pickups at the same stop.
+  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:t===BEER_CARGO?p.source.id:null}));
   for(let idx=0;idx<route.length;idx++){
     if(idx===0){
-      onBoard.push(...plan.cargo);
+      onBoard.push(...pickupUnits(pickups[0]));
       if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
     }
     const remaining=[];
-    for(const type of dropsByStop.get(idx)||[]){
-      const pos=onBoard.indexOf(type);
-      if(pos>=0)onBoard.splice(pos,1);
-      else remaining.push(type);
+    for(const drop of drops.filter(d=>(d.routeIndex??route.indexOf(targetDistrictId(state,d)))===idx)){
+      for(let k=0;k<drop.materials.length;k++){
+        const type=drop.materials[k],sourceId=type===BEER_CARGO?drop.goodsSourceIds?.[k]:null;
+        if(type===BEER_CARGO&&!sourceId)return {ok:false,reason:'source-goods'};
+        const pos=onBoard.findIndex(unit=>unit.type===type&&(type!==BEER_CARGO||unit.sourceId===sourceId));
+        if(pos>=0)onBoard.splice(pos,1);
+        else remaining.push({type,sourceId});
+      }
     }
-    const extras=pickups.slice(1).filter(p=>p.routeIndex===idx).flatMap(p=>p.cargo);
+    const extras=pickups.slice(1).filter(p=>p.routeIndex===idx).flatMap(pickupUnits);
     onBoard.push(...extras);
     if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
-    if(!removeMaterials(onBoard,remaining))return {ok:false,reason:'unload-before-pickup'};
+    for(const item of remaining){
+      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(item.type!==BEER_CARGO||unit.sourceId===item.sourceId));
+      if(pos<0)return {ok:false,reason:'unload-before-pickup'};
+      onBoard.splice(pos,1);
+    }
   }
   if(onBoard.length)return {ok:false,reason:'unassigned'};
   const cost=deliveryPlanCost(state,plan);
@@ -1934,11 +1971,14 @@ function executeDeliveryCore(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     if(src.kind==='supplier')continue;
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
-      src.kind==='contraband'?null:
+      src.kind==='contraband'||src.kind==='goods'?null:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
       src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
         freightYardInventory(state,plan.playerId);
-    if(src.kind==='contraband'){
+    if(src.kind==='goods'){
+      const brewery=state.constructions.find(c=>c.id===src.id);
+      brewery.beerStock=Math.max(0,(brewery.beerStock||0)-pickup.cargo.length);
+    }else if(src.kind==='contraband'){
       const con=state.constructions.find(c=>c.id===src.id);
       con.contrabandStock=Math.max(0,(con.contrabandStock||0)-pickup.cargo.length);
     }else removeMaterials(inv,pickup.cargo);
@@ -1960,6 +2000,15 @@ function executeDeliveryCore(state,plan){
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
       if(!constructionIds.includes(con.id))constructionIds.push(con.id);
+    }else if(drop.kind==='goods-sale'){
+      const receiving=state.constructions.find(c=>c.id===drop.id);
+      for(const sourceId of drop.goodsSourceIds){
+        const brewery=state.constructions.find(c=>c.id===sourceId);
+        player.capital+=BEER_CARRIER_PAYMENT;
+        state.players[brewery.playerId].capital+=1;
+        state.players[receiving.playerId].capital+=1;
+        logEvent(state,`${player.name}: пиво от «${projectById(brewery.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
+      }
     }else if(drop.kind==='contraband-sale'){
       const receiving=state.constructions.find(c=>c.id===drop.id);
       const origin=pickups.find(p=>p.cargo.includes(CONTRABAND_CARGO));
@@ -1977,6 +2026,7 @@ function executeDeliveryCore(state,plan){
       freightYardInventory(state,plan.playerId).push(...drop.materials);
     }
   }
+  state.lastDeliveryKey=currentDeliveryKey(state,plan.playerId);
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
   const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
@@ -2334,6 +2384,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   const produced=replenishIndustrialProduction(state);
   for(const item of produced){
     const plant=state.constructions.find(c=>c.id===item.constructionId);

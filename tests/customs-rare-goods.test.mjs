@@ -28,7 +28,7 @@ function plan({playerId=0,warehouse='W',shop='S',route=['soma','mission'],hauler
 test('new cards: port-only customs, rare-goods shop, two copies and fixed recipes',()=>{
  const wh=G.projectById('customs_warehouse'),shop=G.projectById('rare_goods_shop');
  assert.equal(wh.open,5);assert.equal(wh.prestige,2);assert.equal(wh.income,1);
- assert.deepEqual(wh.materials,['Lumber','Masonry','Steel']);
+ assert.deepEqual(wh.materials,['Lumber','Masonry','Masonry','Steel']);
  assert.deepEqual(wh.types,['Общественное','Торговое']);
  assert.deepEqual(wh.risk,{earthquake:1,fire:1});
  assert.equal(shop.open,4);assert.deepEqual(shop.materials,['Lumber','Masonry','Masonry']);
@@ -98,7 +98,7 @@ test('illegal delivery through a physical route settles 6/1/1 and only carrier s
  assert.equal(s.constructions.find(c=>c.id==='W').contrabandStock,1);
  assert.equal(s.players[0].workersLeft,3);
  const again=G.validateDeliveryPlan(s,action);
- assert.equal(again.reason,'contraband-once-per-activation');
+ assert.equal(again.reason,'delivery-once-per-activation');
 });
 
 test('same owner of source, buyer and carrier earns $8 but still only 1 star',()=>{
@@ -137,7 +137,7 @@ test('cannot smuggle twice per activation or put purple cargo in regular store a
    built('R','warehouse',0,'soma',{warehouseInventory:[]})];
  const a=plan({route:['soma']});
  assert.equal(G.executeDelivery(s,a).ok,true);
- assert.equal(G.validateDeliveryPlan(s,a).reason,'contraband-once-per-activation');
+ assert.equal(G.validateDeliveryPlan(s,a).reason,'delivery-once-per-activation');
  s.developmentSlotsUsed[0]=1;
  assert.equal(G.validateDeliveryPlan(s,a).ok,true);
  const wrong={...a,drops:[{kind:'warehouse',id:'R',materials:[G.CONTRABAND_CARGO],routeIndex:0}]};

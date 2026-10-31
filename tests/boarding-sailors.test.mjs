@@ -95,6 +95,8 @@ test('port delivery queues owner recruitment; lawful and illegal choice are once
  assert.equal(s.players[0].suspicion,1,'illegal recruitment raises suspicion exactly once');
  assert.equal(s.constructions[0].sailorRecruitmentRound,s.round);
  assert.equal(G.currentSailorRecruitment(s),null);
+ assert.equal(G.validateDeliveryPlan(s,make()).reason,'delivery-once-per-activation');
+ s.developmentSlotsUsed[1]=1; // new turn, same year
  assert.equal(G.executeDelivery(s,make()).ok,true);
  assert.equal(G.currentSailorRecruitment(s),null,'no duplicate in same year');
  s.round=2;s.logisticsSupply.broadway=['Lumber'];

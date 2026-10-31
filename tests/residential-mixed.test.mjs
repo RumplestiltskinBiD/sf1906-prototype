@@ -79,6 +79,8 @@ test('real delivery stores one Lumber in bakery, rejects steel, overflow, rival 
  const done=G.executeDelivery(s,valid);assert.equal(done.ok,true,done.reason);
  assert.deepEqual(b.bakeryInventory,['Lumber']);
  assert.ok(s.players[0].capital<before,'purchase and route were paid');
+ assert.equal(G.validateDeliveryPlan(s,valid).reason,'delivery-once-per-activation');
+ s.developmentSlotsUsed[0]=1; // next activation for target validation
  s.logisticsSupply.broadway.push('Lumber');
  assert.equal(G.validateDeliveryPlan(s,valid).reason,'target-capacity');
  assert.equal(G.validateDeliveryPlan(s,delivery('B',['Steel'])).reason,'target-material');
