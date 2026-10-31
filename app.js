@@ -2227,20 +2227,22 @@ const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=construc
 const complete=con.status==='complete',isWarehouse=complete&&isWarehouseConstruction(con);
 const isProducer=complete&&!!INDUSTRIAL_PRODUCTION[con.projectId];
 const isContrabandSource=complete&&con.projectId==='customs_warehouse'&&contrabandInventory(con).length>0;
+const isBeerSource=complete&&con.projectId==='brewery'&&beerInventory(con).length>0;
 const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
 const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
 const plantSource=deliveryMode?.step==='source'&&isProducer&&industrialInventory(con).length?` data-delivery-industry="${con.id}"`:``;
+const beerSource=deliveryMode?.step==='source'&&isBeerSource?` data-delivery-goods="${con.id}"`:``;
 const contrabandSource=deliveryMode?.step==='source'&&isContrabandSource?` data-delivery-contraband="${con.id}"`:``;
 const dropAvailable=deliveryMode?.step==='unload'&&isMobile()&&deliveryTargetAcceptsAny(con);
 const dropAttr=dropAvailable?` data-delivery-drop-target="${con.id}"`:``;
-const interactionHit=whSource||plantSource||contrabandSource
+const interactionHit=whSource||plantSource||beerSource||contrabandSource
 ?'<rect class="construction-source-hit" x="-44" y="-32" width="88" height="64" rx="16"/>'
 :dropAvailable?'<rect class="construction-drop-hit" x="-46" y="-34" width="92" height="68" rx="17"/>':'';
 let content='';
-if(isWarehouse||isProducer||isContrabandSource){
-const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):contrabandInventory(con),cnt=deliveryCounts(inv);
+if(isWarehouse||isProducer||isBeerSource||isContrabandSource){
+const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):isBeerSource?beerInventory(con):contrabandInventory(con),cnt=deliveryCounts(inv);
 const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):2;
-content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
+content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isBeerSource?'ПИВ':isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):isBeerSource?'Р'+(cnt.Beer||0):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
 const showNeed=!!deliveryMode&&!complete;
@@ -2252,7 +2254,7 @@ content=showNeed
 const title=complete
 ?(isWarehouse?`${pl.name}: Склад · ${materialCountText(warehouseInventory(con))}`:isProducer?`${pl.name}: ${pr.name} · запас ${materialCountText(industrialInventory(con))}`:`${pl.name}: ${pr.name} · готово`)
 :`${pl.name}: ${pr.name} · ${prog.delivered}/${prog.required} · ${missingConstructionMaterials(con).join(', ')}`;
-html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource||plantSource||contrabandSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${plantSource}${contrabandSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
+html+=`<g class="construction-token ${complete?'complete':'under'} token-${pl.key} ${whSource||plantSource||beerSource||contrabandSource?'source-available':''} ${dropAvailable?'delivery-drop-available':''} ${deliveryDraft?.focusTargetId===con.id?'delivery-drop-focused':''} ${focusClass}" transform="translate(${cx+dx} ${cy+dy+30})" data-construction-token="${con.id}"${whSource}${plantSource}${beerSource}${contrabandSource}${dropAttr}>${interactionHit}${content}<title>${title}</title></g>`;
 });
 });
 layer.innerHTML=html;
@@ -2266,7 +2268,8 @@ focusConstruction(g.dataset.constructionToken);
 });
 $$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
 $$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
-$$('[data-delivery-contraband]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'contraband',id:g.dataset.deliveryContraband});});
+$('[data-delivery-goods]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'goods',id:g.dataset.deliveryGoods});});
+$('[data-delivery-contraband]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'contraband',id:g.dataset.deliveryContraband});});
 }
 renderDeliveryRouteOverlay();
 }
