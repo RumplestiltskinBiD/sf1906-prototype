@@ -881,11 +881,12 @@ function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
-if(kind==='freight-yard')return type!==CONTRABAND_CARGO&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='freight-yard')return type in RESOURCE_PRICES&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||!deliveryDraft.route.includes(con.districtId))return false;
+if(kind==='goods-sale')return con.status==='complete'&&['pub','club'].includes(con.projectId)&&type===BEER_CARGO&&!!deliveryBeerOriginForDrop(con.id);
 if(kind==='contraband-sale')return con.projectId==='rare_goods_shop'&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
-if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO)return false;
+if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO||type===BEER_CARGO)return false;
 if(kind==='bakery')return con.projectId==='bakery'&&con.status==='complete'&&type==='Lumber'&&bakeryInventory(con).length+assigned.length<1;
 if(kind==='warehouse')return isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)&&warehouseInventory(con).length+assigned.length<warehouseStorageCapacity(con);
 if(kind!=='construction'||con.status!=='under-construction')return false;
@@ -898,6 +899,7 @@ return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(cc[t]||0))<=(left[t]||0))
 function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
+if(con.status==='complete'&&['pub','club'].includes(con.projectId))return 'goods-sale';
 if(con.status==='complete'&&con.projectId==='rare_goods_shop')return 'contraband-sale';
 if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='bakery'&&con.status==='complete'?'bakery':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
@@ -907,6 +909,7 @@ function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deli
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
+if(kind==='goods-sale')return deliveryCanDrop(kind,con.id,BEER_CARGO);
 if(kind==='contraband-sale')return deliveryCanDrop(kind,con.id,CONTRABAND_CARGO);
 if(kind==='bakery')return bakeryInventory(con).length<1;
 if(kind==='warehouse')return warehouseInventory(con).length<warehouseStorageCapacity(con);
@@ -917,15 +920,34 @@ return (con.materialsDelivered||[]).length<3||RESOURCE_ORDER.every(t=>(cargo[t]|
 }
 function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&CARGO_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
 function openDeliveryTargetFromMap(id){if(!isMobile()||!['unload','route'].includes(deliveryDraft?.step))return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
+// Allocate each pink cube to a specific brewery; multiple producers may
+// use the same wagon and recipient without losing ownership identity.
+function deliveryBeerOriginForDrop(targetId){
+  const d=deliveryDraft,con=(state.constructions||[]).find(c=>c.id===targetId);
+  if(!d||!con||!d.route?.includes(con.districtId))return null;
+  const stop=d.step==='route'?d.route.length-1:d.route.lastIndexOf(con.districtId);
+  const loads=[{source:d.source,routeIndex:0,cargo:d.cargo},...(d.pickups||[])];
+  const already=(d.drops||[]).flatMap(x=>x.goodsSourceIds||[]);
+  for(let i=0;i<loads.length;i++){
+    const load=loads[i];
+    if(load.source?.kind!=='goods'||load.routeIndex>stop||(load.routeIndex===stop&&i>0))continue;
+    const units=(load.cargo||[]).filter(x=>x===BEER_CARGO).length;
+    const used=already.filter(x=>x===load.source.id).length;
+    if(used<units)return load.source.id;
+  }
+  return null;
+}
 function addDeliveryDrop(kind,id,type){
 if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
-let d=deliveryTarget(kind,id);if(!d){const district=deliveryTargetDistrict({kind,id});const at=deliveryDraft.step==='route'?deliveryDraft.route.length-1:deliveryDraft.route.lastIndexOf(district);d={kind,id,routeIndex:at,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);render();
+let d=deliveryTarget(kind,id);if(!d){const district=deliveryTargetDistrict({kind,id});const at=deliveryDraft.step==='route'?deliveryDraft.route.length-1:deliveryDraft.route.lastIndexOf(district);d={kind,id,routeIndex:at,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);
+if(kind==='goods-sale'){d.goodsSourceIds=d.goodsSourceIds||[];d.goodsSourceIds.push(deliveryBeerOriginForDrop(id));}
+render();
 }
 function clearDeliveryDrops(){
 if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
 }
 function deliveryPlan(){
-return {playerId:deliveryDraft.playerId,arrestWorkerId:deliveryDraft.arrestWorkerId||null,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials]}))};
+return {playerId:deliveryDraft.playerId,arrestWorkerId:deliveryDraft.arrestWorkerId||null,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials],...(d.goodsSourceIds?{goodsSourceIds:[...d.goodsSourceIds]}:{})}))};
 }
 function confirmDeliveryRoute(){
 if(!isMobile()||deliveryDraft?.step!=='route')return;
