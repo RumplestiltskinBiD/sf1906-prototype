@@ -404,6 +404,8 @@ test('historical neutral suppliers are unlimited expensive Delivery sources',()=
   assert.equal(s.procurementRemaining,2,'Shopping Row discount must not apply to neutral suppliers');
 
   const second={...first,haulerId:'dray2b'};
+  assert.equal(G.validateDeliveryPlan(s,second).reason,'delivery-once-per-activation');
+  s.developmentSlotsUsed[0]=1; // next activation: retain neutral supplier regression
   v=G.validateDeliveryPlan(s,second);
   assert.equal(v.ok,true,JSON.stringify(v));
   assert.equal(G.executeDelivery(s,second).ok,true);
@@ -470,11 +472,15 @@ test('limited haulers are shared once per round; Standard Hauler is reusable',()
   ];
   const limited={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2a',cargo:['Lumber'],route:['northbeach'],drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
   assert.equal(G.executeDelivery(s,limited).ok,true);
+  assert.equal(G.validateDeliveryPlan(s,limited).reason,'delivery-once-per-activation');
+  s.developmentSlotsUsed[0]=1;
   assert.equal(G.validateDeliveryPlan(s,limited).reason,'hauler-used');
 
   const standard1={...limited,haulerId:'standard',drops:[{kind:'construction',id:'C2',materials:['Lumber']}]};
   assert.equal(G.executeDelivery(s,standard1).ok,true);
   const standard2={...limited,haulerId:'standard',drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
+  assert.equal(G.validateDeliveryPlan(s,standard2).reason,'delivery-once-per-activation');
+  s.developmentSlotsUsed[0]=2;
   assert.equal(G.validateDeliveryPlan(s,standard2).ok,true);
   assert.equal(G.executeDelivery(s,standard2).ok,true);
 });
@@ -499,6 +505,7 @@ test('Public Freight Yard has private 2-slot sections and charges $2 only when a
   assert.equal(G.executeDelivery(s,first).ok,true);
   assert.deepEqual(G.freightYardInventory(s,0),['Lumber']);
   assert.deepEqual(G.freightYardInventory(s,1),[]);
+  s.developmentSlotsUsed[0]=1; // following annual activation
 
   const second={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2b',cargo:['Masonry'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Masonry']}]};
   v=G.validateDeliveryPlan(s,second);
@@ -526,7 +533,8 @@ test('Freight Yard is a paid-storage source; emptying it resets the next $2 occu
   assert.equal(v.cost.yardRentCost,0);
   assert.equal(G.executeDelivery(s,first).ok,true);
 
-  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry'],route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
+  s.developmentSlotsUsed[0]=1; // next activation
+  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry',route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
   assert.equal(G.executeDelivery(s,second).ok,true);
   assert.deepEqual(G.freightYardInventory(s,0),[]);
 
@@ -862,7 +870,8 @@ test('Delivery log preserves causal order for partial then completing shipment',
   assert.match(s.log[firstDeliveryIndex].msg,/«Страховая компания» \(SoMa\): Камень ×1, Сталь ×1/);
   assert.equal(s.log.some(x=>x.msg.includes('завершил «Страховая компания»')),false);
 
-  const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry'],route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
+  s.developmentSlotsUsed[0]=1; // next activation, same project
+  const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry',route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
   const r2=G.executeDelivery(s,second);
   assert.equal(r2.ok,true);
   assert.equal(s.constructions[0].status,'complete');
