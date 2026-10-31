@@ -5,6 +5,9 @@ export const PLAYER_KEYS = ['blue','red','green'];
 export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const CONTRABAND_CARGO = 'Contraband';
+export const BEER_CARGO = 'Beer';
+export const BREWERY_STOCK_CAPACITY = 2;
+export const BEER_CARRIER_PAYMENT = 3;
 export const CONTRABAND_STOCK_CAPACITY = 2;
 export const CONTRABAND_CARRIER_PAYMENT = 6;
 export const BASE_ROUND_INCOME = 3;
@@ -110,7 +113,8 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
-  {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
+  {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Успешная доставка в Городскую пивную или Ресторан и клуб: перевозчик +$3, производитель и получатель по +$1.',limits:'Пиво не складируется: за один рейс должен быть выбран завершённый получатель. Обычные повозки, граф районов и транспортные расходы.'},
+  {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
   {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · +1 VP · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду · +1 VP',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Престиж +1 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'1 VP при завершении · раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
   {prestige:3,income:0,id:'orphanage',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Сиротский приют',type:'Жильё / Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Престиж +3 и Политическое влияние +1 при завершении · +4 VP после катастрофы 1906, если не уничтожен',benefit:'3 VP +1 Влияние при завершении · ещё 4 VP при выживании после землетрясения и пожаров',actionName:'Уцелевший приют',actionText:'После всех землетрясений и пожаров 1906 получите +4 VP, если приют цел или повреждён. Разрушенный или сгоревший не получает бонус.',limits:'Не является пожарным, полицейским или медицинским учреждением; бонус 1906 учитывается однократно после Фазы II.'},
@@ -1538,6 +1542,7 @@ export function completeConstruction(state,construction){
     construction.fixedIncome=Math.max(1,Math.min(3,Math.max(land,1+business)));
   }
   if(project.id==='customs_warehouse')construction.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  if(project.id==='brewery')construction.beerStock=BREWERY_STOCK_CAPACITY;
   if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
   if(project.id==='workers_complex'){
     state.pendingWorkforceLinks=state.pendingWorkforceLinks||[];
@@ -1643,11 +1648,20 @@ export function deliveryNeighbors(districtId){
   return districtNeighbors(districtId).filter(deliveryTraversableDistrict);
 }
 
+export function completedBreweries(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='brewery');}
+export function beerInventory(c){return Array.from({length:Math.max(0,Math.min(BREWERY_STOCK_CAPACITY,Number.isInteger(c?.beerStock)?c.beerStock:0))},()=>BEER_CARGO);}
+export function currentDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
 export function completedCustomsWarehouses(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='customs_warehouse');}
 export function contrabandInventory(c){return Array.from({length:Math.max(0,Math.min(CONTRABAND_STOCK_CAPACITY,Number.isInteger(c?.contrabandStock)?c.contrabandStock:0))},()=>CONTRABAND_CARGO);}
 export function currentContrabandDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
 export function deliverySourceInfo(state,playerId,source){
   if(!source)return null;
+  if(source.kind==='goods'){
+    const brewery=completedBreweries(state).find(c=>c.id===source.id);
+    if(!brewery)return null;
+    return {kind:'goods',id:brewery.id,name:projectById(brewery.projectId).name+' · '+(districtById(brewery.districtId)?.name||brewery.districtId),
+      districtId:brewery.districtId,inventory:beerInventory(brewery),ownerId:brewery.playerId,unitPrice:0};
+  }
   if(source.kind==='contraband'){
     const wh=completedCustomsWarehouses(state).find(c=>c.id===source.id);
     if(!wh)return null;
@@ -1793,6 +1807,9 @@ function validateRoute(route,sourceDistrictId){
 
 function targetDistrictId(state,target){
   if(target.kind==='construction'){
+    return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
+  }
+  if(target.kind==='goods-sale'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
   if(target.kind==='contraband-sale'){
@@ -2334,6 +2351,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   const produced=replenishIndustrialProduction(state);
   for(const item of produced){
     const plant=state.constructions.find(c=>c.id===item.constructionId);
