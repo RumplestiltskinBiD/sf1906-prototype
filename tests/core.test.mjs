@@ -871,7 +871,7 @@ test('Delivery log preserves causal order for partial then completing shipment',
   assert.equal(s.log.some(x=>x.msg.includes('завершил «Страховая компания»')),false);
 
   s.developmentSlotsUsed[0]=1; // next activation, same project
-  const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry',route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
+  const second={playerId:0,source:{kind:'node',id:'southernpacific'},haulerId:'dray2b',cargo:['Masonry'],route:['soma'],drops:[{kind:'construction',id:'C1',materials:['Masonry']}]};
   const r2=G.executeDelivery(s,second);
   assert.equal(r2.ok,true);
   assert.equal(s.constructions[0].status,'complete');
