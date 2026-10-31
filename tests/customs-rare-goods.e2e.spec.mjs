@@ -83,6 +83,9 @@ test('old saved markets gain both cards exactly once without overwriting existin
  const s=game();s.criminalTradeV1=false;
  s.deck=s.deck.filter(c=>!['customs_warehouse','rare_goods_shop'].includes(c.id));
  s.market=s.market.filter(c=>c&&!['customs_warehouse','rare_goods_shop'].includes(c.id));
+ s.starterDraftHands=(s.starterDraftHands||[]).map(hand=>hand.filter(c=>!['customs_warehouse','rare_goods_shop'].includes(c.id)));
+ s.starterDiscards=(s.starterDiscards||[]).filter(c=>!['customs_warehouse','rare_goods_shop'].includes(c.id));
+ s.expired=(s.expired||[]).filter(c=>!['customs_warehouse','rare_goods_shop'].includes(c.id));
  s.players[0].portfolio=['bank'];
  s.constructions=[built('OLD','bank','civic')];
  await seed(page,s);
@@ -90,6 +93,7 @@ test('old saved markets gain both cards exactly once without overwriting existin
  expect(after.criminalTradeV1).toBe(true);
  expect(after.deck.filter(c=>c.id==='customs_warehouse')).toHaveLength(2);
  expect(after.deck.filter(c=>c.id==='rare_goods_shop')).toHaveLength(2);
+ expect(after.starterDraftHands.flat().filter(c=>['customs_warehouse','rare_goods_shop'].includes(c.id))).toHaveLength(0);
  expect(after.constructions.find(c=>c.id==='OLD').status).toBe('complete');
  expect(after.players[0].portfolio).toEqual(['bank']);
  await page.reload();after=await saved(page);
