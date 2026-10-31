@@ -534,7 +534,7 @@ test('Freight Yard is a paid-storage source; emptying it resets the next $2 occu
   assert.equal(G.executeDelivery(s,first).ok,true);
 
   s.developmentSlotsUsed[0]=1; // next activation
-  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry',route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
+  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry'],route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
   assert.equal(G.executeDelivery(s,second).ok,true);
   assert.deepEqual(G.freightYardInventory(s,0),[]);
 
