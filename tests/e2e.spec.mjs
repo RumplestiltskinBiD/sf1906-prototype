@@ -288,6 +288,9 @@ test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Deliv
   expect(saved.procurementRemaining).toBe(2);
   expect(saved.players[0].capital).toBe(46);
 
+  await expect(page.locator('#actionDelivery')).toBeDisabled();
+  saved.developmentSlotsUsed[0]=1; // next activation, keep supplier accessible
+  await seed(page,saved);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await expect(page.locator('[data-delivery-supplier="gray-quarry"]')).toHaveClass(/source-available/);
 });
@@ -483,6 +486,10 @@ test('one-use hauler becomes unavailable while Standard Hauler remains reusable'
     await page.locator('#deliveryConfirm').click();
   }
   await deliverWith('dray2a');
+  await expect(page.locator('#actionDelivery')).toBeDisabled();
+  const next=await stored(page);
+  next.developmentSlotsUsed[0]=1; // new activation, limited dray still exhausted
+  await seed(page,next);await page.goto('/');
   await page.locator('#actionDelivery').click();
   await page.locator('[data-ds-node="broadway"]').click();
   await expect(page.locator('[data-hauler="dray2a"]')).toBeDisabled();
