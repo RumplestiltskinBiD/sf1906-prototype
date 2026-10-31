@@ -1131,8 +1131,8 @@ $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'su
 $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
 $$('[data-ds-plant]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'industry',id:b.dataset.dsPlant}));
 $$('[data-ds-yard]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'freight-yard',id:b.dataset.dsYard}));
-$('[data-ds-goods]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'goods',id:b.dataset.dsGoods}));
-$('[data-ds-contraband]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'contraband',id:b.dataset.dsContraband}));
+$$('[data-ds-goods]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'goods',id:b.dataset.dsGoods}));
+$$('[data-ds-contraband]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'contraband',id:b.dataset.dsContraband}));
 $$('[data-hauler]').forEach(b=>b.onclick=()=>chooseDeliveryHauler(b.dataset.hauler));
 $$('[data-load]').forEach(b=>b.onclick=()=>addDeliveryCargo(b.dataset.load));
 $('#clearCargo')?.addEventListener('click',clearDeliveryCargo);
@@ -2268,8 +2268,8 @@ focusConstruction(g.dataset.constructionToken);
 });
 $$('[data-delivery-warehouse]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'warehouse',id:g.dataset.deliveryWarehouse});});
 $$('[data-delivery-industry]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'industry',id:g.dataset.deliveryIndustry});});
-$('[data-delivery-goods]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'goods',id:g.dataset.deliveryGoods});});
-$('[data-delivery-contraband]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'contraband',id:g.dataset.deliveryContraband});});
+$$('[data-delivery-goods]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'goods',id:g.dataset.deliveryGoods});});
+$$('[data-delivery-contraband]').forEach(g=>g.onclick=e=>{e.stopPropagation();chooseDeliverySource({kind:'contraband',id:g.dataset.deliveryContraband});});
 }
 renderDeliveryRouteOverlay();
 }
