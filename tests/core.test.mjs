@@ -515,7 +515,8 @@ test('Public Freight Yard has private 2-slot sections and charges $2 only when a
   assert.equal(G.executeDelivery(s,second).ok,true);
   assert.deepEqual(G.freightYardInventory(s,0),['Lumber','Masonry']);
 
-  const overflow={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Steel'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Steel']}]};
+  s.developmentSlotsUsed[0]=2; // third annual activation, check full-yard failure
+  const overflow={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Steel',route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Steel']}]};
   assert.equal(G.validateDeliveryPlan(s,overflow).reason,'target-capacity');
 });
 
@@ -539,7 +540,8 @@ test('Freight Yard is a paid-storage source; emptying it resets the next $2 occu
   assert.deepEqual(G.freightYardInventory(s,0),[]);
 
   s.logisticsSupply.broadway=['Lumber'];
-  const reoccupy={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Lumber'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
+  s.developmentSlotsUsed[0]=2; // third annual activation, check renewed rent
+  const reoccupy={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Lumber',route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
   v=G.validateDeliveryPlan(s,reoccupy);
   assert.equal(v.ok,true,JSON.stringify(v));
   assert.equal(v.cost.yardRentCost,2);
