@@ -2526,7 +2526,7 @@ const warehouseLine=warehouses.length
 ?`<div class="warehouse-support">Поддержка склада: <b>${stored}/${warehouses.reduce((a,w)=>a+warehouseStorageCapacity(w),0)}</b> хранится в ${d.name}</div>`
 :needsWarehouse?'<div class="capacity-warning">Для здания на 4+ ресурса нужен завершённый склад в этом районе.</div>':'';
 const finishBtn=isActive&&finish.ok
-?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
+?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">${finish.warehouseUse>0?"Завершить · использовать Warehouse":"Завершить строительство"}</button>`
 :'';
 return `<div class="portfolio-card construction-card active-build typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="construction-need-label">${remainingText}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${con.justiceReorganized?'<div class="warehouse-support">⚖ Судебная реорганизация проведена</div>':''}${finishBtn}</div>`;
 }).join('');
