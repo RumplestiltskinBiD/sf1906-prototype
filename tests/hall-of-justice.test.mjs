@@ -91,6 +91,9 @@ test('reorganization never bypasses new project district requirements or uses a 
   assert.equal(s.constructions.find(c=>c.id==='S').projectId,'tenement');
   assert.equal(s.players[0].workers[0].used,false);
   assert.equal(s.players[0].capital,100);
+  // Even owning another copy does not allow a no-op replacement.
+  s.players[0].portfolio.push('tenement');
+  assert.equal(G.useHallOfJustice(s,0,'H','reorganize','S','tenement').reason,'replacement-card');
 });
 test('courthouse needs a reachable free worker and enough money; cannot serve both actions in same year',()=>{
   const s=setup();s.constructions=[built('H',1,'hall_of_justice'),built('R',0,'luxury')];
