@@ -91,3 +91,16 @@ test('legacy save receives exactly two Hall of Justice cards, without duplicatio
   expect(count(storedGame)).toBe(2);
   expect(storedGame.hallOfJusticeExpansionV1).toBe(true);
 });
+
+test('catastrophe laboratory previews one protected title without changing saved game',async({page})=>{
+  const s=makeGame();s.constructions.find(c=>c.id==='A').propertyTitleRegistered=true;
+  await seed(page,s);
+  await page.goto('/catastrophe.html');
+  await page.locator('#loadSaved').click();
+  await expect(page.locator('#message')).toContainText('Загружены реальные риски партии');
+  await page.locator('#quake').click();
+  if(await page.locator('#all').isEnabled())await page.locator('#all').click();
+  await expect(page.locator('#titleProtectionPreview')).toContainText('Гарантированные VP: 1');
+  const saved=await stored(page);
+  expect(saved.constructions.find(c=>c.id==='A').propertyTitleVpAwarded).toBeFalsy();
+});
