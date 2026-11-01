@@ -63,6 +63,7 @@
 ## Быстрая карта источников
 
 - Рабочие проекты: `game-core.js`; сводка/статусы `docs/buildings-master-registry.md`.
+- Общий исторический банк идей и правила альтернативной истории: [docs/HISTORICAL_IDEA_BANK.md](docs/HISTORICAL_IDEA_BANK.md). **Концепции не равны утверждённым картам**; на одну тему может уже существовать углублённый исторический черновик, использовать ссылки в банке. При поиске новых товаров не считать цветные кубики нежелательными: важна отличающаяся торговая роль и физическая логистика.
 - Исследования и партнёрства: `research-cards.js`, `partnership-cards.js`, `docs/card-rules-draft.md`. Они пока **данные, не подключённая игровая логика**.
 - Газета: `newspaper-cards.js`; прототип катастрофы: `catastrophe-core.js`, `catastrophe-ui.js`, `catastrophe.html`.
 - Разработка и регрессия: `docs/TESTING_POLICY.md` (обязательно), `tests/`, `package.json`, `.github/workflows/`.
