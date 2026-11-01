@@ -310,6 +310,21 @@ if(!parsed.criminalTradeV1){
   parsed.deck.unshift(...additions);
   parsed.criminalTradeV1=true;
 }
+if(!parsed.grandCitySquareExpansionV1){
+  const id='grand_city_square';
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const copies=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'GRAND-SQUARE-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+copies.length)/(copies.length+1)));
+  copies.forEach((c,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,c));
+  parsed.deck=deck;
+  parsed.grandCitySquareExpansionV1=true;
+}
 if(!parsed.hallOfJusticeExpansionV1){
   const id='hall_of_justice';
   const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
@@ -2511,7 +2526,7 @@ const warehouseLine=warehouses.length
 ?`<div class="warehouse-support">Поддержка склада: <b>${stored}/${warehouses.reduce((a,w)=>a+warehouseStorageCapacity(w),0)}</b> хранится в ${d.name}</div>`
 :needsWarehouse?'<div class="capacity-warning">Для здания на 4+ ресурса нужен завершённый склад в этом районе.</div>':'';
 const finishBtn=isActive&&finish.ok
-?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">Завершить · использовать Warehouse</button>`
+?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">${finish.warehouseUse>0?"Завершить · использовать Warehouse":"Завершить строительство"}</button>`
 :'';
 return `<div class="portfolio-card construction-card active-build typed-project" ${projectTypeStyle(pr)}><div class="construction-card-head"><span><strong>${pr.name}</strong><small>${d.name}</small></span><span class="status-badge">${prog.delivered}/${prog.required}</span></div><div class="project-material-line large">${resourcePills(pr.materials,con.materialsDelivered)}</div><div class="construction-need-label">${remainingText}</div><div class="site-capacity"><span>Staging</span><b>${prog.delivered} / ${CONSTRUCTION_STAGING_CAPACITY}</b><small>Ресурсы привозятся через Delivery</small></div><div class="upkeep-note">Простой: <b>−$${CONSTRUCTION_UPKEEP_COST}</b> после income при переходе года, пока объект не завершён.</div>${warehouseLine}${con.justiceReorganized?'<div class="warehouse-support">⚖ Судебная реорганизация проведена</div>':''}${finishBtn}</div>`;
 }).join('');

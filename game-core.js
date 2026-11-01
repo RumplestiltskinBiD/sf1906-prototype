@@ -24,7 +24,7 @@ export const WORKERS_PER_PLAYER = 3;
 export const MAX_SUSPICION = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
-export const LAND_VALUE_COMPLETION_CHANGE = {std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {grand_city_square:2,std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
 export const POOR_GROUND_DISTRICTS = Object.freeze(['marina','financial','soma','mission','missionbay']);
@@ -113,6 +113,7 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
+  {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0 · 2 VP.',benefit:'+2 VP · Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · +2 VP · регистрация собственности или реорганизация',benefit:'+2 VP · Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Успешная доставка в Городскую пивную или Ресторан и клуб: перевозчик +$3, производитель и получатель по +$1.',limits:'Пиво не складируется: за один рейс должен быть выбран завершённый получатель. Обычные повозки, граф районов и транспортные расходы.'},
   {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
@@ -840,6 +841,7 @@ export function createInitialState({rng=Math.random}={}){
     boardingExpansionV1:true,
     pressAndWorkersExpansionV1:true,
     criminalTradeV1:true,
+    grandCitySquareExpansionV1:true,
     pendingWorkforceLinks:[],
     pendingPressCampaigns:[],
     pressCampaignQueuedRound:0,
