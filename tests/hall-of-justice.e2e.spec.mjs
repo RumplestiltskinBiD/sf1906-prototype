@@ -74,3 +74,20 @@ for(const viewport of viewports){
    expect(errors).toEqual([]);
  });
 }
+
+test('legacy save receives exactly two Hall of Justice cards, without duplication on reload',async({page})=>{
+  const s=createInitialState({rng:()=>0.1});
+  s.hallOfJusticeExpansionV1=false;
+  s.market=s.market.map(m=>m?.id==='hall_of_justice'?{...m,id:'tenement'}:m);
+  s.deck=s.deck.filter(c=>c.id!=='hall_of_justice');
+  s.starterDraftHands=s.starterDraftHands.map(hand=>hand.filter(c=>c.id!=='hall_of_justice'));
+  await seed(page,s);
+  let storedGame=await stored(page);
+  const count=g=>g.deck.filter(c=>c.id==='hall_of_justice').length
+    +g.market.filter(c=>c?.id==='hall_of_justice').length
+    +g.starterDraftHands.flat().filter(c=>c.id==='hall_of_justice').length;
+  expect(count(storedGame)).toBe(2);
+  await page.reload();storedGame=await stored(page);
+  expect(count(storedGame)).toBe(2);
+  expect(storedGame.hallOfJusticeExpansionV1).toBe(true);
+});
