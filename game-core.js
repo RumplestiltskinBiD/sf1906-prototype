@@ -113,6 +113,7 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
+  {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · +2 VP · регистрация собственности или реорганизация',benefit:'+2 VP · Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Успешная доставка в Городскую пивную или Ресторан и клуб: перевозчик +$3, производитель и получатель по +$1.',limits:'Пиво не складируется: за один рейс должен быть выбран завершённый получатель. Обычные повозки, граф районов и транспортные расходы.'},
   {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
   {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · +1 VP · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду · +1 VP',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
@@ -891,6 +892,7 @@ export function createInitialState({rng=Math.random}={}){
     procurementRemaining:0,
     procurementSource:null,
     actionSpaceOccupancy:{},
+    hallOfJusticeExpansionV1:true,
     bankOwnerRewarded:{},
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:d.buildable!==false}])),
@@ -2314,6 +2316,86 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
     ?`${state.players[playerId].name}: добровольная пожарная модернизация «${projectById(targets[0].projectId).name}» в ${label} за $${fee}; П ${fireBefore}→${fireAfter}.`
     :`${state.players[playerId].name}: пожарная инспекция в ${label}: модернизировано ${targets.length} зданий, П ${fireBefore}→${fireAfter}; штрафы и влияние владельцев пересчитаны.`,'accent');
   return {ok:true,kind,districtId,targets:targets.map(c=>c.id),impacts,fireBefore,fireAfter,worker:consumed.worker};
+}
+
+
+/** One common worker space for both courthouse actions. Registration secures
+ * one final VP even if the registered building is destroyed in Phase II.
+ * Reorganization replaces a site card without rebuying its land.
+ */
+export function hallOfJusticeOptions(state,playerId,hallId){
+  const hall=(state.constructions||[]).find(c=>c.id===hallId&&c.projectId==='hall_of_justice'&&c.status==='complete');
+  if(!hall)return {ok:false,reason:'no-hall'};
+  const worker=activeWorker(state,playerId),occupied=actionSpaceOccupant(state,hallId)!=null;
+  const reachable=!!worker&&workerCanReachDistrict(state,playerId,hall.districtId,worker.id);
+  const active=canTakeMainAction(state,playerId);
+  const buildings=(state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete'
+    &&!c.propertyTitleRegistered&&constructionFireRisk(c)<=0).map(c=>c.id);
+  const sites=(state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='under-construction'
+    &&!c.justiceReorganized).map(c=>c.id);
+  return {ok:true,hallId,occupied,reachable,active,
+    registrationTargets:buildings,reorganizationTargets:sites,unstartedProjects:[...(state.players?.[playerId]?.portfolio||[])]};
+}
+export function useHallOfJustice(state,playerId,hallId,kind,targetId,replacementProjectId=null){
+  const options=hallOfJusticeOptions(state,playerId,hallId);
+  if(!options.ok)return options;
+  if(!options.active)return {ok:false,reason:'main-action'};
+  if(!options.reachable)return {ok:false,reason:'worker-range'};
+  if(options.occupied)return {ok:false,reason:'occupied'};
+  const fee=kind==='register'?1:kind==='reorganize'?2:null;
+  if(fee==null)return {ok:false,reason:'mode'};
+  const player=state.players[playerId];
+  if(player.capital<fee)return {ok:false,reason:'capital'};
+  const site=(state.constructions||[]).find(c=>c.id===targetId);
+  if(kind==='register'){
+    if(!options.registrationTargets.includes(targetId))return {ok:false,reason:'registration-target'};
+  }else{
+    if(!options.reorganizationTargets.includes(targetId))return {ok:false,reason:'construction-target'};
+    if(!replacementProjectId||replacementProjectId===site.projectId||!(player.portfolio||[]).includes(replacementProjectId)
+      ||!PROJECTS.some(p=>p.id===replacementProjectId))return {ok:false,reason:'replacement-card'};
+    // Validate the replacement at the ORIGINAL construction site, not at the
+    // courthouse. Removing the old site avoids false slot/service collisions.
+    // Land is already owned, so the eligibility probe must not charge it twice.
+    const probe=structuredClone(state);
+    probe.constructions=probe.constructions.filter(c=>c.id!==targetId);
+    probe.players[playerId].capital=Math.max(probe.players[playerId].capital,
+      probe.districts[site.districtId]?.landValue||0);
+    const w=activeWorker(probe,playerId);
+    if(w)w.districtId=site.districtId;
+    const eligible=constructionEligibility(probe,playerId,replacementProjectId,site.districtId);
+    if(!eligible.ok)return {ok:false,reason:'replacement-requirements',reasons:eligible.reasons};
+  }
+  const hall=state.constructions.find(c=>c.id===hallId);
+  const consumed=consumeMainAction(state,playerId,hall.districtId);
+  if(!consumed.ok)return consumed;
+  player.capital-=fee;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[hallId]=playerId;
+  if(kind==='register'){
+    site.propertyTitleRegistered=true;
+    logEvent(state,`${player.name} зарегистрировал право на «${projectById(site.projectId).name}» за $1: 1 итоговый VP даже при разрушении в 1906.${workerMovementText(consumed)}`,'good');
+    return {ok:true,kind,cost:fee,constructionId:targetId,worker:consumed.worker};
+  }
+  const oldProjectId=site.projectId;
+  const required=(projectById(replacementProjectId)?.materials||[]);
+  const remaining={};for(const type of required)remaining[type]=(remaining[type]||0)+1;
+  const kept=[],lost=[];
+  for(const type of site.materialsDelivered||[]){
+    if((remaining[type]||0)>0){kept.push(type);remaining[type]--;}else lost.push(type);
+  }
+  site.projectId=replacementProjectId;
+  site.materialsDelivered=kept;
+  site.justiceReorganized=true;
+  site.lostMaterials=[...(site.lostMaterials||[]),...lost];
+  player.portfolio.splice(player.portfolio.indexOf(replacementProjectId),1);
+  state.expired=state.expired||[];
+  state.expired.push({uid:`JUSTICE-${state.round}-${site.id}-${state.expired.length+1}`,id:oldProjectId});
+  let completed=false;
+  // Completion is free as usual once real staged/warehoused materials suffice.
+  if(canCompleteConstruction(state,site.id).ok)completed=completeConstruction(state,site).ok;
+  logEvent(state,`${player.name} реорганизовал стройку: «${projectById(oldProjectId).name}» → «${projectById(replacementProjectId).name}» за $2. Участок и ${kept.length} подходящих материалов сохранены; ${lost.length} излишних списано.${workerMovementText(consumed)}`,'good');
+  return {ok:true,kind,cost:fee,constructionId:targetId,oldProjectId,newProjectId:replacementProjectId,
+    kept,lost,completed,worker:consumed.worker};
 }
 
 export function useCommissionHouse(state,playerId,houseConstructionId,handIndex){
