@@ -7,7 +7,7 @@ createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,curre
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,currentDeliveryKey,
-roundIncome,grossRoundIncome,buildingIncome,
+roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
@@ -20,6 +20,7 @@ let mobileContextOpen=false;
 let mobileMapDetail=false;
 let deliveryDraft=null;
 let fireActionDraft=null;
+let justiceDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
 let riskViewActive=false;
@@ -134,6 +135,9 @@ warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
  bakeryInventory:x.projectId==='bakery'&&x.status==='complete'&&Array.isArray(x.bakeryInventory)?x.bakeryInventory.filter(t=>t==='Lumber').slice(0,1):[],
  bakeryUsedRound:Number.isInteger(x.bakeryUsedRound)?x.bakeryUsedRound:null,
  orphanageSurvivalVpAwarded:!!x.orphanageSurvivalVpAwarded,
+ propertyTitleRegistered:!!x.propertyTitleRegistered,
+ propertyTitleVpAwarded:!!x.propertyTitleVpAwarded,
+ justiceReorganized:!!x.justiceReorganized,
 completedRound:x.completedRound??null,
 fireSafetyModernized:!!x.fireSafetyModernized,
  wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
@@ -305,6 +309,21 @@ if(!parsed.criminalTradeV1){
   parsed.deck=parsed.deck||[];
   parsed.deck.unshift(...additions);
   parsed.criminalTradeV1=true;
+}
+if(!parsed.hallOfJusticeExpansionV1){
+  const id='hall_of_justice';
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const additions=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'HALL-JUSTICE-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.hallOfJusticeExpansionV1=true;
 }
 if(!parsed.residentialMixedV1){
  const ids=['bakery','orphanage'];
