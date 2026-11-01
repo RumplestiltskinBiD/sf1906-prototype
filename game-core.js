@@ -841,6 +841,7 @@ export function createInitialState({rng=Math.random}={}){
     boardingExpansionV1:true,
     pressAndWorkersExpansionV1:true,
     criminalTradeV1:true,
+    grandCitySquareExpansionV1:true,
     pendingWorkforceLinks:[],
     pendingPressCampaigns:[],
     pressCampaignQueuedRound:0,
