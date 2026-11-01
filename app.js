@@ -310,6 +310,21 @@ if(!parsed.criminalTradeV1){
   parsed.deck.unshift(...additions);
   parsed.criminalTradeV1=true;
 }
+if(!parsed.grandCitySquareExpansionV1){
+  const id='grand_city_square';
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const copies=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'GRAND-SQUARE-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+copies.length)/(copies.length+1)));
+  copies.forEach((c,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,c));
+  parsed.deck=deck;
+  parsed.grandCitySquareExpansionV1=true;
+}
 if(!parsed.hallOfJusticeExpansionV1){
   const id='hall_of_justice';
   const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
