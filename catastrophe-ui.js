@@ -60,7 +60,7 @@ function draw(){
   $('reset').disabled=playing;
   const titles=importedGame&&sim?.done?registeredPropertyTitleResults(importedGame,sim):null;
   $('titleProtectionPreview').textContent=titles?.ok&&titles.entries.length
-    ?'⚖ Зарегистрированные права: '+titles.entries.length+' гарантированных VP после катастрофы. Это предпросмотр, сохранение партии не изменено.'
+    ?'⚖ Зарегистрировано зданий: '+titles.entries.length+'. Гарантированные VP: '+titles.entries.length+'. Предпросмотр без изменения сохранения.'
     :'';
   $('queue').textContent=sim
     ?'Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+(sim.starts.map(name).join(', ')||'нет')+'. В очереди: '+(sim.queue.map(name).join(' → ')||'пусто')+'. Обработано: '+sim.events.length+'.'
