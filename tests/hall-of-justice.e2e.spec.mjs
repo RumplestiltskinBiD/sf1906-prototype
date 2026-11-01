@@ -17,7 +17,7 @@ function makeGame(){
  return s;
 }
 async function seed(page,s){
- await page.addInitScript(({key,val})=>localStorage.setItem(key,val),
+ await page.addInitScript(({key,val})=>{if(localStorage.getItem(key)===null)localStorage.setItem(key,val);},
    {key:KEY,val:JSON.stringify(s)});
  await page.goto('/');
 }
