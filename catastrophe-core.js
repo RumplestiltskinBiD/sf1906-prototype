@@ -141,6 +141,37 @@ export function awardOrphanageSurvivalVp(game,simulation){
   return {ok:true,awards,prestige:awards.reduce((n,x)=>n+x.bonus,0)};
 }
 
+/** Registered deeds guarantee exactly one final VP for the selected building.
+ * When general survivor scoring is added, it must exclude already-awarded
+ * registered buildings to avoid a double +1.
+ */
+export function registeredPropertyTitleResults(game,simulation){
+  if(!simulation?.done)return {ok:false,reason:'simulation-incomplete',entries:[]};
+  const entries=(game?.constructions||[]).filter(c=>c.status==='complete'&&c.propertyTitleRegistered)
+    .map(c=>{
+      const district=simulation.nodes?.[c.districtId];
+      const survived=!!district&&district.quake!=='destroyed'&&!district.burning;
+      return {constructionId:c.id,playerId:c.playerId,districtId:c.districtId,
+        survived,burned:!!district?.burning,quake:district?.quake||null,bonus:1};
+    });
+  return {ok:true,entries};
+}
+export function awardRegisteredPropertyTitleVp(game,simulation){
+  const result=registeredPropertyTitleResults(game,simulation);
+  if(!result.ok)return result;
+  const awards=[];
+  for(const item of result.entries){
+    const c=(game.constructions||[]).find(x=>x.id===item.constructionId);
+    if(c.propertyTitleVpAwarded||!game.players?.[item.playerId])continue;
+    c.propertyTitleVpAwarded=true;
+    const player=game.players[item.playerId];
+    player.prestige=(player.prestige||0)+1;
+    if(Array.isArray(game.log))game.log.push({cls:'good',msg:`${player.name}: зарегистрированное право на здание — гарантированный 1 VP после катастрофы 1906.`});
+    awards.push(item);
+  }
+  return {ok:true,awards,prestige:awards.length};
+}
+
 export function stats(sim){
   const list=Object.values(sim.nodes);
   return {intact:list.filter(n=>n.quake==='intact').length,
