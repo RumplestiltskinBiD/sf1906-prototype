@@ -58,6 +58,7 @@ test('land value is capped at 6, including several completed squares',()=>{
 test('completed square unlocks local land requirements even for competitor, but not elsewhere',()=>{
   const s=state();s.districts.civic.landValue=1;s.districts.mission.landValue=1;
   s.players[1].portfolio=['skyscraper'];
+  s.developmentPlayer=1;s.activeWorkerId=s.players[1].workers[0].id;
   assert.equal(G.constructionEligibility(s,1,'skyscraper','civic').ok,false);
   s.constructions=[site('G',0,'civic',['Lumber','Masonry'])];
   assert.equal(G.completeConstruction(s,s.constructions[0]).ok,true);
