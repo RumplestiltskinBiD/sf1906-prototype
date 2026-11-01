@@ -2079,13 +2079,13 @@ render();
 };
 const end=$('#actionEndActivation');if(end)end.onclick=()=>finishActivation(false);
 const passAll=$('#actionPassRemaining');if(passAll)passAll.onclick=()=>finishActivation(true);
-$('[data-justice-mode]').forEach(b=>b.onclick=()=>{
+$$('[data-justice-mode]').forEach(b=>b.onclick=()=>{
   justiceDraft={pid,workerId:activeWorker(state,pid)?.id,hallId:b.dataset.justiceHall,kind:b.dataset.justiceMode,siteId:null};
   renderCityActions();
   $('#justiceTargetPanel')?.scrollIntoView({block:'nearest'});
 });
 $('#cancelJusticeAction')?.addEventListener('click',()=>{justiceDraft=null;renderCityActions();});
-$('[data-justice-site]').forEach(b=>b.onclick=()=>{if(justiceDraft){justiceDraft.siteId=b.dataset.justiceSite;renderCityActions();}});
+$$('[data-justice-site]').forEach(b=>b.onclick=()=>{if(justiceDraft){justiceDraft.siteId=b.dataset.justiceSite;renderCityActions();}});
 const finishJustice=(targetId,newProject=null)=>{
   const j=justiceDraft;if(!j)return;
   const result=useHallOfJustice(state,pid,j.hallId,j.kind,targetId,newProject);
@@ -2097,9 +2097,9 @@ const finishJustice=(targetId,newProject=null)=>{
   showToast(result.kind==='register'?'Право собственности зарегистрировано: 1 VP после катастрофы.':'Проект реорганизован'+(result.completed?' и завершён':'')+'.');
   render();
 };
-$('[data-justice-target]').forEach(b=>b.onclick=()=>finishJustice(b.dataset.justiceTarget));
-$('[data-justice-project]').forEach(b=>b.onclick=()=>finishJustice(justiceDraft?.siteId,b.dataset.justiceProject));
-$('[data-fire-mode]').forEach(b=>b.onclick=()=>{
+$$('[data-justice-target]').forEach(b=>b.onclick=()=>finishJustice(b.dataset.justiceTarget));
+$$('[data-justice-project]').forEach(b=>b.onclick=()=>finishJustice(justiceDraft?.siteId,b.dataset.justiceProject));
+$$('[data-fire-mode]').forEach(b=>b.onclick=()=>{
   fireActionDraft={pid,workerId:activeWorker(state,pid)?.id,firehouseId:b.dataset.firehouseId,kind:b.dataset.fireMode};
   renderCityActions();
   $('#fireTargetPanel')?.scrollIntoView({block:'nearest',behavior:'smooth'});
