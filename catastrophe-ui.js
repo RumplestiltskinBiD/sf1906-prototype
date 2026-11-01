@@ -1,11 +1,12 @@
 import {DISTRICTS} from './game-core.js';
-import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport} from './catastrophe-core.js';
+import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport,registeredPropertyTitleResults} from './catastrophe-core.js';
 const $=id=>document.getElementById(id);
 const known=new Map(DISTRICTS.map(d=>[d.id,d]));
 const savedKey='sf1906_phase1_ui_v030a';
 const name=id=>known.get(id)?.name||id;
 let values=preset('three'),sim=null,selection='soma',playing=false,svg=null,labels=null;
 let scenarioLabel='3 очага: SoMa, Mission, Chinatown';
+let importedGame=null;
 const format=r=>{const x=indicator(r);return x.raw>3?'III('+x.raw+')':String(x.raw);};
 const safeText=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function draw(){
@@ -57,6 +58,10 @@ function draw(){
   $('step').disabled=playing||!sim||sim.done;
   $('all').disabled=playing||!sim||sim.done;
   $('reset').disabled=playing;
+  const titles=importedGame&&sim?.done?registeredPropertyTitleResults(importedGame,sim):null;
+  $('titleProtectionPreview').textContent=titles?.ok&&titles.entries.length
+    ?'⚖ Зарегистрированные права: '+titles.entries.length+' гарантированных VP после катастрофы. Это предпросмотр, сохранение партии не изменено.'
+    :'';
   $('queue').textContent=sim
     ?'Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+(sim.starts.map(name).join(', ')||'нет')+'. В очереди: '+(sim.queue.map(name).join(' → ')||'пусто')+'. Обработано: '+sim.events.length+'.'
     :'Сначала запустите землетрясение.';
@@ -94,12 +99,12 @@ $('firehouse').addEventListener('change',()=>{
   values[selection].firehouse=$('firehouse').checked;draw();
 });
 $('preset').addEventListener('change',()=>{
-  values=preset($('preset').value);scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
+  values=preset($('preset').value);importedGame=null;scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
   $('message').textContent='Риски загружены. Запустите землетрясение.';draw();
 });
 $('reset').addEventListener('click',()=>{
   if(sim){sim=null;$('history').replaceChildren();$('message').textContent='Расчёт сброшен, значения рисков сохранены.';}
-  else{values=preset($('preset').value);scenarioLabel=$('preset').selectedOptions[0].textContent;$('message').textContent='Сценарий восстановлен.';}
+  else{values=preset($('preset').value);importedGame=null;scenarioLabel=$('preset').selectedOptions[0].textContent;$('message').textContent='Сценарий восстановлен.';}
   draw();
 });
 $('loadSaved').addEventListener('click',()=>{
@@ -108,7 +113,7 @@ $('loadSaved').addEventListener('click',()=>{
     if(!raw)throw Error('Нет сохранённой партии.');
     const game=JSON.parse(raw);
     if(!game||!Array.isArray(game.constructions)||!game.districts)throw Error('Неизвестный формат.');
-    values=fromGame(game);sim=null;scenarioLabel='Риски из сохранённой партии';
+    values=fromGame(game);importedGame=game;sim=null;scenarioLabel='Риски из сохранённой партии';
     $('preset').value='base';$('history').replaceChildren();
     $('message').textContent='Загружены реальные риски партии. Сохранение не изменено.';
     draw();
