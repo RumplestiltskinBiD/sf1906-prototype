@@ -7,7 +7,7 @@ const build=(id,playerId,projectId,districtId='soma',more={})=>({id,playerId,pro
 function state(){const s=G.createInitialState({rng:()=>0.2});s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;s.constructions=[];s.players.forEach(p=>{p.capital=50;p.portfolio=[];});s.activeWorkerId=s.players[0].workers[0].id;s.players[0].workers[0].districtId='soma';return s;}
 test('v0.51 mixed catalog, construction prices, money, VP, vulnerabilities and card quantities',()=>{
  assert.equal(G.PROJECTS.length,37);assert.equal(G.PROJECT_COPIES,2);
- assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,10);
+ assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,11);
  const tower=G.projectById('press_tower'),workers=G.projectById('workers_complex');
  assert.deepEqual(tower.types,['Бизнес','Промышленное']);assert.equal(tower.open,6);assert.equal(tower.income,4);assert.equal(tower.prestige,3);assert.equal(tower.landMin,3);
  assert.deepEqual(tower.materials,['Lumber','Masonry','Masonry','Steel','Steel']);
