@@ -52,8 +52,11 @@ for(const viewport of sizes){
     await page.locator('[data-hauler="dray2a"]').click();
     await page.locator('[data-load="Masonry"]').click();
     await page.locator('#deliveryBeginRoute').click();
-    await page.locator('#deliveryLockRoute').click();
-    await page.locator('[data-construction-token="Q"][data-delivery-drop-target="Q"]').dispatchEvent('click');
+    const mobile=viewport.width<=640||(viewport.height<=500&&viewport.width<=960);
+    if(mobile){
+      await page.locator('#deliveryLockRoute').click();
+      await page.locator('[data-construction-token="Q"][data-delivery-drop-target="Q"]').dispatchEvent('click');
+    }
     const drop=page.locator('[data-drop-kind="construction"][data-drop-id="Q"][data-drop-type="Masonry"]');
     await expect(drop).toBeEnabled();
     await drop.click();
