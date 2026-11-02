@@ -310,6 +310,22 @@ if(!parsed.criminalTradeV1){
   parsed.deck.unshift(...additions);
   parsed.criminalTradeV1=true;
 }
+if(!parsed.residentialQuarterExpansionV1){
+  const id='residential_quarter';
+  // Older games retain their markets, cards, projects, capital, and construction state.
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const additions=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'RESIDENTIAL-QUARTER-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.residentialQuarterExpansionV1=true;
+}
 if(!parsed.grandCitySquareExpansionV1){
   const id='grand_city_square';
   const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
