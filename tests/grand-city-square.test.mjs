@@ -15,8 +15,8 @@ function site(id,playerId=0,districtId='civic',materials=[]){
     materialsDelivered:materials,warehouseInventory:[],startedRound:1,completedRound:null};
 }
 test('square is sixth pure Public card, two market copies, compact two-resource recipe',()=>{
-  assert.equal(G.PROJECTS.length,38);
-  assert.equal(G.createProjectCardPool({rng:()=>0.2}).length,76);
+  assert.equal(G.PROJECTS.length,39);
+  assert.equal(G.createProjectCardPool({rng:()=>0.2}).length,78);
   assert.equal(G.createProjectCardPool({rng:()=>0.2}).filter(c=>c.id===square.id).length,2);
   assert.deepEqual(G.projectTypes(square),['Общественное']);
   assert.deepEqual(square.materials,['Lumber','Masonry']);
