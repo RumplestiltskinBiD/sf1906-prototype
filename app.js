@@ -2537,10 +2537,9 @@ const remainingMaterials=missingConstructionMaterials(con);
 const remainingText=remainingMaterials.length?'Осталось привезти: '+remainingMaterials.join(', '):'Все материалы доставлены';
 const warehouses=completedWarehouses(state,p.id,con.districtId);
 const stored=warehouses.reduce((sum,w)=>sum+warehouseInventory(w).length,0);
-const needsWarehouse=pr.materials.length>CONSTRUCTION_STAGING_CAPACITY;
 const warehouseLine=warehouses.length
 ?`<div class="warehouse-support">Поддержка склада: <b>${stored}/${warehouses.reduce((a,w)=>a+warehouseStorageCapacity(w),0)}</b> хранится в ${d.name}</div>`
-:needsWarehouse?'<div class="capacity-warning">Для здания на 4+ ресурса нужен завершённый склад в этом районе.</div>':'';
+:'';
 const finishBtn=isActive&&finish.ok
 ?`<button class="primary-btn full complete-storage-btn" data-complete-build="${con.id}">${finish.warehouseUse>0?"Завершить · использовать Warehouse":"Завершить строительство"}</button>`
 :'';
