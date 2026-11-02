@@ -19,7 +19,7 @@ function built(id,playerId,projectId,districtId='civic',status='complete',materi
 }
 test('Hall of Justice enters two-copy market with the approved card, land 3+ and both mixed types',()=>{
   const p=G.projectById('hall_of_justice');
-  assert.equal(G.PROJECTS.length,38);
+  assert.equal(G.PROJECTS.length,39);
   assert.deepEqual(p.types,['Бизнес','Общественное']);
   assert.deepEqual(p.materials,['Lumber','Masonry','Masonry','Steel']);
   assert.deepEqual([p.open,p.income,p.prestige,p.landMin],[5,1,2,3]);
