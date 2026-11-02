@@ -10,12 +10,10 @@ function game(){
   s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
   s.activeWorkerId=s.players[0].workers[0].id;s.activationMainActionUsed=false;
   s.players[0].capital=50;s.players[0].prestige=0;
-  s.constructions=[{id:'Q',playerId:0,projectId:quarter.id,districtId:'civic',
+  s.logisticsSupply.pacificmail=['Masonry','Lumber'];
+  s.constructions=[{id:'Q',playerId:0,projectId:quarter.id,districtId:'soma',
     status:'under-construction',materialsDelivered:['Lumber','Lumber','Lumber'],
-    warehouseInventory:[],startedRound:1,completedRound:null},
-    {id:'W',playerId:0,projectId:'std_warehouse',districtId:'civic',
-      status:'complete',materialsDelivered:['Lumber','Masonry','Steel'],
-      warehouseInventory:['Masonry'],startedRound:1,completedRound:1}];
+    warehouseInventory:[],startedRound:1,completedRound:null}];
   return s;
 }
 async function seed(page,s){
@@ -44,28 +42,48 @@ for(const viewport of sizes){
     expect(overflow).toBeLessThanOrEqual(2);
     expect(errors).toEqual([]);
   });
-  test('quarter construction consumes local warehouse brick, saves and reloads on '+viewport.width+'x'+viewport.height,async({page})=>{
+  test('final brick Delivery completes residential quarter with no warehouse on '+viewport.width+'x'+viewport.height,async({page})=>{
     await page.setViewportSize(viewport);
     const s=game();
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await seed(page,s);
-    await page.locator('#officeBtn').click();
-    const complete=page.locator('[data-complete-build="Q"]');
-    await expect(complete).toBeEnabled();
-    await complete.dispatchEvent('click');
+    await page.locator('#actionDelivery').dispatchEvent('click');
+    await page.locator('[data-delivery-node="pacificmail"]').dispatchEvent('click');
+    await page.locator('[data-hauler="dray2a"]').click();
+    await page.locator('[data-load="Masonry"]').click();
+    await page.locator('#deliveryBeginRoute').click();
+    const mobile=viewport.width<=640||(viewport.height<=500&&viewport.width<=960);
+    if(mobile){
+      await page.locator('#deliveryLockRoute').click();
+      await page.locator('[data-construction-token="Q"][data-delivery-drop-target="Q"]').dispatchEvent('click');
+    }
+    const drop=page.locator('[data-drop-kind="construction"][data-drop-id="Q"][data-drop-type="Masonry"]');
+    await expect(drop).toBeEnabled();
+    await drop.click();
+    await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+    await page.locator('#deliveryConfirm').click();
     let current=await saved(page);
-    expect(current.constructions.find(c=>c.id==='Q').status).toBe('complete');
-    expect(current.constructions.find(c=>c.id==='W').warehouseInventory).toEqual([]);
+    expect(current.constructions).toHaveLength(1);
+    expect(current.constructions[0].status).toBe('complete');
+    expect(current.constructions[0].materialsDelivered).toEqual(quarter.materials);
     expect(current.players[0].prestige).toBe(2);
-    expect(current.players[0].capital).toBe(50);
+    expect(current.players[0].capital).toBeLessThan(50);
     await page.reload();
     current=await saved(page);
-    expect(current.constructions.find(c=>c.id==='Q').status).toBe('complete');
+    expect(current.constructions[0].status).toBe('complete');
     expect(current.players[0].prestige).toBe(2);
     expect(errors).toEqual([]);
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(2);
   });
+  test('office does not claim warehouse required for residential quarter at '+viewport.width+'x'+viewport.height,async({page})=>{
+    await page.setViewportSize(viewport);
+    await seed(page,game());
+    await page.locator('#officeBtn').click();
+    await expect(page.locator('#officeContent')).toContainText('Жилой квартал');
+    await expect(page.locator('#officeContent')).not.toContainText('Для здания на 4+ ресурса нужен завершённый склад');
+  });
+
 }
 
 test('legacy save inserts exactly two residential quarters without changing existing holdings',async({page})=>{

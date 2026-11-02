@@ -52,28 +52,48 @@ test('quarter requires a real construction action and pays the current land valu
   assert.equal(G.buildingIncome(s,0),0,'unfinished houses do not earn');
 });
 
-test('four-unit recipe needs one local warehouse material, then grants only income and two VP once',()=>{
-  const s=state(); const beforeLand=s.districts.civic.landValue;
-  const c={id:'Q',playerId:0,projectId:quarter.id,districtId:'civic',
+test('quarter finishes from real fourth-material delivery, without any warehouse',()=>{
+  const s=state();
+  const beforeLand=s.districts.soma.landValue;
+  s.logisticsSupply.pacificmail=['Masonry'];
+  const c={id:'Q',playerId:0,projectId:quarter.id,districtId:'soma',
     status:'under-construction',materialsDelivered:['Lumber','Lumber','Lumber'],
     warehouseInventory:[],startedRound:1,completedRound:null};
-  s.constructions=[c];
-  const incomplete=G.canCompleteConstruction(s,'Q');
-  assert.equal(incomplete.ok,false);
-  assert.equal(incomplete.reason,'warehouse-required');
-  assert.equal(incomplete.missing.Masonry,1);
-  s.constructions.push(warehouse('W',['Masonry']));
-  assert.equal(G.canCompleteConstruction(s,'Q').ok,true);
-  const finished=G.completeConstruction(s,c);
-  assert.equal(finished.ok,true,finished.reason);
-  assert.equal(c.status,'complete');
-  assert.equal(s.constructions[1].warehouseInventory.length,0,'stored brick is consumed');
-  assert.equal(G.buildingIncome(s,0),3,'income comes from finished quarter only');
-  assert.equal(s.players[0].prestige,2);
-  assert.equal(s.districts.civic.landValue,beforeLand,'no disguised land refund or value change');
-  assert.equal(G.completeConstruction(s,c).ok,false,'repeat completion blocked');
-  assert.equal(s.players[0].prestige,2);
+  s.constructions=[c]; // Intentionally no warehouses anywhere.
+  assert.equal(G.canCompleteConstruction(s,'Q').ok,false,'three materials do not complete four-item recipe');
+  assert.equal(G.buildingIncome(s,0),0);
+  const plan={playerId:0,source:{kind:'node',id:'pacificmail'},haulerId:'dray2a',
+    cargo:['Masonry'],route:['soma'],drops:[{kind:'construction',id:'Q',materials:['Masonry']}]};
+  const valid=G.validateDeliveryPlan(s,plan);
+  assert.equal(valid.ok,true,JSON.stringify(valid));
+  const result=G.executeDelivery(s,plan);
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.deepEqual(result.completed,['Q']);
+  assert.equal(c.status,'complete','the fourth material finishes construction automatically');
+  assert.deepEqual(c.materialsDelivered,quarter.materials);
   assert.equal(G.buildingIncome(s,0),3);
+  assert.equal(s.players[0].prestige,2);
+  assert.equal(s.districts.soma.landValue,beforeLand);
+  assert.equal(G.completeConstruction(s,c).ok,false,'no second completion reward');
+  assert.equal(s.players[0].prestige,2);
+});
+
+test('quarter also accepts four correct materials in one final Delivery, without storage',()=>{
+  const s=state();
+  s.logisticsSupply.pacificmail=['Lumber','Lumber','Lumber','Masonry'];
+  const c={id:'Q',playerId:0,projectId:quarter.id,districtId:'soma',
+    status:'under-construction',materialsDelivered:[],warehouseInventory:[],
+    startedRound:1,completedRound:null};
+  s.constructions=[c];
+  const plan={playerId:0,source:{kind:'node',id:'pacificmail'},haulerId:'freight5',
+    cargo:[...quarter.materials],route:['soma'],
+    drops:[{kind:'construction',id:'Q',materials:[...quarter.materials]}]};
+  const check=G.validateDeliveryPlan(s,plan);
+  assert.equal(check.ok,true,JSON.stringify(check));
+  const result=G.executeDelivery(s,plan);
+  assert.equal(result.ok,true,JSON.stringify(result));
+  assert.equal(c.status,'complete');
+  assert.equal(s.players[0].prestige,2);
 });
 
 test('storage in another district or another player warehouse cannot finish the quarter',()=>{
