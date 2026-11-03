@@ -164,7 +164,7 @@ test('market fills 3 slots across two breweries and preserves producer identity'
   assert.equal(G.goodsBuyerUsed(s,s.constructions[2]),3);
   assert.equal(s.players[1].capital,102,'first producer gets 2');
   assert.equal(s.players[2].capital,101,'second producer gets 1');
-  assert.equal(s.players[0].capital,110,'carrier gets 9 and buyer gets 3 minus cost 2');
+  assert.equal(s.players[0].capital,109,'carrier gets 9 and buyer gets 3 minus $3 freight and loading');
   s.lastDeliveryKey=null;
   const rejected=ship({source:'B2',target:'T',sourceIds:['B2']});
   assert.equal(G.validateDeliveryPlan(s,rejected).reason,'goods-buyer-capacity');
