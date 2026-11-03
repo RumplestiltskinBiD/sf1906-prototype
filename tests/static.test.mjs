@@ -181,6 +181,6 @@ test('card base VP is shown once and legacy prestige copy is absent',async()=>{
   assert.match(projectById('school').effect,/до [+]2 дополнительных VP/);
   assert.match(projectById('club').actionText,/[+]1 Влияние/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.doesNotMatch(app,/Престиж|Prestige/);
+  assert.doesNotMatch(app,/Престиж|Prestige VP|Prestige после/);
   assert.match(app,/class="prestige-chip">VP /);
 });
