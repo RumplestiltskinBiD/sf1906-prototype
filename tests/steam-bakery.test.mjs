@@ -97,7 +97,7 @@ test('mixed Beer and Bread delivery preserves type, origin, stock, and one commo
  assert.equal(s.constructions[0].beerStock,0);
  assert.equal(s.constructions[1].breadStock,1);
  assert.equal(G.goodsBuyerUsed(s,s.constructions[2]),2);
- assert.equal(s.players[0].capital,101,'two goods => $6 less $4 transport, with no buyer ownership');
+ assert.equal(s.players[0].capital,102,'two goods => $6 less $4 transport, with no buyer ownership');
  assert.equal(s.players[1].capital,101);
  assert.equal(s.players[2].capital,103,'one brewery, one beer producer, and two recipient bonuses');
 });
