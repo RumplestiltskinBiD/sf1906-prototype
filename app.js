@@ -124,6 +124,7 @@ portfolio:p.portfolio||[],
 loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
 fireIncomePenalty:Math.max(0,Number(p.fireIncomePenalty)||0),
+breadIncomePenalty:Math.max(0,Number.isInteger(p.breadIncomePenalty)?p.breadIncomePenalty:0),
 goals:Array.isArray(p.goals)?p.goals:[],
 goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
@@ -143,6 +144,9 @@ fireSafetyModernized:!!x.fireSafetyModernized,
  wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
 contrabandStock:x.projectId==='customs_warehouse'&&x.status==='complete'?Math.max(0,Math.min(2,Number.isInteger(x.contrabandStock)?x.contrabandStock:2)):0,
 beerStock:x.projectId==='brewery'&&x.status==='complete'?Math.max(0,Math.min(2,Number.isInteger(x.beerStock)?x.beerStock:2)):0,
+breadStock:x.projectId===BREAD_FACTORY_ID&&x.status==='complete'?Math.max(0,Math.min(4,Number.isInteger(x.breadStock)?x.breadStock:0)):0,
+breadProductionRound:x.projectId===BREAD_FACTORY_ID&&x.status==='complete'&&Number.isInteger(x.breadProductionRound)?x.breadProductionRound:null,
+breadProductionQuantity:x.projectId===BREAD_FACTORY_ID&&[2,4].includes(x.breadProductionQuantity)?x.breadProductionQuantity:null,
 goodsIntakeRound:Number.isInteger(x.goodsIntakeRound)?x.goodsIntakeRound:0,
 goodsIntakeCount:Math.max(0,Math.min(goodsBuyerCapacity(x.projectId),Number.isInteger(x.goodsIntakeCount)?x.goodsIntakeCount:0)),
 fixedIncome:x.projectId==='rare_goods_shop'&&x.status==='complete'?(Number.isInteger(x.fixedIncome)?x.fixedIncome:1):x.fixedIncome,
@@ -312,6 +316,27 @@ if(!parsed.criminalTradeV1){
   parsed.deck.unshift(...additions);
   parsed.criminalTradeV1=true;
 }
+// One-time insertion of the new industrial bread factory into older saved decks.
+if(!parsed.steamBakeryExpansionV1){
+  const id=BREAD_FACTORY_ID;
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const additions=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'STEAM-BAKERY-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const step=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.steamBakeryExpansionV1=true;
+}
+parsed.breadSpoilageSettledRound=Number.isInteger(parsed.breadSpoilageSettledRound)?parsed.breadSpoilageSettledRound:0;
+parsed.pendingBreadProduction=Array.isArray(parsed.pendingBreadProduction)
+  ?parsed.pendingBreadProduction.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId===BREAD_FACTORY_ID&&c.status==='complete'&&c.breadProductionRound!==parsed.round))
+  :[];
+if(parsed.phase==='bread-production'&&!parsed.pendingBreadProduction.length)parsed.phase='declare';
 if(!parsed.residentialQuarterExpansionV1){
   const id='residential_quarter';
   // Older games retain their markets, cards, projects, capital, and construction state.
@@ -1392,6 +1417,24 @@ function renderYearTransition(){
 const sheet=$('#yearTransitionSheet'),backdrop=$('#yearTransitionBackdrop');
 if(!sheet||!backdrop)return;
 const crime=currentAnnualCrimeAssessment(state);
+const bread=currentBreadProductionChoice(state);
+if(bread){
+  sheet.hidden=false;backdrop.hidden=false;document.body.classList.add('year-transition-open');
+  const owner=state.players[bread.playerId];
+  const year=1899+state.round,first=state.phase==='development';
+  sheet.innerHTML='<div class="year-transition-card bread-production-choice">'
+    +'<div class="year-transition-head"><span>'+year+' · ОБЯЗАТЕЛЬНЫЙ ВЫПУСК</span><h2>Паровая хлебопекарная фабрика</h2></div>'
+    +'<p>'+owner.name+' · '+districtById(bread.districtId)?.name+'. '+(first?'Завод завершён — выберите первый выпуск сейчас.':'Начало нового года — определите объём выпуска до торговли и заявок в мэрии.')+'</p>'
+    +'<p>Весь непроданный хлеб портится в конце года: <b>−1 к постоянному Income</b> за каждый остаток до выплаты. Потеря не восстанавливается, в том числе в 1905 году.</p>'
+    +'<div class="crime-payment-options"><button class="primary-btn" data-bread-output="2">Произвести 2 хлеба</button><button class="secondary-btn" data-bread-output="4">Произвести 4 хлеба</button></div>'
+    +'<small>Пропустить производство нельзя. Кубики поступают на фабрику сразу после выбора.</small></div>';
+  $('[data-bread-output]').forEach(button=>button.onclick=()=>{
+    const result=chooseBreadProduction(state,bread.id,Number(button.dataset.breadOutput));
+    if(result.ok){showToast('Произведено '+result.quantity+' хлеба');render();}
+    else showToast('Не удалось выбрать объём производства');
+  });
+  return;
+}
 if(crime){
   sheet.hidden=false;backdrop.hidden=false;document.body.classList.add('year-transition-open');
   const player=state.players[crime.playerId],year=1899+state.round;
@@ -1517,7 +1560,7 @@ if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendin
 function renderTop(){
 $('#roundStat').textContent=state.finished?`${MAX_ROUNDS} / ${MAX_ROUNDS}`:`${state.round} / ${MAX_ROUNDS}`;
 $('#firstStat').textContent=state.players[state.firstPlayer].name;
-$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':state.phase==='crime-assessment'?'Конец года · годовой штраф':'Тест завершён';
+$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':state.phase==='bread-production'?'Начало года · выпуск хлеба':state.phase==='crime-assessment'?'Конец года · годовой штраф':'Тест завершён';
 }
 // Original handcuff pictogram, independent of the Flaticon visual reference.
 const arrestedWorkerIcon='<svg class="arrested-worker-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="7.5" height="9.5" rx="3.3"/><rect x="14" y="4" width="7.5" height="9.5" rx="3.3"/><path d="M3.4 10.4h5.7M14.9 10.4h5.7M6.25 13.5v2.9l3.4 2.8 2.35-1.8 2.35 1.8 3.4-2.8v-2.9"/><path d="M9.6 19.2h4.8"/></svg>';
@@ -2473,7 +2516,7 @@ constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><
 const objects=builtHere.length?builtHere.map(x=>{
 const pr=projectById(x.projectId),prog=constructionProgress(state,x.id),pl=state.players[x.playerId];
 const land=x.projectId==='factory'&&x.status==='complete'?' · Land −1':['firehouse','clinic','police','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(x.projectId)&&x.status==='complete'?' · Land +1':'';
-const goodsSlots=x.status==='complete'&&goodsBuyerCapacity(x.projectId)?' · Розовые '+goodsBuyerUsed(state,x)+'/'+goodsBuyerCapacity(x.projectId):'';
+const goodsSlots=x.status==='complete'&&goodsBuyerCapacity(x.projectId)?' · Розовые '+goodsBuyerUsed(state,x)+'/'+goodsBuyerCapacity(x.projectId):x.status==='complete'&&x.projectId===BREAD_FACTORY_ID?' · Хлеб '+breadInventory(x).length+'/'+(x.breadProductionQuantity||'?'):'';
 return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${completedConstructionBaseIncome(pr,x)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)+canneryIncomeBonus(state,x)+workforceIncomeBonus(state,x)}${land}${goodsSlots}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
 }).join(''):'Пока нет.';
 const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
