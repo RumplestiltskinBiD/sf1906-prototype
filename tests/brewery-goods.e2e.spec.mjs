@@ -55,3 +55,66 @@ for(const size of sizes){
   expect((await saved(page)).constructions.find(c=>c.id==='B').beerStock).toBe(2);
  });
 }
+
+
+for(const size of sizes){
+ test('shared buyer slots displayed and saved for the wholesale market '+size.width+'x'+size.height,async({page})=>{
+  const state=setup();
+  // This pub has already reached its yearly limit, but the wholesale market can still buy.
+  state.constructions.find(c=>c.id==='P').goodsIntakeRound=state.round;
+  state.constructions.find(c=>c.id==='P').goodsIntakeCount=2;
+  state.constructions.push({
+   id:'M',projectId:'wholesale_market',districtId:'soma',playerId:2,status:'complete',
+   materialsDelivered:[...projectById('wholesale_market').materials],startedRound:1,completedRound:1
+  });
+  await page.setViewportSize(size);await seed(page,state);
+  await page.locator('#actionDelivery').dispatchEvent('click');
+  await page.locator('[data-delivery-goods="B"]').dispatchEvent('click');
+  await page.locator('[data-hauler="standard"]').click();
+  await page.locator('[data-load="Beer"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('#deliveryLockRoute').click();
+  await expect(page.locator('[data-construction-token="P"]')).not.toHaveClass(/delivery-drop-available/);
+  await expect(page.locator('[data-construction-token="M"]')).toHaveClass(/delivery-drop-available/);
+  await page.locator('[data-construction-token="M"][data-delivery-drop-target="M"]').dispatchEvent('click');
+  await expect(page.locator('#deliveryPanel')).toContainText('Розовые товары 0/3');
+  await expect(page.locator('[data-drop-kind="goods-sale"][data-drop-id="M"][data-drop-type="Beer"]')).toBeEnabled();
+  await page.locator('[data-drop-kind="goods-sale"][data-drop-id="M"][data-drop-type="Beer"]').click();
+  await expect(page.locator('#deliveryPanel')).toContainText('Розовые товары 1/3');
+  await page.locator('#deliveryConfirm').click();
+  const after=await saved(page);
+  expect(after.constructions.find(c=>c.id==='M').goodsIntakeCount).toBe(1);
+  expect(after.constructions.find(c=>c.id==='M').goodsIntakeRound).toBe(state.round);
+  expect(after.constructions.find(c=>c.id==='P').goodsIntakeCount).toBe(2);
+  expect(after.constructions.find(c=>c.id==='B').beerStock).toBe(1);
+  expect(after.players[0].capital).toBe(100);
+  expect(after.players[1].capital).toBe(101);
+  expect(after.players[2].capital).toBe(101);
+  await page.reload();
+  const restored=await saved(page);
+  expect(restored.constructions.find(c=>c.id==='M').goodsIntakeCount).toBe(1);
+  await expect(page.locator('#districtPanel')).toContainText('Розовые 1/3').catch(()=>{});
+ });
+ test('old saves have zero slots used at shop without breaking beer logistics '+size.width+'x'+size.height,async({page})=>{
+  const state=setup();
+  state.constructions[1].projectId='shops';
+  state.constructions[1].materialsDelivered=[...projectById('shops').materials];
+  delete state.constructions[1].goodsIntakeRound;
+  delete state.constructions[1].goodsIntakeCount;
+  await page.setViewportSize(size);await seed(page,state);
+  const restored=await saved(page);
+  const shop=restored.constructions.find(c=>c.id==='P');
+  expect(shop.goodsIntakeCount).toBe(0);
+  await page.locator('#actionDelivery').dispatchEvent('click');
+  await page.locator('[data-delivery-goods="B"]').dispatchEvent('click');
+  await page.locator('[data-hauler="standard"]').click();
+  await page.locator('[data-load="Beer"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('#deliveryLockRoute').click();
+  await page.locator('[data-construction-token="P"][data-delivery-drop-target="P"]').dispatchEvent('click');
+  await expect(page.locator('#deliveryPanel')).toContainText('Розовые товары 0/1');
+  await page.locator('[data-drop-kind="goods-sale"][data-drop-id="P"][data-drop-type="Beer"]').click();
+  await page.locator('#deliveryConfirm').click();
+  expect((await saved(page)).constructions.find(c=>c.id==='P').goodsIntakeCount).toBe(1);
+ });
+}
