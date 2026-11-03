@@ -76,7 +76,7 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366
     await expect(orphanage.locator('.card-rule.benefit')).toContainText('ещё 4 VP');
     const school=cards.filter({hasText:'Муниципальная начальная школа'}).first();
     await expect(school.locator('.prestige-chip')).toHaveText('VP 2');
-    await expect(school.locator('.card-rule.benefit')).toContainText('до +2 дополнительных VP');
+    await expect(school.locator('.card-rule.benefit')).toContainText('До +2 дополнительных VP');
     const bakery=cards.filter({hasText:'Семейная пекарная артель'}).first();
     await expect(bakery.locator('.card-rule.benefit')).toContainText('+1 VP');
     await expect(page.locator('#contextPanel')).not.toContainText('Престиж');
