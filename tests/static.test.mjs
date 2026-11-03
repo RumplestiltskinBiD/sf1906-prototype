@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
+import {PROJECTS,STANDARD_PROJECTS,RETIRED_PROJECTS,projectById} from '../game-core.js';
 
 test('app.js has no querySelector(...).forEach regression',async()=>{
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
@@ -159,4 +160,27 @@ test('v0.44 City Hall Goals hooks are present',async()=>{
   for(const needle of ['function renderCityGoals()','goalRewardText','data-goal-slot','office-goal'])assert.ok(app.includes(needle),needle);
   assert.ok(html.includes('id="cityGoalMarket"'));
   for(const needle of ['.city-goal-market','.city-goal-card','.office-goal'])assert.ok(css.includes(needle),needle);
+});
+
+test('card base VP is shown once and legacy prestige copy is absent',async()=>{
+  const cards=[...PROJECTS,...STANDARD_PROJECTS,...RETIRED_PROJECTS];
+  for(const card of cards){
+    for(const field of ['effect','benefit']){
+      const copy=card[field]||'';
+      assert.doesNotMatch(copy,/Престиж|\\bPrestige\\b/,card.id+' '+field+' legacy text');
+      const pieces=copy.split(' · ');
+      const base=card.prestige||0;
+      const redundant=[`+${base} VP`,`${base} VP`,`${base} VP при завершении`];
+      for(const fragment of pieces)assert.ok(!redundant.includes(fragment),card.id+' '+field+' repeats '+fragment);
+    }
+  }
+  assert.equal(projectById('orphanage').prestige,3);
+  assert.match(projectById('orphanage').effect,/Политическое влияние \\+1 при завершении/);
+  assert.match(projectById('orphanage').benefit,/ещё 4 VP/);
+  assert.match(projectById('bakery').effect,/\\$7 или \\+1 VP/);
+  assert.match(projectById('school').effect,/до \\+2 дополнительных VP/);
+  assert.match(projectById('club').actionText,/\\+1 Влияние/);
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  assert.doesNotMatch(app,/Престиж|\\bPrestige\\b/);
+  assert.match(app,/class="prestige-chip">VP \${p.prestige\\|\\|0}/);
 });
