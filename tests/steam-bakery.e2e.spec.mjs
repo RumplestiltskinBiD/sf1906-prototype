@@ -79,3 +79,27 @@ for(const size of sizes){
    expect(persisted.constructions.find(c=>c.id==='M').goodsIntakeCount).toBe(2);
  });
 }
+
+for(const size of sizes){
+ test('legacy saved deck gains two bakery cards exactly once without resetting progress '+size.width+'x'+size.height,async({page})=>{
+  const s=base();
+  s.steamBakeryExpansionV1=false;
+  s.deck=s.deck.filter(c=>c.id!==BREAD_FACTORY_ID);
+  s.market=s.market.map(m=>m?.id===BREAD_FACTORY_ID?null:m);
+  s.starterDraftHands=s.starterDraftHands.map(h=>h.filter(c=>c.id!==BREAD_FACTORY_ID));
+  s.starterDiscards=s.starterDiscards.filter(c=>c.id!==BREAD_FACTORY_ID);
+  s.expired=s.expired.filter(c=>c.id!==BREAD_FACTORY_ID);
+  s.players[1].capital=77;
+  delete s.players[1].breadIncomePenalty;
+  await page.setViewportSize(size);await seed(page,s);
+  const loaded=await saved(page);
+  expect(loaded.steamBakeryExpansionV1).toBe(true);
+  expect(loaded.deck.filter(c=>c.id===BREAD_FACTORY_ID)).toHaveLength(2);
+  expect(loaded.players[1].capital).toBe(77);
+  expect(loaded.players[1].breadIncomePenalty).toBe(0);
+  await page.reload();
+  const reloaded=await saved(page);
+  expect(reloaded.deck.filter(c=>c.id===BREAD_FACTORY_ID)).toHaveLength(2);
+  expect(reloaded.players[1].capital).toBe(77);
+ });
+}
