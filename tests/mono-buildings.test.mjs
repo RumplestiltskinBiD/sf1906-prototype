@@ -21,10 +21,10 @@ function finish(s,id,pid,projectId,district){
 }
 
 test('customs and rare-goods additions expand trading and mixed catalog; two-copy pool',()=>{
-  assert.equal(G.PROJECTS.length,39);
+  assert.equal(G.PROJECTS.length,40);
   assert.equal(G.PROJECT_COPIES,2);
   const pool=G.createProjectCardPool({rng:()=>0.1});
-  assert.equal(pool.length,78);
+  assert.equal(pool.length,80);
   for(const card of G.PROJECTS){
     assert.equal(pool.filter(c=>c.id===card.id).length,2,card.id);
   }
