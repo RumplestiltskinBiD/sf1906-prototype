@@ -30,7 +30,7 @@ test('customs and rare-goods additions expand trading and mixed catalog; two-cop
   }
   for(const category of G.BUILDING_TYPES){
     const pure=G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]===category);
-    assert.equal(pure.length,['Торговое','Общественное','Жилое'].includes(category)?6:5,category);
+    assert.equal(pure.length,['Торговое','Общественное','Жилое','Промышленное'].includes(category)?6:5,category);
   }
   assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,11);
 });
