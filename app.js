@@ -6,7 +6,7 @@ createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,devel
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
-availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,PINK_GOODS,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
+availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js';
@@ -540,9 +540,9 @@ type==='Общественное'||type==='Городская служба'?'typ
 }
 const RESOURCE_ORDER=['Lumber','Masonry','Steel'];
 const CARGO_ORDER=[...RESOURCE_ORDER,...PINK_GOODS,CONTRABAND_CARGO];
-function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь',Beer:'Пиво',Contraband:'Контрабанда'}[x]||x;}
-function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С',Beer:'Р',Contraband:'Ф'}[x]||'?';}
-function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel',Beer:'goods',Contraband:'contraband'}[x]||'';}
+function materialLabel(x){return {Lumber:'Дерево',Masonry:'Камень',Steel:'Сталь',Beer:'Пиво',Bread:'Хлеб',Contraband:'Контрабанда'}[x]||x;}
+function materialShort(x){return {Lumber:'Д',Masonry:'К',Steel:'С',Beer:'Р',Bread:'Х',Contraband:'Ф'}[x]||'?';}
+function materialClass(x){return {Lumber:'lumber',Masonry:'masonry',Steel:'steel',Beer:'goods',Bread:'goods',Contraband:'contraband'}[x]||'';}
 function logisticsKindLabel(kind){
 return {port:'Порт',rail:'Ж/д станция','rail-port':'Порт + ж/д','industrial-rail-port':'Порт + ж/д · промышленный'}[kind]||kind;
 }
@@ -799,7 +799,7 @@ function deliveryTargetDistrict(drop){
 function deliveryPickupSources(){
   const d=deliveryDraft;if(d?.step!=='route')return [];
   const visit=d.route.length-1,district=d.route[visit];
-  const sources=[...completedBreweries(state).filter(c=>beerInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedCustomsWarehouses(state).filter(c=>contrabandInventory(c).length).map(c=>({kind:'contraband',id:c.id})),...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
+  const sources=[...completedBreweries(state).filter(c=>beerInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedBreadFactories(state).filter(c=>breadInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedCustomsWarehouses(state).filter(c=>contrabandInventory(c).length).map(c=>({kind:'contraband',id:c.id})),...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
     ...NEUTRAL_MATERIAL_SUPPLIERS.map(n=>({kind:'supplier',id:n.id})),
     ...completedWarehouses(state,d.playerId).map(w=>({kind:'warehouse',id:w.id})),
     ...completedIndustrialProducers(state).map(p=>({kind:'industry',id:p.id})),
@@ -936,9 +936,9 @@ const assigned=deliveryTarget(kind,id)?.materials||[];
 if(kind==='freight-yard')return type in RESOURCE_PRICES&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||!deliveryDraft.route.includes(con.districtId))return false;
-if(kind==='goods-sale')return con.status==='complete'&&goodsBuyerCapacity(con.projectId)>0&&PINK_GOODS.includes(type)&&goodsBuyerRemaining(state,con)>assigned.length&&!!deliveryBeerOriginForDrop(con.id);
+if(kind==='goods-sale')return con.status==='complete'&&goodsBuyerCapacity(con.projectId)>0&&PINK_GOODS.includes(type)&&goodsBuyerRemaining(state,con)>assigned.length&&!!deliveryPinkOriginForDrop(con.id,type);
 if(kind==='contraband-sale')return con.projectId==='rare_goods_shop'&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
-if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO||type===BEER_CARGO)return false;
+if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO||PINK_GOODS.includes(type))return false;
 if(kind==='bakery')return con.projectId==='bakery'&&con.status==='complete'&&type==='Lumber'&&bakeryInventory(con).length+assigned.length<1;
 if(kind==='warehouse')return isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)&&warehouseInventory(con).length+assigned.length<warehouseStorageCapacity(con);
 if(kind!=='construction'||con.status!=='under-construction')return false;
@@ -972,27 +972,25 @@ return (con.materialsDelivered||[]).length<3||RESOURCE_ORDER.every(t=>(cargo[t]|
 }
 function deliveryTargetAcceptsAny(con){const k=deliveryTargetKind(con);return !!k&&CARGO_ORDER.some(t=>deliveryCanDrop(k,con.id,t));}
 function openDeliveryTargetFromMap(id){if(!isMobile()||!['unload','route'].includes(deliveryDraft?.step))return;const con=deliveryRouteTargets().find(x=>x.id===id);if(!deliveryTargetAcceptsAny(con)){showToast('Сюда сейчас нечего разгружать');return;}deliveryDraft.focusTargetId=id;render();}
-// Allocate each pink cube to a specific brewery; multiple producers may
-// use the same wagon and recipient without losing ownership identity.
-function deliveryBeerOriginForDrop(targetId){
+// One physical source and product type per pink cube; works across multi-source routes.
+function deliveryPinkOriginForDrop(targetId,type){
   const d=deliveryDraft,con=(state.constructions||[]).find(c=>c.id===targetId);
-  if(!d||!con||!d.route?.includes(con.districtId))return null;
+  if(!d||!con||!d.route?.includes(con.districtId)||!PINK_GOODS.includes(type))return null;
   const stop=d.step==='route'?d.route.length-1:d.route.lastIndexOf(con.districtId);
   const loads=[{source:d.source,routeIndex:0,cargo:d.cargo},...(d.pickups||[])];
-  const already=(d.drops||[]).flatMap(x=>x.goodsSourceIds||[]);
   for(let i=0;i<loads.length;i++){
     const load=loads[i];
     if(load.source?.kind!=='goods'||load.routeIndex>stop||(load.routeIndex===stop&&i>0))continue;
-    const units=(load.cargo||[]).filter(x=>x===BEER_CARGO).length;
-    const used=already.filter(x=>x===load.source.id).length;
-    if(used<units)return load.source.id;
+    const loaded=(load.cargo||[]).filter(t=>t===type).length;
+    const assigned=(d.drops||[]).reduce((sum,drop)=>sum+(drop.materials||[]).filter((t,j)=>t===type&&drop.goodsSourceIds?.[j]===load.source.id).length,0);
+    if(assigned<loaded)return load.source.id;
   }
   return null;
 }
 function addDeliveryDrop(kind,id,type){
 if(!deliveryCanDrop(kind,id,type)){showToast('Этот объект не может принять ресурс');return;}
 let d=deliveryTarget(kind,id);if(!d){const district=deliveryTargetDistrict({kind,id});const at=deliveryDraft.step==='route'?deliveryDraft.route.length-1:deliveryDraft.route.lastIndexOf(district);d={kind,id,routeIndex:at,materials:[]};deliveryDraft.drops.push(d);}d.materials.push(type);
-if(kind==='goods-sale'){d.goodsSourceIds=d.goodsSourceIds||[];d.goodsSourceIds.push(deliveryBeerOriginForDrop(id));}
+if(kind==='goods-sale'){d.goodsSourceIds=d.goodsSourceIds||[];d.goodsSourceIds.push(deliveryPinkOriginForDrop(id,type));}
 render();
 }
 function clearDeliveryDrops(){
@@ -1083,9 +1081,10 @@ const own=plant.playerId===pid,resource=INDUSTRIAL_PRODUCTION[plant.projectId].r
 const offer=resource==='Steel'?(own?'$1/Steel':'$2/Steel'):own?'$1 за 2 Masonry в одной погрузке (иначе $1/шт.)':'$1/Masonry';
 html+='<button class="delivery-source-card warehouse-source" data-ds-plant="'+plant.id+'" '+(inv.length?'':'disabled')+'><b>'+projectById(plant.projectId).name+'</b><span>'+districtById(plant.districtId)?.name+' · '+inv.length+'/'+capacity+' · '+state.players[plant.playerId].name+'</span><small>'+offer+' · '+(own?'свой':'владельцу +$1 за покупку')+' · Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+'</small></button>';}
 const yi=freightYardInventory(state,pid),yc=deliveryCounts(yi);
-for(const brewery of completedBreweries(state)){
-  const stock=beerInventory(brewery).length;
-  html+='<button class="delivery-source-card warehouse-source" data-ds-goods="'+brewery.id+'" '+(stock?'':'disabled')+'><b>Пивоварня</b><span>'+districtById(brewery.districtId)?.name+' · владелец '+state.players[brewery.playerId].name+'</span><small>Пиво: '+stock+'/2 розовых кубика · Доставка +$3/кубик</small></button>';
+for(const producer of [...completedBreweries(state),...completedBreadFactories(state)]){
+  const isBread=producer.projectId===BREAD_FACTORY_ID,stock=isBread?breadInventory(producer).length:beerInventory(producer).length;
+  const cap=isBread?(producer.breadProductionQuantity||2):2;
+  html+='<button class="delivery-source-card warehouse-source" data-ds-goods="'+producer.id+'" '+(stock?'':'disabled')+'><b>'+projectById(producer.projectId).name+'</b><span>'+districtById(producer.districtId)?.name+' · владелец '+state.players[producer.playerId].name+'</span><small>'+(isBread?'Хлеб':'Пиво')+': '+stock+'/'+cap+' розовых кубиков · Доставка +$3/кубик</small></button>';
 }
 for(const wh of completedCustomsWarehouses(state)){const stock=contrabandInventory(wh).length;html+='<button class="delivery-source-card" data-ds-contraband="'+wh.id+'" '+(stock?'':'disabled')+'><b>Таможенный пакгауз</b><span>'+districtById(wh.districtId)?.name+' · владелец '+state.players[wh.playerId].name+'</span><small>Фиолетовых кубиков: '+stock+'/2 · продажа +$6 и +1 ★</small></button>';}
 html+='<button class="delivery-source-card freight-yard-source" data-ds-yard="'+FREIGHT_YARD.id+'" '+(yi.length?'':'disabled')+'><b>Грузовой двор</b><span>Western Addition · ваша секция '+yi.length+'/2</span><small>Д '+(yc.Lumber||0)+' · К '+(yc.Masonry||0)+' · С '+(yc.Steel||0)+' · уже оплачено</small></button></div>';
@@ -1124,7 +1123,7 @@ const routeTargets=deliveryRouteTargets(),focus=deliveryDraft.focusTargetId?rout
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
 if(!focus){
-html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, торговое здание, пекарню, склад или грузовой двор на карте.</span></div>'
+html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Х '+(left.Bread||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, торговое здание, пекарню, склад или грузовой двор на карте.</span></div>'
 +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
@@ -1148,7 +1147,7 @@ const hasCurrentTarget=actionableTargets.some(con=>con.districtId===last);
 const canConfirm=leftTotal===0&&validateDeliveryPlan(state,deliveryPlan()).ok;
 html+='<div class="delivery-instruction">'+(hasCurrentTarget?'3. В районе есть подходящая точка разгрузки.':'3. Добавьте соседний район (+$1 за границу).')+'</div><div class="delivery-route-strip">';
 deliveryDraft.route.forEach((id,i)=>{html+='<span class="route-chip '+(i===deliveryDraft.route.length-1?'current':'')+'"><b>'+i+'</b>'+shortDistrictName(id)+'</span>'+(i<deliveryDraft.route.length-1?'<span>→</span>':'');});
-html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Ф '+(left.Contraband||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
+html+='</div><div class="delivery-cargo-status"><b>Не распределено:</b> Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Х '+(left.Bread||0)+' · Ф '+(left.Contraband||0)+'</div><div class="delivery-targets" id="deliveryTargets">';
 for(const con of routeTargets){
 let kind=deliveryRouteTargetKind(con),label='',cap='';
 if(kind==='construction'){const pr=projectById(con.projectId);label=pr.name;cap='Стройка '+((con.materialsDelivered||[]).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+pr.materials.length;}
@@ -2335,7 +2334,7 @@ const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=construc
 const complete=con.status==='complete',isWarehouse=complete&&isWarehouseConstruction(con);
 const isProducer=complete&&!!INDUSTRIAL_PRODUCTION[con.projectId];
 const isContrabandSource=complete&&con.projectId==='customs_warehouse'&&contrabandInventory(con).length>0;
-const isBeerSource=complete&&con.projectId==='brewery'&&beerInventory(con).length>0;
+const isBeerSource=complete&&((con.projectId==='brewery'&&beerInventory(con).length>0)||(con.projectId===BREAD_FACTORY_ID&&breadInventory(con).length>0));
 const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
 const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
 const plantSource=deliveryMode?.step==='source'&&isProducer&&industrialInventory(con).length?` data-delivery-industry="${con.id}"`:``;
@@ -2348,9 +2347,9 @@ const interactionHit=whSource||plantSource||beerSource||contrabandSource
 :dropAvailable?'<rect class="construction-drop-hit" x="-46" y="-34" width="92" height="68" rx="17"/>':'';
 let content='';
 if(isWarehouse||isProducer||isBeerSource||isContrabandSource){
-const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):isBeerSource?beerInventory(con):contrabandInventory(con),cnt=deliveryCounts(inv);
-const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):2;
-content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isBeerSource?'ПИВ':isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):isBeerSource?'Р'+(cnt.Beer||0):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
+const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):isBeerSource?(con.projectId===BREAD_FACTORY_ID?breadInventory(con):beerInventory(con)):contrabandInventory(con),cnt=deliveryCounts(inv);
+const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):isBeerSource&&con.projectId===BREAD_FACTORY_ID?(con.breadProductionQuantity||2):2;
+content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isBeerSource?(con.projectId===BREAD_FACTORY_ID?'ХЛЕБ':'ПИВ'):isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):isBeerSource?(con.projectId===BREAD_FACTORY_ID?'Х'+(cnt.Bread||0):'Р'+(cnt.Beer||0)):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
 const showNeed=!!deliveryMode&&!complete;
