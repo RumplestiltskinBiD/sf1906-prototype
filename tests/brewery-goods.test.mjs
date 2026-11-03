@@ -107,3 +107,114 @@ test('brewery stock replenishes at start of next economic year',()=>{
   assert.equal(s.constructions[0].beerStock,2);
   assert.equal(JSON.parse(JSON.stringify(s)).constructions[0].beerStock,2);
 });
+
+
+test('four market buyers accept the same pink cargo with distinct yearly capacities',()=>{
+  assert.deepEqual([...G.PINK_GOODS],['Beer']);
+  assert.deepEqual({...G.GOODS_BUYER_CAPACITIES},{wholesale_market:3,shops:1,club:2,pub:2});
+  for(const [id,capacity] of Object.entries(G.GOODS_BUYER_CAPACITIES)){
+    const card=G.projectById(id);
+    assert.match(card.effect,/Принимает розовы/);
+    assert.match(card.actionText,/розовы/);
+    const s=game(),buyer=built('T',id,2,'soma');
+    s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),buyer];
+    assert.equal(G.goodsBuyerCapacity(id),capacity);
+    assert.equal(G.goodsBuyerUsed(s,buyer),0);
+    assert.equal(G.goodsBuyerRemaining(s,buyer),capacity);
+    const result=G.executeDelivery(s,ship({target:'T'}));
+    assert.equal(result.ok,true,id+': '+result.reason);
+    assert.equal(G.goodsBuyerUsed(s,buyer),1,id);
+    assert.equal(G.goodsBuyerRemaining(s,buyer),capacity-1,id);
+    assert.equal(s.players[0].capital,100,id+': carrier +3 minus 3');
+    assert.equal(s.players[1].capital,101,id+': producer +1');
+    assert.equal(s.players[2].capital,101,id+': buyer +1');
+    assert.equal(JSON.parse(JSON.stringify(s)).constructions[1].goodsIntakeCount,1);
+  }
+  for(const id of ['hotel','commission_house','rare_goods_shop','warehouse']){
+    assert.equal(G.goodsBuyerCapacity(id),0,id+' should not receive regular pink cargo');
+  }
+});
+
+test('full one-slot shop rejects a second sale without taking money or stock',()=>{
+  const s=game(),shop=built('T','shops',2,'soma');
+  s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),shop];
+  assert.equal(G.executeDelivery(s,ship({target:'T'})).ok,true);
+  s.lastDeliveryKey=null; // A new worker activation permits another separate delivery.
+  const plan=ship({target:'T'}),before=JSON.stringify(s);
+  assert.equal(G.validateDeliveryPlan(s,plan).reason,'goods-buyer-capacity');
+  assert.equal(G.executeDelivery(s,plan).reason,'goods-buyer-capacity');
+  assert.equal(JSON.stringify(s),before,'failed delivery is atomic');
+  assert.equal(s.constructions[0].beerStock,1);
+});
+
+test('market fills 3 slots across two breweries and preserves producer identity',()=>{
+  const s=game();
+  s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),
+    built('B2','brewery',2,'soma',{beerStock:2}),
+    built('T','wholesale_market',0,'soma')];
+  const plan=ship({target:'T',cargo:['Beer','Beer'],
+    pickups:[{source:{kind:'goods',id:'B2'},routeIndex:0,cargo:['Beer']}],
+    sourceIds:['B','B','B2'],haulerId:'heavy4'});
+  const check=G.validateDeliveryPlan(s,plan);
+  assert.equal(check.ok,true,check.reason);
+  const out=G.executeDelivery(s,plan);
+  assert.equal(out.ok,true,out.reason);
+  assert.equal(s.constructions[0].beerStock,0);
+  assert.equal(s.constructions[1].beerStock,1);
+  assert.equal(G.goodsBuyerUsed(s,s.constructions[2]),3);
+  assert.equal(s.players[1].capital,102,'first producer gets 2');
+  assert.equal(s.players[2].capital,101,'second producer gets 1');
+  assert.equal(s.players[0].capital,110,'carrier gets 9 and buyer gets 3 minus cost 2');
+  s.lastDeliveryKey=null;
+  const rejected=ship({source:'B2',target:'T',sourceIds:['B2']});
+  assert.equal(G.validateDeliveryPlan(s,rejected).reason,'goods-buyer-capacity');
+});
+
+test('two drops to the same target cannot bypass its capacity within one route',()=>{
+  const s=game();
+  s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),built('T','shops',2,'soma')];
+  const plan=ship({target:'T',cargo:['Beer','Beer'],sourceIds:['B','B']});
+  plan.drops=[
+    {kind:'goods-sale',id:'T',routeIndex:0,materials:['Beer'],goodsSourceIds:['B']},
+    {kind:'goods-sale',id:'T',routeIndex:0,materials:['Beer'],goodsSourceIds:['B']}
+  ];
+  const before=JSON.stringify(s);
+  assert.equal(G.validateDeliveryPlan(s,plan).reason,'goods-buyer-capacity');
+  assert.equal(G.executeDelivery(s,plan).reason,'goods-buyer-capacity');
+  assert.equal(JSON.stringify(s),before);
+});
+
+test('buyer capacities are per physical building, across all producers, and refresh by year',()=>{
+  const s=game();
+  const one=built('P','pub',2,'soma');
+  const two=built('P2','pub',1,'soma');
+  s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),one,two];
+  assert.equal(G.executeDelivery(s,ship({target:'P',cargo:['Beer','Beer'],sourceIds:['B','B']})).ok,true);
+  assert.equal(G.goodsBuyerRemaining(s,one),0);
+  assert.equal(G.goodsBuyerRemaining(s,two),2);
+  s.round=1;s.developmentComplete=true;s.developmentPlayer=null;s.market=[];s.deck=[];
+  s.newsLastResolvedRound=1;s.crimeAssessedRound=1;
+  s.players.forEach(p=>{p.suspicion=0;p.workers.forEach(w=>w.used=true);});
+  const result=G.cleanupMarket(s,{rng:()=>0.2});
+  assert.equal(result.ok,true,result.reason);
+  assert.equal(s.round,2);
+  assert.equal(G.goodsBuyerUsed(s,one),0);
+  assert.equal(G.goodsBuyerRemaining(s,one),2);
+  assert.equal(one.goodsIntakeRound,1,'previous count preserved for audit but ignored in new year');
+  assert.equal(one.goodsIntakeCount,2);
+});
+
+test('unfinished buyer, unauthorized products and old two-beer delivery restrictions remain enforced',()=>{
+  const s=game();
+  s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),
+    built('H','hotel',2,'soma'),
+    built('C','commission_house',2,'soma'),
+    built('S','shops',2,'soma',{status:'under-construction'})];
+  for(const target of ['H','C','S']){
+    const p=ship({target});
+    const before=JSON.stringify(s);
+    assert.equal(G.validateDeliveryPlan(s,p).reason,'goods-buyer');
+    assert.equal(JSON.stringify(s),before);
+  }
+  assert.equal(G.executeDelivery(s,ship({target:'S'})).ok,false);
+});
