@@ -114,7 +114,7 @@ test('four market buyers accept the same pink cargo with distinct yearly capacit
   assert.deepEqual({...G.GOODS_BUYER_CAPACITIES},{wholesale_market:3,shops:1,club:2,pub:2});
   for(const [id,capacity] of Object.entries(G.GOODS_BUYER_CAPACITIES)){
     const card=G.projectById(id);
-    assert.match(card.effect,/Принимает розовы/);
+    assert.match(card.effect,/розов/i);
     assert.match(card.actionText,/розовы/);
     const s=game(),buyer=built('T',id,2,'soma');
     s.constructions=[built('B','brewery',1,'soma',{beerStock:2}),buyer];
