@@ -93,7 +93,6 @@ for(const size of sizes){
   await page.reload();
   const restored=await saved(page);
   expect(restored.constructions.find(c=>c.id==='M').goodsIntakeCount).toBe(1);
-  await expect(page.locator('#districtPanel')).toContainText('Розовые 1/3').catch(()=>{});
  });
  test('old saves have zero slots used at shop without breaking beer logistics '+size.width+'x'+size.height,async({page})=>{
   const state=setup();
