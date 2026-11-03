@@ -6,12 +6,17 @@ export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const CONTRABAND_CARGO = 'Contraband';
 export const BEER_CARGO = 'Beer';
-// A single trade-goods category for buyers; new pink goods are registered here.
-export const PINK_GOODS = Object.freeze([BEER_CARGO]);
+export const BREAD_CARGO = 'Bread';
+// Only registered legal trade goods are accepted by the four shared-capacity buyers.
+export const PINK_GOODS = Object.freeze([BEER_CARGO,BREAD_CARGO]);
+export const BREAD_FACTORY_ID='steam_bakery';
+export const BREAD_FACTORY_OUTPUTS=Object.freeze([2,4]);
 // All completed copies have their own shared yearly sale capacity across pink goods.
 export const GOODS_BUYER_CAPACITIES = Object.freeze({wholesale_market:3,shops:1,club:2,pub:2});
 export const BREWERY_STOCK_CAPACITY = 2;
 export const BEER_CARRIER_PAYMENT = 3;
+// One common pink-goods payout, regardless of which factory made the cube.
+export const PINK_CARRIER_PAYMENT = BEER_CARRIER_PAYMENT;
 export const CONTRABAND_STOCK_CAPACITY = 2;
 export const CONTRABAND_CARRIER_PAYMENT = 6;
 export const BASE_ROUND_INCOME = 3;
@@ -121,6 +126,7 @@ export const PROJECTS = [
   {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0 · 2 VP.',benefit:'+2 VP · Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · +2 VP · регистрация собственности или реорганизация',benefit:'+2 VP · Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Продажа в любом завершённом здании с местом для розового товара: перевозчик +$3, производитель и получатель по +$1 за кубик.',limits:'Пиво не складируется; нужен завершённый получатель со свободным местом из общего годового лимита. Обычные повозки, маршрут и тарифы.'},
+  {prestige:1,income:1,id:'steam_bakery',types:['Промышленное'],risk:{earthquake:0,fire:2},name:'Паровая хлебопекарная фабрика',type:'Промышленность',open:5,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Хлеб: выпуск 2 или 4/год · П+2 · риск потери Income',benefit:'2 или 4 розовых кубика Хлеба/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Хлебное производство',actionText:'При завершении и в начале каждого следующего года обязательно выберите выпуск: 2 или 4 Хлеба. Любой игрок может отвезти кубики любому покупателю розовых товаров в пределах общего лимита. Выплаты $3/$1/$1.',limits:'Весь непроданный Хлеб списывается в конце года: −1 к постоянному Income владельца за каждый остаток, до годовой выплаты. Штраф не восстанавливается; в 1905 также применяется. Хлеб на обычных складах не хранится. Никакого добровольного пропуска производства.'},
   {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
   {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · +1 VP · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду · +1 VP',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Престиж +1 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'1 VP при завершении · раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
@@ -614,12 +620,14 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
+  if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
     &&developmentSlotsRemaining(state,playerId)>0&&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
+  if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
 }
@@ -639,6 +647,7 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
   if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
   const remaining=developmentSlotsRemaining(state,playerId);
@@ -834,7 +843,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -848,6 +857,9 @@ export function createInitialState({rng=Math.random}={}){
     criminalTradeV1:true,
     grandCitySquareExpansionV1:true,
     residentialQuarterExpansionV1:true,
+    steamBakeryExpansionV1:true,
+    pendingBreadProduction:[],
+    breadSpoilageSettledRound:0,
     pendingWorkforceLinks:[],
     pendingPressCampaigns:[],
     pressCampaignQueuedRound:0,
@@ -1553,6 +1565,12 @@ export function completeConstruction(state,construction){
   }
   if(project.id==='customs_warehouse')construction.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   if(project.id==='brewery')construction.beerStock=BREWERY_STOCK_CAPACITY;
+  if(project.id===BREAD_FACTORY_ID){
+    construction.breadStock=0;
+    construction.breadProductionRound=null;
+    state.pendingBreadProduction=state.pendingBreadProduction||[];
+    state.pendingBreadProduction.push(construction.id);
+  }
   if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
   if(project.id==='workers_complex'){
     state.pendingWorkforceLinks=state.pendingWorkforceLinks||[];
@@ -1659,6 +1677,40 @@ export function deliveryNeighbors(districtId){
 }
 
 export function completedBreweries(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='brewery');}
+export function completedBreadFactories(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId===BREAD_FACTORY_ID);}
+export function breadInventory(c){return Array.from({length:Math.max(0,Math.min(4,Number.isInteger(c?.breadStock)?c.breadStock:0))},()=>BREAD_CARGO);}
+export function currentBreadProductionChoice(state){
+  const id=(state.pendingBreadProduction||[])[0];
+  return (state.constructions||[]).find(c=>c.id===id&&c.status==='complete'&&c.projectId===BREAD_FACTORY_ID)||null;
+}
+export function chooseBreadProduction(state,constructionId,quantity){
+  const con=currentBreadProductionChoice(state);
+  if(!con||con.id!==constructionId||!BREAD_FACTORY_OUTPUTS.includes(quantity)||!['development','bread-production'].includes(state.phase))return {ok:false,reason:'production-choice'};
+  con.breadProductionRound=state.round;
+  con.breadProductionQuantity=quantity;
+  con.breadStock=quantity;
+  state.pendingBreadProduction.shift();
+  logEvent(state,`${state.players[con.playerId].name}: «${projectById(con.projectId).name}» выпустила ${quantity} кубиков Хлеба в ${1899+state.round} году.`,'good');
+  if(state.phase==='bread-production'&&!state.pendingBreadProduction.length){state.phase='declare';state.view='hall';}
+  return {ok:true,constructionId,quantity,remaining:state.pendingBreadProduction.length};
+}
+export function settleBreadSpoilage(state){
+  if(state.breadSpoilageSettledRound===state.round)return {ok:true,alreadySettled:true,spoiled:0};
+  let spoiled=0;
+  for(const con of completedBreadFactories(state)){
+    if(con.breadProductionRound!==state.round)continue;
+    const unsold=breadInventory(con).length;
+    if(unsold){
+      const owner=state.players[con.playerId];
+      owner.breadIncomePenalty=(owner.breadIncomePenalty||0)+unsold;
+      spoiled+=unsold;
+      logEvent(state,`${owner.name}: ${unsold} куб. хлеба испорчено — постоянный Income −${unsold} (суммарный штраф −${owner.breadIncomePenalty}).`,'bad');
+    }
+    con.breadStock=0;
+  }
+  state.breadSpoilageSettledRound=state.round;
+  return {ok:true,spoiled};
+}
 export function beerInventory(c){return Array.from({length:Math.max(0,Math.min(BREWERY_STOCK_CAPACITY,Number.isInteger(c?.beerStock)?c.beerStock:0))},()=>BEER_CARGO);}
 export function goodsBuyerCapacity(projectId){return GOODS_BUYER_CAPACITIES[projectId]||0;}
 export function goodsBuyerUsed(state,construction){
@@ -2141,7 +2193,7 @@ export function grossRoundIncome(state,playerId){
 }
 
 export function roundIncome(state,playerId){
-  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0));
+  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0)-Math.max(0,state.players[playerId]?.breadIncomePenalty||0));
 }
 
 export function raiseCapital(state,playerId,targetDistrictId=null){
