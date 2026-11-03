@@ -1726,10 +1726,10 @@ export function currentContrabandDeliveryKey(state,playerId){return `${state.rou
 export function deliverySourceInfo(state,playerId,source){
   if(!source)return null;
   if(source.kind==='goods'){
-    const brewery=completedBreweries(state).find(c=>c.id===source.id);
-    if(!brewery)return null;
-    return {kind:'goods',id:brewery.id,name:projectById(brewery.projectId).name+' · '+(districtById(brewery.districtId)?.name||brewery.districtId),
-      districtId:brewery.districtId,inventory:beerInventory(brewery),ownerId:brewery.playerId,unitPrice:0};
+    const producer=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'&&['brewery',BREAD_FACTORY_ID].includes(c.projectId));
+    if(!producer)return null;
+    return {kind:'goods',id:producer.id,name:projectById(producer.projectId).name+' · '+(districtById(producer.districtId)?.name||producer.districtId),
+      districtId:producer.districtId,inventory:producer.projectId==='brewery'?beerInventory(producer):breadInventory(producer),ownerId:producer.playerId,unitPrice:0};
   }
   if(source.kind==='contraband'){
     const wh=completedCustomsWarehouses(state).find(c=>c.id===source.id);
@@ -1903,7 +1903,7 @@ export function validateDeliveryPlan(state,plan){
   const pickups=deliveryPickups(plan);
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
-  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||t===BEER_CARGO)))return {ok:false,reason:'pickup-cargo'};
+  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||PINK_GOODS.includes(t))))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
@@ -1918,8 +1918,8 @@ export function validateDeliveryPlan(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     const idx=pickup.routeIndex;
     if(!src||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==src.districtId)return {ok:false,reason:'pickup-route'};
-    if(src.kind==='goods'&&!pickup.cargo.every(t=>t===BEER_CARGO))return {ok:false,reason:'source-goods'};
-    if(src.kind!=='goods'&&pickup.cargo.includes(BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind==='goods'&&!pickup.cargo.every(t=>src.inventory.includes(t)))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='goods'&&pickup.cargo.some(t=>PINK_GOODS.includes(t)))return {ok:false,reason:'source-goods'};
     if(src.kind!=='contraband'&&pickup.cargo.includes(CONTRABAND_CARGO))return {ok:false,reason:'source-contraband'};
     const key=src.kind+':'+src.id;
     const visitKey=key+':'+idx;
@@ -1992,7 +1992,7 @@ export function validateDeliveryPlan(state,plan){
   let onBoard=[];
   // Preserve producer identity on every pink cube, including multi-source
   // routes and unloading before additional pickups at the same stop.
-  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:t===BEER_CARGO?p.source.id:null}));
+  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:PINK_GOODS.includes(t)?p.source.id:null}));
   for(let idx=0;idx<route.length;idx++){
     if(idx===0){
       onBoard.push(...pickupUnits(pickups[0]));
@@ -2001,9 +2001,9 @@ export function validateDeliveryPlan(state,plan){
     const remaining=[];
     for(const drop of drops.filter(d=>(d.routeIndex??route.indexOf(targetDistrictId(state,d)))===idx)){
       for(let k=0;k<drop.materials.length;k++){
-        const type=drop.materials[k],sourceId=type===BEER_CARGO?drop.goodsSourceIds?.[k]:null;
-        if(type===BEER_CARGO&&!sourceId)return {ok:false,reason:'source-goods'};
-        const pos=onBoard.findIndex(unit=>unit.type===type&&(type!==BEER_CARGO||unit.sourceId===sourceId));
+        const type=drop.materials[k],sourceId=PINK_GOODS.includes(type)?drop.goodsSourceIds?.[k]:null;
+        if(PINK_GOODS.includes(type)&&!sourceId)return {ok:false,reason:'source-goods'};
+        const pos=onBoard.findIndex(unit=>unit.type===type&&(!PINK_GOODS.includes(type)||unit.sourceId===sourceId));
         if(pos>=0)onBoard.splice(pos,1);
         else remaining.push({type,sourceId});
       }
@@ -2012,7 +2012,7 @@ export function validateDeliveryPlan(state,plan){
     onBoard.push(...extras);
     if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
     for(const item of remaining){
-      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(item.type!==BEER_CARGO||unit.sourceId===item.sourceId));
+      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(!PINK_GOODS.includes(item.type)||unit.sourceId===item.sourceId));
       if(pos<0)return {ok:false,reason:'unload-before-pickup'};
       onBoard.splice(pos,1);
     }
@@ -2048,8 +2048,9 @@ function executeDeliveryCore(state,plan){
       src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
         freightYardInventory(state,plan.playerId);
     if(src.kind==='goods'){
-      const brewery=state.constructions.find(c=>c.id===src.id);
-      brewery.beerStock=Math.max(0,(brewery.beerStock||0)-pickup.cargo.length);
+      const producer=state.constructions.find(c=>c.id===src.id);
+      if(producer.projectId==='brewery')producer.beerStock=Math.max(0,(producer.beerStock||0)-pickup.cargo.length);
+      else if(producer.projectId===BREAD_FACTORY_ID)producer.breadStock=Math.max(0,(producer.breadStock||0)-pickup.cargo.length);
     }else if(src.kind==='contraband'){
       const con=state.constructions.find(c=>c.id===src.id);
       con.contrabandStock=Math.max(0,(con.contrabandStock||0)-pickup.cargo.length);
@@ -2076,12 +2077,13 @@ function executeDeliveryCore(state,plan){
       const receiving=state.constructions.find(c=>c.id===drop.id);
       receiving.goodsIntakeCount=goodsBuyerUsed(state,receiving)+drop.materials.length;
       receiving.goodsIntakeRound=state.round;
-      for(const sourceId of drop.goodsSourceIds){
-        const brewery=state.constructions.find(c=>c.id===sourceId);
-        player.capital+=BEER_CARRIER_PAYMENT;
-        state.players[brewery.playerId].capital+=1;
+      for(let i=0;i<drop.goodsSourceIds.length;i++){
+        const sourceId=drop.goodsSourceIds[i],product=drop.materials[i];
+        const producer=state.constructions.find(c=>c.id===sourceId);
+        player.capital+=PINK_CARRIER_PAYMENT;
+        state.players[producer.playerId].capital+=1;
         state.players[receiving.playerId].capital+=1;
-        logEvent(state,`${player.name}: пиво от «${projectById(brewery.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
+        logEvent(state,`${player.name}: ${product===BREAD_CARGO?'Хлеб':'Пиво'} от «${projectById(producer.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
       }
     }else if(drop.kind==='contraband-sale'){
       const receiving=state.constructions.find(c=>c.id===drop.id);
@@ -2539,6 +2541,9 @@ function finishYearTransition(state,{rng=Math.random}={}){
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
+  state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
+  for(const con of completedBreadFactories(state)){con.breadStock=0;con.breadProductionRound=null;}
+
   const produced=replenishIndustrialProduction(state);
   for(const item of produced){
     const plant=state.constructions.find(c=>c.id===item.constructionId);
@@ -2557,7 +2562,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
-  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
+  state.phase=state.pendingBreadProduction.length?'bread-production':'declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
   state.yearTransition=null;
   const first=state.market.find(Boolean);
@@ -2611,6 +2616,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 
 export function cleanupMarket(state,{rng=Math.random}={}){
   if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
+  if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase==='upkeep'&&state.yearTransition){
     return {ok:false,reason:'upkeep-choice',playerId:state.yearTransition.playerId,
       due:constructionUpkeepDue(state,state.yearTransition.playerId),
@@ -2639,6 +2645,9 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   fresh.slice(2).forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сброшен с правого края рынка.`,'bad');});
   survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
 
+  // Spoilage is assessed before annual income (including the final 1905 year).
+  // It cannot be reversed by cleanup/upkeep re-entry.
+  settleBreadSpoilage(state);
   if(state.round>=MAX_ROUNDS){
     applyFinalPrisonPenalty(state);
     // Final City Hall report: 1905 completions still count before incomplete contracts are penalized.
@@ -2663,8 +2672,10 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     p.capital+=amount;
     (p.loans||[]).forEach(loan=>loan.interestPaid=true);
     const interestText=interest?` − $${interest} проценты`:'';
-    const fireText=penalty?` − $${penalty} постоянные пожарные санкции`:'';
-    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}).`,'good');
+    const breadPenalty=Math.max(0,p.breadIncomePenalty||0);
+    const fireText=penalty?` − ${penalty} постоянные пожарные санкции`:'';
+    const breadText=breadPenalty?` − ${breadPenalty} потери Income от порчи хлеба`:'';
+    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}${breadText}).`,'good');
   });
 
   state.market=[...survivors];
