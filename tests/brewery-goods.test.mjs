@@ -110,7 +110,7 @@ test('brewery stock replenishes at start of next economic year',()=>{
 
 
 test('four market buyers accept the same pink cargo with distinct yearly capacities',()=>{
-  assert.deepEqual([...G.PINK_GOODS],['Beer']);
+  assert.deepEqual([...G.PINK_GOODS],['Beer','Bread']);
   assert.deepEqual({...G.GOODS_BUYER_CAPACITIES},{wholesale_market:3,shops:1,club:2,pub:2});
   for(const [id,capacity] of Object.entries(G.GOODS_BUYER_CAPACITIES)){
     const card=G.projectById(id);

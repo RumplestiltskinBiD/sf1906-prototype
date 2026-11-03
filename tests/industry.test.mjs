@@ -16,10 +16,11 @@ function building(id,playerId,projectId,districtId,{status='complete',stock=[],m
     warehouseInventory:[],industrialInventory:[...stock]};
 }
 
-test('exactly five industrial types and recipe/cost/risk/income data',()=>{
+test('exactly six industrial types and recipe/cost/risk/income data',()=>{
   const types=G.PROJECTS.filter(p=>G.projectTypes(p.id).length===1&&G.projectTypes(p.id)[0]==='Промышленное');
-  assert.deepEqual(types.map(p=>p.id),['factory','brickworks','woodworks','foundry','cannery']);
+  assert.deepEqual(types.map(p=>p.id),['steam_bakery','factory','brickworks','woodworks','foundry','cannery']);
   const expected=[
+    ['steam_bakery',5,1,1,0,2,['Lumber','Lumber','Masonry','Steel']],
     ['brickworks',4,1,1,1,1,['Lumber','Masonry','Masonry','Steel']],
     ['woodworks',4,2,1,0,2,['Lumber','Lumber','Masonry','Steel']],
     ['foundry',6,2,1,1,2,['Lumber','Masonry','Steel','Steel']],

@@ -6,12 +6,17 @@ export const MAX_ROUNDS = 6;
 export const RESOURCE_PRICES = {Lumber:1,Masonry:1,Steel:2};
 export const CONTRABAND_CARGO = 'Contraband';
 export const BEER_CARGO = 'Beer';
-// A single trade-goods category for buyers; new pink goods are registered here.
-export const PINK_GOODS = Object.freeze([BEER_CARGO]);
+export const BREAD_CARGO = 'Bread';
+// Only registered legal trade goods are accepted by the four shared-capacity buyers.
+export const PINK_GOODS = Object.freeze([BEER_CARGO,BREAD_CARGO]);
+export const BREAD_FACTORY_ID='steam_bakery';
+export const BREAD_FACTORY_OUTPUTS=Object.freeze([2,4]);
 // All completed copies have their own shared yearly sale capacity across pink goods.
 export const GOODS_BUYER_CAPACITIES = Object.freeze({wholesale_market:3,shops:1,club:2,pub:2});
 export const BREWERY_STOCK_CAPACITY = 2;
 export const BEER_CARRIER_PAYMENT = 3;
+// One common pink-goods payout, regardless of which factory made the cube.
+export const PINK_CARRIER_PAYMENT = BEER_CARRIER_PAYMENT;
 export const CONTRABAND_STOCK_CAPACITY = 2;
 export const CONTRABAND_CARRIER_PAYMENT = 6;
 export const BASE_ROUND_INCOME = 3;
@@ -121,6 +126,7 @@ export const PROJECTS = [
   {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0 · 2 VP.',benefit:'+2 VP · Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · +2 VP · регистрация собственности или реорганизация',benefit:'+2 VP · Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Продажа в любом завершённом здании с местом для розового товара: перевозчик +$3, производитель и получатель по +$1 за кубик.',limits:'Пиво не складируется; нужен завершённый получатель со свободным местом из общего годового лимита. Обычные повозки, маршрут и тарифы.'},
+  {prestige:1,income:1,id:'steam_bakery',types:['Промышленное'],risk:{earthquake:0,fire:2},name:'Паровая хлебопекарная фабрика',type:'Промышленность',open:5,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · +1 VP · Хлеб: выпуск 2 или 4/год · П+2 · риск потери Income',benefit:'2 или 4 розовых кубика Хлеба/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Хлебное производство',actionText:'При завершении и в начале каждого следующего года обязательно выберите выпуск: 2 или 4 Хлеба. Любой игрок может отвезти кубики любому покупателю розовых товаров в пределах общего лимита. Выплаты $3/$1/$1.',limits:'Весь непроданный Хлеб списывается в конце года: −1 к постоянному Income владельца за каждый остаток, до годовой выплаты. Штраф не восстанавливается; в 1905 также применяется. Хлеб на обычных складах не хранится. Никакого добровольного пропуска производства.'},
   {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · +2 VP · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу · +2 VP',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
   {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · +1 VP · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду · +1 VP',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Престиж +1 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'1 VP при завершении · раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
@@ -614,12 +620,14 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
+  if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId
     &&developmentSlotsRemaining(state,playerId)>0&&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
+  if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
 }
@@ -639,6 +647,7 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
   if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
   const remaining=developmentSlotsRemaining(state,playerId);
@@ -834,7 +843,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -848,6 +857,9 @@ export function createInitialState({rng=Math.random}={}){
     criminalTradeV1:true,
     grandCitySquareExpansionV1:true,
     residentialQuarterExpansionV1:true,
+    steamBakeryExpansionV1:true,
+    pendingBreadProduction:[],
+    breadSpoilageSettledRound:0,
     pendingWorkforceLinks:[],
     pendingPressCampaigns:[],
     pressCampaignQueuedRound:0,
@@ -1553,6 +1565,12 @@ export function completeConstruction(state,construction){
   }
   if(project.id==='customs_warehouse')construction.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   if(project.id==='brewery')construction.beerStock=BREWERY_STOCK_CAPACITY;
+  if(project.id===BREAD_FACTORY_ID){
+    construction.breadStock=0;
+    construction.breadProductionRound=null;
+    state.pendingBreadProduction=state.pendingBreadProduction||[];
+    state.pendingBreadProduction.push(construction.id);
+  }
   if(project.id==='school')construction.schoolHousingVpAwarded=schoolHousingVp;
   if(project.id==='workers_complex'){
     state.pendingWorkforceLinks=state.pendingWorkforceLinks||[];
@@ -1659,6 +1677,40 @@ export function deliveryNeighbors(districtId){
 }
 
 export function completedBreweries(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='brewery');}
+export function completedBreadFactories(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId===BREAD_FACTORY_ID);}
+export function breadInventory(c){return Array.from({length:Math.max(0,Math.min(4,Number.isInteger(c?.breadStock)?c.breadStock:0))},()=>BREAD_CARGO);}
+export function currentBreadProductionChoice(state){
+  const id=(state.pendingBreadProduction||[])[0];
+  return (state.constructions||[]).find(c=>c.id===id&&c.status==='complete'&&c.projectId===BREAD_FACTORY_ID)||null;
+}
+export function chooseBreadProduction(state,constructionId,quantity){
+  const con=currentBreadProductionChoice(state);
+  if(!con||con.id!==constructionId||!BREAD_FACTORY_OUTPUTS.includes(quantity)||!['development','bread-production'].includes(state.phase))return {ok:false,reason:'production-choice'};
+  con.breadProductionRound=state.round;
+  con.breadProductionQuantity=quantity;
+  con.breadStock=quantity;
+  state.pendingBreadProduction.shift();
+  logEvent(state,`${state.players[con.playerId].name}: «${projectById(con.projectId).name}» выпустила ${quantity} кубиков Хлеба в ${1899+state.round} году.`,'good');
+  if(state.phase==='bread-production'&&!state.pendingBreadProduction.length){state.phase='declare';state.view='hall';}
+  return {ok:true,constructionId,quantity,remaining:state.pendingBreadProduction.length};
+}
+export function settleBreadSpoilage(state){
+  if(state.breadSpoilageSettledRound===state.round)return {ok:true,alreadySettled:true,spoiled:0};
+  let spoiled=0;
+  for(const con of completedBreadFactories(state)){
+    if(con.breadProductionRound!==state.round)continue;
+    const unsold=breadInventory(con).length;
+    if(unsold){
+      const owner=state.players[con.playerId];
+      owner.breadIncomePenalty=(owner.breadIncomePenalty||0)+unsold;
+      spoiled+=unsold;
+      logEvent(state,`${owner.name}: ${unsold} куб. хлеба испорчено — постоянный Income −${unsold} (суммарный штраф −${owner.breadIncomePenalty}).`,'bad');
+    }
+    con.breadStock=0;
+  }
+  state.breadSpoilageSettledRound=state.round;
+  return {ok:true,spoiled};
+}
 export function beerInventory(c){return Array.from({length:Math.max(0,Math.min(BREWERY_STOCK_CAPACITY,Number.isInteger(c?.beerStock)?c.beerStock:0))},()=>BEER_CARGO);}
 export function goodsBuyerCapacity(projectId){return GOODS_BUYER_CAPACITIES[projectId]||0;}
 export function goodsBuyerUsed(state,construction){
@@ -1674,10 +1726,10 @@ export function currentContrabandDeliveryKey(state,playerId){return `${state.rou
 export function deliverySourceInfo(state,playerId,source){
   if(!source)return null;
   if(source.kind==='goods'){
-    const brewery=completedBreweries(state).find(c=>c.id===source.id);
-    if(!brewery)return null;
-    return {kind:'goods',id:brewery.id,name:projectById(brewery.projectId).name+' · '+(districtById(brewery.districtId)?.name||brewery.districtId),
-      districtId:brewery.districtId,inventory:beerInventory(brewery),ownerId:brewery.playerId,unitPrice:0};
+    const producer=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'&&['brewery',BREAD_FACTORY_ID].includes(c.projectId));
+    if(!producer)return null;
+    return {kind:'goods',id:producer.id,name:projectById(producer.projectId).name+' · '+(districtById(producer.districtId)?.name||producer.districtId),
+      districtId:producer.districtId,inventory:producer.projectId==='brewery'?beerInventory(producer):breadInventory(producer),ownerId:producer.playerId,unitPrice:0};
   }
   if(source.kind==='contraband'){
     const wh=completedCustomsWarehouses(state).find(c=>c.id===source.id);
@@ -1851,7 +1903,7 @@ export function validateDeliveryPlan(state,plan){
   const pickups=deliveryPickups(plan);
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
-  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||t===BEER_CARGO)))return {ok:false,reason:'pickup-cargo'};
+  if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||PINK_GOODS.includes(t))))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
@@ -1866,8 +1918,8 @@ export function validateDeliveryPlan(state,plan){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
     const idx=pickup.routeIndex;
     if(!src||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==src.districtId)return {ok:false,reason:'pickup-route'};
-    if(src.kind==='goods'&&!pickup.cargo.every(t=>t===BEER_CARGO))return {ok:false,reason:'source-goods'};
-    if(src.kind!=='goods'&&pickup.cargo.includes(BEER_CARGO))return {ok:false,reason:'source-goods'};
+    if(src.kind==='goods'&&!pickup.cargo.every(t=>src.inventory.includes(t)))return {ok:false,reason:'source-goods'};
+    if(src.kind!=='goods'&&pickup.cargo.some(t=>PINK_GOODS.includes(t)))return {ok:false,reason:'source-goods'};
     if(src.kind!=='contraband'&&pickup.cargo.includes(CONTRABAND_CARGO))return {ok:false,reason:'source-contraband'};
     const key=src.kind+':'+src.id;
     const visitKey=key+':'+idx;
@@ -1940,7 +1992,7 @@ export function validateDeliveryPlan(state,plan){
   let onBoard=[];
   // Preserve producer identity on every pink cube, including multi-source
   // routes and unloading before additional pickups at the same stop.
-  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:t===BEER_CARGO?p.source.id:null}));
+  const pickupUnits=p=>p.cargo.map(t=>({type:t,sourceId:PINK_GOODS.includes(t)?p.source.id:null}));
   for(let idx=0;idx<route.length;idx++){
     if(idx===0){
       onBoard.push(...pickupUnits(pickups[0]));
@@ -1949,9 +2001,9 @@ export function validateDeliveryPlan(state,plan){
     const remaining=[];
     for(const drop of drops.filter(d=>(d.routeIndex??route.indexOf(targetDistrictId(state,d)))===idx)){
       for(let k=0;k<drop.materials.length;k++){
-        const type=drop.materials[k],sourceId=type===BEER_CARGO?drop.goodsSourceIds?.[k]:null;
-        if(type===BEER_CARGO&&!sourceId)return {ok:false,reason:'source-goods'};
-        const pos=onBoard.findIndex(unit=>unit.type===type&&(type!==BEER_CARGO||unit.sourceId===sourceId));
+        const type=drop.materials[k],sourceId=PINK_GOODS.includes(type)?drop.goodsSourceIds?.[k]:null;
+        if(PINK_GOODS.includes(type)&&!sourceId)return {ok:false,reason:'source-goods'};
+        const pos=onBoard.findIndex(unit=>unit.type===type&&(!PINK_GOODS.includes(type)||unit.sourceId===sourceId));
         if(pos>=0)onBoard.splice(pos,1);
         else remaining.push({type,sourceId});
       }
@@ -1960,7 +2012,7 @@ export function validateDeliveryPlan(state,plan){
     onBoard.push(...extras);
     if(onBoard.length>hauler.capacity)return {ok:false,reason:'capacity'};
     for(const item of remaining){
-      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(item.type!==BEER_CARGO||unit.sourceId===item.sourceId));
+      const pos=onBoard.findIndex(unit=>unit.type===item.type&&(!PINK_GOODS.includes(item.type)||unit.sourceId===item.sourceId));
       if(pos<0)return {ok:false,reason:'unload-before-pickup'};
       onBoard.splice(pos,1);
     }
@@ -1996,8 +2048,9 @@ function executeDeliveryCore(state,plan){
       src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
         freightYardInventory(state,plan.playerId);
     if(src.kind==='goods'){
-      const brewery=state.constructions.find(c=>c.id===src.id);
-      brewery.beerStock=Math.max(0,(brewery.beerStock||0)-pickup.cargo.length);
+      const producer=state.constructions.find(c=>c.id===src.id);
+      if(producer.projectId==='brewery')producer.beerStock=Math.max(0,(producer.beerStock||0)-pickup.cargo.length);
+      else if(producer.projectId===BREAD_FACTORY_ID)producer.breadStock=Math.max(0,(producer.breadStock||0)-pickup.cargo.length);
     }else if(src.kind==='contraband'){
       const con=state.constructions.find(c=>c.id===src.id);
       con.contrabandStock=Math.max(0,(con.contrabandStock||0)-pickup.cargo.length);
@@ -2024,12 +2077,13 @@ function executeDeliveryCore(state,plan){
       const receiving=state.constructions.find(c=>c.id===drop.id);
       receiving.goodsIntakeCount=goodsBuyerUsed(state,receiving)+drop.materials.length;
       receiving.goodsIntakeRound=state.round;
-      for(const sourceId of drop.goodsSourceIds){
-        const brewery=state.constructions.find(c=>c.id===sourceId);
-        player.capital+=BEER_CARRIER_PAYMENT;
-        state.players[brewery.playerId].capital+=1;
+      for(let i=0;i<drop.goodsSourceIds.length;i++){
+        const sourceId=drop.goodsSourceIds[i],product=drop.materials[i];
+        const producer=state.constructions.find(c=>c.id===sourceId);
+        player.capital+=PINK_CARRIER_PAYMENT;
+        state.players[producer.playerId].capital+=1;
         state.players[receiving.playerId].capital+=1;
-        logEvent(state,`${player.name}: пиво от «${projectById(brewery.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
+        logEvent(state,`${player.name}: ${product===BREAD_CARGO?'Хлеб':'Пиво'} от «${projectById(producer.projectId).name}» доставлено в «${projectById(receiving.projectId).name}»: перевозчик +$3, производитель +$1, получатель +$1.`,'good');
       }
     }else if(drop.kind==='contraband-sale'){
       const receiving=state.constructions.find(c=>c.id===drop.id);
@@ -2141,7 +2195,7 @@ export function grossRoundIncome(state,playerId){
 }
 
 export function roundIncome(state,playerId){
-  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0));
+  return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0)-Math.max(0,state.players[playerId]?.breadIncomePenalty||0));
 }
 
 export function raiseCapital(state,playerId,targetDistrictId=null){
@@ -2487,6 +2541,9 @@ function finishYearTransition(state,{rng=Math.random}={}){
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
+  state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
+  for(const con of completedBreadFactories(state)){con.breadStock=0;con.breadProductionRound=null;}
+
   const produced=replenishIndustrialProduction(state);
   for(const item of produced){
     const plant=state.constructions.find(c=>c.id===item.constructionId);
@@ -2505,7 +2562,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.procurementRemaining=0;state.procurementSource=null;
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
-  state.phase='declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
+  state.phase=state.pendingBreadProduction.length?'bread-production':'declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
   state.yearTransition=null;
   const first=state.market.find(Boolean);
@@ -2559,6 +2616,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 
 export function cleanupMarket(state,{rng=Math.random}={}){
   if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
+  if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase==='upkeep'&&state.yearTransition){
     return {ok:false,reason:'upkeep-choice',playerId:state.yearTransition.playerId,
       due:constructionUpkeepDue(state,state.yearTransition.playerId),
@@ -2587,6 +2645,9 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   fresh.slice(2).forEach(m=>{state.expired.push({uid:m.uid,id:m.id});logEvent(state,`«${projectById(m.id).name}» сброшен с правого края рынка.`,'bad');});
   survivors.forEach(m=>{m.age=1;m.discount=1;m.claims=[];m.bids={};m.result=null;m.sold=false;});
 
+  // Spoilage is assessed before annual income (including the final 1905 year).
+  // It cannot be reversed by cleanup/upkeep re-entry.
+  settleBreadSpoilage(state);
   if(state.round>=MAX_ROUNDS){
     applyFinalPrisonPenalty(state);
     // Final City Hall report: 1905 completions still count before incomplete contracts are penalized.
@@ -2611,8 +2672,10 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     p.capital+=amount;
     (p.loans||[]).forEach(loan=>loan.interestPaid=true);
     const interestText=interest?` − $${interest} проценты`:'';
-    const fireText=penalty?` − $${penalty} постоянные пожарные санкции`:'';
-    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}).`,'good');
+    const breadPenalty=Math.max(0,p.breadIncomePenalty||0);
+    const fireText=penalty?` − ${penalty} постоянные пожарные санкции`:'';
+    const breadText=breadPenalty?` − ${breadPenalty} потери Income от порчи хлеба`:'';
+    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}${breadText}).`,'good');
   });
 
   state.market=[...survivors];

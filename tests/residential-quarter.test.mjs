@@ -18,10 +18,10 @@ const warehouse=(id,stock,playerId=0,districtId='civic')=>({
 });
 
 test('residential quarter is sixth pure Housing project, with two copies and no special action',()=>{
-  assert.equal(G.PROJECTS.length,39);
+  assert.equal(G.PROJECTS.length,40);
   assert.equal(G.PROJECT_COPIES,2);
   const pool=G.createProjectCardPool({rng:()=>0.2});
-  assert.equal(pool.length,78);
+  assert.equal(pool.length,80);
   assert.equal(pool.filter(c=>c.id==='residential_quarter').length,2);
   assert.deepEqual(G.projectTypes(quarter),['Жилое']);
   assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]==='Жилое').length,6);

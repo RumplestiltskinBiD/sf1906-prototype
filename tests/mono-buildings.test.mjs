@@ -21,16 +21,16 @@ function finish(s,id,pid,projectId,district){
 }
 
 test('customs and rare-goods additions expand trading and mixed catalog; two-copy pool',()=>{
-  assert.equal(G.PROJECTS.length,39);
+  assert.equal(G.PROJECTS.length,40);
   assert.equal(G.PROJECT_COPIES,2);
   const pool=G.createProjectCardPool({rng:()=>0.1});
-  assert.equal(pool.length,78);
+  assert.equal(pool.length,80);
   for(const card of G.PROJECTS){
     assert.equal(pool.filter(c=>c.id===card.id).length,2,card.id);
   }
   for(const category of G.BUILDING_TYPES){
     const pure=G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]===category);
-    assert.equal(pure.length,['Торговое','Общественное','Жилое'].includes(category)?6:5,category);
+    assert.equal(pure.length,['Торговое','Общественное','Жилое','Промышленное'].includes(category)?6:5,category);
   }
   assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,11);
 });
