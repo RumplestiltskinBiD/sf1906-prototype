@@ -34,7 +34,7 @@ for(const viewport of sizes){
     const card=page.locator('#projectMarket .project-card').filter({hasText:'Жилой квартал'}).first();
     await expect(card).toBeVisible();
     await expect(card).toContainText('Доход +$3');
-    await expect(card).toContainText('2 VP');
+    await expect(card.locator('.prestige-chip')).toHaveText('VP 2');
     await expect(card.locator('.card-resource-row .resource-pip.lumber')).toHaveCount(3);
     await expect(card.locator('.card-resource-row .resource-pip.masonry')).toHaveCount(1);
     await expect(card.locator('.card-resource-row .resource-pip')).toHaveCount(4);

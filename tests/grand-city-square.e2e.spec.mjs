@@ -27,7 +27,7 @@ for(const viewport of sizes){
   const card=page.locator('#projectMarket .project-card').filter({hasText:'Большой городской сквер'}).first();
   if(await card.count()){
     await expect(card).toContainText('Большой городской сквер');
-    await expect(card).toContainText('2 VP');
+    await expect(card.locator('.prestige-chip')).toHaveText('VP 2');
     await expect(card.locator('.resource-pip')).toHaveCount(2);
   }
   await page.locator('#officeBtn').click();
