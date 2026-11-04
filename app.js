@@ -2226,12 +2226,12 @@ const r=takeBureauContract(state,pid,b.dataset.bureauAction);
 if(!r.ok){showToast(r.reason==='worker-range'?'Выбранный представитель слишком далеко':r.reason==='worker'?'Сначала выберите представителя':r.reason==='occupied'?'Это Bureau уже занято в этом раунде':r.reason==='has-contract'?'Контракт уже есть':'Bureau сейчас недоступно');return;}
 showToast(`Construction Contract получен. Представитель #${r.worker.number} теперь в ${districtById(r.worker.districtId)?.name}.`);render();
 });
-$('[data-advertising-action]').forEach(b=>b.onclick=()=>{
+$$('[data-advertising-action]').forEach(b=>b.onclick=()=>{
  const result=useAdvertisingAgency(state,pid,b.dataset.advertisingAction);
  if(!result.ok){showToast(result.reason==='worker-range'?'Представитель слишком далеко от агентства':result.reason==='occupied'?'Агентство уже использовано':result.reason==='capital'?'Нужны $2':'Рекламная кампания недоступна');return;}
  showToast('Рекламная кампания: −$2 · +2 постоянного Income');render();
 });
-$('[data-shops-action]').forEach(b=>b.onclick=()=>{
+$$('[data-shops-action]').forEach(b=>b.onclick=()=>{
 const r=useShoppingProcurement(state,pid,b.dataset.shopsAction);
 if(!r.ok){showToast(r.reason==='worker-range'?'Выбранный представитель слишком далеко':r.reason==='worker'?'Сначала выберите представителя':r.reason==='occupied'?'Этот Shopping Row уже занят':r.reason==='capital'?'Нужен $1':r.reason==='no-construction'?'Нет незавершённой стройки':'Procurement недоступен');return;}
 showToast(`Procurement активирован. Представитель #${r.worker.number} теперь в ${districtById(r.worker.districtId)?.name}.`);render();
