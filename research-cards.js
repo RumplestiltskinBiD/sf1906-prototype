@@ -1,5 +1,5 @@
 /**
- * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R06), 2026-10-17.
+ * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R07), обновлено 2026-11-04.
  *
  * ТОЛЬКО ДАННЫЕ КАРТ: файл не подключён к игровому движку и ничего не меняет
  * в действующих сохранениях, балансе, интерфейсе или логике игры.
@@ -112,6 +112,29 @@ export const RESEARCH_CARDS = Object.freeze([
       maxActiveAdvancedGoalsPerPlayer: 1,
       extraWorkerActionRequiredForAdvance: false
     }
+
+  },
+  {
+    id: 'R07',
+    name: 'Европейская реформа сейсмостойкого строительства',
+    fundingCost: 4,
+    sponsorReward: { vp: 3, influence: 1 },
+    requirementText: 'Нет.',
+    effectText: 'После финансирования покупка каждого Lumber у любого источника стоит на $1 дороже до конца партии. Уже купленное дерево не затрагивается. Рецепты зданий и У районов не меняются.',
+    effect: {
+      type: 'citywide-lumber-purchase-price-increase',
+      resource: 'Lumber',
+      unitPriceIncrease: 1,
+      appliesToSources: ['logistics-node', 'neutral-supplier'],
+      appliesToAllPlayers: true,
+      starts: 'immediately-after-financing',
+      ends: 'end-of-game',
+      previouslyPurchasedMaterials: 'unchanged',
+      constructionRecipes: 'unchanged',
+      earthquakeRisk: 'unchanged'
+    },
+    historicalBasis: 'Португальская gaiola pombalina после 1755 года и калабрийская casa baraccata после 1783 года; вымышленная муниципальная программа Сан-Франциско 1900–1905 годов повышает спрос на древесину.',
+    implementationStatus: 'data-only-not-wired-to-game-engine'
   }
 ]);
 
