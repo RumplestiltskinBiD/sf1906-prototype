@@ -18,7 +18,7 @@ function game(){
   return s;
 }
 async function seed(page,state){
-  await page.addInitScript(({key,val})=>localStorage.setItem(key,val),{key:KEY,val:JSON.stringify(state)});
+  await page.addInitScript(({key,val})=>{if(localStorage.getItem(key)===null)localStorage.setItem(key,val);},{key:KEY,val:JSON.stringify(state)});
   await page.goto('/');
 }
 async function stored(page){return page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);}
