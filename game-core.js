@@ -23,6 +23,8 @@ export const BASE_ROUND_INCOME = 3;
 export const CONSTRUCTION_UPKEEP_COST = 1;
 export const INFLUENCE_START_POSITIONS = Object.freeze([2,3,4]);
 export const RAISE_CAPITAL_AMOUNT = 3;
+export const ADVERTISING_CAMPAIGN_COST = 2;
+export const ADVERTISING_CAMPAIGN_INCOME = 2;
 export const LOAN_PRINCIPAL = 6;
 export const MAX_ACTIVE_LOANS = 2;
 export const BUREAU_LAND_DISCOUNT = 2;
@@ -148,6 +150,7 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'foundry',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Литейно-механический завод',type:'Промышленность',open:6,materials:['Lumber','Masonry','Steel','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · производит до 1 Steel в год; продажа по $2/шт.',benefit:'Доход +$2 / год · запас до 1 Steel',actionName:'Продажа стали',actionText:'Steel за $2/шт. Для владельца цена $1/шт. При покупке соперником владелец получает $1 за Steel.',limits:'Запас максимум 1 Steel; доступны все игроки. Скидка при покупке собственной продукции; обычная перевозка обязательна.'},
   {prestige:1,income:1,id:'cannery',types:["Промышленное"],risk:{earthquake:0,fire:1},name:'Консервный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1; ещё +$1 за каждое завершённое Жилое здание в своём районе (максимум +$3)',benefit:'Доход +$1–4 / год (по жилой застройке)',actionName:'—',actionText:'Дополнительный доход пересчитывается ежегодно; учитываются завершённые жилые здания любых игроков в том же районе.',limits:'Максимум +$3 дополнительно за год; соседние районы не учитываются.'},
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли',benefit:'Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
+  {prestige:1,income:3,id:'ad_agency',types:['Бизнес'],risk:{earthquake:0,fire:1},name:'Городское рекламное агентство',type:'Коммерция',open:6,materials:['Lumber','Masonry','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Рекламная кампания',benefit:'Доход +3 / год',actionName:'Рекламная кампания',actionText:'1 представитель + $2 → +2 к постоянному Income.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
   {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1',benefit:'Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
@@ -843,7 +846,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0,advertisingIncomeBonus:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -856,6 +859,7 @@ export function createInitialState({rng=Math.random}={}){
     pressAndWorkersExpansionV1:true,
     criminalTradeV1:true,
     grandCitySquareExpansionV1:true,
+    advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
     steamBakeryExpansionV1:true,
     pendingBreadProduction:[],
@@ -2190,8 +2194,13 @@ export function buildingIncome(state,playerId){
     .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
+export function advertisingIncomeBonus(state,playerId){
+  const bonus=state.players?.[playerId]?.advertisingIncomeBonus;
+  return Number.isInteger(bonus)?Math.max(0,bonus):0;
+}
+
 export function grossRoundIncome(state,playerId){
-  return BASE_ROUND_INCOME+buildingIncome(state,playerId);
+  return BASE_ROUND_INCOME+buildingIncome(state,playerId)+advertisingIncomeBonus(state,playerId);
 }
 
 export function roundIncome(state,playerId){
@@ -2517,6 +2526,24 @@ export function useSocialClub(state,playerId,clubConstructionId){
   return {ok:true,cost:1,influence:1,worker:consumed.worker};
 }
 
+export function useAdvertisingAgency(state,playerId,agencyConstructionId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
+  const agency=(state.constructions||[]).find(c=>c.id===agencyConstructionId&&c.projectId==='ad_agency'&&c.status==='complete');
+  if(!agency)return {ok:false,reason:'no-agency'};
+  if(!workerCanReachDistrict(state,playerId,agency.districtId))return {ok:false,reason:'worker-range'};
+  if(actionSpaceOccupant(state,agencyConstructionId)!=null)return {ok:false,reason:'occupied'};
+  const player=state.players[playerId];
+  if(player.capital<ADVERTISING_CAMPAIGN_COST)return {ok:false,reason:'capital'};
+  const consumed=consumeMainAction(state,playerId,agency.districtId);
+  if(!consumed.ok)return consumed;
+  player.capital-=ADVERTISING_CAMPAIGN_COST;
+  player.advertisingIncomeBonus=advertisingIncomeBonus(state,playerId)+ADVERTISING_CAMPAIGN_INCOME;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[agencyConstructionId]=playerId;
+  logEvent(state,player.name+' запускает рекламную кампанию за $'+ADVERTISING_CAMPAIGN_COST+': +'+ADVERTISING_CAMPAIGN_INCOME+' к постоянному Income игрока (всего рекламой +'+player.advertisingIncomeBonus+').'+workerMovementText(consumed),'good');
+  return {ok:true,cost:ADVERTISING_CAMPAIGN_COST,incomeGain:ADVERTISING_CAMPAIGN_INCOME,totalAdvertisingIncome:player.advertisingIncomeBonus,worker:consumed.worker};
+}
+
 export function setLandValue(state,districtId,value){
   const district=districtById(districtId);
   if(!district||!state.districts?.[districtId])return {ok:false};
@@ -2675,7 +2702,9 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     const breadPenalty=Math.max(0,p.breadIncomePenalty||0);
     const fireText=penalty?` − ${penalty} постоянные пожарные санкции`:'';
     const breadText=breadPenalty?` − ${breadPenalty} потери Income от порчи хлеба`:'';
-    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}${breadText}).`,'good');
+    const advertising=advertisingIncomeBonus(state,p.id);
+    const adText=advertising?(' + $'+advertising+' реклама'):'';
+    logEvent(state,p.name+' получает доход $'+amount+' ($'+BASE_ROUND_INCOME+' базовый + $'+buildingIncome(state,p.id)+' здания'+adText+interestText+fireText+breadText+').','good');
   });
 
   state.market=[...survivors];

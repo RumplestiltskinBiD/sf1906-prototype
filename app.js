@@ -1,5 +1,5 @@
 import {
-PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
@@ -8,8 +8,8 @@ resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNe
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
-activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js';
+activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
+} from './game-core.js?v=0550-ad-agency';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
@@ -125,6 +125,7 @@ loans:p.loans||[],
 bureauContracts:p.bureauContracts||0,
 fireIncomePenalty:Math.max(0,Number(p.fireIncomePenalty)||0),
 breadIncomePenalty:Math.max(0,Number.isInteger(p.breadIncomePenalty)?p.breadIncomePenalty:0),
+advertisingIncomeBonus:Math.max(0,Number.isInteger(p.advertisingIncomeBonus)?p.advertisingIncomeBonus:0),
 goals:Array.isArray(p.goals)?p.goals:[],
 goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
@@ -382,6 +383,22 @@ if(!parsed.hallOfJusticeExpansionV1){
   additions.forEach((card,i)=>deck.splice(Math.min((i+1)*step,deck.length),0,card));
   parsed.deck=deck;
   parsed.hallOfJusticeExpansionV1=true;
+}
+// Insert agency cards into existing saves without disturbing owned projects.
+if(!parsed.advertisingAgencyExpansionV1){
+  const id='ad_agency';
+  const held=[...(parsed.market||[]).map(c=>c?.id),...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const additions=Array.from({length:Math.max(0,PROJECT_COPIES-held.filter(x=>x===id).length)},
+    (_,i)=>({uid:'AD-AGENCY-'+(i+1),id}));
+  const deck=parsed.deck||[];
+  const spacing=Math.max(1,Math.floor((deck.length+additions.length)/(additions.length+1)));
+  additions.forEach((card,i)=>deck.splice(Math.min((i+1)*spacing,deck.length),0,card));
+  parsed.deck=deck;
+  parsed.advertisingAgencyExpansionV1=true;
 }
 if(!parsed.residentialMixedV1){
  const ids=['bakery','orphanage'];
@@ -1689,7 +1706,7 @@ function projectCardRules(p){
 return `<div class="card-rules">
 <div class="card-rule benefit"><b>ДАЁТ</b><span>${p.benefit||p.effect||'—'}</span></div>
 <div class="card-rule action ${p.actionName==='—'?'muted':''}"><b>ДЕЙСТВИЕ · ${p.actionName||'—'}</b><span>${p.actionText||'—'}</span></div>
-<div class="card-rule limits"><b>ОГРАНИЧЕНИЯ</b><span>${p.limits||'—'}</span></div>
+${p.limits?`<div class="card-rule limits"><b>ОГРАНИЧЕНИЯ</b><span>${p.limits}</span></div>`:''}
 </div>`;
 }
 function projectCoreCard(p,{topLeft='',topRight='',priceLabel='старт',priceValue=null,selected=false,extraClass='',extraTop='',footer=''}={}){
@@ -1986,6 +2003,7 @@ const selected=activeWorker(state,pid);
 const reachable=selected?workerReachableDistricts(state,pid,selected.id):[];
 const banks=completedActionSpaces(state,'bank');
 const bureaus=completedActionSpaces(state,'bureau');
+const advertisingAgencies=completedActionSpaces(state,'ad_agency');
 const shops=completedActionSpaces(state,'shops');
 const clubs=completedActionSpaces(state,'club');
 const commissionHouses=completedActionSpaces(state,'commission_house');
@@ -2005,6 +2023,7 @@ const hasConstruction=(state.constructions||[]).some(x=>x.playerId===pid&&x.stat
 const spaceFree=con=>actionSpaceOccupant(state,con.id)==null;
 const bankAvailable=!mainUsed&&!!selected&&debt<MAX_ACTIVE_LOANS&&banks.some(x=>actionReach(x)&&spaceFree(x));
 const bureauAvailable=!mainUsed&&!!selected&&!contract&&bureaus.some(x=>actionReach(x)&&spaceFree(x));
+const advertisingAvailable=!mainUsed&&!!selected&&p.capital>=ADVERTISING_CAMPAIGN_COST&&advertisingAgencies.some(x=>actionReach(x)&&spaceFree(x));
 const shopsAvailable=!mainUsed&&!!selected&&p.capital>=1&&hasConstruction&&shops.some(x=>actionReach(x)&&spaceFree(x));
 const clubAvailable=!mainUsed&&!!selected&&p.capital>=1&&clubs.some(x=>actionReach(x)&&spaceFree(x));
 const commissionAvailable=!mainUsed&&!!selected&&availableProjects>0&&commissionHouses.some(x=>actionReach(x)&&spaceFree(x));
@@ -2027,6 +2046,13 @@ const ownerReward=bureau.playerId===pid?'Ваш Bureau':'Чужое Bureau → �
 const usedText=occupied?`ИСПОЛЬЗОВАНО · ${state.players[occupiedBy].name}`:!selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ':!range?'СЛИШКОМ ДАЛЕКО':contract?'КОНТРАКТ ГОТОВ':mainUsed?'ДЕЙСТВИЕ ИСП.':'−$2 land';
 return `<button class="action-space-btn bureau ${disabled?'':'available-action'} ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-bureau-action="${bureau.id}" ${disabled?'disabled':''}><b>Bureau · ${owner.name}</b><span>${d.name} · ${occupied?`занято ${state.players[occupiedBy].name}`:ownerReward}</span><strong>${usedText}</strong></button>`;
 }).join(''):'<div class="action-space-locked">Construction Bureau ещё не построено</div>';
+const advertisingButtons=advertisingAgencies.length?advertisingAgencies.map(agency=>{
+  const owner=state.players[agency.playerId],district=districtById(agency.districtId);
+  const occupiedBy=actionSpaceOccupant(state,agency.id),occupied=occupiedBy!=null,range=actionReach(agency);
+  const disabled=mainUsed||!selected||!range||occupied||p.capital<ADVERTISING_CAMPAIGN_COST;
+  const label=occupied?'ЗАНЯТО':!selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ':!range?'СЛИШКОМ ДАЛЕКО':mainUsed?'ДЕЙСТВИЕ ИСП.':p.capital<ADVERTISING_CAMPAIGN_COST?'НУЖНЫ $2':'−$2 · +2 Income';
+  return `<button class="action-space-btn advertising ${disabled?'':'available-action'} ${occupied?'occupied':''} ${!range&&selected?'out-of-range':''}" data-advertising-action="${agency.id}" ${disabled?'disabled':''}><b>Агентство · ${owner.name}</b><span>${district.name}</span><strong>${label}</strong></button>`;
+}).join(''):'<div class="action-space-locked">Рекламное агентство ещё не построено</div>';
 const shopsButtons=shops.length?shops.map(shop=>{
 const owner=state.players[shop.playerId],d=districtById(shop.districtId),occupiedBy=actionSpaceOccupant(state,shop.id);
 const occupied=occupiedBy!=null,range=actionReach(shop);
@@ -2120,7 +2146,8 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
 <button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Несколько источников по пути (+$1 за дополнительную погрузку)</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
 <div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
-<div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
+<div class="city-action-card ${advertisingAvailable?'action-available':''}"><b>Рекламное агентство</b><span>$2 → +2 Income</span><div class="action-space-list">${advertisingButtons}</div></div>
+ <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
 <div class="city-action-card club-card ${clubAvailable?'action-available':''}"><b>Ресторан и клуб</b><span>Нужно добраться до клуба · −$1 → +1 Влияние</span><div class="action-space-list">${clubButtons}</div></div>
 <div class="city-action-card ${fireAvailable?'action-available':''}"><b>🚒 Пожарная служба</b><span>1 представитель · пожарная часть: модернизация своего здания или инспекция района</span><div class="action-space-list firehouse-list">${firehouseButtons}</div>${fireTargetPanel}</div>
 <div class="city-action-card ${justiceAvailable?'action-available':''}"><b>⚖ Дворец правосудия</b><span>Выберите действие: право собственности или реорганизация стройки</span><div class="action-space-list firehouse-list">${justiceButtons}</div>${justiceTargetPanel}</div>
@@ -2198,6 +2225,11 @@ $$('[data-bureau-action]').forEach(b=>b.onclick=()=>{
 const r=takeBureauContract(state,pid,b.dataset.bureauAction);
 if(!r.ok){showToast(r.reason==='worker-range'?'Выбранный представитель слишком далеко':r.reason==='worker'?'Сначала выберите представителя':r.reason==='occupied'?'Это Bureau уже занято в этом раунде':r.reason==='has-contract'?'Контракт уже есть':'Bureau сейчас недоступно');return;}
 showToast(`Construction Contract получен. Представитель #${r.worker.number} теперь в ${districtById(r.worker.districtId)?.name}.`);render();
+});
+$$('[data-advertising-action]').forEach(b=>b.onclick=()=>{
+ const result=useAdvertisingAgency(state,pid,b.dataset.advertisingAction);
+ if(!result.ok){showToast(result.reason==='worker-range'?'Представитель слишком далеко от агентства':result.reason==='occupied'?'Агентство уже использовано':result.reason==='capital'?'Нужны $2':'Рекламная кампания недоступна');return;}
+ showToast('Рекламная кампания: −$2 · +2 постоянного Income');render();
 });
 $$('[data-shops-action]').forEach(b=>b.onclick=()=>{
 const r=useShoppingProcurement(state,pid,b.dataset.shopsAction);
@@ -2567,9 +2599,9 @@ if(con.status==='complete'){
 const fireMarker=con.fireSafetyModernized?'<div class="warehouse-support">🛡 ПОЖАРНАЯ МОДЕРНИЗАЦИЯ · постоянный жетон · вклад П −1</div>':'';
 const wh=isWarehouseConstruction(con)?`<div class="warehouse-note">Склад · Хранение <b>${warehouseInventory(con).length}/${warehouseStorageCapacity(con)}</b> · может быть источником/точкой доставки и снабжать стройки в этом районе.</div>`:'';
 let actionNote='';
-if(['bank','bureau','shops','club','commission_house','firehouse','hall_of_justice'].includes(con.projectId)){
+if(['bank','bureau','ad_agency','shops','club','commission_house','firehouse','hall_of_justice'].includes(con.projectId)){
 const occupant=actionSpaceOccupant(state,con.id);
-const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',hall_of_justice:'Право собственности ($1) / Реорганизация ($2)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
+const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',ad_agency:'Рекламная кампания · $2 → +2 Income',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',hall_of_justice:'Право собственности ($1) / Реорганизация ($2)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','police','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(con.projectId)){
 actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
