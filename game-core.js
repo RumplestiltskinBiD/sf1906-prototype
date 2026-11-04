@@ -23,6 +23,8 @@ export const BASE_ROUND_INCOME = 3;
 export const CONSTRUCTION_UPKEEP_COST = 1;
 export const INFLUENCE_START_POSITIONS = Object.freeze([2,3,4]);
 export const RAISE_CAPITAL_AMOUNT = 3;
+export const ADVERTISING_CAMPAIGN_COST = 2;
+export const ADVERTISING_CAMPAIGN_INCOME = 2;
 export const LOAN_PRINCIPAL = 6;
 export const MAX_ACTIVE_LOANS = 2;
 export const BUREAU_LAND_DISCOUNT = 2;
@@ -148,6 +150,7 @@ export const PROJECTS = [
   {prestige:1,income:2,id:'foundry',types:["Промышленное"],risk:{earthquake:1,fire:2},name:'Литейно-механический завод',type:'Промышленность',open:6,materials:['Lumber','Masonry','Steel','Steel'],requires:'Нет дополнительных требований',effect:'Доход +2 · производит до 1 Steel в год; продажа по $2/шт.',benefit:'Доход +$2 / год · запас до 1 Steel',actionName:'Продажа стали',actionText:'Steel за $2/шт. Для владельца цена $1/шт. При покупке соперником владелец получает $1 за Steel.',limits:'Запас максимум 1 Steel; доступны все игроки. Скидка при покупке собственной продукции; обычная перевозка обязательна.'},
   {prestige:1,income:1,id:'cannery',types:["Промышленное"],risk:{earthquake:0,fire:1},name:'Консервный завод',type:'Промышленность',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1; ещё +$1 за каждое завершённое Жилое здание в своём районе (максимум +$3)',benefit:'Доход +$1–4 / год (по жилой застройке)',actionName:'—',actionText:'Дополнительный доход пересчитывается ежегодно; учитываются завершённые жилые здания любых игроков в том же районе.',limits:'Максимум +$3 дополнительно за год; соседние районы не учитываются.'},
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли',benefit:'Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
+  {prestige:1,income:3,id:'ad_agency',types:['Бизнес'],risk:{earthquake:0,fire:1},name:'Городское рекламное агентство',type:'Коммерция',open:6,materials:['Lumber','Masonry','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Доход +3 · Рекламная кампания',benefit:'Доход +3 / год',actionName:'Рекламная кампания',actionText:'1 представитель + $2 → +2 постоянного Income игрока.',limits:'1 активация / агентство / год.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
   {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1',benefit:'Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
@@ -843,7 +846,7 @@ export function createInitialState({rng=Math.random}={}){
   const newsDeck=shuffle(NEWS_CARDS.map(c=>c.id),rng);
   const newsCurrentIds=[newsDeck.shift()];
   const influencePositions=shuffle(INFLUENCE_START_POSITIONS,rng);
-  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0}));
+  const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0,advertisingIncomeBonus:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   return {
@@ -856,6 +859,7 @@ export function createInitialState({rng=Math.random}={}){
     pressAndWorkersExpansionV1:true,
     criminalTradeV1:true,
     grandCitySquareExpansionV1:true,
+    advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
     steamBakeryExpansionV1:true,
     pendingBreadProduction:[],
@@ -2190,8 +2194,13 @@ export function buildingIncome(state,playerId){
     .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
+export function advertisingIncomeBonus(state,playerId){
+  const bonus=state.players?.[playerId]?.advertisingIncomeBonus;
+  return Number.isInteger(bonus)?Math.max(0,bonus):0;
+}
+
 export function grossRoundIncome(state,playerId){
-  return BASE_ROUND_INCOME+buildingIncome(state,playerId);
+  return BASE_ROUND_INCOME+buildingIncome(state,playerId)+advertisingIncomeBonus(state,playerId);
 }
 
 export function roundIncome(state,playerId){
@@ -2517,6 +2526,24 @@ export function useSocialClub(state,playerId,clubConstructionId){
   return {ok:true,cost:1,influence:1,worker:consumed.worker};
 }
 
+export function useAdvertisingAgency(state,playerId,agencyConstructionId){
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
+  const agency=(state.constructions||[]).find(c=>c.id===agencyConstructionId&&c.projectId==='ad_agency'&&c.status==='complete');
+  if(!agency)return {ok:false,reason:'no-agency'};
+  if(!workerCanReachDistrict(state,playerId,agency.districtId))return {ok:false,reason:'worker-range'};
+  if(actionSpaceOccupant(state,agencyConstructionId)!=null)return {ok:false,reason:'occupied'};
+  const player=state.players[playerId];
+  if(player.capital<ADVERTISING_CAMPAIGN_COST)return {ok:false,reason:'capital'};
+  const consumed=consumeMainAction(state,playerId,agency.districtId);
+  if(!consumed.ok)return consumed;
+  player.capital-=ADVERTISING_CAMPAIGN_COST;
+  player.advertisingIncomeBonus=advertisingIncomeBonus(state,playerId)+ADVERTISING_CAMPAIGN_INCOME;
+  state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+  state.actionSpaceOccupancy[agencyConstructionId]=playerId;
+  logEvent(state,`${player.name} запускает рекламную кампанию за ${ADVERTISING_CAMPAIGN_COST}: +${ADVERTISING_CAMPAIGN_INCOME} к постоянному Income игрока (всего рекламой +${player.advertisingIncomeBonus}).${workerMovementText(consumed)}`,'good');
+  return {ok:true,cost:ADVERTISING_CAMPAIGN_COST,incomeGain:ADVERTISING_CAMPAIGN_INCOME,totalAdvertisingIncome:player.advertisingIncomeBonus,worker:consumed.worker};
+}
+
 export function setLandValue(state,districtId,value){
   const district=districtById(districtId);
   if(!district||!state.districts?.[districtId])return {ok:false};
@@ -2666,6 +2693,7 @@ export function cleanupMarket(state,{rng=Math.random}={}){
 
   state.players.forEach(p=>{
     const gross=grossRoundIncome(state,p.id);
+    const advertising=advertisingIncomeBonus(state,p.id);
     const interest=loanInterest(state,p.id);
     const penalty=Math.max(0,p.fireIncomePenalty||0);
     const amount=roundIncome(state,p.id);
@@ -2675,7 +2703,275 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     const breadPenalty=Math.max(0,p.breadIncomePenalty||0);
     const fireText=penalty?` − ${penalty} постоянные пожарные санкции`:'';
     const breadText=breadPenalty?` − ${breadPenalty} потери Income от порчи хлеба`:'';
-    logEvent(state,`${p.name} получает доход $${amount} ($${BASE_ROUND_INCOME} базовый + $${buildingIncome(state,p.id)} здания${interestText}${fireText}${breadText}).`,'good');
+    logEvent(state,`${p.name} получает доход ${amount} (${BASE_ROUND_INCOME} базовый + ${buildingIncome(state,p.id)} здания${advertising?' + 
+  });
+
+  state.market=[...survivors];
+  state.yearTransition={stage:'upkeep',fromRound:state.round,cursor:0,playerId:null,due:0,playerOrder:turnOrder(state)};
+  return advanceConstructionUpkeep(state,{rng});
+}
+// C2: one mandatory annual assessment after newspaper/press, before income.
+// Payment options are all-or-nothing. Influence uses actual leap-over steps.
+export function annualCrimeOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
+  const p=state.players[playerId],level=suspicionLevel(state,playerId);
+  const cost=level===2?3:level===3?6:0,steps=level===2?1:level===3?2:0;
+  const probe={...state,players:state.players.map(x=>({...x}))};
+  const availableSteps=Math.abs(moveInfluence(probe,playerId,-steps).steps);
+  const cash=cost>0&&p.capital>=cost;
+  const influence=steps>0&&availableSteps>=steps;
+  const mixed=level===3&&p.capital>=3&&availableSteps>=1;
+  const canPay=cash||influence||mixed;
+  return {ok:true,playerId,level,cost,steps,availableSteps,cash,influence,mixed,
+    canPay,unjailed:playerWorkers(state,playerId).filter(w=>!w.jailed).map(w=>w.id)};
+}
+export function currentAnnualCrimeAssessment(state){
+  const check=state?.crimeAssessment;
+  if(state?.phase!=='crime-assessment'||!check||check.round!==state.round)return null;
+  const playerId=check.order?.[check.cursor];
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return null;
+  return {...annualCrimeOptions(state,playerId),round:check.round};
+}
+function continueAnnualCrimeAssessment(state){
+  if(!state.crimeAssessment||state.crimeAssessment.round!==state.round)return {ok:false,reason:'no-crime-assessment'};
+  const assessment=state.crimeAssessment;
+  for(;assessment.cursor<assessment.order.length;assessment.cursor++){
+    const pid=assessment.order[assessment.cursor],options=annualCrimeOptions(state,pid);
+    if(options.level<2)continue;
+    if(options.canPay||options.unjailed.length){
+      state.phase='crime-assessment';
+      return {ok:false,reason:'crime-choice',playerId:pid,options:currentAnnualCrimeAssessment(state)};
+    }
+    // Fourth arrest impossible: -3 VP, no clearing of suspicion.
+    state.players[pid].prestige=(state.players[pid].prestige||0)-3;
+    logEvent(state,`${state.players[pid].name}: все представители заключены и нечем оплатить годовой штраф; −3 VP, подозрение остаётся ${options.level}.`,'bad');
+  }
+  state.crimeAssessedRound=state.round;
+  state.crimeAssessment=null;
+  state.phase='development';
+  return {ok:true,complete:true};
+}
+function beginAnnualCrimeAssessment(state){
+  if(state.crimeAssessedRound===state.round)return {ok:true,complete:true};
+  if(!state.crimeAssessment||state.crimeAssessment.round!==state.round){
+    state.crimeAssessment={round:state.round,order:turnOrder(state),cursor:0};
+  }
+  return continueAnnualCrimeAssessment(state);
+}
+export function resolveAnnualCrimeAssessment(state,playerId,choice,workerId=null,{rng=Math.random}={}){
+  const active=currentAnnualCrimeAssessment(state);
+  if(!active||active.playerId!==playerId)return {ok:false,reason:'not-current-player'};
+  const p=state.players[playerId];
+  if(active.canPay){
+    if(!['cash','influence','mixed'].includes(choice)||!active[choice])return {ok:false,reason:'payment'};
+    if(choice==='cash')p.capital-=active.cost;
+    else if(choice==='influence')moveInfluence(state,playerId,-active.steps);
+    else{p.capital-=3;moveInfluence(state,playerId,-1);}
+    logEvent(state,`${p.name} оплачивает годовой штраф за ${active.level} ★: ${choice==='cash'?'−$'+active.cost:choice==='influence'?'−'+active.steps+' шага Influence':'−$3 и −1 шаг Influence'}. Подозрение сохраняется.`,'bad');
+  }else{
+    if(choice!=='arrest'||!active.unjailed.includes(workerId))return {ok:false,reason:'arrest-worker'};
+    const r=arrestWorkerWithSanctions(state,playerId,workerId);
+    if(!r.ok)return {ok:false,reason:'arrest-failed'};
+  }
+  state.crimeAssessment.cursor++;
+  const step=continueAnnualCrimeAssessment(state);
+  if(!step.ok)return step;
+  // Exactly once: the completed round is marked before entering income/upkeep.
+  return cleanupMarket(state,{rng});
+}
+export function applyFinalPrisonPenalty(state){
+  if(state.finalPrisonPenaltyApplied)return {ok:true,applied:false,total:0};
+  if(state.round!==MAX_ROUNDS||!state.developmentComplete)return {ok:false,reason:'not-final'};
+  let total=0;
+  for(const p of state.players){
+    const count=playerWorkers(state,p.id).filter(w=>w.jailed).length;
+    if(!count)continue;
+    p.prestige=(p.prestige||0)-5*count;
+    total+=5*count;
+    logEvent(state,`${p.name}: финальная ответственность за ${count} заключённых штатных работников — −${5*count} VP.`,'bad');
+  }
+  state.finalPrisonPenaltyApplied=true;
+  return {ok:true,applied:true,total};
+}
+
+export function tenderSummary(state){
+  return state.market.filter(Boolean).map(m=>({
+    uid:m.uid,
+    id:m.id,
+    price:openingPrice(m),
+    age:m.age,
+    claims:m.claims.map(c=>c.player),
+    sold:m.sold,
+    result:m.result
+  }));
+}
+
+
+
+// The newspaper is public information: no hidden end-of-year random draws.
+// News decks have unique ids per party and preserve their sequence in saves.
+// The array-valued active slot allows a later optional 2 articles/year.
+export function ensureNewspaper(state,{rng=Math.random}={}){
+  if(!Array.isArray(state.newsDeck)||!Array.isArray(state.newsCurrentIds)||!Array.isArray(state.newsArchive)){
+    const previous=new Set((state.newsArchive||[]).flatMap(x=>x.ids||[x.cardId]));
+    const deck=shuffle(NEWS_CARDS.map(c=>c.id).filter(id=>!previous.has(id)),rng);
+    state.newsCurrentIds=[deck.shift()].filter(Boolean);
+    state.newsDeck=deck;
+    state.newsArchive=state.newsArchive||[];
+    state.newsEmergency={};
+    state.newsLastResolvedRound=0;
+    logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
+  }
+  if(!state.newsEmergency||typeof state.newsEmergency!=='object')state.newsEmergency={};
+  if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
+  return state;
+}
+export function activeNewspaper(state){
+  return newsCard(state.newsCurrentIds?.[0])||null;
+}
+function newspaperTargets(state,card,construction){
+  const project=projectById(construction.projectId);
+  if(!project||construction.status!=='complete')return false;
+  const id=project.id,type=project.type;
+  switch(card.target){
+    case 'housing':return type==='Жильё';
+    case 'commerce':return type==='Коммерция';
+    case 'industry-logistics':return type==='Промышленность'||type==='Логистика';
+    case 'factory':return id==='factory';
+    case 'shops-club':return ['shops','club'].includes(id);
+    case 'warehouse-factory':return ['warehouse','factory'].includes(id);
+    case 'bank-insurance-hotel':return ['bank','insurance','hotel'].includes(id);
+    case 'tenement-speculative':return ['tenement','speculative'].includes(id);
+    case 'hotel-club-shops':return ['hotel','club','shops'].includes(id);
+    case 'shops-club-hotel':return ['shops','club','hotel'].includes(id);
+    case 'port-freight':{
+      const district=districtById(construction.districtId);
+      return ['warehouse','factory'].includes(id)&&!!(district?.port||district?.rail);
+    }
+    case 'high-fire':return (districtRisk(state,construction.districtId)?.fire.raw||0)>=2;
+    case 'service':return ['firehouse','clinic','police'].includes(id);
+    default:return false;
+  }
+}
+function newsServiceSources(state,districtId,kind){
+  if(!kind||kind==='emergency')return [];
+  // Unlike access requirements for Phase I projects, real fire protection
+  // was agreed to apply only to the station's own district.
+  if(kind==='firehouse')return completedActionSpaces(state,'firehouse').filter(c=>c.districtId===districtId);
+  if(kind==='clinic'||kind==='police')return completedActionSpaces(state,kind).filter(c=>c.districtId===districtId||districtNeighbors(districtId).includes(c.districtId));
+  return [];
+}
+export function newsPreview(state){
+  const card=activeNewspaper(state);
+  if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  const candidates=(state.constructions||[]).filter(c=>newspaperTargets(state,card,c));
+  // Multiple properties from one owner in one district count once.
+  const groups=new Map();
+  for(const c of candidates){
+    const key=card.frequency==='oncePerPlayer'||card.target==='service'
+      ? String(c.playerId)
+      : c.playerId+'|'+c.districtId;
+    if(!groups.has(key))groups.set(key,{playerId:c.playerId,districtIds:[],projectIds:[],kind:card.target});
+    const g=groups.get(key);
+    if(!g.districtIds.includes(c.districtId))g.districtIds.push(c.districtId);
+    if(!g.projectIds.includes(c.projectId))g.projectIds.push(c.projectId);
+  }
+  const entries=[];
+  for(const g of groups.values()){
+    if(card.target==='service'){
+      entries.push({...g,districtId:g.districtIds[0],defended:false,stationOwners:[],temporary:false,delta:card.delta});
+      continue;
+    }
+    // A once-per-player consequence is prevented only if ALL matching
+    // completed properties of that owner are defended.
+    const coverage=g.districtIds.map(id=>({
+      id,sources:newsServiceSources(state,id,card.defense),
+      temporary:!!state.newsEmergency?.[id]
+    }));
+    const exposed=coverage.filter(x=>!x.sources.length&&!x.temporary);
+    const prevented=coverage.filter(x=>x.sources.length||x.temporary);
+    const protectedGroup=exposed.length===0;
+    const stationOwners=[...new Set(prevented.flatMap(x=>x.sources.map(c=>c.playerId)))];
+    entries.push({...g,districtId:g.districtIds[0],defended:card.delta<0&&protectedGroup,
+      exposedDistrictIds:exposed.map(x=>x.id),preventedDistrictIds:prevented.map(x=>x.id),
+      stationOwners,temporary:coverage.some(x=>x.temporary),
+      delta:card.delta});
+  }
+  const threatened=[...new Set(entries.flatMap(e=>e.exposedDistrictIds||[]))];
+  const protectedIds=[...new Set(entries.flatMap(e=>e.preventedDistrictIds||[]))];
+  return {card,entries,threatened,protected:protectedIds,
+    summary:{districts:[...new Set(candidates.map(c=>c.districtId))].length,
+      exposed:threatened.length,safe:protectedIds.length}};
+}
+export function takeNewspaperEmergency(state,playerId,districtId){
+  const card=activeNewspaper(state),player=state.players?.[playerId];
+  if(!card||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
+  if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
+  if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
+  const can=canTakeMainAction(state,playerId);
+  if(!can)return {ok:false,reason:'select-active-worker'};
+  // The ordinary worker's range and main action restrictions also apply.
+  const action=consumeMainAction(state,playerId,districtId);
+  if(!action.ok)return action;
+  player.capital-=1;
+  state.newsEmergency[districtId]={playerId,round:state.round,cardId:card.id};
+  logEvent(state,player.name+' тратит $1 и действие представителя на экстренные меры в '+districtById(districtId).name+
+    ' против «'+card.title+'».','good');
+  return {ok:true,action};
+}
+export function resolveNewspaper(state){
+  ensureNewspaper(state);
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  const forecast=newsPreview(state);
+  const {card,entries}=forecast;
+  if(!card)return {ok:false,reason:'no-card'};
+  const changes=new Map();
+  const write=(pid,key,amount)=>{
+    const p=state.players?.[pid];if(!p)return 0;
+    let actual=0;
+    if(key==='influence'){
+      actual=moveInfluence(state,pid,amount).steps;
+    }else{
+      actual=amount<0?Math.max(-Math.max(0,p[key]||0),amount):amount;
+      p[key]=Math.max(0,(p[key]||0)+actual);
+    }
+    const result=changes.get(pid)||{capital:0,influence:0,prestige:0};
+    result[key]+=actual;
+    changes.set(pid,result);
+    return actual;
+  };
+  const protectedByService=new Set();
+  const results=[];
+  for(const e of entries){
+    if(card.delta<0&&e.stationOwners?.length){
+      for(const pid of e.stationOwners)protectedByService.add(pid);
+    }
+    if(card.delta<0&&e.defended){
+      results.push({...e,actual:0});
+      continue;
+    }
+    const actual=write(e.playerId,card.resource,card.delta);
+    results.push({...e,actual});
+  }
+  // Once per issue, not per protected building/region. Any service owner
+  // that prevented actual eligibility for a penalty receives recognition.
+  if(card.delta<0)for(const pid of protectedByService)write(pid,'influence',1);
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:results,changes:Object.fromEntries(changes),
+    serviceRecognition:[...protectedByService],emergency:{...state.newsEmergency}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  const message=[...changes].map(([pid,d])=>{
+    const player=state.players[pid];
+    return player.name+' ('+Object.entries(d).filter(([,n])=>n!==0).map(([k,n])=>
+      (k==='capital'?'$':k==='influence'?'Влияние ':'ПО ')+(n>0?'+':'')+n).join(', ')+')';
+  }).join('; ')||'изменений нет';
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+'». '+message+'.','accent');
+  return {ok:true,report};
+}
++advertising+' реклама':''}${interestText}${fireText}${breadText}).`,'good');
   });
 
   state.market=[...survivors];
