@@ -2703,7 +2703,8 @@ export function cleanupMarket(state,{rng=Math.random}={}){
     const breadPenalty=Math.max(0,p.breadIncomePenalty||0);
     const fireText=penalty?` − ${penalty} постоянные пожарные санкции`:'';
     const breadText=breadPenalty?` − ${breadPenalty} потери Income от порчи хлеба`:'';
-    logEvent(state,`${p.name} получает доход ${amount} (${BASE_ROUND_INCOME} базовый + ${buildingIncome(state,p.id)} здания${advertising?' + 
+    const adText=advertising?(' + $'+advertising+' реклама'):'';
+    logEvent(state,p.name+' получает доход $'+amount+' ($'+BASE_ROUND_INCOME+' базовый + $'+buildingIncome(state,p.id)+' здания'+adText+interestText+fireText+breadText+').','good');
   });
 
   state.market=[...survivors];
