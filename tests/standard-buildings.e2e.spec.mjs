@@ -13,6 +13,8 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   await expect(page.locator('.version-badge')).toHaveText('v0.53.1');
   const panel=page.locator('#standardProjects');await expect(panel).toBeVisible();
   await expect(panel.locator('[data-standard-build]')).toHaveCount(4);
+  await expect(panel.locator('.standard-project-card')).toHaveCount(4);
+  for(const card of await panel.locator('.standard-project-card').all())await expect(card).toContainText('Проект $2');
   for(const id of ['std_warehouse','std_fire','std_police','std_clinic'])await expect(panel.locator('[data-standard-build="'+id+'"]')).toBeEnabled();
   const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
   expect(docWidth).toBeLessThanOrEqual(viewport.width+2);
@@ -20,12 +22,19 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   await expect(page.locator('#constructionMode')).toContainText('Строительный склад');
   await page.locator('[data-district="civic"]').click();
   await expect(page.locator('#confirmConstruction')).toBeVisible();
+  await expect(page.locator('.construction-confirm')).toContainText('Проект');
+  await expect(page.locator('.construction-confirm')).toContainText('Итого');
+  const land=s.districts.civic.landValue;
+  await expect(page.locator('.construction-confirm')).toContainText('Итого $'+(land+2));
   await page.locator('#confirmConstruction').click();
   const saved=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
   expect(saved.constructions.some(c=>c.projectId==='std_warehouse'&&c.status==='under-construction')).toBe(true);
   expect(saved.players[0].portfolio).toHaveLength(0);
   expect(saved.players[0].workersLeft).toBe(2);
+  expect(saved.players[0].capital).toBe(50-land-2);
   await page.reload();
+  const reloaded=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
+  expect(reloaded.players[0].capital).toBe(50-land-2);
   await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
   await expect(page.locator('#mobileObjectStrip')).toContainText('Строительный склад');
  });
@@ -42,5 +51,23 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   await expect(page.locator('#cityOverviewPanel')).toHaveCount(0);
   await expect(page.locator('#mobileObjectStrip')).toBeHidden();
    await expect(page.locator('[data-construction-token="W"] .warehouse-token-title')).toContainText('2/3');
+ });
+}
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('standard clinic cannot start if player can afford land but not the $2 project fee '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  const s=state(),land=s.districts.civic.landValue;
+  s.players[0].capital=land+1;
+  await seed(page,s);
+  await page.locator('[data-standard-build="std_clinic"]').click();
+  await page.locator('[data-district="civic"]').click();
+  await expect(page.locator('.construction-confirm')).toContainText('Не хватает капитала');
+  await expect(page.locator('#confirmConstruction')).toHaveCount(0);
+  const saved=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),KEY));
+  expect(saved.players[0].capital).toBe(land+1);
+  expect(saved.constructions.length).toBe(0);
+  const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+  expect(docWidth).toBeLessThanOrEqual(viewport.width+2);
  });
 }
