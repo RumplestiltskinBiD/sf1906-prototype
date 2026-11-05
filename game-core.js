@@ -35,6 +35,8 @@ export const WORKERS_PER_PLAYER = 3;
 export const MAX_SUSPICION = 3;
 export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
+// Fixed fee for standard projects, payable once at construction start in addition to land.
+export const STANDARD_PROJECT_FEE = 2;
 export const LAND_VALUE_COMPLETION_CHANGE = {grand_city_square:2,std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
@@ -1295,11 +1297,15 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   }
   const bureauDiscount=!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?(replacing?0:Math.max(0,ds.landValue-bureauDiscount)):0;
-  if(player&&ds&&player.capital<landCost) reasons.push(`Не хватает капитала на землю ($${landCost}).`);
+  const standardFee=project?.standard?STANDARD_PROJECT_FEE:0;
+  const totalCost=landCost+standardFee;
+  if(player&&ds&&player.capital<totalCost) reasons.push(`Не хватает капитала на землю и проект ($${totalCost}).`);
   return {
     ok:reasons.length===0,
     reasons,
-    cost:landCost,
+    cost:totalCost,
+    landCost,
+    standardFee,
     baseCost:ds?.landValue??0,
     bureauDiscount,
     redevelopment:replacing,
@@ -1342,9 +1348,9 @@ export function beginConstruction(state,playerId,projectId,districtId,{redevelop
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
   const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
-  logEvent(state,`${player.name} ${former?'перестраивает пансион в':'начал строительство'} «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.cost}${discountText}${former?', повторно использовано Lumber ×'+check.redeemedLumber:''}.${workerMovementText(consumed)}`,'good');
+  logEvent(state,`${player.name} ${former?'перестраивает пансион в':'начал строительство'} «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.landCost}${discountText}${check.standardFee?' + стандартный проект $'+check.standardFee:''}${former?', повторно использовано Lumber ×'+check.redeemedLumber:''}.${workerMovementText(consumed)}`,'good');
   const completedImmediately=!!(former&&completeConstruction(state,construction).ok);
-  return {ok:true,construction,cost:check.cost,bureauDiscount:check.bureauDiscount,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
+  return {ok:true,construction,cost:check.cost,landCost:check.landCost,standardFee:check.standardFee,bureauDiscount:check.bureauDiscount,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
