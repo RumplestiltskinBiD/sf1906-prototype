@@ -19,12 +19,13 @@ test('four unlimited standard public projects have fixed recipes and remain out 
  assert.equal(G.PROJECTS.length,41);assert.equal(G.PROJECTS.filter(p=>p.id==='warehouse').length,1);
 });
 
-test('standard construction starts without purchased card, consumes one worker and land, stays out of portfolio',()=>{
+test('standard construction charges $2 project fee once, as well as land, and stays out of portfolio',()=>{
  const s=state();const initial=s.players[0].capital,land=s.districts.civic.landValue;
  assert.equal(G.constructionEligibility(s,0,'std_fire','civic').ok,true);
  const r=G.beginConstruction(s,0,'std_fire','civic');
- assert.equal(r.ok,true,r.reasons?.join(';'));assert.equal(r.cost,land);
- assert.equal(s.players[0].capital,initial-land);assert.deepEqual(s.players[0].portfolio,[]);
+ assert.equal(r.ok,true,r.reasons?.join(';'));assert.equal(r.cost,land+G.STANDARD_PROJECT_FEE);
+ assert.equal(r.landCost,land);assert.equal(r.standardFee,2);
+ assert.equal(s.players[0].capital,initial-land-2);assert.deepEqual(s.players[0].portfolio,[]);
  assert.equal(s.players[0].workersLeft,2);assert.equal(r.construction.status,'under-construction');
  assert.deepEqual(r.construction.materialsDelivered,[]);
  assert.equal(G.canCompleteConstruction(s,r.construction.id).ok,false,'requires actual delivery');
@@ -96,4 +97,56 @@ test('standard buildings satisfy own city goals but rival builds do not satisfy 
  assert.equal(G.cityGoalEvaluation(s,1,'C04').complete,false,'opponent buildings not owned');
  assert.equal(G.completedCitywideServices(s,'firehouse').length,1);
  assert.equal(G.completedCitywideServices(s,'clinic').length,1);
+});
+
+test('each of four standard projects has a $2 fee, paid at construction start without changing recipes or VP',()=>{
+ for(const id of G.STANDARD_PROJECTS.map(p=>p.id)){
+  const s=state(),land=s.districts.civic.landValue,before=s.players[0].capital;
+  const check=G.constructionEligibility(s,0,id,'civic');
+  assert.equal(check.ok,true,id);
+  assert.deepEqual({land:check.landCost,fee:check.standardFee,total:check.cost},{land,fee:2,total:land+2},id);
+  const result=G.beginConstruction(s,0,id,'civic');
+  assert.equal(result.ok,true,id);assert.equal(s.players[0].capital,before-land-2,id);
+  assert.equal(result.construction.status,'under-construction');
+  assert.equal(result.construction.materialsDelivered.length,0,'fee never supplies materials');
+  assert.equal(s.players[0].workersLeft,2,id);
+ }
+});
+
+test('standard fee cannot be bypassed with insufficient funds and contract discounts land only',()=>{
+ const s=state(),land=s.districts.civic.landValue,p=s.players[0];
+ p.capital=land+1;
+ const beforeWorkers=p.workersLeft;
+ assert.equal(G.constructionEligibility(s,0,'std_clinic','civic').ok,false);
+ assert.ok(G.constructionEligibility(s,0,'std_clinic','civic').reasons.some(t=>t.includes('капитала')));
+ assert.equal(G.beginConstruction(s,0,'std_clinic','civic').ok,false);
+ assert.equal(s.constructions.length,0);
+ assert.equal(p.capital,land+1);
+ assert.equal(p.workersLeft,beforeWorkers);
+ // A $2 building-office discount can only reduce land, never the fixed fee.
+ p.bureauContracts=1;
+ p.capital=land; // land 3 - discount 2 + fixed 2 = $3.
+ const discounted=G.constructionEligibility(s,0,'std_clinic','civic');
+ assert.equal(discounted.ok,true);
+ assert.equal(discounted.landCost,Math.max(0,land-2));
+ assert.equal(discounted.standardFee,2);
+ assert.equal(discounted.cost,discounted.landCost+2);
+ const completed=G.beginConstruction(s,0,'std_clinic','civic');
+ assert.equal(completed.ok,true);
+ assert.equal(completed.cost,discounted.cost);
+ assert.equal(p.capital,land-discounted.cost);
+ assert.equal(p.bureauContracts,0);
+});
+
+test('regular market projects retain land-only build cost; no fee for an existing saved standard building',()=>{
+ const s=state(),land=s.districts.civic.landValue;
+ s.players[0].portfolio=['bureau'];
+ const regular=G.constructionEligibility(s,0,'bureau','civic');
+ assert.equal(regular.ok,true);
+ assert.equal(regular.standardFee,0);assert.equal(regular.landCost,land);assert.equal(regular.cost,land);
+ s.constructions=[built('OLD',0,'std_warehouse','civic')];
+ assert.equal(s.constructions[0].status,'complete');
+ const money=s.players[0].capital;
+ assert.equal(G.completedWarehouses(s,0,'civic').length,1);
+ assert.equal(s.players[0].capital,money,'loading an old finished building never charges a fee retroactively');
 });
