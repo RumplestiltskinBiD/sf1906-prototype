@@ -1,5 +1,5 @@
 import {
-PROJECTS,STANDARD_PROJECTS,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
+PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
@@ -1627,12 +1627,12 @@ function renderStandardProjects(){
     p.id==='std_police'?'Полиция в районе · земля +1':'Медицина в районе · земля +1';
    const selected=state.pendingConstruction?.projectId===p.id;
    return '<article class="standard-project-card typed-project '+(selected?'standard-selected':'')+'" '+projectTypeStyle(p)+'>'
-    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>1 VP · $0/год</span></div>'
+    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>Проект $'+STANDARD_PROJECT_FEE+' · 1 VP</span></div>'
     +'<div class="standard-project-resource">'+resourcePills(p.materials)+'</div>'
     +'<small>'+note+'</small>'
     +'<button type="button" class="primary-btn standard-project-button" data-standard-build="'+p.id+'" '+(enabled?'':'disabled')+'>Выбрать район</button></article>';
  }).join('');
- el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>Без тендера · 1 рабочий · стоимость земли и обычная доставка</span></div><div class="standard-projects-grid">'+cards+'</div>';
+ el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>Без тендера · проект $'+STANDARD_PROJECT_FEE+' + земля + материалы</span></div><div class="standard-projects-grid">'+cards+'</div>';
  el.querySelectorAll('[data-standard-build]').forEach(b=>b.onclick=()=>{if(pid!=null)startConstructionFlow(pid,b.dataset.standardBuild);});
 }
 function renderCityOverview(){
@@ -2472,7 +2472,7 @@ const pending=state.pendingConstruction;if(!pending)return;
 const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId,{redevelopId});
 if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
 mobileContextOpen=false;
-const land=r.bureauDiscount>0?`земля $${r.cost} · contract −$${r.bureauDiscount}`:`земля $${r.cost}`;
+const land=r.standardFee?`земля $${r.landCost} + проект $${r.standardFee} = $${r.cost}`:r.bureauDiscount>0?`земля $${r.landCost} · contract −$${r.bureauDiscount}`:`земля $${r.landCost}`;
 showToast(`Основное действие: ${r.redevelopment?'перестройка · Lumber ×'+r.redeemedLumber:'стройка начата'} · ${land}${r.completedImmediately?' · сразу завершено':''}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
 render();
 }
@@ -2542,7 +2542,8 @@ let constructionHtml='';
 if(state.pendingConstruction){
 const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
 const redeemHtml=redevelopmentOptions(pending,d.id).map(({con,check:rc})=>'<div class="redevelop-option"><b>Перестроить «Виста-дель-Мар» · уровень '+(con.wagonLevel||1)+'</b><small>Без повторной покупки земли · Lumber ×'+rc.redeemedLumber+' · 1 рабочий</small><button class="primary-btn full" data-redevelop-wagon="'+con.id+'" '+(rc.ok?'':'disabled')+'>Перестроить на этом участке</button>'+(rc.ok?'':'<small>'+rc.reasons.join(' · ')+'</small>')+'</div>').join('');
-const priceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.cost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.cost}</b></span><span>Представитель <b>1</b></span>`;
+const landPriceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.landCost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.landCost}</b></span>`;
+const priceLine=landPriceLine+(check.standardFee?`<span>Проект <b>$${check.standardFee}</b></span><span>Итого <b>$${check.cost}</b></span>`:'<span>Представитель <b>1</b></span>');
 constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong>${redeemHtml}<div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div>${constructionRiskPreviewHtml(d.id,pr.id)}<div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
 }
 const objects=builtHere.length?builtHere.map(x=>{
