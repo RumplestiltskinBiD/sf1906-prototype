@@ -1,5 +1,5 @@
 /**
- * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R07), обновлено 2026-11-04.
+ * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R08), обновлено 2026-11-05.
  *
  * ТОЛЬКО ДАННЫЕ КАРТ: файл не подключён к игровому движку и ничего не меняет
  * в действующих сохранениях, балансе, интерфейсе или логике игры.
@@ -134,6 +134,43 @@ export const RESEARCH_CARDS = Object.freeze([
       earthquakeRisk: 'unchanged'
     },
     historicalBasis: 'Португальская gaiola pombalina после 1755 года и калабрийская casa baraccata после 1783 года; вымышленная муниципальная программа Сан-Франциско 1900–1905 годов повышает спрос на древесину.',
+    implementationStatus: 'data-only-not-wired-to-game-engine'
+  },
+  {
+    id: 'R08',
+    name: 'Модернизация городской службы скорой помощи',
+    fundingCost: 4,
+    sponsorReward: { vp: 2, influence: 1 },
+    requirementText: 'Нет.',
+    effectText: 'Фаза I: после открытия исследования цена стандартной Районной амбулатории при начале строительства увеличивается с $2 до $3. Фаза II: каждое сохранившееся медицинское учреждение приносит владельцу 2 VP, если хотя бы один соседний район повреждён или разрушен землетрясением.',
+    effect: {
+      type: 'citywide-ambulance-service-modernization',
+      phase1: {
+        type: 'standard-project-fee-increase',
+        projectId: 'std_clinic',
+        baseStandardProjectFee: 2,
+        extraFee: 1,
+        standardClinicFeeAfterResearch: 3,
+        feeTiming: 'on-construction-start-after-research',
+        affectsPreviouslyStartedConstruction: false,
+        affectsOtherStandardProjects: false
+      },
+      phase2: {
+        type: 'medical-survivor-neighbor-earthquake-award',
+        eligibleMedicalProjects: ['std_clinic', 'clinic'],
+        pointsPerEligibleBuilding: 2,
+        onlyOncePerBuilding: true,
+        requiresCompletedBuilding: true,
+        requiresSurvivingBuilding: true,
+        survivingMeans: 'not-destroyed-by-earthquake-and-not-burned',
+        adjacentDistrictOnly: true,
+        neighboringEarthquakeStatuses: ['damaged', 'destroyed'],
+        fireOnlyDamageDoesNotQualify: true,
+        appliesToBuildingsCompletedBeforeResearch: true
+      },
+      appliesToAllPlayers: true
+    },
+    historicalBasis: 'Опыт конной скорой помощи Сан-Франциско (с 1895 года) и развитие городской экстренной медицинской службы; конкретная исследовательская программа — альтернативно-историческая игровая реконструкция.',
     implementationStatus: 'data-only-not-wired-to-game-engine'
   }
 ]);
