@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../game-core.js';
+import {RESEARCH_CARDS,researchCardById} from '../research-cards.js';
 
 function state(){
  const s=G.createInitialState({rng:()=>0.3});s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;s.constructions=[];
@@ -149,4 +150,23 @@ test('regular market projects retain land-only build cost; no fee for an existin
  const money=s.players[0].capital;
  assert.equal(G.completedWarehouses(s,0,'civic').length,1);
  assert.equal(s.players[0].capital,money,'loading an old finished building never charges a fee retroactively');
+});
+
+test('R08 card is available with the shared $2 baseline, future $3 clinic fee, and +2 VP medical rescue per facility',()=>{
+ assert.equal(RESEARCH_CARDS.length,8);
+ const card=researchCardById('R08');
+ assert.equal(card.fundingCost,4);
+ assert.deepEqual(card.sponsorReward,{vp:2,influence:1});
+ assert.equal(card.effect.type,'citywide-ambulance-service-modernization');
+ assert.equal(card.effect.phase1.projectId,'std_clinic');
+ assert.equal(card.effect.phase1.baseStandardProjectFee,G.STANDARD_PROJECT_FEE);
+ assert.equal(card.effect.phase1.extraFee,1);
+ assert.equal(card.effect.phase1.standardClinicFeeAfterResearch,3);
+ assert.equal(card.effect.phase1.affectsOtherStandardProjects,false);
+ assert.deepEqual(card.effect.phase2.eligibleMedicalProjects,['std_clinic','clinic']);
+ assert.equal(card.effect.phase2.pointsPerEligibleBuilding,2);
+ assert.equal(card.effect.phase2.onlyOncePerBuilding,true);
+ assert.equal(card.effect.phase2.adjacentDistrictOnly,true);
+ assert.deepEqual(card.effect.phase2.neighboringEarthquakeStatuses,['damaged','destroyed']);
+ assert.equal(card.implementationStatus,'data-only-not-wired-to-game-engine');
 });
