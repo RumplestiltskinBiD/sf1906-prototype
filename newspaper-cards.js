@@ -47,6 +47,11 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "C01",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_C01_V2.md",
+      "raidReward": {"prestige": 2, "influence": 1}
+    },
     "category": "Преступность",
     "title": "Грабители хозяйничают на улицах города",
     "article": "Торговцы жалуются на кражи, пока полиция рапортует об успехах. К концу года предприниматели рискуют понести новые убытки.",
