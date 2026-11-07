@@ -96,6 +96,16 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "H01",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_H01_V2.md",
+      "title": "Эпидемия охватывает городские кварталы",
+      "originDistrictIdsByD6": ["chinatown", "northbeach", "missionbay", "potrero", "bernal", "innerrichmond"],
+      "outbreakCount": 1,
+      "initialRadius": 0,
+      "annualRadiusGrowth": 1,
+      "sanitationReward": {"prestige": 2, "influence": 1}
+    },
     "category": "Болезнь",
     "title": "Лихорадка в переполненных комнатах",
     "article": "Горожане жалуются на тесноту и недостаток врачей. Владельцы доходных домов должны приготовиться к санитарным расходам.",
