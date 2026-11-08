@@ -162,6 +162,18 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "H04",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_H04_V2.md",
+      "title": "Врачи требуют спасти младенцев",
+      "eventType": "temporary-one-year-charity",
+      "donationCost": 10,
+      "reward": {"prestige": 4, "influence": 2},
+      "requiresWorkerAction": false,
+      "maxDonationsPerPlayer": 1,
+      "requiresMedicalBuilding": false,
+      "duration": "current-year-only"
+    },
     "category": "Болезнь",
     "title": "Кто отвечает за больных?",
     "article": "В редакцию поступают письма семей, которым отказали в помощи. Если врачи не найдутся, общество отвернётся от собственников.",
