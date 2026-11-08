@@ -185,6 +185,21 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "E01",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_E01_V2.md",
+      "title": "Работодатели ищут жильё для новых рабочих",
+      "eventType": "one-year-limited-rental-contracts",
+      "contractPool": 2,
+      "maxContractsPerPlayer": 1,
+      "trigger": "newly-completed-own-residential-building",
+      "eligibleProjectTypesIncludes": "Жилое",
+      "includesMixedTypeProjects": true,
+      "constructionStartCanPrecedeEventYear": true,
+      "reward": {"capital": 6, "prestige": 1, "influence": 1},
+      "requiresExtraWorkerAction": false,
+      "duration": "current-year-only"
+    },
     "category": "Экономика",
     "title": "Новые семьи ищут квартиры",
     "article": "Население растёт, а квартир становится недостаточно. Владельцы жилья ожидают удачного сезона.",
