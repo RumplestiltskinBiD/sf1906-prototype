@@ -117,6 +117,17 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "H02",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_H02_V2.md",
+      "title": "Зараза в городских конюшнях",
+      "originDistrictIdsByD6": ["northbeach", "financial", "civic", "soma", "mission", "missionbay"],
+      "outbreakCount": 1,
+      "citywide": true,
+      "roadEdgeCost": 2,
+      "applicableRoadRoutes": ["cargo", "paid-special-operations"],
+      "sanitationReward": {"prestige": 3, "influence": 1}
+    },
     "category": "Болезнь",
     "title": "Болезни среди постояльцев",
     "article": "Отели и клубы скрывают жалобы на здоровье посетителей. Без помощи врачей городу грозят расходы и недовольство публики.",
