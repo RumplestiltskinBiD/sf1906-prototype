@@ -139,6 +139,18 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "H03",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_H03_V2.md",
+      "title": "Заморские грузы задержаны",
+      "eventTiming": "before-current-year-supply-refresh",
+      "duration": "current-year-only",
+      "seaLogisticsNodeIds": ["broadway", "pacificmail", "chinabasin", "unioniron"],
+      "supplySlotsReductionPerNode": 1,
+      "unaffectedRailNodeIds": ["southernpacific"],
+      "resolutionAction": null,
+      "reward": null
+    },
     "category": "Болезнь",
     "title": "Рабочие уходят с фабрик с жаром",
     "article": "Производство лихорадит из-за болезней и отсутствия медицинской помощи. Газета призывает инвесторов подумать не только о прибыли.",
