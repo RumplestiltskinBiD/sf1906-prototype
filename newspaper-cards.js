@@ -196,7 +196,10 @@ export const NEWS_CARDS=Object.freeze([
       "eligibleProjectTypesIncludes": "Жилое",
       "includesMixedTypeProjects": true,
       "constructionStartCanPrecedeEventYear": true,
-      "reward": {"capital": 6, "prestige": 1, "influence": 1},
+      "rewardChoice": [
+        {"capital": 6},
+        {"prestige": 1, "influence": 1}
+      ],
       "requiresExtraWorkerAction": false,
       "duration": "current-year-only"
     },
