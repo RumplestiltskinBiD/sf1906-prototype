@@ -214,6 +214,27 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "E02",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_E02_V2.md",
+      "title": "Городская торговая неделя",
+      "eventType": "one-year-trade-week",
+      "duration": "current-year-only",
+      "requiresMainWorkerAction": true,
+      "maxEventsPerPlayer": 1,
+      "eligibleProjectTypesIncludes": "Торговое",
+      "includesMixedTypeProjects": true,
+      "countOnlyCompletedBuildings": true,
+      "venueMayBeOwnedByOtherPlayer": true,
+      "venueMayBeReusedByOtherPlayers": true,
+      "organizerRewards": [
+        {"minCompletedTradeBuildings": 1, "maxCompletedTradeBuildings": 1, "capital": 4, "prestige": 1},
+        {"minCompletedTradeBuildings": 2, "maxCompletedTradeBuildings": 2, "capital": 5, "prestige": 1},
+        {"minCompletedTradeBuildings": 3, "capital": 6, "prestige": 1}
+      ],
+      "selectedVenueOwnerReward": {"influence": 1},
+      "selectedVenueCanBeOwnedByOrganizer": true
+    },
     "category": "Экономика",
     "title": "Торговля на пике",
     "article": "Магазины, рестораны и гостиницы принимают всё больше посетителей. Городские купцы предсказывают прибыльный год.",
