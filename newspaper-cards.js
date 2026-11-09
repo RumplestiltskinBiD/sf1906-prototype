@@ -276,6 +276,26 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "E04",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_E04_V2.md",
+      "title": "Забастовка на набережной",
+      "eventType": "one-year-waterfront-strike",
+      "duration": "current-year-only-or-until-resolved",
+      "marineNodeIds": ["broadway", "pacificmail", "chinabasin", "unioniron"],
+      "excludedRailNodeIds": ["southernpacific"],
+      "marinePickupSurchargePerDelivery": 2,
+      "marinePickupSurchargeChargedOncePerRoute": true,
+      "resolution": {
+        "requiresMainWorkerAction": true,
+        "eligibleDistrictProperty": "port",
+        "cashCost": 5,
+        "reward": {"prestige": 3, "influence": 1},
+        "resolutionScope": "entire-city",
+        "maxResolutionsPerEvent": 1
+      },
+      "automaticEndAtYearClose": true
+    },
     "category": "Экономика",
     "title": "На пристанях очереди",
     "article": "Из-за нехватки рабочих доставка грузов замедляется. Чиновники спорят, пока фабрики и склады рискуют деньгами.",
