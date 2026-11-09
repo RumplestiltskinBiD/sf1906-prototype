@@ -340,6 +340,36 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "E06",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_E06_V2.md",
+      "title": "Деньги для безработных под угрозой",
+      "headlineTheme": "гражданский фонд, общественные работы и скандал с поддельными зарплатными ведомостями",
+      "eventType": "one-year-relief-fund-moral-choice",
+      "duration": "current-year-only",
+      "frequency": "oncePerPlayer",
+      "requiresMainAction": true,
+      "fundTrancheEntrustedPerParticipant": 8,
+      "fundTrancheNotPlayerCapitalUntilMisappropriated": true,
+      "mutuallyExclusiveChoices": {
+        "honestReliefWork": {
+          "personalCapitalCost": 6,
+          "vp": 3,
+          "influenceSteps": 2,
+          "suspicionDelta": 0
+        },
+        "misappropriateFund": {
+          "personalCapitalGain": 8,
+          "vp": 0,
+          "influenceSteps": -1,
+          "suspicionDelta": 1,
+          "useStandardCrimeArrestRules": true
+        }
+      },
+      "noInsuranceOrFireRiskRequirements": true,
+      "noMandatorySpecificDistrictOrBuildingApproved": true,
+      "noOtherPlayerDependency": true
+    },
     "category": "Экономика",
     "title": "Страховщики требуют денег",
     "article": "Страховые конторы намерены поднять расценки для опасных кварталов. Успеют ли владельцы улучшить пожарную безопасность до конца года?",
