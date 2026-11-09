@@ -307,6 +307,28 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "E05",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_E05_V2.md",
+      "title": "Город благодарит своих защитников",
+      "eventType": "one-year-community-service-commemoration",
+      "duration": "current-year-only",
+      "eligibleDiscountedStandardProjects": ["std_clinic", "std_fire", "std_police"],
+      "excludeStandardWarehouseFromDiscount": true,
+      "freeLandCostForEligibleNewStandardProjects": true,
+      "freeStandardProjectFeeForEligibleNewStandardProjects": true,
+      "otherBuildingAndDeliveryCostsUnchanged": true,
+      "discountAppliesOnConstructionStartDuringEvent": true,
+      "endOfYearReward": {
+        "countOnlyOwnerCompletedProjects": true,
+        "eligibleProjectIds": ["std_clinic", "clinic", "std_fire", "firehouse", "std_police", "police"],
+        "includeCompletedInPreviousYears": true,
+        "includeCompletedThisYear": true,
+        "influencePerCompletedService": 1,
+        "maxServicesPerPlayer": null,
+        "awardedOncePerEvent": true
+      }
+    },
     "category": "Общественная жизнь",
     "title": "Город признаёт заслуги служащих",
     "article": "Несмотря на недостатки администрации, многие благодарят врачей, пожарных и патрульных. Пресса призывает мэрию поддержать добросовестные службы.",
