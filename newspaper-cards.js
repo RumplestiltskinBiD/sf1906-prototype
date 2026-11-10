@@ -3,6 +3,39 @@
 export const NEWS_CARDS=Object.freeze([
   {
     "id": "F01",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_F01_V2.md",
+      "title": "КТО ЗАПЛАТИТ ЗА ПОЖАРНУЮ ОПАСНОСТЬ?!",
+      "eventType": "one-year-fire-safety-collective-levy-or-personal-violation",
+      "duration": "current-year-only",
+      "complaint": {
+        "firstFilerOnly": true,
+        "requiresMainWorkerAction": true,
+        "district": "any-current-max-fire-risk",
+        "maxDistrictTie": "filer-selects",
+        "target": "other-player-completed-building-with-positive-personal-fire-contribution",
+        "oneAccusationPerEvent": true,
+        "mayReassignTarget": false,
+        "workerMustBeInTargetDistrict": null
+      },
+      "endOfYearIfActivePersonalNotice": {
+        "accusedOwnerOnly": true,
+        "capitalDelta": -6,
+        "influenceSteps": -1,
+        "allOtherPlayersExempt": true
+      },
+      "endOfYearIfNoActiveNotice": {
+        "appliesToEveryPlayer": true,
+        "capitalDeltaPerPlayer": -2,
+        "influenceStepsPerPlayer": -1,
+        "evenIfNoPlayersBuildingsInHighestRiskDistrict": true
+      },
+      "noticeCancelledOnlyIfAccusedBuildingFireContributionNonPositive": true,
+      "districtWideFireRiskReductionDoesNotClearPersonalNotice": true,
+      "noFireDestructionOrFirePropagation": true,
+      "noImmediateRewardForFiler": true
+    },
     "category": "Пожар",
     "title": "Тесные дома, сухие лестницы",
     "article": "Жители обвиняют инспекторов в равнодушии к деревянным доходным домам. Если мэрия ничего не изменит, владельцы получат счета за ущерб от мелких возгораний.",
