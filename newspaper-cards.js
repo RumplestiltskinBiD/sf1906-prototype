@@ -47,6 +47,47 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "F02",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_F02_V2.md",
+      "title": "ОН ПРЕДУПРЕДИЛ РЕДАКЦИЮ. ГОРОД В ОГНЕ!",
+      "eventType": "one-year-arson-two-independent-operations",
+      "fireStartsImmediatelyOnReveal": true,
+      "locationDistrictIdsByD6": ["northbeach", "chinatown", "financial", "soma", "mission", "marina"],
+      "stateMarkers": ["fire", "manhunt"],
+      "operationsIndependent": true,
+      "eitherOrderAllowed": true,
+      "operations": {
+        "suppressFire": {
+          "requiresMainWorkerAction": true,
+          "sourceProjectIds": ["std_fire", "firehouse"],
+          "mayUseAnyPlayersCompletedService": true,
+          "routeCostPerRoadEdge": 1,
+          "reward": {"prestige": 2, "influence": 1},
+          "removesMarker": "fire",
+          "maxCompletions": 1
+        },
+        "catchArsonist": {
+          "requiresMainWorkerAction": true,
+          "sourceProjectIds": ["std_police", "police"],
+          "mayUseAnyPlayersCompletedService": true,
+          "routeCostPerRoadEdge": 1,
+          "reward": {"prestige": 2, "influence": 1},
+          "removesMarker": "manhunt",
+          "maxCompletions": 1
+        }
+      },
+      "endOfYear": {
+        "ifFireMarkerRemains": {"allPlayersCapitalDelta": -3},
+        "ifManhuntMarkerRemains": {"allPlayersInfluenceSteps": -1},
+        "penaltiesIndependent": true,
+        "duration": "current-year-only",
+        "alwaysExpires": true
+      },
+      "noReserveMunicipalTeams": true,
+      "noPassiveServiceResolution": true,
+      "noBuildingDamageOrFireSpread": true
+    },
     "category": "Пожар",
     "title": "Снова дым над торговыми улицами",
     "article": "Печи торговых заведений и небрежность владельцев раздражают жителей. Чиновники обещают проверки, а газета предупреждает о новых убытках.",
