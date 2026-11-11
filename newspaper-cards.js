@@ -131,6 +131,50 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "F04",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_F04_V2.md",
+      "title": "ИНСПЕКТОРЫ БОЛЬШЕ НЕ ЗАКРЫВАЮТ ГЛАЗА!",
+      "eventType": "one-year-individual-fire-safety-audit",
+      "inspection": {
+        "oneNoticePerPlayer": true,
+        "onEventReveal": true,
+        "eligibility": "own-completed-unmodernized-building-with-positive-personal-fire-contribution",
+        "selection": "highest-personal-fire-contribution",
+        "tieBreak": "affected-owner-selects",
+        "noEligibleBuildingMeansNoNotice": true
+      },
+      "noticeResolution": {
+        "emergencyRepairs": {
+          "requiresMainWorkerAction": true,
+          "capitalCost": 4,
+          "targetFireContributionChange": -1,
+          "setsFireSafetyModernized": true,
+          "closesNotice": true
+        },
+        "bribeInspector": {
+          "quickCriminalAction": true,
+          "capitalCost": 2,
+          "suspicionGain": 1,
+          "standardArrestRulesAtMaxSuspicion": true,
+          "fireContributionUnchanged": true,
+          "closesNotice": true
+        },
+        "standardFirehouseModernization": {
+          "alsoClosesNotice": true,
+          "usesExistingPriceAndRequirements": true,
+          "noAdditionalEventCost": true
+        }
+      },
+      "endOfYearIfOpenNotice": {
+        "capitalDeltaPerAffectedPlayer": -4,
+        "influenceStepsPerAffectedPlayer": -1,
+        "noFireRiskChange": true
+      },
+      "duration": "current-year-only",
+      "noNoticeForNewlyCompletedBuildingsAfterReveal": true,
+      "newsArticleDoesNotDiscussBribery": true
+    },
     "category": "Пожар",
     "title": "Инспекторы предпочитают не видеть копоти",
     "article": "От перегретых мастерских до фабричных складов — горожане говорят о халатности. Пресса потребует назвать тех, кто допустил бездействие.",
