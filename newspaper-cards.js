@@ -99,6 +99,27 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "F03",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_F03_V2.md",
+      "title": "ПОЖАР ПАРАЛИЗОВАЛ ОДИН ИЗ ПОРТОВ ГОРОДА!",
+      "eventType": "one-year-port-fire-material-redistribution",
+      "affectedPortIdByD6": ["broadway", "pacificmail", "pacificmail", "chinabasin", "chinabasin", "unioniron"],
+      "redistributionPriorityPortIds": ["pacificmail", "chinabasin", "broadway", "unioniron"],
+      "distribution": {
+        "startsWithLargestAvailablePort": true,
+        "tieBreak": "north-to-south",
+        "drawMaterialsRandomlyFromClosedPort": true,
+        "oneMaterialPerOpenPortPerPass": true,
+        "repeatPriorityOrderUntilExhausted": true,
+        "closedPortSupply": 0,
+        "preserveMaterialTypesAndTotalCount": true,
+        "recipientMayExceedNormalThroughput": true,
+        "southernPacificUnchanged": true
+      },
+      "duration": "current-year-only",
+      "noExtraActionsPenaltiesOrRewards": true
+    },
     "category": "Пожар",
     "title": "Горючие товары за деревянными дверями",
     "article": "В редакцию приходят письма о беспорядке на складах и фабриках. Когда вспыхнет очередной пожар, городская управа вновь заявит, что её никто не предупреждал.",
