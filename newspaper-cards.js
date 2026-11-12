@@ -202,6 +202,32 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "C02",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_C02_V2.md",
+      "title": "ЦЕЛАЯ ПАРТИЯ ГРУЗА БЕССЛЕДНО ИСЧЕЗЛА!",
+      "eventType": "stolen-port-materials-full-lot-buyout",
+      "dicePorts": ["broadway", "pacificmail", "pacificmail", "chinabasin", "chinabasin", "unioniron"],
+      "stolenExistingMaterialsCount": 2,
+      "displayStolenLotOnNewspaperCard": true,
+      "allOrNothingLot": true,
+      "lotPrice": 1,
+      "returnToPort": {
+        "requiresMainActionInAffectedPort": true,
+        "capitalCost": 1,
+        "returnsFullLotToOriginalPort": true,
+        "reward": {"prestige": 1, "influence": 1}
+      },
+      "keepForYourself": {
+        "requiresDeliveryFromAffectedPort": true,
+        "capitalCost": 1,
+        "loadsEntireLotIntoDelivery": true,
+        "suspicionGain": 1,
+        "applyExistingCriminalActionAndArrestRules": true
+      },
+      "purchaseOccursAtMostOnce": true,
+      "notConnectedToGameEngine": true
+    },
     "category": "Преступность",
     "title": "Исчезают целые партии товара",
     "article": "Докеры и управляющие складами теряют имущество, но расследования не дают результата. Газета спрашивает, куда уходят средства, выделенные на охрану.",
