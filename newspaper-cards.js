@@ -239,6 +239,30 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "C03",
+    "designV2": {
+      "status": "approved-for-playtest-data-only",
+      "specification": "docs/NEWSPAPER_C03_V2.md",
+      "title": "В МЭРИИ СКРЫВАЮТ ФИКТИВНЫЕ ЗАЯВКИ!",
+      "eventType": "corrupt-transfer-of-unallocated-project-permits",
+      "timing": "before-normal-city-hall",
+      "oncePerPlayer": true,
+      "voluntary": true,
+      "grant": {
+        "source": "shuffled-market-project-deck",
+        "cardsDrawn": 1,
+        "cardSelection": "random-no-choice",
+        "capitalCost": 0,
+        "extraCardBeyondUsualCityHallPurchase": true,
+        "doesNotStartConstruction": true,
+        "existingPortfolioLimit": 5
+      },
+      "suspicionGainOnAcceptedProject": 1,
+      "usesExistingCriminalActionAndArrestRules": true,
+      "noAnnualCrimeAssessmentBeforeCityHall": true,
+      "normalCityHallAuctionUnchanged": true,
+      "normalAnnualCrimeAssessmentAtYearEnd": true,
+      "notConnectedToGameEngine": true
+    },
     "category": "Преступность",
     "title": "Поддельные подписи в конторах",
     "article": "Из банков и страховых контор поступают жалобы на мошенничество. Если следователи не возьмутся за дело, предприниматели заплатят сами.",
