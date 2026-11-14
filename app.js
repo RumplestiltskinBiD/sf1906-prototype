@@ -1396,7 +1396,7 @@ function renderNewspaper(){
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
-      (policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции за преступления сохраняются.</small>':
+      (policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
       '<ul class="news-protection-details">'+projections+'</ul></div>'+
@@ -2727,124 +2727,6 @@ $$('[data-legal-case]').forEach(b=>b.onclick=()=>{
      result.reason==='already-used'?'В этом году уже улаживали дело':'Действие сейчас недоступно';
    showToast(message);return;
  }
- showToast('Дело улажено · подозрение −1');render();
-});
-$('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
-$$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
-document.querySelectorAll('[data-bakery-choice]').forEach(b=>b.onclick=()=>{
- const r=activateBakery(state,p.id,b.dataset.bakeryId,b.dataset.bakeryChoice);
- if(!r.ok){showToast(r.reason==='lumber'?'Привезите Дерево в пекарню или свой склад':r.reason==='already-used'?'Пекарный сезон уже завершён':'Действие пекарни сейчас недоступно');render();return;}
- showToast('Пекарный сезон: '+(r.choice==='cash'?'+$7':'+1 VP')+' · Дерево израсходовано');render();
-});
-document.querySelectorAll('[data-upgrade-wagon]').forEach(b=>b.onclick=()=>{
- const r=upgradeWagonBoarding(state,p.id,b.dataset.upgradeWagon);
- if(!r.ok){showToast(r.reason==='already-upgraded'?'Этот пансион уже улучшался в этом году':r.reason==='capital'?'Нужны $2':r.reason==='max-level'?'Достигнут III уровень':'Улучшение недоступно');return;}
- showToast('Вагонный пансион: уровень '+r.level+' · −$2, без рабочего');render();
-});
-$$('[data-sell-project-index]').forEach(b=>b.onclick=()=>{
-  const r=useCommissionHouse(state,p.id,b.dataset.sellHouse,Number(b.dataset.sellProjectIndex));
-  if(!r.ok){showToast(r.reason==='worker-range'?'Представитель слишком далеко от Комиссионного дома':r.reason==='occupied'?'Комиссионный дом уже использован в этом году':r.reason==='no-project'?'Нет доступного проекта':'Перепродажа сейчас недоступна');return;}
-  showToast('Проект перепродан: +$4 · представитель использован');
-  render();
-});
-$$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
-const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Погашение доступно только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала по кредиту должна пройти фаза дохода':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
-}
-function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
-function renderDebug(){
-const players=state.players.map((p,i)=>`<div class="debug-player"><div class="debug-head"><span>${p.name}</span><span>${p.capital} · VP ${p.prestige||0} · +${roundIncome(state,p.id)} · Inf ${p.influence} · 👤 ${p.workersLeft??0}</span></div><div class="debug-actions"><button class="mini-btn" data-money="${i}" data-delta="5">+$5</button><button class="mini-btn" data-money="${i}" data-delta="-5">−$5</button><button class="mini-btn" data-inf="${i}" data-delta="1">Inf +1</button><button class="mini-btn" data-inf="${i}" data-delta="-1">Inf −1</button><button class="mini-btn" data-workers="${i}">👤 = 3</button><button class="mini-btn" data-debug-suspicion="${i}" data-delta="1">★ +1</button><button class="mini-btn" data-debug-suspicion="${i}" data-delta="-1">★ −1</button>${state.phase==='development'&&currentDeveloper(state)===p.id?`<button class="mini-btn" data-b2-jail-all="${i}">Тест B2: все в тюрьме</button>`:''}</div></div>`).join('');
-const lands=DISTRICTS.map(d=>`<div class="debug-land"><span>${d.name}</span><div><button class="mini-btn" data-land="${d.id}" data-delta="-1">−</button><b>${state.districts[d.id].landValue}</b><button class="mini-btn" data-land="${d.id}" data-delta="1">+</button></div></div>`).join('');
-$('#debugPlayers').innerHTML=players+`<div class="debug-section-title">Land Value</div>${lands}`;
-$$('[data-money]').forEach(b=>b.onclick=()=>{const p=state.players[+b.dataset.money];p.capital=Math.max(0,p.capital+(+b.dataset.delta));render();});
-$$('[data-inf]').forEach(b=>b.onclick=()=>{moveInfluence(state,+b.dataset.inf,+b.dataset.delta);render();});
-$$('[data-debug-suspicion]').forEach(b=>b.onclick=()=>{changeSuspicion(state,+b.dataset.debugSuspicion,+b.dataset.delta);render();});
-$$('[data-workers]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.workers;state.players[pid].workersLeft=3;if(state.phase==='development'){state.developmentComplete=false;if(currentDeveloper(state)==null){state.developmentPlayer=pid;state.activationMainActionUsed=false;}}render();});
-$$('[data-b2-jail-all]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.b2JailAll;if(state.phase!=='development'||currentDeveloper(state)!==pid)return;for(const w of playerWorkers(state,pid)){if(!w.jailed)jailWorker(state,pid,w.id);}showToast('Тестер B2: сотрудники под стражей без штрафов. Сервисный ход доступен.');render();});
-$$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
-}
-function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
-function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;newsMapVisible=false;newsEmergencyMode=false;newsSheetOpen=false;newsArchiveIndex=null;upkeepSelectedConstructionId=null;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-$$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
-$('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
-$('#logBtn').onclick=()=>openDrawer('logDrawer');
-$('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
-$('#newsOpenBtn').onclick=()=>openNewspaper();
-$('#newsCloseBtn').onclick=closeNewspaper;
-$('#newsBackdrop').onclick=closeNewspaper;
-$('#newsMapBtn').onclick=toggleNewspaperMap;
-$('#newsEmergencyCancel').onclick=()=>{newsEmergencyMode=false;render();};
-$('#newsEmergencyCancelMobile').onclick=()=>{newsEmergencyMode=false;render();};
-const callNode=$('#callBuildingNode');
-if(callNode){
-  callNode.addEventListener('click',()=>openNewspaper());
-  callNode.addEventListener('keydown',event=>{
-    if(event.key==='Enter'||event.key===' '){event.preventDefault();openNewspaper();}
-  });
-}
-document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&newsSheetOpen)closeNewspaper();
-  else if(event.key==='Escape'&&newsEmergencyMode){newsEmergencyMode=false;render();}
-});
-$('#undoBtn').onclick=undoLastGameAction;
-$('#helpBtn').onclick=()=>{showToast('v0.44: в City Hall можно взять до 1 городской цели; выполненные цели отчитываются в начале следующего года. Influence и простой строек работают как в v0.43B.');};
-$('#drawerBackdrop').onclick=closeDrawers;
-$('#contextBackdrop').onclick=closeMobileContext;$$('[data-close-drawer]').forEach(b=>b.onclick=closeDrawers);
-$('#modalBackdrop').onclick=()=>{};
-$('#newGameBtn').onclick=newGame;
-$('#copyLogBtn').onclick=async()=>{const text=state.log.map(x=>x.msg).join('\n');try{await navigator.clipboard.writeText(text);showToast('Лог скопирован');}catch{prompt('Скопируйте лог:',text);}};
-$('#endRoundBtn').onclick=()=>{
-deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;state.pendingConstruction=null;state.pendingWorkerAction=null;mobileContextOpen=false;
-const r=cleanupMarket(state);
-if(!r.ok){
-if(r.reason==='development-not-complete')showToast('Сначала используйте всех представителей');
-else if(r.reason==='upkeep-choice')showToast('Income начислен. Не хватает денег на простой — выберите стройку для закрытия.');
- else if(r.reason==='crime-choice')showToast('Годовая криминальная проверка: выберите полный платёж или сотрудника для ареста.');
- else if(r.reason==='pending-press-campaign')showToast('После газеты выберите эффект газетного небоскрёба.');
- else if(r.reason==='pending-building-choice')showToast('Сначала привяжите рабочий корпус к фабрике или консервному заводу.');
-else showToast('Переход года сейчас недоступен');
-render();return;
-}
-newsEmergencyMode=false;newsArchiveIndex=null;state.view=r.finished?'city':'hall';render();
-showToast(r.finished?'Итоговый выпуск газеты готов':'Новый год начался · порядок хода пересчитан по Influence');
-};
-const riskViewBtn=$('#riskViewBtn');if(riskViewBtn)riskViewBtn.onclick=()=>{riskViewActive=!riskViewActive;render();showToast(riskViewActive?'Режим риска: У / П по всем районам':'Обычный вид карты');};
-const mapFit=$('#mapZoomFit');if(mapFit)mapFit.onclick=()=>{mobileMapDetail=false;syncMapZoom();};
-const mapDetail=$('#mapZoomDetail');if(mapDetail)mapDetail.onclick=()=>{mobileMapDetail=true;syncMapZoom();};
-$$('[data-district]').forEach(g=>g.onclick=()=>{
-const id=g.dataset.district;
-if(newsEmergencyMode){
-  const pid=currentDeveloper(state);
-  if(pid==null){newsEmergencyMode=false;showToast('Экстренные меры доступны только во время развития города');render();return;}
-  const r=takeNewspaperEmergency(state,pid,id);
-  if(!r.ok){
-    const errors={'worker-range':'Действуйте в районе представителя или соседнем',
-      'select-active-worker':'Сначала выберите действующего представителя',
-      'district-not-buildable':'В этой зоне нет городской застройки',
-      'already-protected':'Здесь уже приняты экстренные меры',
-      'need-$1':'Не хватает $1'};
-    showToast(errors[r.reason]||'Нельзя применить экстренные меры: '+r.reason);
-    return;
-  }
-  newsEmergencyMode=false;
-  state.selectedDistrictId=id;
-  showToast('Экстренные меры выполнены: '+(districtById(id)?.name||id)+' · −$1');
-  render();return;
-}
-if(deliveryDraft?.step==='route'){addDeliveryRouteDistrict(id);return;}
-if(deliveryDraft)return;
-state.selectedDistrictId=id;
-if(state.pendingWorkerAction?.type==='raiseCapital'){
-confirmRaiseCapitalInDistrict(id);
-return;
-}
-if(isMobile())mobileContextOpen=true;
-render();
-});
-window.addEventListener('resize',()=>{if(!isMobile())mobileContextOpen=false;syncMobileContext();syncMapZoom();syncStickyLayout();});
-loadDevMapBackground();
-render();+caseOptions.capitalCost:result.reason==='influence'?'Нужны '+caseOptions.influenceCost+' доступных шага влияния':result.reason==='no-police-access'?'Нет неарестованного представителя в зоне полиции':result.reason==='already-used'?'В этом году уже улаживали дело':'Действие сейчас недоступно');return;}
  showToast('Дело улажено · подозрение −1');render();
 });
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
