@@ -89,7 +89,10 @@ for(const size of SIZES){
 
 test('D1 live tester and legal-case action update stars without new panels',async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await load(page,fixture());
+ const scenario=fixture();
+ scenario.newsCurrentIds=['F01'];
+ scenario.constructions.push({id:'POLICE-D1',projectId:'std_police',districtId:'civic',playerId:1,status:'complete'});
+ await load(page,scenario);
  const blue=page.locator('#playersBar .player-pill[data-office="0"]');
  await page.locator('#settingsBtn').click();
  await page.locator('#settingsDrawer [data-debug-suspicion="0"][data-delta="1"]').click();

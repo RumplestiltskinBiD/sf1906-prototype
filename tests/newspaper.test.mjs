@@ -79,18 +79,23 @@ test('clinic protects neighbouring quarters with a road',()=>{
   assert.equal(s.players[0].capital,30);
   assert.equal(s.players[1].influence,6);
 });
-test('once-per-player penalties require ALL holdings to be covered',()=>{
+test('C04 corruption audit replaces legacy housing fine; no additional end-of-year penalties',()=>{
   const s=game('C04');
   put(s,'tenement','financial',0);
   put(s,'speculative','mission',0);
   put(s,'police','financial',1);
   const prev=G.newsPreview(s);
-  assert.equal(prev.entries.length,1);
-  assert.equal(prev.entries[0].defended,false);
-  assert.equal(prev.entries[0].exposedDistrictIds.length,1);
-  G.resolveNewspaper(s);
-  assert.equal(s.players[0].influence,4);
-  assert.equal(s.players[1].influence,6);
+  assert.equal(prev.card.id,'C04');
+  assert.equal(prev.entries.length,0);
+  assert.deepEqual(prev.threatened,[]);
+  assert.deepEqual(prev.protected,[]);
+  const before=s.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige}));
+  assert.equal(G.takeNewspaperEmergency(s,0,'financial').reason,'not-negative-event');
+  const result=G.resolveNewspaper(s);
+  assert.equal(result.ok,true);
+  assert.equal(result.report.cardId,'C04');
+  assert.deepEqual(s.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige})),before);
+  assert.deepEqual(result.report.serviceRecognition,[]);
 });
 test('emergency costs one worker action and $1, protects for only current issue',()=>{
   const s=game('C01');

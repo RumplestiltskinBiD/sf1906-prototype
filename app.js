@@ -1259,6 +1259,7 @@ layer.innerHTML=html;
 
 function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
+  if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   const unit=card.resource==='capital'?'$':card.resource==='influence'?'Влияние ':'ПО ';
   const sign=card.delta>0?'+':'−';
   return sign+(unit==='$'?unit+Math.abs(card.delta):Math.abs(card.delta)+' '+unit.trim())+
@@ -1336,6 +1337,7 @@ function renderNewspaper(){
   if(!displayed){$('#newsSheetContent').textContent='Выпусков пока нет';return;}
   const historical=archived?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
+  const policeAudit=record.id==='C04'||record.cardId==='C04';
   const outcomeRows=archived?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
@@ -1347,7 +1349,9 @@ function renderNewspaper(){
   const remaining=archive.map((r,i)=>'<button type="button" class="'+(archived===r?'active':'')+
     '" data-news-archive="'+i+'">'+r.year+'</button>').join('');
   const group=archived?null:forecast.summary;
-  const projections=issue&&forecast.entries.length
+  const projections=issue?.id==='C04'
+    ?'<li>Расследование повышает цену урегулирования дела на текущий год.</li>'
+    :issue&&forecast.entries.length
     ?forecast.entries.map(e=>{
       const place=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
       const name=state.players[e.playerId]?.name||'Игрок';
@@ -1380,7 +1384,7 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    '<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>'+
+    (policeAudit?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
     escapeHtml(newspaperEffectShort(record))+'</strong></p>'+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
@@ -1388,17 +1392,18 @@ function renderNewspaper(){
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      (outcomeRows||'<li>В этом году никто не пострадал.</li>')+'</ul>'+
+      (outcomeRows||(policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
-      '<small>Районов под угрозой: '+group?.exposed+
-      ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>'+
+      (policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
+       '<small>Районов под угрозой: '+group?.exposed+
+      ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
       '<ul class="news-protection-details">'+projections+'</ul></div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -2657,7 +2662,10 @@ const suspicionLevelNow=normalizeSuspicion(p.suspicion);
   ?'в конце года: $3 или −1 шаг влияния'
   :'в конце года: $6, −2 шага влияния либо $3 и −1 шаг влияния';
  const suspicionInfo='<span class="office-suspicion-details" data-office-suspicion="'+suspicionLevelNow+'">Подозрение <b>'+suspicionStars(suspicionLevelNow)+'</b> · '+fineText+(suspicionLevelNow>=2?'; если ни один полный платёж недоступен — арест':'')+'. После оплаты звёзды сохраняются.</span>';
- const caseInfo=caseVisible?'<div class="wagon-upgrades legal-case-actions"><b>⚖ Уладить дело · '+('★'.repeat(caseOptions.level)||'☆☆☆')+'</b><small>'+(caseUsed?'В этом году уже использовано':caseOptions.active?'Свободное действие, один раз за год: снизить подозрение на 1':'Доступно в собственный ход')+'</small>'+(caseUsed?'':'<div class="legal-case-buttons"><button type="button" class="secondary-btn" data-legal-case="cash" '+(caseOptions.cash?'':'disabled')+'>−$4 · −1 ★</button><button type="button" class="secondary-btn" data-legal-case="influence" '+(caseOptions.influence?'':'disabled')+'>−2 шага Вл · −1 ★</button></div>')+'</div>':'';
+ const caseStatus=caseUsed?'В этом году уже использовано':
+  !caseOptions.policeAccess?'Нужен свой неарестованный представитель в зоне завершённой полиции (чужая тоже подходит)':
+  caseOptions.active?'Быстрое действие · один раз в год · −1 подозрение':'Доступно в собственный ход';
+const caseInfo=caseVisible?'<div class="wagon-upgrades legal-case-actions"><b>⚖ Полиция · Уладить дело · '+('★'.repeat(caseOptions.level)||'☆☆☆')+'</b><small>'+caseStatus+'</small>'+(caseUsed?'':'<div class="legal-case-buttons"><button type="button" class="secondary-btn" data-legal-case="cash" '+(caseOptions.cash?'':'disabled')+'>−$'+caseOptions.capitalCost+' · −1 ★</button><button type="button" class="secondary-btn" data-legal-case="influence" '+(caseOptions.influence?'':'disabled')+'>−'+caseOptions.influenceCost+' шага Вл · −1 ★</button></div>')+'</div>':'';
 // D3.1: keep the full roster in this Office; no new map, player-HUD or floating layer.
 const roster=workerRosterPreview(state,p.id);
 const rosterHtml=roster.ok?'<section class="office-staff-roster" aria-label="Штат и сроки заключения">'
@@ -2712,7 +2720,13 @@ $$('[data-hire-worker]').forEach(b=>b.onclick=()=>{
 });
 $$('[data-legal-case]').forEach(b=>b.onclick=()=>{
  const result=settleLegalCase(state,p.id,b.dataset.legalCase);
- if(!result.ok){showToast(result.reason==='capital'?'Нужны $4':result.reason==='influence'?'Нужны 2 доступных шага влияния':result.reason==='already-used'?'В этом году уже улаживали дело':'Действие сейчас недоступно');return;}
+ if(!result.ok){
+   const message=result.reason==='capital'?'Нужны '+caseOptions.capitalCost+' долларов':
+     result.reason==='influence'?'Нужны '+caseOptions.influenceCost+' доступных шага влияния':
+     result.reason==='no-police-access'?'Нет неарестованного представителя в зоне полиции':
+     result.reason==='already-used'?'В этом году уже улаживали дело':'Действие сейчас недоступно';
+   showToast(message);return;
+ }
  showToast('Дело улажено · подозрение −1');render();
 });
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));

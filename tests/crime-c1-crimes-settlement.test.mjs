@@ -6,6 +6,8 @@ function development(){
  const s=G.createInitialState({rng:()=>0.1});
  s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
  s.yearTurnOrder=[0,1,2];s.firstPlayer=0;
+ s.newsCurrentIds=['F01']; // Non-C04 year for base costs.
+ s.constructions.push({id:'P-SERVICE',projectId:'std_police',districtId:'civic',playerId:1,status:'complete'});
  return s;
 }
 function jailAll(s,pid){for(const w of s.players[pid].workers)if(!w.jailed)G.jailWorker(s,pid,w.id);}
@@ -59,16 +61,16 @@ test('C1.3 cash insufficient, zero suspicion, invalid payment, wrong player/turn
  assert.equal(JSON.stringify(s),snap);
 });
 
-test('C1.3 legitimate settlement works with all 3 workers jailed, in service window',()=>{
+test('C1.3 police access excludes all jailed representatives, even if service action remains',()=>{
  const s=development(),p=s.players[0];jailAll(s,0);G.setSuspicion(s,0,2);
  assert.equal(p.workersLeft,0);
  assert.equal(G.canUseFreeAction(s,0),true);
- assert.equal(G.settleLegalCase(s,0,'cash').ok,true);
- assert.equal(p.suspicion,1);
- assert.equal(s.activationMainActionUsed,false);
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false);
+ const snap=JSON.stringify(s);
+ assert.equal(G.settleLegalCase(s,0,'cash').reason,'no-police-access');
+ assert.equal(JSON.stringify(s),snap);
  assert.equal(G.endActivation(s,0,{skipRemainingService:true}).ok,true);
  assert.equal(G.developmentSlotsRemaining(s,0),0);
- assert.equal(p.workers.length,3);
 });
 
 test('C1.3 settlement works after a spent main action; yearly marker roundtrip and reset by year',()=>{
@@ -207,4 +209,59 @@ test('C1.3 5-player scenario still cannot exceed 3 worker slots and fixed yearly
  assert.equal(r.ok,true);
  assert.equal(s.players[4].workers.length,3);
  assert.deepEqual(s.yearTurnOrder,[4,0,3,1,2]);
+});
+
+test('police coverage is mandatory: unfinished, distant or missing service prevents settling',()=>{
+ const s=development();G.setSuspicion(s,0,2);
+ const w=s.players[0].workers[0];
+ s.constructions=[];
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false);
+ assert.equal(G.settleLegalCase(s,0,'cash').reason,'no-police-access');
+ s.constructions.push({id:'UNFINISHED',projectId:'std_police',districtId:'civic',playerId:2,status:'under-construction'});
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false);
+ s.constructions[0].status='complete';s.constructions[0].districtId='financial';
+ w.districtId='civic';
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false,'standard post does not cover adjacent district');
+ s.constructions[0].projectId='police';
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,true,'market police covers adjacent district regardless of owner');
+ for(const worker of s.players[0].workers)worker.districtId='sunset';
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false,'all representatives outside the police radius');
+});
+
+test('settlement through foreign police accepts a used worker and spends no main action',()=>{
+ const s=development();G.setSuspicion(s,0,2);
+ const w=s.players[0].workers[0];w.used=true;
+ for(const other of s.players[0].workers.slice(1))other.districtId='sunset';
+ assert.equal(s.constructions[0].playerId,1);
+ const capital=s.players[0].capital;
+ const r=G.settleLegalCase(s,0,'cash');
+ assert.equal(r.ok,true);assert.equal(s.players[0].capital,capital-4);
+ assert.equal(w.used,true);assert.equal(s.activationMainActionUsed,false);
+ assert.equal(s.players[1].capital,14,'owner of police receives no fee');
+});
+
+test('C04 audit upgrades either payment only during its year, with strict influence cost',()=>{
+ const s=development();G.setSuspicion(s,0,3);s.newsCurrentIds=['C04'];
+ s.players[0].influence=8;s.players[1].influence=5;s.players[2].influence=4;
+ const options=G.legalCaseOptions(s,0);
+ assert.equal(options.capitalCost,7);assert.equal(options.influenceCost,3);
+ assert.equal(options.auditYear,true);assert.equal(options.influence,true);
+ const cash=s.players[0].capital;
+ assert.equal(G.settleLegalCase(s,0,'cash').ok,true);
+ assert.equal(s.players[0].capital,cash-7);assert.equal(s.players[0].suspicion,2);
+ s.round=2;s.newsCurrentIds=['F01'];s.players[0].caseSettledRound=null;
+ const later=G.legalCaseOptions(s,0);
+ assert.equal(later.capitalCost,4);assert.equal(later.influenceCost,2);
+ assert.equal(later.auditYear,false);
+ const t=development();G.setSuspicion(t,0,2);t.newsCurrentIds=['C04'];
+ t.players[0].influence=6;t.players[1].influence=3;t.players[2].influence=2;
+ assert.equal(G.legalCaseOptions(t,0).influence,true);
+ assert.equal(G.settleLegalCase(t,0,'influence').ok,true);
+ assert.equal(t.players[0].influence,1,'3 steps with leap-over of other players');
+ const u=development();G.setSuspicion(u,0,2);u.newsCurrentIds=['C04'];
+ u.players[0].influence=2;u.players[1].influence=1;u.players[2].influence=0;
+ const snap=JSON.stringify(u);
+ assert.equal(G.legalCaseOptions(u,0).influence,false);
+ assert.equal(G.settleLegalCase(u,0,'influence').reason,'influence');
+ assert.equal(JSON.stringify(u),snap);
 });
