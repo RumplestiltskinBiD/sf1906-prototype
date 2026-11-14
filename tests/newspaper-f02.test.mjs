@@ -75,6 +75,7 @@ test('service route is shortest legal road path, never through closed districts'
  assert.deepEqual(G.f02ServiceRoute('financial','northbeach'),['financial','northbeach']);
  assert.equal(G.f02ServiceRoute('twinpeaks','marina'),null);
  assert.equal(G.f02ServiceRoute('presidio','northbeach'),null);
+ assert.equal(G.f02ServiceRoute('park','marina'),null,'park is worker pass-through, not service road');
  assert.equal(G.f02ServiceRoute('INVALID','marina'),null);
  const route=G.f02ServiceRoute('sunset','northbeach');
  assert.ok(route?.length>2);
@@ -292,6 +293,34 @@ test('F02 previous save missing incident gets a single D6 roll without losing pr
  const restored=JSON.parse(JSON.stringify(s));
  G.ensureNewspaper(restored,{rng:()=>{throw Error('rerolled on load')}});
  assert.equal(restored.newsF02Incident.roll,6);
+});
+test('a pending construction or worker operation blocks F02 without consuming anything',()=>{
+ const s=setup();build(s,'F','std_fire','financial');
+ for(const mutator of [
+   x=>x.pendingConstruction={playerId:0,projectId:'tenement'},
+   x=>x.pendingWorkerAction={type:'raiseCapital',playerId:0}
+ ]){
+   const copy=structuredClone(s);mutator(copy);
+   const before=snap(copy);
+   assert.equal(G.completeF02Operation(copy,0,'fire','F').reason,'pending-action');
+   assert.equal(snap(copy),before);
+ }
+});
+test('F02 at the end of 1905 expires without creating a future article or duplicate penalties',()=>{
+ const s=setup();s.round=6;
+ s.newsF02Incident={round:6,roll:1,districtId:'northbeach',
+   firePending:true,manhuntPending:true,actions:[]};
+ s.developmentComplete=true;s.developmentPlayer=null;
+ s.players.forEach(p=>p.suspicion=0);
+ const initialMoney=money(s),initialInfluence=influence(s);
+ const result=G.cleanupMarket(s,{rng:()=>0.23});
+ assert.equal(result.ok,true);assert.equal(result.finished,true);
+ assert.equal(s.round,6);assert.equal(s.finished,true);
+ assert.equal(s.newsF02Incident,null);
+ assert.deepEqual(money(s),initialMoney.map(m=>m-3));
+ assert.deepEqual(influence(s),initialInfluence.map(m=>m-1));
+ assert.equal(s.newsArchive.filter(a=>a.cardId==='F02').length,1);
+ assert.equal(G.cleanupMarket(s).reason,'wrong-phase');
 });
 test('end of year clears F02 and advances without reapplying penalties; already-resolved save never rerolls',()=>{
  const s=setup();
