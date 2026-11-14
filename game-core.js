@@ -860,6 +860,7 @@ export function createInitialState({rng=Math.random}={}){
   const players=PLAYER_NAMES.map((name,id)=>({id,name,key:PLAYER_KEYS[id],capital:14,influence:influencePositions[id],prestige:0,suspicion:0,caseSettledRound:null,workers:createWorkers(id),workersLeft:WORKERS_PER_PLAYER,portfolio:[],loans:[],bureauContracts:0,goals:[],goalTakenRound:null,fireIncomePenalty:0,breadIncomePenalty:0,advertisingIncomeBonus:0}));
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
+  const initialF02Incident=newsCurrentIds[0]==='F02'?createF02Incident(1,rng):null;
   return {
     version:'0.44',
     industrialExpansionV1:true,
@@ -886,6 +887,7 @@ export function createInitialState({rng=Math.random}={}){
     newsArchive:[],
     newsEmergency:{},
     newsF01Notice:null,
+    newsF02Incident:initialF02Incident,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
     yearTurnOrder,
@@ -2580,6 +2582,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
   state.newsEmergency={};
   state.newsF01Notice=null;
+  state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
@@ -2838,12 +2841,19 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsArchive=state.newsArchive||[];
     state.newsEmergency={};
     state.newsF01Notice=null;
+    state.newsF02Incident=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
   }
   if(!state.newsEmergency||typeof state.newsEmergency!=='object')state.newsEmergency={};
   if(!Object.hasOwn(state,'newsF01Notice'))state.newsF01Notice=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
+  // Legacy in-progress F02: draw exactly once on load, without touching
+  // existing capital, buildings, newspaper history or next years' deck.
+  if(activeNewspaper(state)?.id==='F02'&&state.newsLastResolvedRound!==state.round){
+    if(!state.newsF02Incident||state.newsF02Incident.round!==state.round)
+      state.newsF02Incident=createF02Incident(state.round,rng);
+  }else if(!Object.hasOwn(state,'newsF02Incident'))state.newsF02Incident=null;
   return state;
 }
 export function activeNewspaper(state){
