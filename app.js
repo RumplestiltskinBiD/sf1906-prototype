@@ -1,6 +1,6 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
+LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
@@ -1262,6 +1262,7 @@ function newspaperEffectShort(card){
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
+  if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
   const unit=card.resource==='capital'?'$':card.resource==='influence'?'Влияние ':'ПО ';
   const sign=card.delta>0?'+':'−';
   return sign+(unit==='$'?unit+Math.abs(card.delta):Math.abs(card.delta)+' '+unit.trim())+
@@ -2087,8 +2088,9 @@ el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВ�
 }
 function renderSupplyNodes(){
 const layer=$('#supplyNodeLayer');if(!layer)return;const supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
-const nodes=LOGISTICS_NODES.map(n=>{const stock=supply[n.id]||[],start=-((stock.length-1)*7),pips=stock.map((t,i)=>'<circle class="node-resource '+materialClass(t)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join(''),ok=selecting&&stock.length;
-return '<g class="supply-node node-'+n.kind+' '+(ok?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-node="'+n.id+'"><title>'+n.name+'</title><circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+logisticsKindCode(n.kind)+'</text>'+pips+'<text class="node-name" y="48">'+n.shortName+'</text><text class="node-type" y="61">'+logisticsKindLabel(n.kind)+'</text></g>';}).join('');
+const closedPort=f03CurrentPortIncident(state)?.portId;
+const nodes=LOGISTICS_NODES.map(n=>{const stock=supply[n.id]||[],start=-((stock.length-1)*7),pips=stock.map((t,i)=>'<circle class="node-resource '+materialClass(t)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join(''),ok=selecting&&stock.length,closed=n.id===closedPort;
+return '<g class="supply-node node-'+n.kind+' '+(closed?'f03-port-closed ':'')+(ok?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-node="'+n.id+'"><title>'+n.name+(closed?' · ПОЖАР: поставки перенаправлены до конца года':'')+'</title><circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+logisticsKindCode(n.kind)+'</text>'+pips+'<text class="node-name" y="48">'+n.shortName+'</text><text class="node-type" y="61">'+(closed?'ПОЖАР · НЕТ ГРУЗОВ':logisticsKindLabel(n.kind))+'</text>'+(closed?'<text class="f03-fire-label" y="-26">🔥 ПОЖАР</text>':'')+'</g>';}).join('');
 const suppliers=NEUTRAL_MATERIAL_SUPPLIERS.map(n=>'<g class="neutral-supplier-node '+materialClass(n.resource)+' '+(selecting?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-supplier="'+n.id+'"><title>'+n.name+' · '+n.historical+' · '+materialLabel(n.resource)+' $'+n.unitPrice+'</title><circle class="node-hit" r="34"/><rect class="supplier-pin" x="-19" y="-19" width="38" height="38" rx="9"/><text class="supplier-code" y="4">'+n.code+'</text><text class="supplier-price" y="28">$'+n.unitPrice+'</text><text class="node-name" y="47">'+n.shortName+'</text><text class="node-type" y="59">'+materialLabel(n.resource)+' · всегда</text></g>').join('');
 const yp=deliveryDraft?.playerId??pid??0,yi=freightYardInventory(state,yp),src=selecting&&yi.length,target=deliveryDropPhase()&&deliveryDraft?.route?.includes('western')&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryTargetAcceptsAny(freightYardTarget());
 const slots=state.players.map((p,i)=>'<circle class="yard-player-dot '+p.key+'" cx="'+(-18+i*18)+'" cy="26" r="6"/><text class="yard-count" x="'+(-18+i*18)+'" y="29">'+freightYardInventory(state,i).length+'</text>').join('');
