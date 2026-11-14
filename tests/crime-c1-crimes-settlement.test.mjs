@@ -224,8 +224,8 @@ test('police coverage is mandatory: unfinished, distant or missing service preve
  assert.equal(G.legalCaseOptions(s,0).policeAccess,false,'standard post does not cover adjacent district');
  s.constructions[0].projectId='police';
  assert.equal(G.legalCaseOptions(s,0).policeAccess,true,'market police covers adjacent district regardless of owner');
- w.districtId='sunset';
- assert.equal(G.legalCaseOptions(s,0).policeAccess,false,'distant district outside radius');
+ for(const worker of s.players[0].workers)worker.districtId='sunset';
+ assert.equal(G.legalCaseOptions(s,0).policeAccess,false,'all representatives outside the police radius');
 });
 
 test('settlement through foreign police accepts a used worker and spends no main action',()=>{
