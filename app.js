@@ -1344,7 +1344,7 @@ function renderNewspaper(){
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
     const delta=archived.changes?.[e.playerId];
-    const status=e.defended?'Предотвращено':e.actual>0?'Прибыль':e.actual<0?'Потери':'Без изменений';
+    const status=fireLevy?'Взыскание':e.defended?'Предотвращено':e.actual>0?'Прибыль':e.actual<0?'Потери':'Без изменений';
     return '<li>'+escapeHtml(p)+' · '+escapeHtml(loc)+': <b>'+escapeHtml(status)+'</b>'+
       (e.actual?' ('+(e.actual>0?'+':'')+e.actual+')':'')+'</li>';
   }).join(''):'';
