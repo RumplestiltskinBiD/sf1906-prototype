@@ -3100,6 +3100,12 @@ function resolveF02Newspaper(state,card){
 export function newsPreview(state){
   const card=activeNewspaper(state);
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='F02'){
+    const incident=f02ActiveIncident(state);
+    return {card,entries:[],threatened:incident&&(incident.firePending||incident.manhuntPending)?[incident.districtId]:[],
+      protected:[],summary:{districts:incident?1:0,exposed:incident?Number(incident.firePending)+Number(incident.manhuntPending):0,safe:0},
+      f02:incident?{...incident,actions:incident.actions.map(x=>({...x,route:[...x.route]}))}:null};
+  }
   if(card.id==='F01'){
     const f01=f01NoticePreview(state);
     return {card,entries:[],threatened:[],protected:[],
@@ -3146,7 +3152,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||card.id==='F01'||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||card.id==='F01'||card.id==='F02'||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3168,6 +3174,7 @@ export function resolveNewspaper(state){
   const {card,entries}=forecast;
   if(!card)return {ok:false,reason:'no-card'};
   if(card.id==='F01')return resolveF01Newspaper(state,card);
+  if(card.id==='F02')return resolveF02Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
