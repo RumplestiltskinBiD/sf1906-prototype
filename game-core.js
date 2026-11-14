@@ -761,19 +761,26 @@ export function changeSuspicion(state,playerId,delta){
   return setSuspicion(state,playerId,to);
 }
 
-// C1.3: a legal quick action, available even when all staff is imprisoned.
+// C1.3: a legal quick action resolved through the public police network.
+// Used workers still retain their position and may make the contact; jailed workers cannot.
 export function legalCaseOptions(state,playerId){
   if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
   const p=state.players[playerId],level=suspicionLevel(state,playerId);
   const used=p.caseSettledRound===state.round;
   const active=canUseFreeAction(state,playerId);
+  const policeWorkerIds=(p.workers||[])
+    .filter(w=>!w.jailed&&districtAccess(state,w.districtId).police)
+    .map(w=>w.id);
+  const policeAccess=policeWorkerIds.length>0;
+  const auditYear=!!state.newsCurrentIds?.includes('C04');
+  const capitalCost=auditYear?7:4,influenceCost=auditYear?3:2;
   const influencePreview={...state,players:state.players.map(x=>({...x}))};
-  const influenceMove=moveInfluence(influencePreview,playerId,-2);
+  const influenceMove=moveInfluence(influencePreview,playerId,-influenceCost);
   const influenceSteps=Math.abs(influenceMove.steps);
-  const cash=active&&!used&&level>0&&p.capital>=4;
-  const influence=active&&!used&&level>0&&influenceSteps===2;
-  return {ok:true,playerId,level,used,active,cash,influence,influenceSteps,
-    capitalCost:4,influenceCost:2};
+  const cash=active&&!used&&policeAccess&&level>0&&p.capital>=capitalCost;
+  const influence=active&&!used&&policeAccess&&level>0&&influenceSteps===influenceCost;
+  return {ok:true,playerId,level,used,active,policeAccess,policeWorkerIds,auditYear,
+    cash,influence,influenceSteps,capitalCost,influenceCost};
 }
 export function settleLegalCase(state,playerId,payment){
   if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
@@ -782,15 +789,17 @@ export function settleLegalCase(state,playerId,payment){
   if(!options.active)return {ok:false,reason:'not-active-player'};
   if(options.used)return {ok:false,reason:'already-used'};
   if(options.level===0)return {ok:false,reason:'no-suspicion'};
+  if(!options.policeAccess)return {ok:false,reason:'no-police-access'};
   if(!options[payment])return {ok:false,reason:payment==='cash'?'capital':'influence'};
   const p=state.players[playerId],before=options.level;
-  if(payment==='cash')p.capital-=4;
-  else moveInfluence(state,playerId,-2);
+  if(payment==='cash')p.capital-=options.capitalCost;
+  else moveInfluence(state,playerId,-options.influenceCost);
   setSuspicion(state,playerId,before-1);
   p.caseSettledRound=state.round;
-  logEvent(state,`${p.name} уладил дело: ${payment==='cash'?'−$4':'−2 шага Influence'}, подозрение ${before}→${p.suspicion}.`,'accent');
+  logEvent(state,`${p.name} уладил дело через полицию: ${payment==='cash'?'−$'+options.capitalCost:'−'+options.influenceCost+' шага Influence'}, подозрение ${before}→${p.suspicion}.`,'accent');
   return {ok:true,playerId,payment,before,after:p.suspicion,
-    cost:payment==='cash'?4:2,mainActionUsed:!!state.activationMainActionUsed};
+    cost:payment==='cash'?options.capitalCost:options.influenceCost,
+    mainActionUsed:!!state.activationMainActionUsed};
 }
 
 // C1.3 integration contract for future APPROVED illegal actions.
