@@ -127,3 +127,27 @@ test('F01 archive displays general levy if the accused site was modernized after
  await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('#newsSheetContent')).toContainText('Общий противопожарный сбор');
 });
+
+test('old saved F01 housing issue retains its original title and outcomes, never the new levy',async({page})=>{
+ await page.setViewportSize({width:1366,height:768});
+ const state=game();
+ state.round=2;state.newsCurrentIds=['E02'];state.newsF01Notice=null;
+ state.newsArchive=[{
+   year:1900,round:1,cardId:'F01',title:'Тесные дома, сухие лестницы',category:'Пожар',
+   entries:[{playerId:1,districtIds:['financial'],actual:-2,defended:false}],
+   changes:{1:{capital:-2,influence:0,prestige:0}},serviceRecognition:[],
+   emergency:{}
+ }];
+ await seed(page,state);
+ await openNews(page,{width:1366,height:768});
+ await page.locator('[data-news-archive="0"]').click();
+ await expect(page.locator('#newsSheetContent .news-headline')).toHaveText('Тесные дома, сухие лестницы');
+ await expect(page.locator('#newsSheetContent')).toContainText('Архив предыдущей редакции F01');
+ await expect(page.locator('#newsSheetContent')).not.toContainText('Общий противопожарный сбор');
+ await expect(page.locator('#newsSheetContent')).not.toContainText('NaN');
+ const saved=await read(page);
+ expect(saved.newsArchive).toHaveLength(1);
+ expect(saved.newsArchive[0].f01).toBeUndefined();
+ expect(saved.newsArchive[0].title).toBe('Тесные дома, сухие лестницы');
+ expect(saved.newsArchive[0].changes['1'].capital).toBe(-2);
+});

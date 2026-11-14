@@ -1336,10 +1336,13 @@ function renderNewspaper(){
   const issue=archived?null:card;
   const displayed=archived||issue;
   if(!displayed){$('#newsSheetContent').textContent='Выпусков пока нет';return;}
-  const historical=archived?newsCardByHistory(archived.cardId):null;
+  // Old saved F01 archives record the *former* housing fine, not the new
+  // 2026-11-14 levy. Preserve those historical outcomes instead of relabeling.
+  const legacyF01Archive=!!(archived?.cardId==='F01'&&!archived.f01);
+  const historical=archived&&!legacyF01Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
-  const fireLevy=record.id==='F01'||record.cardId==='F01';
+  const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const outcomeRows=archived?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
@@ -1411,9 +1414,9 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||legacyF01Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
