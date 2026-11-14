@@ -65,9 +65,10 @@ test('short money and influence at floor are clipped without debt or annual inco
   s.players[0].influence=0;s.players[1].influence=1;s.players[2].influence=5;
   const report=G.resolveNewspaper(s).report;
   assert.deepEqual(cash(s),[0,0,0]);
-  assert.deepEqual(influence(s),[0,0,4]);
+  // Occupied Influence 0 blocks player on 1 from making a real step down.
+  assert.deepEqual(influence(s),[0,1,4]);
   assert.deepEqual(report.entries.map(e=>e.actual),[0,-1,-2]);
-  assert.deepEqual(report.entries.map(e=>e.influenceActual),[0,-1,-1]);
+  assert.deepEqual(report.entries.map(e=>e.influenceActual),[0,0,-1]);
   assert.deepEqual(s.players.map(p=>p.fireIncomePenalty),[0,0,0]);
 });
 
