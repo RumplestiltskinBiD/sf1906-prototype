@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0560-f02-arson';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -3025,7 +3025,7 @@ export function f02OperationOptions(state,playerId,operation){
   // The H02 road tariff matters only if both newspapers are ever explicitly
   // active together; the standard one-newspaper game pays $1 per edge.
   const tariff=state.newsCurrentIds?.includes('H02')?2:1;
-  const actionAvailable=canTakeMainAction(state,playerId);
+  const actionAvailable=canTakeMainAction(state,playerId)&&!state.pendingConstruction&&!state.pendingWorkerAction;
   const services=(state.constructions||[]).filter(c=>c.status==='complete'&&
     F02_OPERATION_SERVICES[operation].includes(c.projectId)).map(c=>{
       const route=f02ServiceRoute(c.districtId,incident.districtId);
