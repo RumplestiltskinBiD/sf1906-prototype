@@ -129,7 +129,8 @@ test('C04 newspaper shows temporary police scandal without old housing fine',asy
  const s=fixture();s.newsCurrentIds=['C04'];s.constructions.push({id:'HOUSE',projectId:'tenement',districtId:'financial',playerId:0,status:'complete'});
  await page.setViewportSize({width:390,height:844});await enter(page,s);
  await expect(page.locator('#newsStripLabel')).toContainText('$7');
- await page.locator('#newsOpenBtn').click();
+ await expect(page.locator('#newsStrip')).toBeHidden();
+ await page.locator('#callBuildingNode').click();
  await expect(page.locator('#newsSheetContent')).toContainText('−3');
  await expect(page.locator('#newsSheetContent')).not.toContainText('Жители боятся возвращаться домой');
  await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
