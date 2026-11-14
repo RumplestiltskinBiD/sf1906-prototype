@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,ensureNewspaper,projectById,LOGISTICS_NODES} from '../game-core.js';
+import {createInitialState,ensureNewspaper,projectById,LOGISTICS_NODES,roundIncome} from '../game-core.js';
 
 const KEY='sf1906_phase1_ui_v030a';
 const sizes=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
@@ -112,7 +112,11 @@ test('F03 end year has no owner fines, restores every port next year, and archiv
  s.newsDeck=['E02',...s.newsDeck.filter(x=>x!=='E02')];
  s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
  s.developmentComplete=true;s.developmentPlayer=null;
- const prior=s.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige}));
+ // The ordinary annual income must still be awarded; F03 adds no separate
+ // debit or credit. Compare against the actual baseline income formula.
+ const expected=s.players.map(p=>({
+   capital:p.capital+roundIncome(s,p.id),influence:p.influence,prestige:p.prestige
+ }));
  await page.setViewportSize({width:1366,height:768});await seed(page,s);
  await page.locator('#endRoundBtn').click();
  const now=await read(page);
@@ -123,7 +127,7 @@ test('F03 end year has no owner fines, restores every port next year, and archiv
  expect(now.newsArchive[0].f03.redistributed).toBe(4);
  expect(now.newsArchive[0].entries).toEqual([]);
  expect(now.newsArchive[0].changes).toEqual({});
- expect(now.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige}))).toEqual(prior);
+ expect(now.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige}))).toEqual(expected);
  expect(now.newsF03Incident).toBeNull();
  for(const node of LOGISTICS_NODES)expect(now.logisticsSupply[node.id]).toHaveLength(node.throughput);
  await expect(page.locator('.f03-port-closed')).toHaveCount(0);
