@@ -149,7 +149,7 @@ export function applyF03PortFire(state,{rng=Math.random}={}){
   // Validate the entire supply before drawing, so an invalid legacy save
   // cannot end up partly redistributed or consume a random draw.
   if(!LOGISTICS_NODES.every(n=>Array.isArray(state.logisticsSupply?.[n.id])&&
-     state.logisticsSupply[n.id].every(r=>RESOURCE_ORDER.includes(r))))
+     state.logisticsSupply[n.id].every(r=>['Lumber','Masonry','Steel'].includes(r))))
     return {ok:false,reason:'invalid-supply'};
   const raw=Number(rng());
   const draw=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
