@@ -2448,6 +2448,15 @@ body.drawer-open .mobile-action-dock{
 .news-f02-services button small{font-size:11px;font-weight:400}
 .news-f02-services button:disabled{opacity:.58;cursor:not-allowed}
 .news-f02-services button:focus-visible{outline:3px solid #286356;outline-offset:1px}
+.f03-port-closed .node-pin{stroke:#b51f16;stroke-width:4;fill:#642e28}
+.f03-port-closed .node-type{font-weight:900;fill:#b9311f}
+.f03-fire-label{font:900 13px/1 system-ui,'Apple Color Emoji','Segoe UI Emoji',sans-serif;fill:#b31e14;stroke:#fff5e8;stroke-width:2.5px;paint-order:stroke;pointer-events:none;text-anchor:middle}
+.news-f03-panel{margin-top:12px;padding:11px;background:#f7e7cb;border:1px solid #c19e6d;border-radius:8px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.news-f03-panel strong{font-size:14px}
+.news-f03-panel p{margin:8px 0}
+.news-f03-panel ul{margin:6px 0 8px;padding-left:18px}
+.news-f03-panel li{margin:3px 0}
+.news-f03-panel small{font-size:11px;color:#5f5446}
 .f02-map-marker{pointer-events:none}
 .f02-map-marker circle{stroke:#fff8db;stroke-width:3;filter:drop-shadow(0 0 5px rgba(0,0,0,.4))}
 .f02-map-marker .f02-marker-fire{fill:#9c3624}
