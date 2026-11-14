@@ -114,7 +114,6 @@ test('a real delivery from closed port fails atomically with source-stock, recip
    districtId:'northbeach',status:'complete',materialsDelivered:[],
    warehouseInventory:[],startedRound:1,completedRound:1});
  const blank={playerId:0,source:{kind:'node',id:'broadway'},cargo:['Lumber'],
-   pickups:[{source:{kind:'node',id:'broadway'},cargo:['Lumber'],routeIndex:0}],
    haulerId:'standard',route:['northbeach'],
    drops:[{kind:'warehouse',id:'W',materials:['Lumber'],routeIndex:0}]};
  const before=snap(s);
@@ -123,7 +122,6 @@ test('a real delivery from closed port fails atomically with source-stock, recip
  const material=s.logisticsSupply.pacificmail[0];
  s.constructions[0].districtId='soma';s.constructions[0].warehouseInventory=[];
  const legal={...blank,source:{kind:'node',id:'pacificmail'},cargo:[material],
-   pickups:[{source:{kind:'node',id:'pacificmail'},cargo:[material],routeIndex:0}],
    route:['soma'],drops:[{kind:'warehouse',id:'W',materials:[material],routeIndex:0}]};
  const first=s.logisticsSupply.pacificmail.length;
  const done=G.executeDelivery(s,legal);
