@@ -237,6 +237,9 @@ test('future F03 is drawn when new newspaper replaces previous one, after ordina
  assert.equal(s.newsCurrentIds[0],'F03');
  assert.equal(s.newsF03Incident.roll,5);
  assert.equal(s.newsF03Incident.portId,'chinabasin');
+ assert.ok(s.log.some(entry=>entry.msg.includes('Портовые поставки меняются сразу при выходе газеты.')));
+ assert.equal(s.log.some(entry=>entry.msg.includes('ПОЖАР ПАРАЛИЗОВАЛ ОДИН ИЗ ПОРТОВ')&&
+   entry.msg.includes('Событие произойдёт в конце года.')),false);
  assert.equal(s.logisticsSupply.chinabasin.length,0);
  assert.equal(inventory(s).length,17);
  assert.deepEqual(s.newsArchive[0].entries.length,0);
