@@ -912,7 +912,7 @@ export function createInitialState({rng=Math.random}={}){
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   const initialF02Incident=newsCurrentIds[0]==='F02'?createF02Incident(1,rng):null;
-  return {
+  const state={
     version:'0.44',
     industrialExpansionV1:true,
     housingSchoolExpansionV1:true,
@@ -939,6 +939,7 @@ export function createInitialState({rng=Math.random}={}){
     newsEmergency:{},
     newsF01Notice:null,
     newsF02Incident:initialF02Incident,
+    newsF03Incident:null,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
     yearTurnOrder,
@@ -991,6 +992,10 @@ export function createInitialState({rng=Math.random}={}){
     log:[{msg:'Началась тестовая партия v0.44 City Hall Goals. В City Hall каждый игрок может взять до 1 городской цели; выполненные цели отчитываются в начале следующего года.','cls':'accent'}],
     finished:false
   };
+  // Materials are generated at their original point in setup; only then
+  // is the affected port determined and its real cargo redistributed.
+  if(newsCurrentIds[0]==='F03')applyF03PortFire(state,{rng});
+  return state;
 }
 
 export function logEvent(state,msg,cls=''){state.log.push({msg,cls});}
@@ -2634,6 +2639,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
+  state.newsF03Incident=null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
@@ -2893,6 +2899,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsEmergency={};
     state.newsF01Notice=null;
     state.newsF02Incident=null;
+    state.newsF03Incident=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
   }
@@ -2905,6 +2912,11 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     if(!state.newsF02Incident||state.newsF02Incident.round!==state.round)
       state.newsF02Incident=createF02Incident(state.round,rng);
   }else if(!Object.hasOwn(state,'newsF02Incident'))state.newsF02Incident=null;
+  // Legacy in-progress F03 save: move only *remaining* city stock. Already
+  // purchased or carried materials cannot be pulled back retroactively.
+  if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round){
+    if(!f03CurrentPortIncident(state))applyF03PortFire(state,{rng});
+  }else if(!Object.hasOwn(state,'newsF03Incident'))state.newsF03Incident=null;
   return state;
 }
 export function activeNewspaper(state){
