@@ -4,7 +4,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "F01",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_F01_V2.md",
       "title": "КТО ЗАПЛАТИТ ЗА ПОЖАРНУЮ ОПАСНОСТЬ?!",
       "eventType": "one-year-fire-safety-collective-levy-or-personal-violation",
@@ -37,13 +37,13 @@ export const NEWS_CARDS=Object.freeze([
       "noImmediateRewardForFiler": true
     },
     "category": "Пожар",
-    "title": "Тесные дома, сухие лестницы",
-    "article": "Жители обвиняют инспекторов в равнодушии к деревянным доходным домам. Если мэрия ничего не изменит, владельцы получат счета за ущерб от мелких возгораний.",
-    "target": "housing",
+    "title": "КТО ЗАПЛАТИТ ЗА ПОЖАРНУЮ ОПАСНОСТЬ?!",
+    "article": "Горожане требуют срочных противопожарных работ! Городская управа намерена взыскать расходы на гидранты и безопасность опасных кварталов со всех крупных застройщиков. Но если инспекторы найдут конкретного виновника, весь счёт предъявят ему. Предприниматели спешат предоставить документы против конкурентов!",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "firehouse"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "F02",
