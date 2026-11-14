@@ -2720,7 +2720,13 @@ $$('[data-hire-worker]').forEach(b=>b.onclick=()=>{
 });
 $$('[data-legal-case]').forEach(b=>b.onclick=()=>{
  const result=settleLegalCase(state,p.id,b.dataset.legalCase);
- if(!result.ok){showToast(result.reason==='capital'?'Нужны 
+ if(!result.ok){
+   const message=result.reason==='capital'?'Нужны '+caseOptions.capitalCost+' долларов':
+     result.reason==='influence'?'Нужны '+caseOptions.influenceCost+' доступных шага влияния':
+     result.reason==='no-police-access'?'Нет неарестованного представителя в зоне полиции':
+     result.reason==='already-used'?'В этом году уже улаживали дело':'Действие сейчас недоступно';
+   showToast(message);return;
+ }
  showToast('Дело улажено · подозрение −1');render();
 });
 $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
