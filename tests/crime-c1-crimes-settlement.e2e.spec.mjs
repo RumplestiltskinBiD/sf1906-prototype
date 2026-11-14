@@ -6,6 +6,8 @@ function fixture(){
  s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
  s.yearTurnOrder=[0,1,2];s.firstPlayer=0;s.developmentSlotsUsed=[0,0,0];
  s.players[0].suspicion=2;
+ s.newsCurrentIds=['F01'];
+ s.constructions.push({id:'POLICE-FOREIGN',projectId:'std_police',districtId:'civic',playerId:1,status:'complete',startedRound:1,completedRound:1,materialsDelivered:[]});
  return s;
 }
 async function enter(page,state){
@@ -51,21 +53,19 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1440
  });
 }
 for(const viewport of [{width:390,height:844},{width:932,height:430}]){
- test('C1.3 no workers still can settle case and remain in service turn '+viewport.width+'x'+viewport.height,async({page})=>{
+ test('C1.3 jailed workers cannot settle even though free service turn exists '+viewport.width+'x'+viewport.height,async({page})=>{
   const s=fixture();for(const w of s.players[0].workers){w.jailed=true;w.arrestedRound=1;}
   s.players[0].workersLeft=0;s.players[0].suspicion=3;s.players[0].influence=0;
   await page.setViewportSize(viewport);await enter(page,s);
   await office(page,viewport);
-  await expect(page.locator('[data-legal-case="cash"]')).toBeEnabled();
+  await expect(page.locator('.legal-case-actions')).toContainText('зоне завершённой полиции');
+  await expect(page.locator('[data-legal-case="cash"]')).toBeDisabled();
   await expect(page.locator('[data-legal-case="influence"]')).toBeDisabled();
-  await page.locator('[data-legal-case="cash"]').click();
-  let after=await saved(page);
-  expect(after.players[0].suspicion).toBe(2);
-  expect(after.players[0].workers.every(w=>w.jailed)).toBe(true);
   await page.locator('#officeDrawer [data-close-drawer]').click();
   await expect(page.locator('#mobileActionDock [data-mobile-action="service-pass"]')).toBeVisible();
   await page.locator('#mobileActionDock [data-mobile-action="service-pass"]').click();
-  after=await saved(page);
+  const after=await saved(page);
+  expect(after.players[0].suspicion).toBe(3);
   expect(after.developmentSlotsUsed).toEqual([3,0,0]);
  });
 }
@@ -98,4 +98,39 @@ test('C1.3 tester can raise suspicion without cluttering the map',async({page})=
  await page.locator('#settingsDrawer [data-close-drawer]').click();
  await office(page,{width:390});
  await expect(page.locator('.legal-case-actions')).toBeVisible();
+});
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('C04 Office changes settlement to $7 or 3 Influence steps and survives reload '+viewport.width+'x'+viewport.height,async({page})=>{
+  const s=fixture();s.newsCurrentIds=['C04'];
+  await page.setViewportSize(viewport);await enter(page,s);
+  await office(page,viewport);
+  const settle=page.locator('.legal-case-actions');
+  await expect(settle).toContainText('Полиция');
+  await expect(page.locator('[data-legal-case="cash"]')).toContainText('−$7');
+  await expect(page.locator('[data-legal-case="influence"]')).toContainText('−3');
+  await expect(page.locator('[data-legal-case="cash"]')).toBeEnabled();
+  await page.locator('[data-legal-case="cash"]').click();
+  expect((await saved(page)).players[0].capital).toBe(s.players[0].capital-7);
+  await page.reload();await office(page,viewport);
+  await expect(settle).toContainText('В этом году уже использовано');
+  await expect(page.locator('[data-legal-case]')).toHaveCount(0);
+ });
+ test('police zone disables settlement when no completed coverage '+viewport.width+'x'+viewport.height,async({page})=>{
+  const s=fixture();s.constructions=[];
+  await page.setViewportSize(viewport);await enter(page,s);
+  await office(page,viewport);
+  await expect(page.locator('.legal-case-actions')).toContainText('зоне завершённой полиции');
+  await expect(page.locator('[data-legal-case="cash"]')).toBeDisabled();
+  await expect(page.locator('[data-legal-case="influence"]')).toBeDisabled();
+ });
+}
+test('C04 newspaper shows temporary police scandal without old housing fine',async({page})=>{
+ const s=fixture();s.newsCurrentIds=['C04'];s.constructions.push({id:'HOUSE',projectId:'tenement',districtId:'financial',playerId:0,status:'complete'});
+ await page.setViewportSize({width:390,height:844});await enter(page,s);
+ await expect(page.locator('#newsStripLabel')).toContainText('$7');
+ await page.locator('#newsOpenBtn').click();
+ await expect(page.locator('#newsSheetContent')).toContainText('−3');
+ await expect(page.locator('#newsSheetContent')).not.toContainText('Жители боятся возвращаться домой');
+ await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
 });
