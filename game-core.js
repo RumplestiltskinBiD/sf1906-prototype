@@ -885,6 +885,7 @@ export function createInitialState({rng=Math.random}={}){
     marketExtendedForSixYears:true,
     newsArchive:[],
     newsEmergency:{},
+    newsF01Notice:null,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
     yearTurnOrder,
@@ -2578,6 +2579,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.round++;
   state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
   state.newsEmergency={};
+  state.newsF01Notice=null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
   refreshLogisticsSupply(state,{rng});
@@ -2835,10 +2837,12 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsDeck=deck;
     state.newsArchive=state.newsArchive||[];
     state.newsEmergency={};
+    state.newsF01Notice=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
   }
   if(!state.newsEmergency||typeof state.newsEmergency!=='object')state.newsEmergency={};
+  if(!Object.hasOwn(state,'newsF01Notice'))state.newsF01Notice=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   return state;
 }
@@ -2877,9 +2881,104 @@ function newsServiceSources(state,districtId,kind){
   if(kind==='clinic'||kind==='police')return completedActionSpaces(state,kind).filter(c=>c.districtId===districtId||districtNeighbors(districtId).includes(c.districtId));
   return [];
 }
+// F01 v2 is an active, once-a-year citywide levy. The maximum is the current
+// *net* district fire risk, including site effects and built municipal services.
+// Personal contribution is computed independently: station protection or a
+// different building's upgrade cannot clear a notice against the accused site.
+export function f01NoticePreview(state){
+  if(activeNewspaper(state)?.id!=='F01')return null;
+  const districtRisks=DISTRICTS.map(d=>({
+    districtId:d.id,fireRisk:districtRisk(state,d.id)?.fire.raw??0
+  }));
+  const maxFireRisk=Math.max(0,...districtRisks.map(d=>d.fireRisk));
+  const highestDistrictIds=districtRisks.filter(d=>d.fireRisk===maxFireRisk).map(d=>d.districtId);
+  const filed=state.newsF01Notice?.round===state.round?state.newsF01Notice:null;
+  const building=filed?(state.constructions||[]).find(c=>c.id===filed.constructionId):null;
+  const personalFire=building&&building.status==='complete'
+    ?Math.max(0,constructionFireRisk(building)-(building.fireSafetyModernized&&constructionFireRisk(building)>0?1:0))
+    :0;
+  const active=!!(filed&&building&&building.status==='complete'&&
+    building.playerId===filed.accusedPlayerId&&personalFire>0);
+  return {maxFireRisk,highestDistrictIds,filed,active,personalFire,
+    accusedPlayerId:filed?.accusedPlayerId??null,
+    districtId:filed?.districtId??null,constructionId:filed?.constructionId??null};
+}
+export function f01NoticeOptions(state,playerId){
+  const preview=f01NoticePreview(state);
+  if(!preview)return {ok:false,reason:'not-f01',targets:[],canFile:false};
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])
+    return {ok:false,reason:'player',targets:[],canFile:false};
+  const eligibleDistricts=new Set(preview.highestDistrictIds);
+  const targets=(state.constructions||[]).filter(c=>
+    c.status==='complete'&&c.playerId!==playerId&&eligibleDistricts.has(c.districtId)
+    &&constructionFireRisk(c)-(c.fireSafetyModernized&&constructionFireRisk(c)>0?1:0)>0
+  ).map(c=>({
+    constructionId:c.id,ownerId:c.playerId,districtId:c.districtId,
+    personalFire:constructionFireRisk(c)-(c.fireSafetyModernized&&constructionFireRisk(c)>0?1:0)
+  }));
+  const canFile=!preview.filed&&state.newsLastResolvedRound!==state.round&&
+    canTakeMainAction(state,playerId)&&targets.length>0;
+  return {ok:true,canFile,targets,...preview};
+}
+export function fileF01Notice(state,playerId,constructionId){
+  const preview=f01NoticePreview(state);
+  if(!preview)return {ok:false,reason:'not-f01'};
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  if(preview.filed)return {ok:false,reason:'already-filed'};
+  const options=f01NoticeOptions(state,playerId);
+  if(!options.ok)return {ok:false,reason:options.reason};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
+  const target=options.targets.find(t=>t.constructionId===constructionId);
+  if(!target)return {ok:false,reason:'invalid-target'};
+  // No movement to the accused district: that requirement was NOT approved.
+  const consumed=consumeMainAction(state,playerId);
+  if(!consumed.ok)return consumed;
+  state.newsF01Notice={round:state.round,constructionId:target.constructionId,
+    accusedPlayerId:target.ownerId,districtId:target.districtId,filerId:playerId};
+  logEvent(state,state.players[playerId].name+' предъявляет пожарной инспекции акт против '+
+    state.players[target.ownerId].name+' в '+districtById(target.districtId).name+
+    ' (здание '+(projectById(state.constructions.find(c=>c.id===target.constructionId)?.projectId)?.name||target.constructionId)+').','accent');
+  return {ok:true,notice:{...state.newsF01Notice},action:consumed};
+}
+function resolveF01Newspaper(state,card){
+  const notice=f01NoticePreview(state);
+  const personal=!!notice?.active;
+  const payers=personal?[notice.accusedPlayerId]:state.players.map(p=>p.id);
+  const cashDue=personal?6:2;
+  const entries=[],changes={};
+  for(const pid of payers){
+    const p=state.players[pid];
+    const paid=Math.min(Math.max(0,p.capital||0),cashDue);
+    p.capital-=paid;
+    const influence=moveInfluence(state,pid,-1).steps;
+    entries.push({playerId:pid,districtIds:personal?[notice.districtId]:[],
+      kind:personal?'personal-notice':'collective-levy',
+      capitalDue:cashDue,actual:-paid,influenceActual:influence});
+    changes[pid]={capital:-paid,influence,prestige:0};
+  }
+  const report={
+    year:newsYear(state.round),round:state.round,cardId:card.id,title:card.title,
+    category:card.category,entries,changes,serviceRecognition:[],emergency:{},
+    f01:{mode:personal?'personal':'collective',filed:notice?.filed?{...notice.filed}:null,
+      validAtYearEnd:personal,personalFire:notice?.personalFire??0,
+      maxFireRisk:notice?.maxFireRisk??0}
+  };
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  logEvent(state,'The San Francisco Call, '+report.year+' · '+card.title+': '+
+    (personal?'штраф за нарушение получил '+state.players[notice.accusedPlayerId].name:
+      'все инвесторы оплачивают общегородской противопожарный сбор')+'.','accent');
+  return {ok:true,report};
+}
+
 export function newsPreview(state){
   const card=activeNewspaper(state);
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='F01'){
+    const f01=f01NoticePreview(state);
+    return {card,entries:[],threatened:[],protected:[],
+      summary:{districts:0,exposed:0,safe:0},f01};
+  }
   const candidates=(state.constructions||[]).filter(c=>newspaperTargets(state,card,c));
   // Multiple properties from one owner in one district count once.
   const groups=new Map();
@@ -2921,7 +3020,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||card.id==='F01'||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -2942,6 +3041,7 @@ export function resolveNewspaper(state){
   const forecast=newsPreview(state);
   const {card,entries}=forecast;
   if(!card)return {ok:false,reason:'no-card'};
+  if(card.id==='F01')return resolveF01Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
