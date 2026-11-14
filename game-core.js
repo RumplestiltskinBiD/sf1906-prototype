@@ -3161,9 +3161,39 @@ function resolveF02Newspaper(state,card){
   return {ok:true,report};
 }
 
+function resolveF03Newspaper(state,card){
+  const incident=f03CurrentPortIncident(state);
+  if(!incident)return {ok:false,reason:'no-active-port-fire'};
+  // F03 merely redistributes existing city supply; the remaining stock
+  // must still be available for ordinary freight pickups during this year.
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:[],changes:{},serviceRecognition:[],emergency:{},
+    f03:{roll:incident.roll,portId:incident.portId,
+      originStock:[...incident.originStock],
+      redistributed:incident.redistributed,
+      allocations:incident.allocations.map(a=>({...a}))}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  // Expire active port closure metadata. The consumed stocks from this year
+  // remain unchanged; only the NEXT normal refresh opens every port again.
+  state.newsF03Incident=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+
+    '». Портовые грузы перераспределены без дополнительных штрафов.','accent');
+  return {ok:true,report};
+}
+
 export function newsPreview(state){
   const card=activeNewspaper(state);
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='F03'){
+    const f03=f03CurrentPortIncident(state);
+    const node=LOGISTICS_NODES.find(n=>n.id===f03?.portId);
+    return {card,entries:[],threatened:node?[node.districtId]:[],protected:[],
+      summary:{districts:node?1:0,exposed:0,safe:0},
+      f03:f03?{...f03,originStock:[...f03.originStock],
+        allocations:f03.allocations.map(a=>({...a}))}:null};
+  }
   if(card.id==='F02'){
     const incident=f02ActiveIncident(state);
     return {card,entries:[],threatened:incident&&(incident.firePending||incident.manhuntPending)?[incident.districtId]:[],
@@ -3216,7 +3246,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||card.id==='F01'||card.id==='F02'||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3239,6 +3269,7 @@ export function resolveNewspaper(state){
   if(!card)return {ok:false,reason:'no-card'};
   if(card.id==='F01')return resolveF01Newspaper(state,card);
   if(card.id==='F02')return resolveF02Newspaper(state,card);
+  if(card.id==='F03')return resolveF03Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
