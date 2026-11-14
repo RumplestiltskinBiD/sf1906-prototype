@@ -2995,7 +2995,7 @@ export function f02ActiveIncident(state){
   return incident?.round===state.round&&F02_ARSON_DISTRICTS.includes(incident.districtId)?incident:null;
 }
 // Uses exactly the same traversable road graph as freight. Closed federal and
-// hill territories cannot be used as shortcuts; Golden Gate Park is pass-through.
+// hill territories cannot be used as shortcuts; the park has no road access.
 export function f02ServiceRoute(sourceDistrictId,targetDistrictId){
   if(!deliveryTraversableDistrict(sourceDistrictId)||!deliveryTraversableDistrict(targetDistrictId))return null;
   const queue=[[sourceDistrictId]],seen=new Set([sourceDistrictId]);
@@ -3043,6 +3043,7 @@ export function completeF02Operation(state,playerId,operation,constructionId){
   const options=f02OperationOptions(state,playerId,operation);
   if(!options.ok)return {ok:false,reason:options.reason};
   if(!options.pending)return {ok:false,reason:'already-completed'};
+  if(state.pendingConstruction||state.pendingWorkerAction)return {ok:false,reason:'pending-action'};
   if(!options.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
   const source=options.services.find(x=>x.constructionId===constructionId);
   if(!source)return {ok:false,reason:'invalid-service'};
