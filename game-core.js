@@ -121,8 +121,59 @@ export function generateLogisticsSupply({rng=Math.random}={}){
 }
 
 export function refreshLogisticsSupply(state,{rng=Math.random}={}){
+  // If the current F03 incident has already been drawn, the current year's
+  // stocks (including player purchases) must never be regenerated.
+  if(f03CurrentPortIncident(state))return state.logisticsSupply;
   state.logisticsSupply=generateLogisticsSupply({rng});
+  if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round)
+    applyF03PortFire(state,{rng});
   return state.logisticsSupply;
+}
+
+
+// F03: one port is closed for the current year; its *generated* materials
+// are redistributed, without changing their type/count or the rail station.
+export const F03_PORTS_BY_D6=Object.freeze([
+  'broadway','pacificmail','pacificmail','chinabasin','chinabasin','unioniron'
+]);
+export const F03_PRIORITY=Object.freeze(['pacificmail','chinabasin','broadway','unioniron']);
+export function f03CurrentPortIncident(state){
+  if(activeNewspaper(state)?.id!=='F03'||state.newsLastResolvedRound===state.round)return null;
+  const item=state.newsF03Incident;
+  return item?.round===state.round&&F03_PRIORITY.includes(item.portId)?item:null;
+}
+export function applyF03PortFire(state,{rng=Math.random}={}){
+  if(activeNewspaper(state)?.id!=='F03')return {ok:false,reason:'not-f03'};
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  if(f03CurrentPortIncident(state))return {ok:false,reason:'already-applied'};
+  // Validate the entire supply before drawing, so an invalid legacy save
+  // cannot end up partly redistributed or consume a random draw.
+  if(!LOGISTICS_NODES.every(n=>Array.isArray(state.logisticsSupply?.[n.id])&&
+     state.logisticsSupply[n.id].every(r=>RESOURCE_ORDER.includes(r))))
+    return {ok:false,reason:'invalid-supply'};
+  const raw=Number(rng());
+  const draw=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  const roll=Math.floor(draw*6)+1;
+  const portId=F03_PORTS_BY_D6[roll-1];
+  const recipients=F03_PRIORITY.filter(id=>id!==portId);
+  const supply=Object.fromEntries(Object.entries(state.logisticsSupply).map(([id,stock])=>[id,[...stock]]));
+  const originStock=[...supply[portId]];
+  const shuffled=shuffle(originStock,rng);
+  supply[portId]=[];
+  const allocations=[];
+  for(let i=0;i<shuffled.length;i++){
+    const toPortId=recipients[i%recipients.length];
+    supply[toPortId].push(shuffled[i]);
+    allocations.push({toPortId,resource:shuffled[i]});
+  }
+  const incident={round:state.round,roll,portId,originStock,allocations,
+    redistributed:originStock.length};
+  state.logisticsSupply=supply;
+  state.newsF03Incident=incident;
+  if(Array.isArray(state.log))logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+
+    ': пожар остановил '+LOGISTICS_NODES.find(n=>n.id===portId).name+
+    '; '+incident.redistributed+' материалов перенаправлено в работающие порты.','accent');
+  return {ok:true,incident};
 }
 
 export const PROJECTS = [
