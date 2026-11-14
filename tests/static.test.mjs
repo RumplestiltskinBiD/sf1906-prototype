@@ -17,6 +17,9 @@ test('browser entrypoints and displayed version are in sync',async()=>{
   assert.match(html,/styles\.css\?v=0560-f02-arson/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
   assert.match(app,/game-core\.js\?v=0560-f02-arson/);
+  assert.match(app,/newspaper-cards\.js\?v=0560-f02-arson/);
+  const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
+  assert.match(core,/newspaper-cards\.js\?v=0560-f02-arson/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
