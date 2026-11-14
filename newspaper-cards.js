@@ -274,14 +274,31 @@ export const NEWS_CARDS=Object.freeze([
   },
   {
     "id": "C04",
+    "designV2": {
+      "status": "approved-for-playtest",
+      "specification": "docs/NEWSPAPER_C04_V2.md",
+      "title": "КОРРУПЦИОННЫЙ СКАНДАЛ ПОТРЯС ПОЛИЦИЮ!",
+      "eventType": "one-year-police-corruption-settlement-premium",
+      "duration": "current-year-only",
+      "ordinarySettlement": {"capitalCost": 4, "influenceSteps": 2},
+      "eventSettlement": {"capitalCost": 7, "influenceSteps": 3},
+      "requiresCompletedPoliceCoverage": true,
+      "anyOwnersPoliceAccepted": true,
+      "standardPoliceRadius": 0,
+      "marketPoliceRadius": 1,
+      "anyNonJailedWorkerPositionAccepted": true,
+      "noExtraWorkerAction": true,
+      "settlementSuspicionChange": -1,
+      "noLegacyHousingPenaltyOrProtectionRecognition": true
+    },
     "category": "Преступность",
-    "title": "Жители боятся возвращаться домой",
-    "article": "О грабежах пишут целые кварталы, а городское начальство просит терпения. За отсутствие порядка ответят и владельцы доходных домов.",
-    "target": "housing",
-    "resource": "influence",
-    "delta": -1,
+    "title": "КОРРУПЦИОННЫЙ СКАНДАЛ ПОТРЯС ПОЛИЦИЮ!",
+    "article": "После разоблачений в прессе городская управа начала проверку полицейских управлений. Посредники, ранее улаживавшие дела влиятельных предпринимателей, опасаются расследования и требуют значительно больших сумм.",
+    "target": "none",
+    "resource": "capital",
+    "delta": 0,
     "frequency": "oncePerPlayer",
-    "defense": "police"
+    "defense": null
   },
   {
     "id": "H01",
