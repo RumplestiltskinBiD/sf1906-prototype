@@ -4,12 +4,12 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0550-ad-agency';
+} from './game-core.js?v=0560-f02-arson';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
@@ -1261,6 +1261,7 @@ function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
+  if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
   const unit=card.resource==='capital'?'$':card.resource==='influence'?'Влияние ':'ПО ';
   const sign=card.delta>0?'+':'−';
   return sign+(unit==='$'?unit+Math.abs(card.delta):Math.abs(card.delta)+' '+unit.trim())+
@@ -1304,6 +1305,38 @@ function toggleNewspaperMap(){
   render();
   if(newsMapVisible)requestAnimationFrame(()=>$('#cityBoardScroll')?.scrollIntoView({behavior:'smooth',block:'center'}));
 }
+function renderF02MapMarkers(incident){
+  // The two markers remain independent and visible on the board even while
+  // the newspaper sheet is closed; do not intercept district map interaction.
+  $$('.f02-map-marker').forEach(marker=>marker.remove());
+  if(!incident||(!incident.firePending&&!incident.manhuntPending))return;
+  const group=$$('[data-district]').find(g=>g.dataset.district===incident.districtId);
+  const region=group?.querySelector('path');
+  if(!group||!region||typeof region.getBBox!=='function')return;
+  const bounds=region.getBBox();
+  const x=bounds.x+bounds.width/2,y=bounds.y+bounds.height/2;
+  const positions=[
+    {kind:'fire',visible:incident.firePending,symbol:'🔥',x:x-19},
+    {kind:'manhunt',visible:incident.manhuntPending,symbol:'🔎',x:x+19}
+  ];
+  const ns='http://www.w3.org/2000/svg';
+  for(const item of positions){
+    if(!item.visible)continue;
+    const marker=document.createElementNS(ns,'g');
+    marker.classList.add('f02-map-marker');
+    marker.setAttribute('data-f02-marker',item.kind);
+    marker.setAttribute('role','img');
+    marker.setAttribute('aria-label',item.kind==='fire'?'Непотушенный пожар':'Поджигатель в розыске');
+    const circle=document.createElementNS(ns,'circle');
+    circle.setAttribute('cx',item.x);circle.setAttribute('cy',y);circle.setAttribute('r',17);
+    circle.classList.add(item.kind==='fire'?'f02-marker-fire':'f02-marker-manhunt');
+    const textNode=document.createElementNS(ns,'text');
+    textNode.setAttribute('x',item.x);textNode.setAttribute('y',y+6);
+    textNode.setAttribute('text-anchor','middle');textNode.textContent=item.symbol;
+    textNode.setAttribute('font-size','23');
+    marker.append(circle,textNode);group.append(marker);
+  }
+}
 function renderNewspaper(){
   const card=activeNewspaper(state),forecast=newsPreview(state);
   const year=1899+state.round;
@@ -1322,9 +1355,10 @@ function renderNewspaper(){
   const affected=new Set(forecast.threatened),protectedSet=new Set(forecast.protected);
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
-    g.classList.toggle('news-threat',newsMapVisible&&affected.has(id));
+    g.classList.toggle('news-threat',(newsMapVisible||card?.id==='F02')&&affected.has(id));
     g.classList.toggle('news-protected',newsMapVisible&&protectedSet.has(id));
   });
+  renderF02MapMarkers(card?.id==='F02'?forecast.f02:null);
   $('#newsSheet').hidden=!newsSheetOpen;
   $('#newsBackdrop').hidden=!newsSheetOpen;
   document.body.classList.toggle('news-sheet-open',newsSheetOpen);
@@ -1339,15 +1373,17 @@ function renderNewspaper(){
   // Old saved F01 archives record the *former* housing fine, not the new
   // 2026-11-14 levy. Preserve those historical outcomes instead of relabeling.
   const legacyF01Archive=!!(archived?.cardId==='F01'&&!archived.f01);
-  const historical=archived&&!legacyF01Archive?newsCardByHistory(archived.cardId):null;
+  const legacyF02Archive=!!(archived?.cardId==='F02'&&!archived.f02);
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
+  const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
   const outcomeRows=archived?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
     const delta=archived.changes?.[e.playerId];
-    const status=fireLevy?'Взыскание':e.defended?'Предотвращено':e.actual>0?'Прибыль':e.actual<0?'Потери':'Без изменений';
+    const status=arson?'Городское последствие':fireLevy?'Взыскание':e.defended?'Предотвращено':e.actual>0?'Прибыль':e.actual<0?'Потери':'Без изменений';
     return '<li>'+escapeHtml(p)+' · '+escapeHtml(loc)+': <b>'+escapeHtml(status)+'</b>'+
       (e.actual?' ('+(e.actual>0?'+':'')+e.actual+')':'')+'</li>';
   }).join(''):'';
@@ -1376,7 +1412,56 @@ function renderNewspaper(){
       }).join('')+'</div>':'<p>В районах с максимальным П нет завершённого опасного здания соперника.</p>')+
       (!fireActions?.canFile&&fireActions?.targets?.length?'<small>Подача сейчас недоступна: выберите представителя и используйте свободное основное действие в свой ход.</small>':'')+
       '</div>':'';
-  const projections=issue?.id==='F01'
+  const f02Incident=issue?.id==='F02'?forecast.f02:null;
+  const f02Operations=issue?.id==='F02'&&f02Incident
+    ?['fire','manhunt'].map(kind=>{
+      const done=kind==='fire'?!f02Incident.firePending:!f02Incident.manhuntPending;
+      const title=kind==='fire'?'🔥 Потушить пожар':'🔎 Поймать поджигателя';
+      const options=Number.isInteger(currentDeveloper(state))
+        ?f02OperationOptions(state,currentDeveloper(state),kind):null;
+      if(done)return '<section class="news-f02-operation done"><strong>'+title+
+        '</strong><small>Операция выполнена — жетон снят. Повторная награда невозможна.</small></section>';
+      const services=options?.services||[];
+      const choices=services.length?services.map(service=>{
+        const building=state.constructions.find(c=>c.id===service.constructionId);
+        const name=projectById(building?.projectId)?.name||building?.projectId||'Служба';
+        const district=districtById(service.districtId)?.name||service.districtId;
+        const owner=state.players[service.ownerId]?.name||'Игрок';
+        const explanation=service.cost===null?'Нет дорожного маршрута':
+          'Выезд $'+service.cost+' · '+(service.route.length-1)+' переходов';
+        const blockReason=!options?.actionAvailable?'Нет свободного основного действия':
+          !service.route?'Нет маршрута':
+          !service.reachable?'Представитель не достигает службы':
+          !service.affordable?'Недостаточно денег':'';
+        return '<button type="button" data-f02-kind="'+kind+'" data-f02-service="'+
+          escapeHtml(String(service.constructionId))+'" '+(service.available?'':'disabled')+
+          '><b>'+escapeHtml(name)+'</b><span>'+escapeHtml(district)+' · '+escapeHtml(owner)+
+          '</span><small>'+escapeHtml(explanation)+(blockReason?' · '+escapeHtml(blockReason):'')+'</small></button>';
+      }).join(''):'<small>Нет завершённого профильного учреждения. Резервных городских команд нет.</small>';
+      return '<section class="news-f02-operation"><strong>'+title+'</strong>'+
+        '<small>1 основное действие; +2 VP и +1 шаг Influence организатору. Выберите завершённую собственную или чужую службу в досягаемости представителя.</small>'+
+        '<div class="news-f02-services">'+choices+'</div></section>';
+    }).join(''):'';
+  const f02Panel=issue?.id==='F02'
+    ?'<div class="news-f02-panel"><strong>Поджог · D6: '+(f02Incident?.roll||'—')+
+      ' · '+escapeHtml(districtById(f02Incident?.districtId)?.name||'место не определено')+'</strong>'+
+      '<p>🔥 '+(f02Incident?.firePending?'Пожар не потушен':'Потушен')+
+      ' · 🔎 '+(f02Incident?.manhuntPending?'Поджигатель в розыске':'Поджигатель пойман')+'</p>'+
+      '<small>Без тушения каждый игрок теряет $3; без поимки каждый теряет 1 шаг Influence. Операции независимы.</small>'+
+      f02Operations+'</div>':'';
+  const f02Archive=arson&&archived?.f02
+    ?'<li><b>Поджог: '+escapeHtml(districtById(archived.f02.districtId)?.name||archived.f02.districtId)+
+       ' · D6 '+archived.f02.roll+'</b></li>'+
+       '<li>Пожар: '+(archived.f02.fireUnresolved?'не потушен — по $3 со всех':'потушен — штрафа нет')+
+       '; розыск: '+(archived.f02.manhuntUnresolved?'поджигатель не пойман — −1 Influence всем':'поимка состоялась — штрафа нет')+'</li>'+
+       (archived.f02.actions||[]).map(a=>'<li>'+escapeHtml(state.players[a.playerId]?.name||'Игрок')+
+         ' · '+(a.operation==='fire'?'тушение':'поимка')+
+         ' · выезд $'+a.cost+' · +2 VP, +'+a.influenceSteps+' Influence</li>').join('')
+    :'';
+  const projections=issue?.id==='F02'
+    ?'<li>Пожар '+(f02Incident?.firePending?'требует тушения':'потушен')+
+      '; розыск '+(f02Incident?.manhuntPending?'продолжается':'завершён')+'.</li>'
+    :issue?.id==='F01'
     ?'<li>Максимальный текущий П: '+firePreview.maxFireRisk+'. Районы: '+
       firePreview.highestDistrictIds.map(id=>escapeHtml(districtById(id)?.name||id)).join(', ')+'.</li>'+fireStatus
     :issue?.id==='C04'
@@ -1390,7 +1475,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&issue.id!=='F01'&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1414,15 +1499,16 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||legacyF01Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||legacyF01Archive||legacyF02Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
+      f02Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
@@ -1430,15 +1516,16 @@ function renderNewspaper(){
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
-      (fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
+      (arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
+       fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -1451,6 +1538,20 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-f02-kind][data-f02-service]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const result=completeF02Operation(state,currentDeveloper(state),
+      button.dataset.f02Kind,button.dataset.f02Service);
+    if(!result.ok){showToast(result.reason==='already-completed'?'Операция уже выполнена':
+      result.reason==='worker-range'?'Представитель слишком далеко от выбранной службы':
+      result.reason==='capital'?'Не хватает денег на выезд':
+      'Операция сейчас недоступна');render();return;}
+    showToast(button.dataset.f02Kind==='fire'?'Пожар потушен · +2 VP и +1 Influence':
+      'Поджигатель пойман · +2 VP и +1 Influence');
+    render();
   });
   $('#newsEmergencyStart')?.addEventListener('click',startNewsEmergency);
   $('#newsIssueMapToggle')?.addEventListener('click',toggleNewspaperMap);
