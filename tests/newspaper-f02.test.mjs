@@ -157,6 +157,21 @@ test('different players can perform independent operations in reverse order',()=
  assert.equal(s.players[0].prestige,0);
  assert.equal(G.resolveNewspaper(s).report.f02.actions.length,2);
 });
+test('owned service is legal, no extra owner fee, and two-edge dispatch keeps worker at source',()=>{
+ const s=setup();build(s,'OWN','firehouse','civic',0);
+ const options=G.f02OperationOptions(s,0,'fire');
+ assert.equal(options.services[0].ownerId,0);
+ assert.equal(options.services[0].route.length,3);
+ assert.equal(options.services[0].cost,2);
+ const r=G.completeF02Operation(s,0,'fire','OWN');
+ assert.equal(r.ok,true);
+ assert.equal(s.players[0].capital,18);
+ assert.equal(s.players[0].prestige,2);
+ assert.equal(s.players[0].influence,26);
+ assert.equal(s.players[0].workers[0].districtId,'civic');
+ assert.equal(s.newsF02Incident.districtId,'northbeach');
+ assert.equal(s.newsF02Incident.actions[0].ownerId,0);
+});
 test('service in incident district costs $0 and earns full reward',()=>{
  const s=setup();build(s,'F','std_fire','northbeach',2);
  turn(s,0,0,'northbeach');
