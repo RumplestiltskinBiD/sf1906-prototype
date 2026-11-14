@@ -2953,8 +2953,8 @@ function resolveF01Newspaper(state,card){
     const influence=moveInfluence(state,pid,-1).steps;
     entries.push({playerId:pid,districtIds:personal?[notice.districtId]:[],
       kind:personal?'personal-notice':'collective-levy',
-      capitalDue:cashDue,actual:-paid,influenceActual:influence});
-    changes[pid]={capital:-paid,influence,prestige:0};
+      capitalDue:cashDue,actual:paid? -paid:0,influenceActual:influence});
+    changes[pid]={capital:paid? -paid:0,influence,prestige:0};
   }
   const report={
     year:newsYear(state.round),round:state.round,cardId:card.id,title:card.title,
