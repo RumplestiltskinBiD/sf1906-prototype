@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0560-f02-arson';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0570-f03-port';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -121,8 +121,59 @@ export function generateLogisticsSupply({rng=Math.random}={}){
 }
 
 export function refreshLogisticsSupply(state,{rng=Math.random}={}){
+  // If the current F03 incident has already been drawn, the current year's
+  // stocks (including player purchases) must never be regenerated.
+  if(f03CurrentPortIncident(state))return state.logisticsSupply;
   state.logisticsSupply=generateLogisticsSupply({rng});
+  if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round)
+    applyF03PortFire(state,{rng});
   return state.logisticsSupply;
+}
+
+
+// F03: one port is closed for the current year; its *generated* materials
+// are redistributed, without changing their type/count or the rail station.
+export const F03_PORTS_BY_D6=Object.freeze([
+  'broadway','pacificmail','pacificmail','chinabasin','chinabasin','unioniron'
+]);
+export const F03_PRIORITY=Object.freeze(['pacificmail','chinabasin','broadway','unioniron']);
+export function f03CurrentPortIncident(state){
+  if(activeNewspaper(state)?.id!=='F03'||state.newsLastResolvedRound===state.round)return null;
+  const item=state.newsF03Incident;
+  return item?.round===state.round&&F03_PRIORITY.includes(item.portId)?item:null;
+}
+export function applyF03PortFire(state,{rng=Math.random}={}){
+  if(activeNewspaper(state)?.id!=='F03')return {ok:false,reason:'not-f03'};
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  if(f03CurrentPortIncident(state))return {ok:false,reason:'already-applied'};
+  // Validate the entire supply before drawing, so an invalid legacy save
+  // cannot end up partly redistributed or consume a random draw.
+  if(!LOGISTICS_NODES.every(n=>Array.isArray(state.logisticsSupply?.[n.id])&&
+     state.logisticsSupply[n.id].every(r=>['Lumber','Masonry','Steel'].includes(r))))
+    return {ok:false,reason:'invalid-supply'};
+  const raw=Number(rng());
+  const draw=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  const roll=Math.floor(draw*6)+1;
+  const portId=F03_PORTS_BY_D6[roll-1];
+  const recipients=F03_PRIORITY.filter(id=>id!==portId);
+  const supply=Object.fromEntries(Object.entries(state.logisticsSupply).map(([id,stock])=>[id,[...stock]]));
+  const originStock=[...supply[portId]];
+  const shuffled=shuffle(originStock,rng);
+  supply[portId]=[];
+  const allocations=[];
+  for(let i=0;i<shuffled.length;i++){
+    const toPortId=recipients[i%recipients.length];
+    supply[toPortId].push(shuffled[i]);
+    allocations.push({toPortId,resource:shuffled[i]});
+  }
+  const incident={round:state.round,roll,portId,originStock,allocations,
+    redistributed:originStock.length};
+  state.logisticsSupply=supply;
+  state.newsF03Incident=incident;
+  if(Array.isArray(state.log))logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+
+    ': пожар остановил '+LOGISTICS_NODES.find(n=>n.id===portId).name+
+    '; '+incident.redistributed+' материалов перенаправлено в работающие порты.','accent');
+  return {ok:true,incident};
 }
 
 export const PROJECTS = [
@@ -861,7 +912,7 @@ export function createInitialState({rng=Math.random}={}){
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   const initialF02Incident=newsCurrentIds[0]==='F02'?createF02Incident(1,rng):null;
-  return {
+  const state={
     version:'0.44',
     industrialExpansionV1:true,
     housingSchoolExpansionV1:true,
@@ -888,6 +939,7 @@ export function createInitialState({rng=Math.random}={}){
     newsEmergency:{},
     newsF01Notice:null,
     newsF02Incident:initialF02Incident,
+    newsF03Incident:null,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
     yearTurnOrder,
@@ -940,6 +992,10 @@ export function createInitialState({rng=Math.random}={}){
     log:[{msg:'Началась тестовая партия v0.44 City Hall Goals. В City Hall каждый игрок может взять до 1 городской цели; выполненные цели отчитываются в начале следующего года.','cls':'accent'}],
     finished:false
   };
+  // Materials are generated at their original point in setup; only then
+  // is the affected port determined and its real cargo redistributed.
+  if(newsCurrentIds[0]==='F03')applyF03PortFire(state,{rng});
+  return state;
 }
 
 export function logEvent(state,msg,cls=''){state.log.push({msg,cls});}
@@ -2583,8 +2639,10 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
+  state.newsF03Incident=null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
-  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
+  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. '+
+    (forthcoming.id==='F03'?'Портовые поставки меняются сразу при выходе газеты.':'Событие произойдёт в конце года.'),'accent');
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
@@ -2842,6 +2900,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsEmergency={};
     state.newsF01Notice=null;
     state.newsF02Incident=null;
+    state.newsF03Incident=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
   }
@@ -2854,6 +2913,11 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     if(!state.newsF02Incident||state.newsF02Incident.round!==state.round)
       state.newsF02Incident=createF02Incident(state.round,rng);
   }else if(!Object.hasOwn(state,'newsF02Incident'))state.newsF02Incident=null;
+  // Legacy in-progress F03 save: move only *remaining* city stock. Already
+  // purchased or carried materials cannot be pulled back retroactively.
+  if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round){
+    if(!f03CurrentPortIncident(state))applyF03PortFire(state,{rng});
+  }else if(!Object.hasOwn(state,'newsF03Incident'))state.newsF03Incident=null;
   return state;
 }
 export function activeNewspaper(state){
@@ -3098,9 +3162,39 @@ function resolveF02Newspaper(state,card){
   return {ok:true,report};
 }
 
+function resolveF03Newspaper(state,card){
+  const incident=f03CurrentPortIncident(state);
+  if(!incident)return {ok:false,reason:'no-active-port-fire'};
+  // F03 merely redistributes existing city supply; the remaining stock
+  // must still be available for ordinary freight pickups during this year.
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:[],changes:{},serviceRecognition:[],emergency:{},
+    f03:{roll:incident.roll,portId:incident.portId,
+      originStock:[...incident.originStock],
+      redistributed:incident.redistributed,
+      allocations:incident.allocations.map(a=>({...a}))}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  // Expire active port closure metadata. The consumed stocks from this year
+  // remain unchanged; only the NEXT normal refresh opens every port again.
+  state.newsF03Incident=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+
+    '». Портовые грузы перераспределены без дополнительных штрафов.','accent');
+  return {ok:true,report};
+}
+
 export function newsPreview(state){
   const card=activeNewspaper(state);
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='F03'){
+    const f03=f03CurrentPortIncident(state);
+    const node=LOGISTICS_NODES.find(n=>n.id===f03?.portId);
+    return {card,entries:[],threatened:node?[node.districtId]:[],protected:[],
+      summary:{districts:node?1:0,exposed:0,safe:0},
+      f03:f03?{...f03,originStock:[...f03.originStock],
+        allocations:f03.allocations.map(a=>({...a}))}:null};
+  }
   if(card.id==='F02'){
     const incident=f02ActiveIncident(state);
     return {card,entries:[],threatened:incident&&(incident.firePending||incident.manhuntPending)?[incident.districtId]:[],
@@ -3153,7 +3247,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||card.id==='F01'||card.id==='F02'||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3176,6 +3270,7 @@ export function resolveNewspaper(state){
   if(!card)return {ok:false,reason:'no-card'};
   if(card.id==='F01')return resolveF01Newspaper(state,card);
   if(card.id==='F02')return resolveF02Newspaper(state,card);
+  if(card.id==='F03')return resolveF03Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;

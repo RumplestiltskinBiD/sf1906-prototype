@@ -1,6 +1,6 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,RAISE_CAPITAL_AMOUNT,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,
+LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
@@ -9,8 +9,8 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0560-f02-arson';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0560-f02-arson';
+} from './game-core.js?v=0570-f03-port';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0570-f03-port';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1262,6 +1262,7 @@ function newspaperEffectShort(card){
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
+  if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
   const unit=card.resource==='capital'?'$':card.resource==='influence'?'Влияние ':'ПО ';
   const sign=card.delta>0?'+':'−';
   return sign+(unit==='$'?unit+Math.abs(card.delta):Math.abs(card.delta)+' '+unit.trim())+
@@ -1355,7 +1356,7 @@ function renderNewspaper(){
   const affected=new Set(forecast.threatened),protectedSet=new Set(forecast.protected);
   $$('[data-district]').forEach(g=>{
     const id=g.dataset.district;
-    g.classList.toggle('news-threat',(newsMapVisible||card?.id==='F02')&&affected.has(id));
+    g.classList.toggle('news-threat',(newsMapVisible||['F02','F03'].includes(card?.id))&&affected.has(id));
     g.classList.toggle('news-protected',newsMapVisible&&protectedSet.has(id));
   });
   renderF02MapMarkers(card?.id==='F02'?forecast.f02:null);
@@ -1374,11 +1375,13 @@ function renderNewspaper(){
   // 2026-11-14 levy. Preserve those historical outcomes instead of relabeling.
   const legacyF01Archive=!!(archived?.cardId==='F01'&&!archived.f01);
   const legacyF02Archive=!!(archived?.cardId==='F02'&&!archived.f02);
-  const historical=archived&&!legacyF01Archive&&!legacyF02Archive?newsCardByHistory(archived.cardId):null;
+  const legacyF03Archive=!!(archived?.cardId==='F03'&&!archived.f03);
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
+  const portFire=!legacyF03Archive&&(record.id==='F03'||record.cardId==='F03');
   const outcomeRows=archived?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
@@ -1458,7 +1461,37 @@ function renderNewspaper(){
          ' · '+(a.operation==='fire'?'тушение':'поимка')+
          ' · выезд $'+a.cost+' · +2 VP, +'+a.influenceSteps+' Influence</li>').join('')
     :'';
-  const projections=issue?.id==='F02'
+  const f03Incident=issue?.id==='F03'?forecast.f03:null;
+  const f03PortName=LOGISTICS_NODES.find(n=>n.id===f03Incident?.portId)?.name||'не определён';
+  const f03RecipientRows=f03Incident
+    ?['pacificmail','chinabasin','broadway','unioniron'].filter(id=>id!==f03Incident.portId).map(id=>{
+      const node=LOGISTICS_NODES.find(n=>n.id===id);
+      const transferred=f03Incident.allocations.filter(a=>a.toPortId===id);
+      const current=state.logisticsSupply?.[id]||[];
+      return '<li>'+escapeHtml(node?.name||id)+' · перенаправлено +'+transferred.length+
+        ' · осталось '+current.length+' куб.</li>';
+    }).join('')
+    :'';
+  const f03Panel=issue?.id==='F03'
+    ?'<div class="news-f03-panel"><strong>🔥 Закрыт порт: '+escapeHtml(f03PortName)+
+      ' · D6: '+(f03Incident?.roll||'—')+'</strong>'+
+      '<p>Его запас этого года перенаправлен в три работающих порта; никакого штрафа или отдельного действия.</p>'+
+      '<p>Перенаправлено '+(f03Incident?.redistributed??0)+' куб. · Южная железная дорога не затронута.</p>'+
+      '<ul>'+f03RecipientRows+'</ul>'+
+      '<small>Цифры «осталось» учитывают выполненные в этом году доставки.</small></div>':'';
+  const f03Archive=portFire&&archived?.f03
+    ?'<li><b>Пострадал '+escapeHtml(LOGISTICS_NODES.find(n=>n.id===archived.f03.portId)?.name||archived.f03.portId)+
+      ' · D6 '+archived.f03.roll+'</b></li>'+
+      '<li>Перенаправлено '+archived.f03.redistributed+
+      ' куб. без потерь и дополнительных штрафов.</li>'+
+      ['pacificmail','chinabasin','broadway','unioniron'].filter(id=>id!==archived.f03.portId).map(id=>
+        '<li>'+escapeHtml(LOGISTICS_NODES.find(n=>n.id===id)?.name||id)+': +'+
+        (archived.f03.allocations||[]).filter(a=>a.toPortId===id).length+' куб.</li>').join('')
+    :'';
+  const projections=issue?.id==='F03'
+    ?'<li>Закрыт '+escapeHtml(f03PortName)+
+      ' (D6 '+(f03Incident?.roll||'—')+'); доставка с него недоступна до следующего пополнения.</li>'
+    :issue?.id==='F02'
     ?'<li>Пожар '+(f02Incident?.firePending?'требует тушения':'потушен')+
       '; розыск '+(f02Incident?.manhuntPending?'продолжается':'завершён')+'.</li>'
     :issue?.id==='F01'
@@ -1475,7 +1508,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1499,16 +1532,16 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||legacyF01Archive||legacyF02Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||legacyF01Archive||legacyF02Archive||legacyF03Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+
+      f02Archive+f03Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
@@ -1516,16 +1549,17 @@ function renderNewspaper(){
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
-      (arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
+      (portFire?'<small>Узлы портов перераспределены при открытии выпуска; в конце года ничего дополнительно не списывается.</small>':
+       arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+f03Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -2087,8 +2121,9 @@ el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВ�
 }
 function renderSupplyNodes(){
 const layer=$('#supplyNodeLayer');if(!layer)return;const supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
-const nodes=LOGISTICS_NODES.map(n=>{const stock=supply[n.id]||[],start=-((stock.length-1)*7),pips=stock.map((t,i)=>'<circle class="node-resource '+materialClass(t)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join(''),ok=selecting&&stock.length;
-return '<g class="supply-node node-'+n.kind+' '+(ok?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-node="'+n.id+'"><title>'+n.name+'</title><circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+logisticsKindCode(n.kind)+'</text>'+pips+'<text class="node-name" y="48">'+n.shortName+'</text><text class="node-type" y="61">'+logisticsKindLabel(n.kind)+'</text></g>';}).join('');
+const closedPort=f03CurrentPortIncident(state)?.portId;
+const nodes=LOGISTICS_NODES.map(n=>{const stock=supply[n.id]||[],start=-((stock.length-1)*7),pips=stock.map((t,i)=>'<circle class="node-resource '+materialClass(t)+'" cx="'+(start+i*14)+'" cy="25" r="5"/>').join(''),ok=selecting&&stock.length,closed=n.id===closedPort;
+return '<g class="supply-node node-'+n.kind+' '+(closed?'f03-port-closed ':'')+(ok?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-node="'+n.id+'"><title>'+n.name+(closed?' · ПОЖАР: поставки перенаправлены до конца года':'')+'</title><circle class="node-hit" r="36"/><circle class="node-pin" r="20"/><text class="node-code" y="4">'+logisticsKindCode(n.kind)+'</text>'+pips+'<text class="node-name" y="48">'+n.shortName+'</text><text class="node-type" y="61">'+(closed?'ПОЖАР · НЕТ ГРУЗОВ':logisticsKindLabel(n.kind))+'</text>'+(closed?'<text class="f03-fire-label" y="-26">🔥 ПОЖАР</text>':'')+'</g>';}).join('');
 const suppliers=NEUTRAL_MATERIAL_SUPPLIERS.map(n=>'<g class="neutral-supplier-node '+materialClass(n.resource)+' '+(selecting?'source-available':'')+'" transform="translate('+n.x+' '+n.y+')" data-delivery-supplier="'+n.id+'"><title>'+n.name+' · '+n.historical+' · '+materialLabel(n.resource)+' $'+n.unitPrice+'</title><circle class="node-hit" r="34"/><rect class="supplier-pin" x="-19" y="-19" width="38" height="38" rx="9"/><text class="supplier-code" y="4">'+n.code+'</text><text class="supplier-price" y="28">$'+n.unitPrice+'</text><text class="node-name" y="47">'+n.shortName+'</text><text class="node-type" y="59">'+materialLabel(n.resource)+' · всегда</text></g>').join('');
 const yp=deliveryDraft?.playerId??pid??0,yi=freightYardInventory(state,yp),src=selecting&&yi.length,target=deliveryDropPhase()&&deliveryDraft?.route?.includes('western')&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryTargetAcceptsAny(freightYardTarget());
 const slots=state.players.map((p,i)=>'<circle class="yard-player-dot '+p.key+'" cx="'+(-18+i*18)+'" cy="26" r="6"/><text class="yard-count" x="'+(-18+i*18)+'" y="29">'+freightYardInventory(state,i).length+'</text>').join('');

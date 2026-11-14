@@ -100,7 +100,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "F03",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_F03_V2.md",
       "title": "ПОЖАР ПАРАЛИЗОВАЛ ОДИН ИЗ ПОРТОВ ГОРОДА!",
       "eventType": "one-year-port-fire-material-redistribution",
@@ -121,13 +121,13 @@ export const NEWS_CARDS=Object.freeze([
       "noExtraActionsPenaltiesOrRewards": true
     },
     "category": "Пожар",
-    "title": "Горючие товары за деревянными дверями",
-    "article": "В редакцию приходят письма о беспорядке на складах и фабриках. Когда вспыхнет очередной пожар, городская управа вновь заявит, что её никто не предупреждал.",
-    "target": "industry-logistics",
+    "title": "ПОЖАР ПАРАЛИЗОВАЛ ОДИН ИЗ ПОРТОВ ГОРОДА!",
+    "article": "Крупный пожар уничтожил складские помещения одного из портов Сан-Франциско! Разгрузка судов остановлена, а торговые компании вынуждены срочно перенаправлять грузы на другие причалы. Городские перевозчики готовятся к перебоям в снабжении.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "firehouse"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "F04",
