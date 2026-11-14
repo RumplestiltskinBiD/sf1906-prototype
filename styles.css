@@ -2431,6 +2431,28 @@ body.drawer-open .mobile-action-dock{
   border-radius:7px;font:600 12px/1.45 system-ui,sans-serif;cursor:pointer;white-space:normal}
 .news-f01-targets button:disabled{opacity:.55;cursor:not-allowed}
 .news-f01-targets button:not(:disabled):focus-visible{outline:3px solid #286356;outline-offset:1px}
+.news-f02-panel{border-top:1px solid #a8895d;margin-top:10px;padding-top:10px}
+.news-f02-panel>strong{font-size:13px}
+.news-f02-panel>p{margin:7px 0;font-size:13px;line-height:1.45}
+.news-f02-panel>small{font-size:12px}
+.news-f02-operation{margin-top:12px;padding:10px;background:#f7e7c8;border:1px solid #bfa27a;border-radius:8px}
+.news-f02-operation.done{background:#deecda}
+.news-f02-operation>strong{display:block;font-size:14px}
+.news-f02-operation>small{display:block;font-size:12px;line-height:1.5;margin:5px 0}
+.news-f02-services{display:grid;gap:6px;max-height:195px;overflow-y:auto;margin-top:8px}
+.news-f02-services button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
+  min-height:44px;padding:9px 10px;text-align:left;background:#fff9eb;
+  color:#362b20;border:1px solid #a28b66;border-radius:7px;cursor:pointer;
+  font:600 12px/1.45 system-ui,sans-serif;overflow-wrap:anywhere}
+.news-f02-services button span{font-weight:400}
+.news-f02-services button small{font-size:11px;font-weight:400}
+.news-f02-services button:disabled{opacity:.58;cursor:not-allowed}
+.news-f02-services button:focus-visible{outline:3px solid #286356;outline-offset:1px}
+.f02-map-marker{pointer-events:none}
+.f02-map-marker circle{stroke:#fff8db;stroke-width:3;filter:drop-shadow(0 0 5px rgba(0,0,0,.4))}
+.f02-map-marker .f02-marker-fire{fill:#9c3624}
+.f02-map-marker .f02-marker-manhunt{fill:#264d75}
+.f02-map-marker text{pointer-events:none;font-family:system-ui,'Apple Color Emoji','Segoe UI Emoji',sans-serif}
 .news-emergency-action{display:block;width:100%;padding:12px;margin:13px 0;border:1px solid #56836e;border-radius:9px;
   background:#286356;color:#fff;font-weight:800;cursor:pointer;min-height:44px}
 .news-emergency-action:disabled{opacity:.52;cursor:not-allowed}

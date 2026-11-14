@@ -58,17 +58,21 @@ test('only complete projects contribute to a newspaper and police covers neighbo
   assert.equal(s.newsArchive[0].serviceRecognition[0],2);
   assert.equal(G.resolveNewspaper(s).ok,false);
 });
-test('firehouses counter news only in their own district',()=>{
+test('F02 v2 does not automatically suppress the fire from a completed firehouse',()=>{
   const s=game('F02');
-  put(s,'shops','financial',1);
-  put(s,'shops','civic',1);
-  put(s,'firehouse','financial',0);
-  const prev=G.newsPreview(s);
-  assert.deepEqual(prev.protected,['financial']);
-  assert.deepEqual(prev.threatened,['civic']);
-  G.resolveNewspaper(s);
-  assert.equal(s.players[1].capital,28);
-  assert.equal(s.players[0].influence,6);
+  put(s,'firehouse','northbeach',0);
+  // A legacy test had assumed passive protection. The approved F02 instead
+  // requires a separate actual main action to remove each independent token.
+  s.newsF02Incident=null;
+  G.ensureNewspaper(s,{rng:()=>0});
+  assert.equal(G.newsPreview(s).f02.firePending,true);
+  assert.equal(G.newsPreview(s).f02.manhuntPending,true);
+  const result=G.resolveNewspaper(s);
+  assert.equal(result.ok,true);
+  assert.equal(result.report.f02.fireUnresolved,true);
+  assert.equal(result.report.f02.manhuntUnresolved,true);
+  assert.equal(s.players[0].capital,27);
+  assert.equal(s.players[0].influence,4);
 });
 test('clinic protects neighbouring quarters with a road',()=>{
   const s=game('H01');
@@ -119,15 +123,15 @@ test('emergency costs one worker action and $1, protects for only current issue'
   assert.equal(s.players[1].capital,30);
 });
 test('temporary protection never survives the next newspaper',()=>{
-  const s=game('F02');
+  const s=game('C01');
   s.developmentComplete=true;
-  s.newsEmergency.civic={playerId:0,cardId:'F02',round:1};
+  s.newsEmergency.civic={playerId:0,cardId:'C01',round:1};
   const r=G.cleanupMarket(s,{rng:()=>0.27});
   assert.equal(r.ok,true);
   assert.equal(s.round,2);
   assert.deepEqual(s.newsEmergency,{});
   assert.equal(s.newsArchive.length,1);
-  assert.notEqual(G.activeNewspaper(s)?.id,'F02');
+  assert.notEqual(G.activeNewspaper(s)?.id,'C01');
 });
 test('positive trade issues reward owners only once per district',()=>{
   const s=game('E02');

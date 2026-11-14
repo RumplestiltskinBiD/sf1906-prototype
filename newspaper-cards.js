@@ -48,7 +48,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "F02",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_F02_V2.md",
       "title": "ОН ПРЕДУПРЕДИЛ РЕДАКЦИЮ. ГОРОД В ОГНЕ!",
       "eventType": "one-year-arson-two-independent-operations",
@@ -89,13 +89,13 @@ export const NEWS_CARDS=Object.freeze([
       "noBuildingDamageOrFireSpread": true
     },
     "category": "Пожар",
-    "title": "Снова дым над торговыми улицами",
-    "article": "Печи торговых заведений и небрежность владельцев раздражают жителей. Чиновники обещают проверки, а газета предупреждает о новых убытках.",
-    "target": "commerce",
+    "title": "ОН ПРЕДУПРЕДИЛ РЕДАКЦИЮ. ГОРОД В ОГНЕ!",
+    "article": "Накануне выпуска в редакцию пришло анонимное письмо: «Когда этот номер окажется на улицах, я подожгу один из торговых кварталов». Письмо передали полиции. Но едва газета поступила в продажу, раздалась пожарная тревога. Торговцы спасают имущество, а город требует поймать поджигателя.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "firehouse"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "F03",
