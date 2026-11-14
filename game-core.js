@@ -2641,7 +2641,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
   state.newsF03Incident=null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
-  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. Событие произойдёт в конце года.','accent');
+  if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. '+
+    (forthcoming.id==='F03'?'Портовые поставки меняются сразу при выходе газеты.':'Событие произойдёт в конце года.'),'accent');
   refreshLogisticsSupply(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
