@@ -130,7 +130,7 @@ test('F03 end year has no owner fines, restores every port next year, and archiv
  await page.locator('#newsOpenBtn').click();
  await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('#newsSheetContent')).toContainText('Pacific Mail');
- await expect(page.locator('#newsSheetContent')).toContainText('Перенаправлено 4 кубиков');
+ await expect(page.locator('#newsSheetContent')).toContainText('Перенаправлено 4 куб.');
  await page.reload();
  expect((await read(page)).newsArchive).toHaveLength(1);
 });
