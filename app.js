@@ -1483,7 +1483,7 @@ function renderNewspaper(){
     ?'<li><b>Пострадал '+escapeHtml(LOGISTICS_NODES.find(n=>n.id===archived.f03.portId)?.name||archived.f03.portId)+
       ' · D6 '+archived.f03.roll+'</b></li>'+
       '<li>Перенаправлено '+archived.f03.redistributed+
-      ' кубиков без потерь и дополнительных штрафов.</li>'+
+      ' куб. без потерь и дополнительных штрафов.</li>'+
       ['pacificmail','chinabasin','broadway','unioniron'].filter(id=>id!==archived.f03.portId).map(id=>
         '<li>'+escapeHtml(LOGISTICS_NODES.find(n=>n.id===id)?.name||id)+': +'+
         (archived.f03.allocations||[]).filter(a=>a.toPortId===id).length+' куб.</li>').join('')
