@@ -135,7 +135,7 @@ test('F02 end-of-year applies independent penalties once and archives original D
  expect(now.newsF02Incident).toBeNull();
  await page.locator('#newsOpenBtn').click();await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('#newsSheetContent')).toContainText('North Beach');
- await expect(page.locator('#newsSheetContent')).toContainText('пожар не потушен');
+ await expect(page.locator('#newsSheetContent')).toContainText('Пожар: не потушен');
  await page.reload();
  expect((await saved(page)).newsArchive).toHaveLength(1);
 });
