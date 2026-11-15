@@ -2451,6 +2451,19 @@ body.drawer-open .mobile-action-dock{
 .f03-port-closed .node-pin{stroke:#b51f16;stroke-width:4;fill:#642e28}
 .f03-port-closed .node-type{font-weight:900;fill:#b9311f}
 .f03-fire-label{font:900 13px/1 system-ui,'Apple Color Emoji','Segoe UI Emoji',sans-serif;fill:#b31e14;stroke:#fff5e8;stroke-width:2.5px;paint-order:stroke;pointer-events:none;text-anchor:middle}
+.news-f04-panel{margin-top:12px;padding:11px;background:#f7e7cb;border:1px solid #c19e6d;border-radius:8px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.news-f04-panel>strong{display:block;font-size:14px}
+.news-f04-panel>small{display:block;font-size:12px;margin:5px 0}
+.news-f04-panel>p{margin:8px 0}
+.news-f04-warning{background:#f8d9bc;border:1px solid #c79a6b;padding:8px;border-radius:6px;font-weight:700}
+.news-f04-item{margin-top:10px;padding:10px;border:1px solid #c1a47e;border-radius:7px;background:#f9edd7}
+.news-f04-item.done{background:#deecda}
+.news-f04-item>strong{display:block;font-size:13px}
+.news-f04-item>small{display:block;margin-top:5px;font-size:12px}
+.news-f04-choices{display:grid;gap:7px;margin-top:10px;max-height:min(35vh,220px);overflow-y:auto;overscroll-behavior:contain}
+.news-f04-choices button{display:block;width:100%;min-height:44px;padding:9px 10px;text-align:left;background:#fff9eb;color:#33271a;border:1px solid #ad906a;border-radius:6px;font:700 12px/1.45 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+.news-f04-choices button:disabled{opacity:.55;cursor:not-allowed}
+.news-f04-choices button:focus-visible{outline:3px solid #286356;outline-offset:1px}
 .news-f03-panel{margin-top:12px;padding:11px;background:#f7e7cb;border:1px solid #c19e6d;border-radius:8px;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
 .news-f03-panel strong{font-size:14px}
 .news-f03-panel p{margin:8px 0}
