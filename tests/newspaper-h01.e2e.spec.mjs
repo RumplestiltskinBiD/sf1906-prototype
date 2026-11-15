@@ -146,6 +146,7 @@ test('H01 cleared in a later newspaper year records operation and never spreads 
  const s=game({round:2,withClinic:true,withBuilding:true});
  s.newsCurrentIds=['E02'];s.newsH01Incident.startRound=1;
  s.newsH01Incident.radius=1;s.newsH01Incident.lastAssessedRound=1;
+ s.newsH01Incident.yearReports=[{round:1,year:1900,radius:0,resolved:false,entries:[],influenceRewards:[]}];
  s.newsArchive=[{year:1900,round:1,cardId:'H01',title:'ЭПИДЕМИЯ ОХВАТЫВАЕТ ГОРОДСКИЕ КВАРТАЛЫ!',
   entries:[{playerId:0,districtIds:['chinatown'],actual:-2,defended:false}],
   changes:{0:{capital:-2,influence:0,prestige:0}},h01:{radius:0,roll:1,districtId:'chinatown',entries:[],
