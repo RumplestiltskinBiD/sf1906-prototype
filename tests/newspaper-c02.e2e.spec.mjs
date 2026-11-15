@@ -159,6 +159,7 @@ test('C02 unclaimed after year remains historical only, no unapproved new-year b
  expect(after.newsArchive[0].c02.unresolved).toBe(true);
  expect(after.newsArchive[0].c02.materials).toEqual(['Lumber','Masonry']);
  expect(after.newsC02Incident.status).toBe('available');
+ await page.locator('.nav-btn[data-view="city"]').click();
  await expect(page.locator('[data-c02-marker]')).toHaveCount(0);
  await news(page,vp);
  await expect(page.locator('.news-c02-panel')).toHaveCount(0);
