@@ -10,6 +10,7 @@ test.beforeEach(async({page})=>{
 
 function makeDevState(){
   const s=createInitialState({rng:()=>0.1});
+  if(s.newsH02Incident)s.newsH02Incident.resolvedRound=s.round;
   s.phase='development';
   s.view='city';
   s.developmentPlayer=0;
