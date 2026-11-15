@@ -2219,7 +2219,8 @@ const TOKEN_OFFSETS=[[-36,-18],[0,-18],[36,-18],[-18,19],[18,19]];
 const WORKER_OFFSETS=[[-48,-48],[-16,-48],[16,-48],[48,-48],[-32,-18],[0,-18],[32,-18],[64,-18],[-64,-18]];
 function renderSupply(){
 const el=$('#resourceSupply');if(!el)return;
-const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0);
+const h03Reduced=activeNewspaper(state)?.id==='H03'&&state.newsH03SupplyRound===state.round;
+const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0)-(h03Reduced?4:0);
 el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>Порты и ж/д: дешёвый ограниченный запас · 3 исторических поставщика: дорогой ресурс всегда доступен · доставка в обоих случаях обычная</span></div><div class="supply-items">'
 +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
 +'<span class="supply-resource city-throughput"><b>'+total+'</b><span>дешёвых кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов + '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика</strong></span></div>';
