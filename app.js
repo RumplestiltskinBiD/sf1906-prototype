@@ -4,13 +4,13 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0576-c01-police-raids';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0576-c01-police-raids';
+} from './game-core.js?v=0577-c02-stolen-cargo';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0577-c02-stolen-cargo';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -807,7 +807,8 @@ function chooseDeliverySource(source){
 if(deliveryDraft?.step!=='source')return;
 const info=deliverySourceInfo(state,deliveryDraft.playerId,source);
 if(!info?.inventory?.length){showToast('В этом источнике нет ресурсов');return;}
-deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
+deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;
+deliveryDraft.cargo=source.kind==='stolen'?[...info.inventory]:[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 }
 function chooseDeliveryHauler(id){
 if(deliveryDraft?.step!=='load')return;
@@ -816,7 +817,7 @@ if(!h?.available){showToast('Перевозчик уже использован'
 deliveryDraft.haulerId=id;if(deliveryDraft.cargo.length>h.capacity)deliveryDraft.cargo=[];render();
 }
 function addDeliveryCargo(type){
-if(deliveryDraft?.step!=='load'||!deliveryDraft.haulerId)return;
+if(deliveryDraft?.step!=='load'||!deliveryDraft.haulerId||deliveryDraft.source?.kind==='stolen')return;
 const h=availableDeliveryHaulers(state).find(x=>x.id===deliveryDraft.haulerId);
 const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);
 if(!h||!src)return;
@@ -826,7 +827,7 @@ if((used[type]||0)>=(have[type]||0)){showToast('Больше такого рес
 if(type===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
 deliveryDraft.cargo.push(type);render();
 }
-function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.cargo=[];render();}}
+function clearDeliveryCargo(){if(deliveryDraft?.step==='load'&&deliveryDraft.source?.kind!=='stolen'){deliveryDraft.cargo=[];render();}}
 function beginDeliveryRoute(){
 if(!deliveryDraft?.haulerId||!deliveryDraft.cargo.length){showToast('Выберите перевозчика и груз');return;}
 const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);if(!src)return;
@@ -1063,7 +1064,7 @@ if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 }
 function confirmDelivery(){
 if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
-if(!check.ok){showToast(({unassigned:'Разгрузите весь груз',capital:'Недостаточно денег',capacity:'Превышена вместимость','goods-buyer-capacity':'У покупателя заполнены места для розового товара','source-stock':'Недостаточно ресурсов', 'unload-before-pickup':'Груз разгружен раньше погрузки','duplicate-pickup':'Повторная погрузка из одного источника на той же остановке'}[check.reason])||'Маршрут недопустим: '+check.reason);return;}
+if(!check.ok){showToast(({'stolen-lot':'Выкуп возможен только всей партией','illegal-mix':'Нельзя объединить выкуп и контрабанду','arrest-worker':'При ★★★ выберите работника для ареста',unassigned:'Разгрузите весь груз',capital:'Недостаточно денег',capacity:'Превышена вместимость','goods-buyer-capacity':'У покупателя заполнены места для розового товара','source-stock':'Недостаточно ресурсов', 'unload-before-pickup':'Груз разгружен раньше погрузки','duplicate-pickup':'Повторная погрузка из одного источника на той же остановке'}[check.reason])||'Маршрут недопустим: '+check.reason);return;}
 const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена: '+r.reason);return;}
 deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
 render();
@@ -1110,6 +1111,10 @@ html+='<div class="delivery-map-prompt"><div><b>1. Выберите источн
 html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
 if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
 html+='<div class="delivery-source-grid">';
+const stolen=c02Preview(state);
+if(stolen?.active){
+ html+='<button class="delivery-source-card" data-ds-stolen="'+escapeHtml(stolen.portId)+'"><b>Похищенная партия · $1 за обе</b><span>'+escapeHtml(LOGISTICS_NODES.find(n=>n.id===stolen.portId)?.name||stolen.portId)+'</span><small>'+stolen.materials.map(materialLabel).join(' + ')+' · +1 ★ · обычная Доставка</small></button>';
+}
 for(const n of LOGISTICS_NODES){
 const inv=state.logisticsSupply?.[n.id]||[],cnt=deliveryCounts(inv);
 html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.length?'':'disabled')+'><b>'+n.shortName+'</b><span>'+districtById(n.districtId)?.name+' · '+logisticsKindLabel(n.kind)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+' · профиль: '+logisticsProfileText(n)+'</small></button>';
@@ -1138,16 +1143,17 @@ html+='<div class="delivery-instruction">2. Перевозчик + груз из
 for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
 html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-grid">';
 for(const t of CARGO_ORDER){
-const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
+const left=(have[t]||0)-(used[t]||0),disabled=deliveryDraft.source.kind==='stolen'||!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
 const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
-  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:['contraband','goods'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
+  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:['contraband','goods','stolen'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
 const stockText=deliveryDraft.source.kind==='supplier'?'∞ доступно':left+' ост.';
 html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+sourcePrice+'</strong><small>'+stockText+' · нужно '+(totalNeeds[t]||0)+'</small></button>';
 }
-html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
+html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn" '+(deliveryDraft.source.kind==='stolen'?'disabled':'')+'>Очистить</button></div>';
+if(deliveryDraft.source.kind==='stolen')html+='<small class="delivery-stolen-note">Два кубика — неделимая партия · выкуп $1 · +1 ★ после доставки</small>';
 const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
-html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>К маршруту →</button></div>';
+html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost+(cost.stolenLotCost?' · выкуп $'+cost.stolenLotCost:''):'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>К маршруту →</button></div>';
 }else if(step==='route'&&mobile){
 const cost=deliveryPlanCost(state,deliveryDraft),routeText=deliveryDraft.route.map(shortDistrictName).join(' → ');
 const targets=deliveryRouteTargets().filter(deliveryRouteTargetCanAcceptAny);
@@ -1207,11 +1213,11 @@ if(!routeTargets.length)html+='<div class="delivery-target-empty">На марш�
 html+='</div>'+pickupSelectorHtml()+'<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
 next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
 html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
-html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><span>Догрузки <b>$'+(cost?.loadingCost||0)+'</b></span>'+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
+html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><span>Догрузки <b>$'+(cost?.loadingCost||0)+'</b></span>'+(cost?.stolenLotCost?'<span>Выкуп <b>$'+cost.stolenLotCost+'</b></span>':'')+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
 }
-if(deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)&&state.players[pid].suspicion===3&&step==='unload'){
+if((deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)||deliveryDraft.source?.kind==='stolen')&&state.players[pid].suspicion===3&&step==='unload'){
  const available=playerWorkers(state,pid).filter(w=>!w.jailed);
- html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после продажи</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
+ html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после незаконной доставки</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
    available.map(w=>'<option value="'+w.id+'" '+(deliveryDraft.arrestWorkerId===w.id?'selected':'')+'>Работник #'+w.number+'</option>').join('')+'</select></label>';
 }
 el.innerHTML=html;
@@ -1219,6 +1225,7 @@ $('#contrabandArrestChoice')?.addEventListener('change',e=>{deliveryDraft.arrest
 $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
 $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
 $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
+$$('[data-ds-stolen]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'stolen',id:b.dataset.dsStolen}));
 $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
 $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'supplier',id:b.dataset.dsSupplier}));
 $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
@@ -1261,6 +1268,7 @@ function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   if(card.id==='C01')return 'Грабители: −$2/район без полиции; рейд +2 VP +1 Influence';
+  if(card.id==='C02')return '2 похищенных материала · выкуп всей партии $1 · вернуть +1 VP/+1 Influence или присвоить +1 ★';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
   if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
@@ -1275,6 +1283,11 @@ function newspaperEffectShort(card){
     (card.frequency==='perDistrict'?' / район':' / игрока');
 }
 function newsArchiveText(report){
+  if(report?.c02){
+    const c=report.c02;
+    return 'Похищенный груз: '+(c.status==='returned'?'возвращён':c.status==='kept'?'присвоен':'исход не определён')+
+      ' · '+(c.materials||[]).map(materialLabel).join(' + ');
+  }
   if(report?.c01||report?.ongoingC01){
     const c=report.c01||report.ongoingC01;
     return 'Грабители: '+(c.resolved?'ликвидированы':'налёты продолжаются')+
@@ -1401,6 +1414,22 @@ function renderH02MapMarker(illness){
   label.setAttribute('x',x);label.setAttribute('y',y+7);label.setAttribute('text-anchor','middle');
   label.textContent='♞';marker.append(circle,label);group.append(marker);
 }
+function renderC02MapMarker(lot){
+  $$('.c02-map-marker').forEach(m=>m.remove());
+  if(!lot?.active)return;
+  const group=$$('[data-district]').find(g=>g.dataset.district===lot.districtId);
+  const path=group?.querySelector('path');
+  if(!path||typeof path.getBBox!=='function')return;
+  const box=path.getBBox(),ns='http://www.w3.org/2000/svg',marker=document.createElementNS(ns,'g');
+  const circle=document.createElementNS(ns,'circle'),label=document.createElementNS(ns,'text');
+  marker.classList.add('c02-map-marker');marker.setAttribute('data-c02-marker','source');
+  marker.setAttribute('role','img');
+  marker.setAttribute('aria-label','Похищенная партия: '+(LOGISTICS_NODES.find(n=>n.id===lot.portId)?.name||lot.portId));
+  const x=box.x+box.width/2+19,y=box.y+box.height/2-17;
+  circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',15);
+  label.setAttribute('x',x);label.setAttribute('y',y+6);label.setAttribute('text-anchor','middle');
+  label.textContent='▣';marker.append(circle,label);group.append(marker);
+}
 function renderC01MapMarker(incident){
   $$('.c01-map-marker').forEach(marker=>marker.remove());
   if(!incident?.active)return;
@@ -1420,7 +1449,7 @@ function renderC01MapMarker(incident){
 }
 function renderNewspaper(){
   const card=activeNewspaper(state),forecast=newsPreview(state);
-  const persistentH01=h01Preview(state),persistentH02=h02Preview(state),persistentC01=c01Preview(state);
+  const persistentH01=h01Preview(state),persistentH02=h02Preview(state),persistentC01=c01Preview(state),persistentC02=c02Preview(state);
   const year=1899+state.round;
   const latest=state.newsArchive?.[state.newsArchive.length-1];
   const event=card||((state.finished&&latest)?null:null);
@@ -1435,6 +1464,7 @@ function renderNewspaper(){
   if(card?.id==='H02'&&persistentH02&&!persistentH02.active)stripLabel.textContent+=' · Кризис ликвидирован';
   if(persistentC01?.active&&card?.id!=='C01')stripLabel.textContent+=' · ⚔ Грабители: '+(districtById(persistentC01.districtId)?.name||persistentC01.districtId);
   if(card?.id==='C01'&&persistentC01&&!persistentC01.active)stripLabel.textContent+=' · Банды ликвидированы';
+  if(card?.id==='C02'&&persistentC02)stripLabel.textContent+=' · Порт: '+(LOGISTICS_NODES.find(n=>n.id===persistentC02.portId)?.shortName||persistentC02.portId)+' · '+(persistentC02.status==='available'?'партия доступна':persistentC02.status==='returned'?'возвращена':persistentC02.status==='kept'?'присвоена':'нет двух материалов');
   $('#newsMapBtn').setAttribute('aria-pressed',newsMapVisible?'true':'false');
   $('#newsEmergencyCancel').hidden=!newsEmergencyMode;
   $('#newsEmergencyCancelMobile').hidden=!newsEmergencyMode;
@@ -1455,6 +1485,7 @@ function renderNewspaper(){
   renderH01MapMarker(persistentH01);
   renderH02MapMarker(persistentH02);
   renderC01MapMarker(persistentC01);
+  renderC02MapMarker(persistentC02);
   $('#newsSheet').hidden=!newsSheetOpen;
   $('#newsBackdrop').hidden=!newsSheetOpen;
   document.body.classList.toggle('news-sheet-open',newsSheetOpen);
@@ -1473,14 +1504,16 @@ function renderNewspaper(){
   const legacyF03Archive=!!(archived?.cardId==='F03'&&!archived.f03);
   const legacyH01Archive=!!(archived?.cardId==='H01'&&!archived.h01);
   const legacyC01Archive=!!(archived?.cardId==='C01'&&!archived.c01);
+  const legacyC02Archive=!!(archived?.cardId==='C02'&&!archived.c02);
   const legacyH02Archive=!!(archived?.cardId==='H02'&&!archived.h02);
   const legacyH03Archive=!!(archived?.cardId==='H03'&&!archived.h03);
   const legacyH04Archive=!!(archived?.cardId==='H04'&&!archived.h04);
   const legacyF04Archive=!!(archived?.cardId==='F04'&&!archived.f04);
-  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const streetCrimeNewspaper=!legacyC01Archive&&(record.id==='C01'||record.cardId==='C01');
+  const stolenCargoNewspaper=!legacyC02Archive&&(record.id==='C02'||record.cardId==='C02');
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
   const portFire=!legacyF03Archive&&(record.id==='F03'||record.cardId==='F03');
@@ -1778,6 +1811,44 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
+  const c02Data=!archived&&persistentC02?.round===state.round?persistentC02:null;
+  const c02Player=Number.isInteger(currentDeveloper(state))?currentDeveloper(state):null;
+  const c02Return=c02Data?.active&&c02Player!=null?c02ReturnOptions(state,c02Player):null;
+  const c02CanDeliver=!!c02Data?.active&&c02Player!=null&&canUseFreeAction(state,c02Player)&&
+    state.lastDeliveryKey!==currentDeliveryKey(state,c02Player)&&
+    state.players[c02Player].capital>=1&&state.players[c02Player].workers.some(w=>!w.jailed)&&
+    !deliveryDraft&&!state.pendingConstruction&&!state.pendingWorkerAction;
+  const c02PortName=LOGISTICS_NODES.find(n=>n.id===c02Data?.portId)?.name||c02Data?.portId||'порт';
+  const c02Panel=c02Data
+    ?'<div class="news-c02-panel"><strong>▣ Похищена партия · D6 '+c02Data.roll+' · '+escapeHtml(c02PortName)+'</strong>'+
+      (c02Data.materials.length
+        ?'<p class="news-c02-cubes">2 материала: <b>'+c02Data.materials.map(t=>escapeHtml(materialLabel(t))).join(' + ')+'</b></p>'
+        :'<p>В выбранном порту осталось меньше двух материалов.</p>')+
+      (c02Data.status==='available'
+        ?'<strong>Выкуп — $1 за всю партию</strong>'+
+         '<div class="news-c02-options">'+
+         '<button type="button" data-c02-return '+(c02Return?.available?'':'disabled')+'><b>Вернуть городу</b><small>Основное действие в районе порта · $1 · +1 VP и +1 Influence'+
+           (c02Return&&!c02Return.available?' · '+
+             (!c02Return.actionAvailable?'Нет свободного основного действия':
+              !c02Return.reachable?'Представитель не достигает порта':'Недостаточно денег'):'')+'</small></button>'+
+         '<button type="button" data-c02-keep '+(c02CanDeliver?'':'disabled')+'><b>Оставить себе · начать Доставку</b><small>Загрузить оба материала в повозку из этого порта · выкуп $1 · +1 ★'+
+           (!c02CanDeliver?' · Нужна свободная Доставка, деньги и незаключённый сотрудник':'')+'</small></button></div>'+
+         '<small>Выкуп неделим; стоимость повозки, дорог и разгрузки оплачивается по обычным правилам. При ★★★ перед завершением доставки потребуется выбрать сотрудника для ареста.</small>'
+        :c02Data.status==='returned'
+        ?'<p>Груз возвращён в исходный порт. Организатор получил +1 VP и +1 Influence.</p>'
+        :c02Data.status==='kept'
+        ?'<p>Партия выкуплена и перевезена. Организатор получил +1 ★; повторная покупка закрыта.</p>'
+        :'<small>Недостаток исходного запаса: изъятие не произошло. Правило для такого случая ещё не утверждено; система ничего не генерирует и не перебрасывает D6.</small>')+
+      '</div>':'';
+  const c02Past=archived?.c02||null;
+  const c02Archive=c02Past
+    ?'<li>Похищенная партия · '+escapeHtml(LOGISTICS_NODES.find(n=>n.id===c02Past.portId)?.name||c02Past.portId)+
+      ' · D6 '+c02Past.roll+' · '+(c02Past.materials||[]).map(t=>escapeHtml(materialLabel(t))).join(' + ')+'</li>'+
+     '<li>Итог: '+(c02Past.status==='returned'?'материалы возвращены городу':
+       c02Past.status==='kept'?'материалы перевезены игроком':
+       'груз остался неразрешённым, исход не утверждён')+
+       (c02Past.claim?' · '+escapeHtml(state.players[c02Past.claim.playerId]?.name||'Игрок')+' · $1':'')+'</li>'
+    :'';
   const c01Data=!archived?persistentC01:null;
   const c01Opts=c01Data?.active&&Number.isInteger(currentDeveloper(state))
     ?c01RaidOptions(state,currentDeveloper(state)):null;
@@ -1825,7 +1896,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='C01'
+  const projections=issue?.id==='C02'
+    ?'<li>Выкуп только обеих единиц за $1. Законный возврат в том же порту либо присвоение через обычную Доставку.</li>'
+    :issue?.id==='C01'
     ?'<li>Один жетон на D6, угроза своему и соседним районам. Рейд снимает всё событие. Без рейда ежегодные последствия повторяются.</li>'
     :issue?.id==='H01'
     ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
@@ -1858,7 +1931,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04','C01'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1882,20 +1955,20 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+f04Archive+
+      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(infantCare||h01Past||h02Past||c01Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(infantCare||h01Past||h02Past||c01Past||c02Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>'+(infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
@@ -1905,17 +1978,18 @@ function renderNewspaper(){
        epidemicNewspaper?'<small>Штрафы и медицинские награды начисляются в конце года, если очаг остаётся. Экспедиция устраняет эпидемию целиком.</small>':
         horseIllnessNewspaper?'<small>Тариф $2 за каждый платный переход действует до санитарной операции и сохраняется в следующие годы. Годовых штрафов нет.</small>':
         streetCrimeNewspaper?'<small>Один жетон. Пока не проведён рейд, в конце каждого года −$2 за район с незащищённой собственностью; полиция получает Influence за реально защищённые районы.</small>':
+        stolenCargoNewspaper?'<small>Из запаса одного порта на карточку перемещены два физических материала. Покупка только всей партией, $1; дополнительных годовых штрафов нет.</small>':
        arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireAudit?'<small>Выберите цель при равенстве, затем законно устраните нарушения или воспользуйтесь незаконным подкупом.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -1936,6 +2010,27 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-c02-return]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const r=returnC02Lot(state,currentDeveloper(state));
+    showToast(r.ok?'Груз возвращён · +1 VP и +1 Influence':
+      r.reason==='capital'?'Нужен $1 для выкупа':
+      r.reason==='worker-range'?'Представитель должен быть в порту или рядом':
+      r.reason==='already-claimed'?'Партия уже продана':'Возврат недоступен: '+r.reason);
+    render();
+  });
+  $$('#newsSheetContent [data-c02-keep]').forEach(button=>button.onclick=()=>{
+    const pid=currentDeveloper(state),lot=c02Preview(state);
+    if(!lot?.active||pid==null||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||
+       !canUseFreeAction(state,pid)||state.lastDeliveryKey===currentDeliveryKey(state,pid)||
+       state.players[pid].capital<1||!state.players[pid].workers.some(w=>!w.jailed)){
+      showToast('Для присвоения нужна доступная обычная Доставка');return;
+    }
+    closeNewspaper();startDeliveryFlow(pid);
+    chooseDeliverySource({kind:'stolen',id:lot.portId});
   });
   $$('#newsSheetContent [data-c01-raid]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){

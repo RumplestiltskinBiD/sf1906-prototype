@@ -209,7 +209,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "C02",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_C02_V2.md",
       "title": "ЦЕЛАЯ ПАРТИЯ ГРУЗА БЕССЛЕДНО ИСЧЕЗЛА!",
       "eventType": "stolen-port-materials-full-lot-buyout",
@@ -232,16 +232,17 @@ export const NEWS_CARDS=Object.freeze([
         "applyExistingCriminalActionAndArrestRules": true
       },
       "purchaseOccursAtMostOnce": true,
-      "notConnectedToGameEngine": true
+      "notConnectedToGameEngine": false,
+      "unapprovedEdges": ["unclaimedLotAtNextYear","originHasFewerThanTwoCubes"]
     },
     "category": "Преступность",
-    "title": "Исчезают целые партии товара",
-    "article": "Докеры и управляющие складами теряют имущество, но расследования не дают результата. Газета спрашивает, куда уходят средства, выделенные на охрану.",
-    "target": "warehouse-factory",
+    "title": "ЦЕЛАЯ ПАРТИЯ ГРУЗА БЕССЛЕДНО ИСЧЕЗЛА!",
+    "article": "Из одного из портов Сан-Франциско похищена партия строительных материалов. Вскоре неизвестные посредники предлагают продать груз за бесценок. Городские власти призывают предпринимателей помочь вернуть украденное.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "police"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "C03",

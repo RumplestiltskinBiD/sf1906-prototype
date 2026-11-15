@@ -7,9 +7,9 @@ function cityScenario(){
   s.phase='development';s.view='city';
   s.developmentPlayer=0;s.developmentComplete=false;
   s.activationMainActionUsed=false;s.activeWorkerId=null;
-  // This HUD regression checks generic map/emergency controls: C02 still
+  // This HUD regression checks generic map/emergency controls: C03 still
   // uses those legacy actions. Approved C01 v2 has a dedicated police raid.
-  s.newsCurrentIds=['C02'];s.newsC01Incident=null;
+  s.newsCurrentIds=['C03'];s.newsC01Incident=null;s.newsC02Incident=null;
   s.players[0].capital=30;
   return s;
 }

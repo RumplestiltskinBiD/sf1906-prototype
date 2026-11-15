@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0576-c01-police-raids';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0577-c02-stolen-cargo';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -139,6 +139,107 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
   return state.logisticsSupply;
 }
 
+
+// C02 v2. Theft uses physical cubes from exactly one actual sea port.
+// An unavailable port (<2 cubes) is quarantined as an unresolved design edge:
+// no partial theft, replenishment, alternative port or new goods are invented.
+export const C02_PORTS_BY_D6=Object.freeze([
+  'broadway','pacificmail','pacificmail','chinabasin','chinabasin','unioniron'
+]);
+const C02_MATERIALS=Object.freeze(['Lumber','Masonry','Steel']);
+const c02RollIndex=rng=>{
+  const raw=Number(rng()),value=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  return Math.floor(value*6);
+};
+export function applyC02Theft(state,{rng=Math.random}={}){
+  if(activeNewspaper(state)?.id!=='C02'||state.newsLastResolvedRound===state.round)
+    return {ok:false,reason:'not-current-c02'};
+  if(state.newsC02Incident)return {ok:false,reason:'already-drawn'};
+  if(!C02_PORTS_BY_D6.every(id=>Array.isArray(state.logisticsSupply?.[id])&&
+      state.logisticsSupply[id].every(t=>C02_MATERIALS.includes(t))))
+    return {ok:false,reason:'invalid-port-stock'};
+  const idx=c02RollIndex(rng),portId=C02_PORTS_BY_D6[idx];
+  const stock=[...state.logisticsSupply[portId]],initialStock=stock.length,materials=[];
+  if(initialStock>=2){
+    for(let i=0;i<2;i++){
+      const raw=Number(rng()),safe=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+      materials.push(stock.splice(Math.floor(safe*stock.length),1)[0]);
+    }
+  }
+  const item={round:state.round,roll:idx+1,portId,materials,status:materials.length===2?'available':'insufficient-stock',
+    initialStock,claimedBy:null,claim:null};
+  // All validation and rolls complete. Remove only existing physical cubes.
+  if(materials.length===2)state.logisticsSupply[portId]=stock;
+  state.newsC02Incident=item;
+  logEvent(state,'THE SAN FRANCISCO CALL · '+(LOGISTICS_NODES.find(n=>n.id===portId)?.name||portId)+
+    ': '+(materials.length===2?'похищены '+materials.map(materialNameRu).join(' + '):
+      'не хватает двух материалов для партии; случай требует решения дизайнера')+'.','accent');
+  return {ok:true,incident:item};
+}
+export function c02ActiveLot(state){
+  const c=state?.newsC02Incident;
+  return activeNewspaper(state)?.id==='C02'&&state.newsLastResolvedRound!==state.round&&
+    c?.round===state.round&&c.status==='available'&&Array.isArray(c.materials)&&c.materials.length===2&&
+    C02_PORTS_BY_D6.includes(c.portId)?c:null;
+}
+export function c02Preview(state){
+  const c=state?.newsC02Incident;
+  if(!c||!C02_PORTS_BY_D6.includes(c.portId))return null;
+  const port=LOGISTICS_NODES.find(n=>n.id===c.portId);
+  return {...c,materials:[...(c.materials||[])],claim:c.claim?{...c.claim}:null,
+    districtId:port?.districtId,active:!!c02ActiveLot(state)};
+}
+export function c02ReturnOptions(state,playerId){
+  const c=c02ActiveLot(state);
+  if(!c)return {ok:false,reason:state.newsC02Incident?.status==='insufficient-stock'?'insufficient-stock':
+      state.newsC02Incident?.status==='returned'||state.newsC02Incident?.status==='kept'?'already-claimed':'not-current-c02'};
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return {ok:false,reason:'player'};
+  const districtId=LOGISTICS_NODES.find(n=>n.id===c.portId)?.districtId;
+  const actionAvailable=canTakeMainAction(state,playerId)&&!state.pendingConstruction&&!state.pendingWorkerAction;
+  const reachable=actionAvailable&&workerCanReachDistrict(state,playerId,districtId);
+  const affordable=state.players[playerId].capital>=1;
+  return {ok:true,portId:c.portId,districtId,cost:1,materials:[...c.materials],
+    actionAvailable,reachable,affordable,available:actionAvailable&&reachable&&affordable};
+}
+export function returnC02Lot(state,playerId){
+  const opt=c02ReturnOptions(state,playerId);
+  if(!opt.ok)return {ok:false,reason:opt.reason};
+  if(state.pendingConstruction||state.pendingWorkerAction)return {ok:false,reason:'pending-action'};
+  if(!opt.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+  if(!opt.reachable)return {ok:false,reason:'worker-range'};
+  if(!opt.affordable)return {ok:false,reason:'capital'};
+  const action=consumeMainAction(state,playerId,opt.districtId);
+  if(!action.ok)return action;
+  const player=state.players[playerId],incident=state.newsC02Incident;
+  player.capital-=1;player.prestige=(Number(player.prestige)||0)+1;
+  const influence=moveInfluence(state,playerId,1);
+  state.logisticsSupply[opt.portId].push(...incident.materials);
+  incident.status='returned';incident.claimedBy=playerId;
+  incident.claim={mode:'returned',playerId,round:state.round,cost:1,
+    materials:[...incident.materials],prestige:1,influenceSteps:influence.steps};
+  logEvent(state,player.name+' выкупает похищенную партию за $1 и возвращает '+
+    incident.materials.map(materialNameRu).join(' + ')+' в '+
+    (LOGISTICS_NODES.find(n=>n.id===opt.portId)?.name||opt.portId)+
+    ': +1 VP, +'+influence.steps+' Influence.','good');
+  return {ok:true,claim:incident.claim,worker:action.worker};
+}
+function resolveC02Newspaper(state,card){
+  const incident=state.newsC02Incident;
+  if(!incident||incident.round!==state.round)return {ok:false,reason:'no-incident'};
+  const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{},
+    c02:{roll:incident.roll,portId:incident.portId,materials:[...incident.materials],
+      initialStock:incident.initialStock,status:incident.status,
+      claimedBy:incident.claimedBy,claim:incident.claim?{...incident.claim}:null,
+      unresolved:incident.status==='available'||incident.status==='insufficient-stock'}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  logEvent(state,'The San Francisco Call · '+report.year+': похищенная партия '+
+    (incident.status==='returned'?'возвращена городу':
+      incident.status==='kept'?'присвоена перевозчиком':'остаётся нерешённой (неутверждённый крайний случай)')+
+    '. Дополнительных автоматических штрафов нет.','accent');
+  return {ok:true,report};
+}
 
 // F03: one port is closed for the current year; its *generated* materials
 // are redistributed, without changing their type/count or the rail station.
@@ -957,6 +1058,7 @@ export function createInitialState({rng=Math.random}={}){
     newsH01Incident:initialH01Incident,
     newsH02Incident:initialH02Incident,
     newsC01Incident:initialC01Incident,
+    newsC02Incident:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -1016,6 +1118,7 @@ export function createInitialState({rng=Math.random}={}){
   // Materials are generated at their original point in setup; only then
   // is the affected port determined and its real cargo redistributed.
   if(newsCurrentIds[0]==='F03')applyF03PortFire(state,{rng});
+  if(newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
   if(newsCurrentIds[0]==='F04')state.newsF04Notices=createF04Notices(state);
   return state;
 }
@@ -1836,6 +1939,12 @@ export function deliverySourceInfo(state,playerId,source){
     if(!wh)return null;
     return {kind:'contraband',id:wh.id,name:projectById(wh.projectId).name+' · '+(districtById(wh.districtId)?.name||wh.districtId),districtId:wh.districtId,inventory:contrabandInventory(wh),ownerId:wh.playerId};
   }
+  if(source.kind==='stolen'){
+    const lot=c02ActiveLot(state),node=LOGISTICS_NODES.find(n=>n.id===lot?.portId);
+    if(!lot||!node||source.id!==lot.portId)return null;
+    return {kind:'stolen',id:lot.portId,name:'Похищенная партия · '+node.name,
+      districtId:node.districtId,inventory:[...lot.materials],unitPrice:0};
+  }
   if(source.kind==='node'){
     const node=LOGISTICS_NODES.find(n=>n.id===source.id);
     if(!node)return null;
@@ -1960,9 +2069,10 @@ export function deliveryPlanCost(state,plan){
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
   const yardRentCost=freightYardRentCost(state,plan);
+  const stolenLotCost=deliveryPickups(plan).some(p=>p?.source?.kind==='stolen')?1:0;
   return {materialGross,procurementDiscount,industryDiscount,industrySales,procurementUsed,materialCost,
-    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,
-    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost};
+    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,stolenLotCost,
+    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost+stolenLotCost};
 }
 
 function validateRoute(route,sourceDistrictId){
@@ -2001,14 +2111,24 @@ export function validateDeliveryPlan(state,plan){
   if(!hauler)return {ok:false,reason:'hauler'};
   if(hauler.limited&&(state.haulersUsed||[]).includes(hauler.id))return {ok:false,reason:'hauler-used'};
   const pickups=deliveryPickups(plan);
+  const stolen=pickups.filter(p=>p?.source?.kind==='stolen');
+  if(stolen.length){
+    const lot=c02ActiveLot(state);
+    if(stolen.length!==1||stolen[0]!==pickups[0]||!lot||
+       stolen[0].source.id!==lot.portId||!multisetEquals(stolen[0].cargo,lot.materials))
+      return {ok:false,reason:'stolen-lot'};
+    // Exactly one intact two-cube bundle. No illegal double-purchase with
+    // contraband in the same Delivery (the multiple ★ outcome is unapproved).
+    if(deliveryAllCargo(plan).includes(CONTRABAND_CARGO))return {ok:false,reason:'illegal-mix'};
+  }
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
   if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||PINK_GOODS.includes(t))))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
-  if(illegalCount&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed))return {ok:false,reason:'no-free-worker'};
-  if(illegalCount&&suspicionLevel(state,plan.playerId)===MAX_SUSPICION&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed&&w.id===plan.arrestWorkerId))return {ok:false,reason:'arrest-worker'};
+  if((illegalCount||stolen.length)&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed))return {ok:false,reason:'no-free-worker'};
+  if((illegalCount||stolen.length)&&suspicionLevel(state,plan.playerId)===MAX_SUSPICION&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed&&w.id===plan.arrestWorkerId))return {ok:false,reason:'arrest-worker'};
   const firstSource=deliverySourceInfo(state,plan.playerId,plan.source);
   if(!firstSource)return {ok:false,reason:'source'};
   const route=Array.isArray(plan.route)?plan.route:[];
@@ -2126,7 +2246,8 @@ export function validateDeliveryPlan(state,plan){
 }
 
 export function executeDelivery(state,plan){
-  const criminal=deliveryAllCargo(plan).includes(CONTRABAND_CARGO);
+  const criminal=deliveryAllCargo(plan).includes(CONTRABAND_CARGO)||
+    deliveryPickups(plan).some(p=>p?.source?.kind==='stolen');
   if(criminal){
     const result=resolveCriminalAction(state,plan.playerId,{mode:'free',arrestWorkerId:plan.arrestWorkerId,suspicionGain:1,
       perform:draft=>executeDeliveryCore(draft,plan)});
@@ -2141,7 +2262,7 @@ function executeDeliveryCore(state,plan){
   const pickups=deliveryPickups(plan);
   for(const pickup of pickups){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
-    if(src.kind==='supplier')continue;
+    if(src.kind==='supplier'||src.kind==='stolen')continue;
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
       src.kind==='contraband'||src.kind==='goods'?null:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
@@ -2158,6 +2279,16 @@ function executeDeliveryCore(state,plan){
   }
   const player=state.players[plan.playerId];
   player.capital-=cost.total;
+  const stolen=pickups.find(p=>p.source.kind==='stolen');
+  if(stolen){
+    const incident=state.newsC02Incident;
+    incident.status='kept';incident.claimedBy=plan.playerId;
+    incident.claim={mode:'kept',playerId:plan.playerId,round:state.round,cost:1,
+      materials:[...incident.materials],haulerId:plan.haulerId,route:[...plan.route],
+      deliveryTotal:cost.total};
+    logEvent(state,player.name+' выкупает за $1 и присваивает всю похищенную партию '+
+      incident.materials.map(materialNameRu).join(' + ')+'. Подозрение: +1 ★ (с возможным арестом).','bad');
+  }
   // The owner receives a commission only when another player purchases
   // factory output, and only after the complete delivery passed validation.
   for(const sale of cost.industrySales||[]){
@@ -2204,7 +2335,7 @@ function executeDeliveryCore(state,plan){
   }
   state.lastDeliveryKey=currentDeliveryKey(state,plan.playerId);
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
-  const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
+  const pickupText=pickups.map(p=>p.source.kind==='stolen'?('Похищенная партия · '+(LOGISTICS_NODES.find(n=>n.id===p.source.id)?.name||p.source.id)):(deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id)).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
     const con=d.kind==='freight-yard'?null:state.constructions.find(c=>c.id===d.id);
     const districtName=d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
@@ -2213,9 +2344,9 @@ function executeDeliveryCore(state,plan){
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
   // A real supply port loads freight; export-only Gas House Cove is not a trigger.
-  const portDistricts=new Set(pickups.map(p=>p.source.kind==='node'?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
+  const portDistricts=new Set(pickups.map(p=>['node','stolen'].includes(p.source.kind)?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
     .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
   state.pendingSailorRecruitments=state.pendingSailorRecruitments||[];
   for(const con of state.constructions||[]){
@@ -2681,6 +2812,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
       forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':'Событие произойдёт в конце года.'),'accent');
   refreshLogisticsSupply(state,{rng});
+  // A new C02 newspaper removes exactly two REAL cubes after annual refill.
+  if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
@@ -2953,6 +3086,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsH01Incident=null;
     state.newsH02Incident=null;
     state.newsC01Incident=null;
+    state.newsC02Incident=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -2980,6 +3114,12 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
      state.newsLastResolvedRound!==state.round)
     state.newsC01Incident=createC01Incident(state.round,rng);
   if(!Object.hasOwn(state,'newsC01Incident'))state.newsC01Incident=null;
+  // Do not rewrite legacy completed C02 newspaper history. Active saves draw
+  // once from whatever REAL port materials still exist, without duplicating cubes.
+  if(!state.newsC02Incident&&activeNewspaper(state)?.id==='C02'&&
+     state.newsLastResolvedRound!==state.round)
+    applyC02Theft(state,{rng});
+  if(!Object.hasOwn(state,'newsC02Incident'))state.newsC02Incident=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -4009,6 +4149,11 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='C02'){
+    const lot=c02Preview(state);
+    return {card,entries:[],threatened:lot?.active?[lot.districtId]:[],protected:[],
+      summary:{districts:lot?.active?1:0,exposed:0,safe:0},c02:lot};
+  }
   if(card?.id==='C01'){
     const raid=c01Preview(state);
     return {card,entries:raid?.entries||[],
@@ -4115,7 +4260,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04','C01'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -4142,6 +4287,7 @@ export function resolveNewspaper(state){
   if(card.id==='H01')return resolveH01Newspaper(state,card);
   if(card.id==='H02')return resolveH02Newspaper(state,card);
   if(card.id==='C01')return resolveC01Newspaper(state,card);
+  if(card.id==='C02')return resolveC02Newspaper(state,card);
   if(card.id==='H03')return resolveH03Newspaper(state,card);
   if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);

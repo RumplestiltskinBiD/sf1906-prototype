@@ -2501,6 +2501,20 @@ body.drawer-open .mobile-action-dock{
 .news-h01-services button:disabled{opacity:.55;cursor:not-allowed}
 .news-h01-services button:focus-visible{outline:3px solid #29695a;outline-offset:1px}
 .news-h01-services button span,.news-h01-services button small{font-size:12px;font-weight:400}
+.c02-map-marker{pointer-events:none}
+.c02-map-marker circle{fill:#8a4d24;stroke:#fff4d9;stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(0,0,0,.48))}
+.c02-map-marker text{font:900 20px system-ui,sans-serif;fill:#fffaf0;pointer-events:none}
+.news-c02-panel{margin-top:12px;padding:12px;background:#fbf0d7;border:1px solid #bea178;border-radius:8px;font-size:13px;line-height:1.45}
+.news-c02-panel>strong{display:block;font-size:14px;margin-bottom:6px}
+.news-c02-panel>small{display:block;font-size:12px;color:#66523d;margin-top:8px}
+.news-c02-cubes{padding:9px;background:#fff9e9;border-radius:6px}
+.news-c02-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px;margin:10px 0}
+.news-c02-options button{background:#fffaf1;color:#35291c;border:1px solid #ad946d;border-radius:8px;padding:12px;
+text-align:left;display:flex;flex-direction:column;gap:5px;min-height:64px;cursor:pointer;touch-action:manipulation}
+.news-c02-options button:disabled{opacity:.53;cursor:not-allowed}
+.news-c02-options button small{font-weight:400;color:#604b39}
+.news-c02-options button:focus-visible{outline:3px solid #197c86;outline-offset:1px}
+.delivery-stolen-note{display:block;padding:8px 10px;margin:7px 0;background:#f7e2bb;color:#563b28;border-radius:6px}
 .c01-map-marker{pointer-events:none}
 .c01-map-marker circle{fill:#902e32;stroke:#fff4dc;stroke-width:3;filter:drop-shadow(0 0 7px rgba(0,0,0,.5))}
 .c01-map-marker text{font:900 25px system-ui,sans-serif;fill:white;pointer-events:none}

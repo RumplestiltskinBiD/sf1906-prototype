@@ -105,9 +105,9 @@ test('C04 corruption audit replaces legacy housing fine; no additional end-of-ye
   assert.deepEqual(s.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige})),before);
   assert.deepEqual(result.report.serviceRecognition,[]);
 });
-test('legacy C02 emergency costs one worker action and $1, protects only that issue',()=>{
-  const s=game('C02');
-  put(s,'warehouse','civic',1);
+test('legacy C03 emergency costs one worker action and $1, protects only that issue',()=>{
+  const s=game('C03');
+  put(s,'bank','civic',1);
   const pid=0;
   s.activeWorkerId=s.players[pid].workers[0].id;
   s.players[pid].workers[0].districtId='civic';
@@ -127,15 +127,15 @@ test('legacy C02 emergency costs one worker action and $1, protects only that is
   assert.equal(s.players[1].capital,30);
 });
 test('temporary protection never survives the next newspaper',()=>{
-  const s=game('C02');
+  const s=game('C03');
   s.developmentComplete=true;
-  s.newsEmergency.civic={playerId:0,cardId:'C02',round:1};
+  s.newsEmergency.civic={playerId:0,cardId:'C03',round:1};
   const r=G.cleanupMarket(s,{rng:()=>0.27});
   assert.equal(r.ok,true);
   assert.equal(s.round,2);
   assert.deepEqual(s.newsEmergency,{});
   assert.equal(s.newsArchive.length,1);
-  assert.notEqual(G.activeNewspaper(s)?.id,'C02');
+  assert.notEqual(G.activeNewspaper(s)?.id,'C03');
 });
 test('positive trade issues reward owners only once per district',()=>{
   const s=game('E02');
