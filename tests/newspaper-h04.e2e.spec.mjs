@@ -45,7 +45,10 @@ for(const vp of sizes){
   await expect(page.locator('[data-h04-donate="0"]')).toBeEnabled();
   await expect(page.locator('[data-h04-donate="1"]')).toBeDisabled();
   await expect(page.locator('[data-h04-owner="1"]')).toContainText('Недостаточно денег');
-  const workers=JSON.stringify(initial.players[0].workers),used=initial.activationMainActionUsed;
+  // Loading a saved arrested worker normalizes arrestedRound. Compare against
+  // the actual post-migration state, before the donation, not the input fixture.
+  const loaded=await read(page);
+  const workers=JSON.stringify(loaded.players[0].workers),used=loaded.activationMainActionUsed;
   await page.locator('[data-h04-donate="0"]').click();
   const now=await read(page);
   expect(now.players[0].capital).toBe(15);
@@ -55,7 +58,7 @@ for(const vp of sizes){
   expect(now.newsH04Donations.donations[0].influenceSteps).toBe(2);
   expect(JSON.stringify(now.players[0].workers)).toBe(workers);
   expect(now.activationMainActionUsed).toBe(used);
-  expect(now.developmentSlotsUsed).toEqual(initial.developmentSlotsUsed);
+  expect(now.developmentSlotsUsed).toEqual(loaded.developmentSlotsUsed);
   await expect(page.locator('[data-h04-owner="0"]')).toContainText('Пожертвование сделано');
   await expect(page.locator('[data-h04-donate="0"]')).toHaveCount(0);
   await expect(page.locator('[data-h04-donate="2"]')).toBeEnabled();
