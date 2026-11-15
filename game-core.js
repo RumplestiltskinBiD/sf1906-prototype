@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0572-h03-ports';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0573-h04-charity';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
