@@ -762,7 +762,8 @@ export function turnOrder(state){
   const stored=Array.isArray(state?.yearTurnOrder)?state.yearTurnOrder.filter(id=>state.players?.[id]):[];
   return stored.length===state.players?.length?[...stored]:setYearTurnOrderFromInfluence(state);
 }
-export function currentDeclarer(state){return state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
+export function currentDeclarer(state){return c03CurrentOffer(state)&&!state.newsC03Offer.completed?null:
+  state.declarationIndex<3?turnOrder(state)[state.declarationIndex]:null;}
 // B2: a player's three annual activation opportunities exist even while staff is jailed.
 // Kept independent of workersLeft: a service turn must not silently disappear.
 export function ensureDevelopmentSlots(state){
@@ -899,6 +900,87 @@ export function confirmStarterDraft(state){
 }
 
 
+// C03 v2: corruption is a one-time, opt-in extra project from the EXISTING
+// shuffled market deck. The entire offer window precedes ordinary City Hall
+// declarations; neither bids nor regular project rights are changed.
+export function createC03Offer(state){
+  return {round:state.round,order:turnOrder(state),cursor:0,decisions:[],completed:false};
+}
+export function c03CurrentOffer(state){
+  const c=state?.newsC03Offer;
+  return activeNewspaper(state)?.id==='C03'&&state.newsLastResolvedRound!==state.round&&
+    c?.round===state.round&&Array.isArray(c.order)&&c.order.length===state.players?.length?c:null;
+}
+export function c03OfferPlayer(state){
+  const c=c03CurrentOffer(state);
+  return c&&!c.completed&&state.phase==='declare'&&Number.isInteger(c.order[c.cursor])
+    ?c.order[c.cursor]:null;
+}
+export function c03OfferOptions(state,playerId){
+  const c=c03CurrentOffer(state),current=c03OfferPlayer(state);
+  const p=state.players?.[playerId];
+  if(!c)return {ok:false,reason:'not-current-c03'};
+  if(!p)return {ok:false,reason:'player'};
+  const waiting=state.phase==='draft'||state.phase==='bread-production';
+  const inOrder=current===playerId,staff=playerWorkers(state,playerId).filter(w=>!w.jailed);
+  const available=!!inOrder&&p.portfolio.length<HAND_LIMIT&&state.deck.length>0&&staff.length>0;
+  return {ok:true,playerId,round:c.round,currentPlayerId:current,waiting,completed:c.completed,
+    order:[...c.order],cursor:c.cursor,decisions:c.decisions.map(d=>({...d})),
+    handSize:p.portfolio.length,handLimit:HAND_LIMIT,deckRemaining:state.deck.length,
+    suspicion:suspicionLevel(state,playerId),availableWorkerIds:staff.map(w=>w.id),
+    canAccept:available,canDecline:inOrder,
+    blockReason:!inOrder?(waiting?'before-city-hall':c.completed?'completed':'not-your-turn'):
+      p.portfolio.length>=HAND_LIMIT?'hand-limit':
+      !state.deck.length?'empty-deck':!staff.length?'no-free-worker':null};
+}
+export function declineC03Offer(state,playerId){
+  const c=c03CurrentOffer(state);
+  if(!c||state.phase!=='declare')return {ok:false,reason:'not-current-c03'};
+  if(c03OfferPlayer(state)!==playerId)return {ok:false,reason:'not-your-turn'};
+  c.decisions.push({playerId,choice:'declined',round:state.round});
+  c.cursor++;c.completed=c.cursor===c.order.length;
+  logEvent(state,state.players[playerId].name+' отказывается от сомнительных разрешений C03. Подозрение и обычные права City Hall не изменились.','accent');
+  return {ok:true,playerId,complete:c.completed};
+}
+export function acceptC03Offer(state,playerId,{arrestWorkerId=null}={}){
+  const options=c03OfferOptions(state,playerId);
+  if(!options.ok)return {ok:false,reason:options.reason};
+  if(!options.canDecline)return {ok:false,reason:'not-your-turn'};
+  if(!options.canAccept)return {ok:false,reason:options.blockReason};
+  // resolveCriminalAction with the scoped c03 mode retains the same atomic
+  // benefit → suspicion/possible arrest sequence, with no worker action spent.
+  const r=resolveCriminalAction(state,playerId,{mode:'c03',arrestWorkerId,suspicionGain:1,
+    perform:draft=>{
+      const c=c03CurrentOffer(draft);
+      if(!c||c03OfferPlayer(draft)!==playerId)return {ok:false,reason:'not-your-turn'};
+      const p=draft.players[playerId];
+      if(p.portfolio.length>=HAND_LIMIT)return {ok:false,reason:'hand-limit'};
+      if(!draft.deck.length)return {ok:false,reason:'empty-deck'};
+      const card=draft.deck.shift();
+      if(!card||!PROJECTS.some(project=>project.id===card.id))return {ok:false,reason:'invalid-project-card'};
+      p.portfolio.push(card.id);
+      c.decisions.push({playerId,choice:'accepted',round:draft.round,uid:card.uid,projectId:card.id});
+      c.cursor++;c.completed=c.cursor===c.order.length;
+      logEvent(draft,p.name+' принимает сомнительное разрешение «'+projectById(card.id).name+
+        '» (C03): карта из обычной колоды без денег и основного действия, +1 ★ или арест при ★★★.','bad');
+      return {ok:true,projectId:card.id,uid:card.uid,complete:c.completed};
+    }});
+  return r.ok?{ok:true,playerId,projectId:r.effect.projectId,uid:r.effect.uid,
+    complete:r.effect.complete,arrested:r.arrested,suspicionAfter:r.suspicionAfter,arrest:r.arrest}:r;
+}
+function resolveC03Newspaper(state,card){
+  const c=state.newsC03Offer;
+  const report={year:newsYear(state.round),round:state.round,cardId:'C03',title:card.title,
+    category:card.category,entries:[],changes:{},serviceRecognition:[],emergency:{},
+    c03:{order:Array.isArray(c?.order)?[...c.order]:[],decisions:Array.isArray(c?.decisions)?
+      c.decisions.map(d=>({...d})):[],completed:!!c?.completed,
+      legacyMissed:!c||c.round!==state.round}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  logEvent(state,'The San Francisco Call · '+report.year+' · C03: сомнительных разрешений принято '+
+    report.c03.decisions.filter(d=>d.choice==='accepted').length+'. Дополнительных годовых штрафов нет.','accent');
+  return {ok:true,report};
+}
+
 // Crime C1.1: company-wide suspicion, not a per-worker stat.
 // State persists independently of annual fines and criminal reward cards.
 export function normalizeSuspicion(value){
@@ -972,11 +1054,12 @@ export function settleLegalCase(state,playerId,payment){
 // This prevents failed actions from raising suspicion or arresting a worker.
 export function resolveCriminalAction(state,playerId,{mode,workerId=null,arrestWorkerId=null,suspicionGain,perform}={}){
   if(!Number.isInteger(playerId)||!state?.players?.[playerId])return {ok:false,reason:'player'};
-  if(mode!=='main'&&mode!=='free')return {ok:false,reason:'mode'};
+  if(mode!=='main'&&mode!=='free'&&mode!=='c03')return {ok:false,reason:'mode'};
   if(!Number.isSafeInteger(suspicionGain)||suspicionGain<1)return {ok:false,reason:'suspicion-gain'};
   if(typeof perform!=='function')return {ok:false,reason:'action'};
   if(mode==='main'&&!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
   if(mode==='free'&&!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  if(mode==='c03'&&c03OfferPlayer(state)!==playerId)return {ok:false,reason:'not-c03-offer-turn'};
   const staff=playerWorkers(state,playerId),uncaptured=staff.filter(w=>!w.jailed);
   if(!uncaptured.length)return {ok:false,reason:'no-free-worker'};
   const actor=mode==='main'?activeWorker(state,playerId):null;
@@ -1059,6 +1142,7 @@ export function createInitialState({rng=Math.random}={}){
     newsH02Incident:initialH02Incident,
     newsC01Incident:initialC01Incident,
     newsC02Incident:null,
+    newsC03Offer:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -1120,6 +1204,7 @@ export function createInitialState({rng=Math.random}={}){
   if(newsCurrentIds[0]==='F03')applyF03PortFire(state,{rng});
   if(newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
   if(newsCurrentIds[0]==='F04')state.newsF04Notices=createF04Notices(state);
+  if(newsCurrentIds[0]==='C03')state.newsC03Offer=createC03Offer(state);
   return state;
 }
 
@@ -1305,7 +1390,8 @@ export function passDeclaration(state){
 }
 
 export function beginBidding(state){
-  if(state.phase!=='declare'||state.declarationIndex<3)return {ok:false};
+  if(state.phase!=='declare'||state.declarationIndex<3||
+    (c03CurrentOffer(state)&&!state.newsC03Offer.completed))return {ok:false};
   state.bidQueue=[];
   state.market.forEach((m,slot)=>{
     if(m&&m.claims.length>1){
@@ -2800,6 +2886,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
     state.newsH02Incident=createH02Incident(state.round,rng);
   if(state.newsCurrentIds[0]==='C01'&&!state.newsC01Incident)
     state.newsC01Incident=createC01Incident(state.round,rng);
+  state.newsC03Offer=null;
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -2838,6 +2925,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.actionSpaceOccupancy={};
   state.bankOwnerRewarded={};state.bureauOwnerRewarded={};
   state.phase=state.pendingBreadProduction.length?'bread-production':'declare';state.view='hall';state.declarationIndex=0;state.bidQueue=[];state.bidCursor=0;state.goalSessionClaims=[];
+  if(state.newsCurrentIds[0]==='C03')state.newsC03Offer=createC03Offer(state);
   state.market.forEach(m=>{if(m){m.claims=[];m.bids={};m.result=null;m.sold=false;}});
   state.yearTransition=null;
   const first=state.market.find(Boolean);
@@ -3087,6 +3175,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsH02Incident=null;
     state.newsC01Incident=null;
     state.newsC02Incident=null;
+    state.newsC03Offer=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -3120,6 +3209,15 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
      state.newsLastResolvedRound!==state.round)
     applyC02Theft(state,{rng});
   if(!Object.hasOwn(state,'newsC02Incident'))state.newsC02Incident=null;
+  // Old active C03 saves enter the offer ONLY when they have not yet begun City Hall.
+  // Never reopen bids/claims or old resolved newspaper archives.
+  if(!state.newsC03Offer&&activeNewspaper(state)?.id==='C03'&&
+     state.newsLastResolvedRound!==state.round&&
+     (state.phase==='draft'||state.phase==='bread-production'||
+      (state.phase==='declare'&&state.declarationIndex===0&&
+       !(state.market||[]).some(m=>m?.claims?.length)&&!(state.goalSessionClaims||[]).length)))
+    state.newsC03Offer=createC03Offer(state);
+  if(!Object.hasOwn(state,'newsC03Offer'))state.newsC03Offer=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -4149,6 +4247,13 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='C03'){
+    const offer=c03CurrentOffer(state);
+    return {card,entries:[],threatened:[],protected:[],summary:{districts:0,exposed:0,safe:0},
+      c03:offer?{round:offer.round,order:[...offer.order],cursor:offer.cursor,
+        completed:offer.completed,decisions:offer.decisions.map(d=>({...d})),
+        currentPlayerId:c03OfferPlayer(state),deckRemaining:state.deck.length}:null};
+  }
   if(card?.id==='C02'){
     const lot=c02Preview(state);
     return {card,entries:[],threatened:lot?.active?[lot.districtId]:[],protected:[],
@@ -4260,7 +4365,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02','C03'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -4288,6 +4393,7 @@ export function resolveNewspaper(state){
   if(card.id==='H02')return resolveH02Newspaper(state,card);
   if(card.id==='C01')return resolveC01Newspaper(state,card);
   if(card.id==='C02')return resolveC02Newspaper(state,card);
+  if(card.id==='C03')return resolveC03Newspaper(state,card);
   if(card.id==='H03')return resolveH03Newspaper(state,card);
   if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);
