@@ -1811,6 +1811,44 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
+  const c02Data=!archived?persistentC02:null;
+  const c02Player=Number.isInteger(currentDeveloper(state))?currentDeveloper(state):null;
+  const c02Return=c02Data?.active&&c02Player!=null?c02ReturnOptions(state,c02Player):null;
+  const c02CanDeliver=!!c02Data?.active&&c02Player!=null&&canUseFreeAction(state,c02Player)&&
+    state.lastDeliveryKey!==currentDeliveryKey(state,c02Player)&&
+    state.players[c02Player].capital>=1&&state.players[c02Player].workers.some(w=>!w.jailed)&&
+    !deliveryDraft&&!state.pendingConstruction&&!state.pendingWorkerAction;
+  const c02PortName=LOGISTICS_NODES.find(n=>n.id===c02Data?.portId)?.name||c02Data?.portId||'порт';
+  const c02Panel=c02Data
+    ?'<div class="news-c02-panel"><strong>▣ Похищена партия · D6 '+c02Data.roll+' · '+escapeHtml(c02PortName)+'</strong>'+
+      (c02Data.materials.length
+        ?'<p class="news-c02-cubes">2 материала: <b>'+c02Data.materials.map(t=>escapeHtml(materialLabel(t))).join(' + ')+'</b></p>'
+        :'<p>В выбранном порту осталось меньше двух материалов.</p>')+
+      (c02Data.status==='available'
+        ?'<strong>Выкуп — $1 за всю партию</strong>'+
+         '<div class="news-c02-options">'+
+         '<button type="button" data-c02-return '+(c02Return?.available?'':'disabled')+'><b>Вернуть городу</b><small>Основное действие в районе порта · $1 · +1 VP и +1 Influence'+
+           (c02Return&&!c02Return.available?' · '+
+             (!c02Return.actionAvailable?'Нет свободного основного действия':
+              !c02Return.reachable?'Представитель не достигает порта':'Недостаточно денег'):'')+'</small></button>'+
+         '<button type="button" data-c02-keep '+(c02CanDeliver?'':'disabled')+'><b>Оставить себе · начать Доставку</b><small>Загрузить оба материала в повозку из этого порта · выкуп $1 · +1 ★'+
+           (!c02CanDeliver?' · Нужна свободная Доставка, деньги и незаключённый сотрудник':'')+'</small></button></div>'+
+         '<small>Выкуп неделим; стоимость повозки, дорог и разгрузки оплачивается по обычным правилам. При ★★★ перед завершением доставки потребуется выбрать сотрудника для ареста.</small>'
+        :c02Data.status==='returned'
+        ?'<p>Груз возвращён в исходный порт. Организатор получил +1 VP и +1 Influence.</p>'
+        :c02Data.status==='kept'
+        ?'<p>Партия выкуплена и перевезена. Организатор получил +1 ★; повторная покупка закрыта.</p>'
+        :'<small>Недостаток исходного запаса: изъятие не произошло. Правило для такого случая ещё не утверждено; система ничего не генерирует и не перебрасывает D6.</small>')+
+      '</div>':'';
+  const c02Past=archived?.c02||null;
+  const c02Archive=c02Past
+    ?'<li>Похищенная партия · '+escapeHtml(LOGISTICS_NODES.find(n=>n.id===c02Past.portId)?.name||c02Past.portId)+
+      ' · D6 '+c02Past.roll+' · '+(c02Past.materials||[]).map(t=>escapeHtml(materialLabel(t))).join(' + ')+'</li>'+
+     '<li>Итог: '+(c02Past.status==='returned'?'материалы возвращены городу':
+       c02Past.status==='kept'?'материалы перевезены игроком':
+       'груз остался неразрешённым, исход не утверждён')+
+       (c02Past.claim?' · '+escapeHtml(state.players[c02Past.claim.playerId]?.name||'Игрок')+' · $1':'')+'</li>'
+    :'';
   const c01Data=!archived?persistentC01:null;
   const c01Opts=c01Data?.active&&Number.isInteger(currentDeveloper(state))
     ?c01RaidOptions(state,currentDeveloper(state)):null;
@@ -1858,7 +1896,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='C01'
+  const projections=issue?.id==='C02'
+    ?'<li>Выкуп только обеих единиц за $1. Законный возврат в том же порту либо присвоение через обычную Доставку.</li>'
+    :issue?.id==='C01'
     ?'<li>Один жетон на D6, угроза своему и соседним районам. Рейд снимает всё событие. Без рейда ежегодные последствия повторяются.</li>'
     :issue?.id==='H01'
     ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
@@ -1970,6 +2010,27 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-c02-return]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const r=returnC02Lot(state,currentDeveloper(state));
+    showToast(r.ok?'Груз возвращён · +1 VP и +1 Influence':
+      r.reason==='capital'?'Нужен $1 для выкупа':
+      r.reason==='worker-range'?'Представитель должен быть в порту или рядом':
+      r.reason==='already-claimed'?'Партия уже продана':'Возврат недоступен: '+r.reason);
+    render();
+  });
+  $$('#newsSheetContent [data-c02-keep]').forEach(button=>button.onclick=()=>{
+    const pid=currentDeveloper(state),lot=c02Preview(state);
+    if(!lot?.active||pid==null||deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||
+       !canUseFreeAction(state,pid)||state.lastDeliveryKey===currentDeliveryKey(state,pid)||
+       state.players[pid].capital<1||!state.players[pid].workers.some(w=>!w.jailed)){
+      showToast('Для присвоения нужна доступная обычная Доставка');return;
+    }
+    closeNewspaper();startDeliveryFlow(pid);
+    chooseDeliverySource({kind:'stolen',id:lot.portId});
   });
   $$('#newsSheetContent [data-c01-raid]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
