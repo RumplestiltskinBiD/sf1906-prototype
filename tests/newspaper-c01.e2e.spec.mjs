@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,createC01Incident,createH02Incident} from '../game-core.js';
+import {createInitialState,createC01Incident,createH02Incident,roundIncome} from '../game-core.js';
 
 const KEY='sf1906_phase1_ui_v030a';
 const screens=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
@@ -133,4 +133,30 @@ test('old C01 historical fines remain unchanged and old headline is displayed',a
  await expect(page.locator('#newsSheetContent')).toContainText('Архив прежней C01');
  await expect(page.locator('#newsSheetContent')).toContainText('-2');
  expect((await saved(page)).newsC01Incident).toBeNull();
+});
+
+
+test('unresolved C01 applies exactly one year-end loss, archives it and persists to new edition',async({page})=>{
+ const vp={width:1366,height:768},s=game({police:false});
+ s.newsDeck=['E02',...s.newsDeck.filter(id=>id!=='E02')];
+ s.developmentComplete=true;s.developmentPlayer=null;
+ s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
+ const start=s.players[2].capital,income=roundIncome(s,2);
+ await page.setViewportSize(vp);await seed(page,s);
+ await page.locator('#endRoundBtn').click();
+ const now=await saved(page);
+ expect(now.round).toBe(2);expect(now.newsCurrentIds[0]).toBe('E02');
+ expect(now.players[2].capital).toBe(start-2+income);
+ expect(now.newsC01Incident.lastAssessedRound).toBe(1);
+ expect(now.newsArchive[0].cardId).toBe('C01');
+ expect(now.newsArchive[0].c01.entries).toHaveLength(1);
+ expect(now.newsArchive[0].c01.entries[0].actual).toBe(-2);
+ expect(now.newsArchive[0].c01.resolved).toBe(false);
+ await expect(page.locator('[data-c01-marker="source"]')).toHaveCount(1);
+ await openNews(page,vp);
+ await expect(page.locator('.news-c01-panel')).toContainText('Полицейский рейд');
+ await page.locator('[data-news-archive="0"]').click();
+ await expect(page.locator('#newsSheetContent')).toContainText('уплачено $2');
+ await page.reload();
+ expect((await saved(page)).newsC01Incident.yearReports).toHaveLength(1);
 });
