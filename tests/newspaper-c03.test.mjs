@@ -163,6 +163,33 @@ test('no EARLY annual crime fine on C03 claim at ★★; end-of-year crime asses
  assert.equal(s.phase,'declare');
 });
 function finishOfferRemaining(s){while(G.c03OfferPlayer(s)!=null)assert.equal(G.declineC03Offer(s,G.c03OfferPlayer(s)).ok,true);}
+test('C03 acquired ★★ causes annual crime choice ONLY at year end, still $3 or -1 Influence',()=>{
+ const s=base({deck:['bank','shops','hotel']});
+ s.players[0].suspicion=1;
+ const money=s.players[0].capital;
+ assert.equal(G.acceptC03Offer(s,0).ok,true);
+ assert.equal(s.players[0].suspicion,2);
+ assert.equal(s.players[0].capital,money);
+ assert.equal(s.crimeAssessedRound,0);
+ finishOfferRemaining(s);
+ s.phase='development';s.developmentPlayer=null;s.developmentComplete=true;
+ const inc=G.roundIncome(s,0);
+ const r=G.cleanupMarket(s,{rng:()=>.27});
+ assert.equal(r.ok,false);assert.equal(r.reason,'crime-choice');
+ assert.equal(s.phase,'crime-assessment');
+ assert.equal(s.newsLastResolvedRound,1);
+ assert.equal(s.players[0].capital,money,'no C03 cash fine before standard crime assessment choice');
+ const choice=G.currentAnnualCrimeAssessment(s);
+ assert.equal(choice.playerId,0);assert.equal(choice.level,2);
+ assert.equal(choice.cost,3);assert.equal(choice.steps,1);
+ assert.equal(choice.cash,true);
+ const end=G.resolveAnnualCrimeAssessment(s,0,'cash',null,{rng:()=>.27});
+ assert.equal(end.ok,true,JSON.stringify(end));
+ assert.equal(s.crimeAssessedRound,1);
+ assert.equal(s.players[0].suspicion,2);
+ assert.equal(s.players[0].capital,money-3+inc);
+ assert.equal(s.newsArchive[0].c03.decisions.filter(x=>x.choice==='accepted').length,1);
+});
 for(const count of [3,4,5])test(count+'-player C03 opt-in uses stable annual turn order, not a 3-player grant cap',()=>{
  const s=base({count,deck:['bank','shops','hotel','factory','club','school']});
  s.yearTurnOrder=Array.from({length:count},(_,i)=>count-1-i);
