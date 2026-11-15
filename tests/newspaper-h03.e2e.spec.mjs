@@ -103,6 +103,9 @@ test('new H03 article takes effect at next-year supply refresh in browser',async
  expect(now.newsCurrentIds[0]).toBe('H03');
  expect(now.newsH03SupplyRound).toBe(2);
  expect(Object.values(now.logisticsSupply).flat()).toHaveLength(13);
+ // The annual transition legitimately opens City Hall; return to the map
+ // before clicking its mobile newspaper building, which is hidden in Hall.
+ await page.locator('[data-view="city"]').click();
  await expect(page.locator('.city-throughput')).toContainText('13');
  await openNews(page,{width:390,height:844});
  await expect(page.locator('.news-headline')).toHaveText('ЗАМОРСКИЕ ГРУЗЫ ЗАДЕРЖАНЫ!');
