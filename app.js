@@ -4,13 +4,13 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0575-h02-horse-illness';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0575-h02-horse-illness';
+} from './game-core.js?v=0576-c01-police-raids';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0576-c01-police-raids';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1260,6 +1260,7 @@ layer.innerHTML=html;
 function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
+  if(card.id==='C01')return 'Грабители: −$2/район без полиции; рейд +2 VP +1 Influence';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
   if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
@@ -1274,6 +1275,12 @@ function newspaperEffectShort(card){
     (card.frequency==='perDistrict'?' / район':' / игрока');
 }
 function newsArchiveText(report){
+  if(report?.c01||report?.ongoingC01){
+    const c=report.c01||report.ongoingC01;
+    return 'Грабители: '+(c.resolved?'ликвидированы':'налёты продолжаются')+
+      ', штрафов '+(c.entries||[]).filter(e=>e.actual<0).length+
+      ', защит '+(c.influenceRewards||[]).length;
+  }
   if(report?.h02||report?.ongoingH02){
     const h=report.h02||report.ongoingH02;
     return 'Конюшни: '+(h.resolved?'зараза ликвидирована':'дорога $2/переход')+
@@ -1394,9 +1401,26 @@ function renderH02MapMarker(illness){
   label.setAttribute('x',x);label.setAttribute('y',y+7);label.setAttribute('text-anchor','middle');
   label.textContent='♞';marker.append(circle,label);group.append(marker);
 }
+function renderC01MapMarker(incident){
+  $$('.c01-map-marker').forEach(marker=>marker.remove());
+  if(!incident?.active)return;
+  const group=$$('[data-district]').find(g=>g.dataset.district===incident.districtId);
+  const path=group?.querySelector('path');
+  if(!path||typeof path.getBBox!=='function')return;
+  const box=path.getBBox(),ns='http://www.w3.org/2000/svg';
+  const marker=document.createElementNS(ns,'g');
+  const circle=document.createElementNS(ns,'circle'),label=document.createElementNS(ns,'text');
+  marker.classList.add('c01-map-marker');marker.setAttribute('role','img');
+  marker.setAttribute('data-c01-marker','source');
+  marker.setAttribute('aria-label','Жетон грабителей: '+(districtById(incident.districtId)?.name||incident.districtId));
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',18);
+  label.setAttribute('x',x);label.setAttribute('y',y+7);label.setAttribute('text-anchor','middle');
+  label.textContent='⚔';marker.append(circle,label);group.append(marker);
+}
 function renderNewspaper(){
   const card=activeNewspaper(state),forecast=newsPreview(state);
-  const persistentH01=h01Preview(state),persistentH02=h02Preview(state);
+  const persistentH01=h01Preview(state),persistentH02=h02Preview(state),persistentC01=c01Preview(state);
   const year=1899+state.round;
   const latest=state.newsArchive?.[state.newsArchive.length-1];
   const event=card||((state.finished&&latest)?null:null);
@@ -1409,6 +1433,8 @@ function renderNewspaper(){
     ', радиус '+persistentH01.radius;
   if(persistentH02?.active&&card?.id!=='H02')stripLabel.textContent+=' · ♞ Конюшни: дорога $2/переход';
   if(card?.id==='H02'&&persistentH02&&!persistentH02.active)stripLabel.textContent+=' · Кризис ликвидирован';
+  if(persistentC01?.active&&card?.id!=='C01')stripLabel.textContent+=' · ⚔ Грабители: '+(districtById(persistentC01.districtId)?.name||persistentC01.districtId);
+  if(card?.id==='C01'&&persistentC01&&!persistentC01.active)stripLabel.textContent+=' · Банды ликвидированы';
   $('#newsMapBtn').setAttribute('aria-pressed',newsMapVisible?'true':'false');
   $('#newsEmergencyCancel').hidden=!newsEmergencyMode;
   $('#newsEmergencyCancelMobile').hidden=!newsEmergencyMode;
@@ -1422,10 +1448,13 @@ function renderNewspaper(){
     g.classList.toggle('news-protected',newsMapVisible&&protectedSet.has(id));
     g.classList.toggle('h01-infected',!!persistentH01?.active&&persistentH01.infectedDistrictIds.includes(id));
     g.classList.toggle('h01-protected',!!persistentH01?.active&&persistentH01.protectedDistrictIds.includes(id));
+    g.classList.toggle('c01-threat',!!persistentC01?.active&&persistentC01.threatenedDistrictIds.includes(id));
+    g.classList.toggle('c01-protected',!!persistentC01?.active&&persistentC01.protectedDistrictIds.includes(id));
   });
   renderF02MapMarkers(card?.id==='F02'?forecast.f02:null);
   renderH01MapMarker(persistentH01);
   renderH02MapMarker(persistentH02);
+  renderC01MapMarker(persistentC01);
   $('#newsSheet').hidden=!newsSheetOpen;
   $('#newsBackdrop').hidden=!newsSheetOpen;
   document.body.classList.toggle('news-sheet-open',newsSheetOpen);
@@ -1443,13 +1472,15 @@ function renderNewspaper(){
   const legacyF02Archive=!!(archived?.cardId==='F02'&&!archived.f02);
   const legacyF03Archive=!!(archived?.cardId==='F03'&&!archived.f03);
   const legacyH01Archive=!!(archived?.cardId==='H01'&&!archived.h01);
+  const legacyC01Archive=!!(archived?.cardId==='C01'&&!archived.c01);
   const legacyH02Archive=!!(archived?.cardId==='H02'&&!archived.h02);
   const legacyH03Archive=!!(archived?.cardId==='H03'&&!archived.h03);
   const legacyH04Archive=!!(archived?.cardId==='H04'&&!archived.h04);
   const legacyF04Archive=!!(archived?.cardId==='F04'&&!archived.f04);
-  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
+  const streetCrimeNewspaper=!legacyC01Archive&&(record.id==='C01'||record.cardId==='C01');
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
   const portFire=!legacyF03Archive&&(record.id==='F03'||record.cardId==='F03');
@@ -1458,7 +1489,7 @@ function renderNewspaper(){
   const seaQuarantine=!legacyH03Archive&&(record.id==='H03'||record.cardId==='H03');
   const infantCare=!legacyH04Archive&&(record.id==='H04'||record.cardId==='H04');
   const fireAudit=!legacyF04Archive&&(record.id==='F04'||record.cardId==='F04');
-  const outcomeRows=archived&&!archived.f04&&!archived.h01?(archived.entries||[]).map(e=>{
+  const outcomeRows=archived&&!archived.f04&&!archived.h01&&!archived.c01?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
     const delta=archived.changes?.[e.playerId];
@@ -1747,7 +1778,56 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
-  const projections=issue?.id==='H01'
+  const c01Data=!archived?persistentC01:null;
+  const c01Opts=c01Data?.active&&Number.isInteger(currentDeveloper(state))
+    ?c01RaidOptions(state,currentDeveloper(state)):null;
+  const c01Panel=c01Data&&(c01Data.active||issue?.id==='C01')
+    ?'<div class="news-c01-panel"><strong>⚔ Грабители · D6 '+c01Data.roll+' · '+
+      escapeHtml(districtById(c01Data.districtId)?.name||c01Data.districtId)+'</strong>'+
+      (c01Data.active
+        ?'<p>Под угрозой '+c01Data.threatenedDistrictIds.length+' районов · незащищённых с постройками '+
+          c01Data.exposedDistrictIds.length+' · прикрытых полицией '+c01Data.protectedDistrictIds.length+'.</p>'+
+         '<p>Зона: '+c01Data.threatenedDistrictIds.map(id=>escapeHtml(districtById(id)?.name||id)).join(', ')+'</p>'+
+         '<small>Ежегодно −$2 за каждый незащищённый район, где есть готовое неполицейское здание игрока. Стандартная полиция прикрывает свой район, рыночная также соседние. За каждый район с предотвращённым штрафом владельцу защищающей полиции +1 Influence в конце года; местная имеет приоритет.</small>'+
+         '<strong>Полицейский рейд · 1 основное действие · +2 VP и +1 Influence</strong>'+
+         '<small>Выберите свою или чужую завершённую полицию в досягаемости представителя. Полиция выезжает по дорогам за $'+(c01Opts?.tariff||paidRoadEdgeCost(state))+'/переход; представитель остаётся на месте. Рейд снимает все угрозы и ежегодные последствия.</small>'+
+         (c01Opts?.services?.length
+           ?'<div class="news-c01-services">'+c01Opts.services.map(service=>{
+             const site=state.constructions.find(c=>c.id===service.constructionId);
+             const name=projectById(site?.projectId)?.name||site?.projectId||'Полицейский участок';
+             const routeText=service.route?service.route.length-1+' переходов · $'+service.cost:'дорога недоступна';
+             const reason=!c01Opts.actionAvailable?'Нет свободного основного действия':
+               !service.route?'Нет дорожного маршрута':
+               !service.reachable?'Представитель не достигает полиции':
+               !service.affordable?'Недостаточно денег':'';
+             return '<button type="button" data-c01-raid="'+escapeHtml(String(service.constructionId))+
+               '" '+(service.available?'':'disabled')+'><b>'+escapeHtml(name)+'</b>'+
+               '<span>'+escapeHtml(districtById(service.districtId)?.name||service.districtId)+' · '+
+                 escapeHtml(state.players[service.ownerId]?.name||'Игрок')+'</span>'+
+               '<small>'+escapeHtml(routeText)+(reason?' · '+escapeHtml(reason):'')+'</small></button>';
+           }).join('')+'</div>'
+           :'<p>Нет доступного завершённого полицейского учреждения. Постройте своё или используйте чужое.</p>')+
+         (!c01Opts?'<small>Рейд доступен в городской ход действующего игрока после выбора представителя.</small>':'')
+        :'<p>Банды ликвидированы. Штрафы и Influence за защиту больше не начисляются.</p>'+
+         (c01Data.operation?'<p>Рейд: '+escapeHtml(state.players[c01Data.operation.playerId]?.name||'Игрок')+
+           ' · маршрут $'+c01Data.operation.cost+' · +2 VP и +'+c01Data.operation.influenceSteps+' Influence.</p>':''))+
+      '</div>':'';
+  const c01Past=archived?.c01||archived?.ongoingC01||null;
+  const c01Archive=c01Past
+    ?'<li>Банды · '+escapeHtml(districtById(c01Past.districtId)?.name||c01Past.districtId)+
+      ' · D6 '+c01Past.roll+' · '+(c01Past.resolved?'ликвидированы':'продолжают налёты')+'</li>'+
+      (c01Past.operation?'<li>Рейд: '+escapeHtml(state.players[c01Past.operation.playerId]?.name||'Игрок')+
+        ' · $'+c01Past.operation.cost+' · +2 VP и +'+c01Past.operation.influenceSteps+' Influence</li>':'')+
+      (c01Past.entries||[]).map(e=>'<li>'+escapeHtml(state.players[e.playerId]?.name||'Игрок')+
+        ' · '+escapeHtml(districtById(e.districtIds[0])?.name||e.districtIds[0])+
+        ': '+(e.defended?'защищено':'уплачено $'+(-e.actual))+'</li>').join('')+
+      (c01Past.influenceRewards||[]).map(e=>'<li>'+
+        escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
+        escapeHtml(districtById(e.districtId)?.name||e.districtId)+
+        ' · +'+e.steps+' Influence</li>').join(''):'';
+  const projections=issue?.id==='C01'
+    ?'<li>Один жетон на D6, угроза своему и соседним районам. Рейд снимает всё событие. Без рейда ежегодные последствия повторяются.</li>'
+    :issue?.id==='H01'
     ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
     :issue?.id==='H02'
     ?'<li>Общегородской тариф $2/переход до единственной санитарной операции, в том числе после смены газеты.</li>'
@@ -1778,7 +1858,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04','C01'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1802,20 +1882,20 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||fireAudit||legacyH01Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+f04Archive+
+      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(infantCare||h01Past||h02Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(infantCare||h01Past||h02Past||c01Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>'+(infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
@@ -1824,17 +1904,18 @@ function renderNewspaper(){
        infantCare?'<small>Автоматических штрафов и начислений нет. Награда выдаётся сразу при добровольном взносе.</small>':
        epidemicNewspaper?'<small>Штрафы и медицинские награды начисляются в конце года, если очаг остаётся. Экспедиция устраняет эпидемию целиком.</small>':
         horseIllnessNewspaper?'<small>Тариф $2 за каждый платный переход действует до санитарной операции и сохраняется в следующие годы. Годовых штрафов нет.</small>':
+        streetCrimeNewspaper?'<small>Один жетон. Пока не проведён рейд, в конце каждого года −$2 за район с незащищённой собственностью; полиция получает Influence за реально защищённые районы.</small>':
        arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireAudit?'<small>Выберите цель при равенстве, затем законно устраните нарушения или воспользуйтесь незаконным подкупом.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -1855,6 +1936,18 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-c01-raid]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const result=completeC01Raid(state,currentDeveloper(state),button.dataset.c01Raid);
+    showToast(result.ok?'Банды ликвидированы · +2 VP и +1 Influence':
+      result.reason==='capital'?'Недостаточно денег на маршрут рейда':
+      result.reason==='worker-range'?'Представитель должен быть рядом с полицейским учреждением':
+      result.reason==='already-completed'?'Рейд уже проведён':
+      'Рейд недоступен: '+result.reason);
+    render();
   });
   $$('#newsSheetContent [data-h02-expedition]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
