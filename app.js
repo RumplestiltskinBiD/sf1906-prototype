@@ -1544,7 +1544,13 @@ function renderNewspaper(){
       const name=projectById(site?.projectId)?.name||n.constructionId;
       const result=n.status==='closed'
         ?(n.method==='bribe'?'закрыто взяткой':n.method==='urgent'?'закрыто срочными работами':'закрыто модернизацией')
-        :'не закрыто · списано 
+        :'не закрыто · списано '+String.fromCharCode(36)+n.capitalPaid+', Influence '+n.influenceSteps;
+      return '<li>'+escapeHtml(owner)+' · '+escapeHtml(name)+': '+escapeHtml(result)+'</li>';
+    }).join(''):'<li>Предписаний нет, штрафов нет.</li>')
+    :'';
+  const projections=issue?.id==='F04'
+    ?'<li>Внеплановая проверка назначает не более одного предписания владельцу, с тремя способами разрешения.</li>'
+    :issue?.id==='F03'
     ?'<li>Закрыт '+escapeHtml(f03PortName)+
       ' (D6 '+(f03Incident?.roll||'—')+'); доставка с него недоступна до следующего пополнения.</li>'
     :issue?.id==='F02'
