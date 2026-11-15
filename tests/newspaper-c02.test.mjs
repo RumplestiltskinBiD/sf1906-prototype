@@ -162,6 +162,22 @@ test('illegal delivery is real, pays $1 for whole bundle plus hauler and road, g
  assert.equal(s.newsArchive[0].c02.status,'kept');
  assert.deepEqual(s.newsArchive[0].c02.materials,['Lumber','Masonry']);
 });
+test('C02 actual port loading also triggers the existing sailor lodging port reaction',()=>{
+ const s=game();build(s);
+ s.constructions.push({id:'SL',playerId:1,projectId:'sailorlodging',
+  districtId:'northbeach',status:'complete',startedRound:1,completedRound:1,
+  materialsDelivered:[],warehouseInventory:[]});
+ assert.deepEqual(s.pendingSailorRecruitments,[]);
+ const result=G.executeDelivery(s,routePlan(s));
+ assert.equal(result.ok,true,JSON.stringify(result));
+ assert.equal(s.newsC02Incident.status,'kept');
+ assert.deepEqual(s.pendingSailorRecruitments,['SL'],
+  'normal freight loading at a real sea port must keep existing reactive actions');
+ assert.equal(s.players[0].suspicion,1);
+ assert.equal(s.log.some(item=>item.msg?.includes('выкуп $1')),true,
+  'delivery audit must itemize the fixed buyout separately');
+});
+
 test('zero-edge illegal delivery is $1, not $1 per cube',()=>{
  const s=game({stock:['Steel','Steel']});build(s,'WH','northbeach');
  const plan=routePlan(s,{route:['northbeach'],destination:'northbeach'});
