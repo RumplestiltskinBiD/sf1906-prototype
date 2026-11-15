@@ -253,6 +253,8 @@ test('year transition into E01 creates exactly two tokens and expires them next 
  assert.equal(G.cleanupMarket(s,{rng:()=>.2}).ok,true);
  assert.equal(s.round,2);
  assert.deepEqual(s.newsE01Contracts,{round:2,claims:[]});
+ // Normal City Hall precedes building completion; move the fixture into development.
+ s.phase='development';s.developmentPlayer=0;s.developmentComplete=false;
  assert.equal(finish(s,'A','tenement',0).result.ok,true);
  assert.equal(pick(s,0,'civic').ok,true);
  s.phase='development';s.developmentComplete=true;s.developmentPlayer=null;
