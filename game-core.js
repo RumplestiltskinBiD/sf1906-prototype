@@ -926,6 +926,7 @@ export function createInitialState({rng=Math.random}={}){
   const initialF02Incident=newsCurrentIds[0]==='F02'?createF02Incident(1,rng):null;
   const initialH01Incident=newsCurrentIds[0]==='H01'?createH01Incident(1,rng):null;
   const initialH02Incident=newsCurrentIds[0]==='H02'?createH02Incident(1,rng):null;
+  const initialC01Incident=newsCurrentIds[0]==='C01'?createC01Incident(1,rng):null;
   const state={
     version:'0.44',
     industrialExpansionV1:true,
@@ -955,6 +956,7 @@ export function createInitialState({rng=Math.random}={}){
     newsF02Incident:initialF02Incident,
     newsH01Incident:initialH01Incident,
     newsH02Incident:initialH02Incident,
+    newsC01Incident:initialC01Incident,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -2665,6 +2667,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
     state.newsH01Incident=createH01Incident(state.round,rng);
   if(state.newsCurrentIds[0]==='H02'&&!state.newsH02Incident)
     state.newsH02Incident=createH02Incident(state.round,rng);
+  if(state.newsCurrentIds[0]==='C01'&&!state.newsC01Incident)
+    state.newsC01Incident=createC01Incident(state.round,rng);
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -2777,6 +2781,9 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   if(state.newsH02Incident&&state.newsH02Incident.lastAssessedRound!==state.round&&
       (state.newsH02Incident.resolvedRound==null||state.newsH02Incident.resolvedRound===state.round))
     settleH02Year(state);
+  if(state.newsC01Incident&&state.newsC01Incident.lastAssessedRound!==state.round&&
+      (state.newsC01Incident.resolvedRound==null||state.newsC01Incident.resolvedRound===state.round))
+    settleC01Year(state);
   if(state.pressCampaignQueuedRound!==state.round){
     state.pressCampaignQueuedRound=state.round;
     state.pendingPressCampaigns=(state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='press_tower'
@@ -2945,6 +2952,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsF02Incident=null;
     state.newsH01Incident=null;
     state.newsH02Incident=null;
+    state.newsC01Incident=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -2966,6 +2974,12 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
      state.newsLastResolvedRound!==state.round)
     state.newsH02Incident=createH02Incident(state.round,rng);
   if(!Object.hasOwn(state,'newsH02Incident'))state.newsH02Incident=null;
+  // Migrate only a still-open old C01 newspaper. Do not change earlier
+  // C01 settlements or draw a new token after the year has resolved.
+  if(!state.newsC01Incident&&activeNewspaper(state)?.id==='C01'&&
+     state.newsLastResolvedRound!==state.round)
+    state.newsC01Incident=createC01Incident(state.round,rng);
+  if(!Object.hasOwn(state,'newsC01Incident'))state.newsC01Incident=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -3808,6 +3822,14 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='C01'){
+    const raid=c01Preview(state);
+    return {card,entries:raid?.entries||[],
+      threatened:raid?.exposedDistrictIds||[],protected:raid?.protectedDistrictIds||[],
+      summary:{districts:raid?.threatenedDistrictIds.length||0,
+        exposed:raid?.exposedDistrictIds.length||0,safe:raid?.protectedDistrictIds.length||0},
+      c01:raid};
+  }
   if(card?.id==='H02'){
     const illness=h02Preview(state);
     return {card,entries:[],threatened:illness?.active?[illness.districtId]:[],protected:[],
@@ -3906,7 +3928,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04','C01'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3932,6 +3954,7 @@ export function resolveNewspaper(state){
   if(card.id==='F03')return resolveF03Newspaper(state,card);
   if(card.id==='H01')return resolveH01Newspaper(state,card);
   if(card.id==='H02')return resolveH02Newspaper(state,card);
+  if(card.id==='C01')return resolveC01Newspaper(state,card);
   if(card.id==='H03')return resolveH03Newspaper(state,card);
   if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);
