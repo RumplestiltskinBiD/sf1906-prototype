@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,projectById} from '../game-core.js';
+import {createInitialState,projectById,roundIncome} from '../game-core.js';
 
 const KEY='sf1906_phase1_ui_v030a';
 const viewports=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
@@ -154,7 +154,7 @@ test('F04 year-end fines only the unresolved owner, archives result and expires'
  expect(now.newsArchive[0].f04.notices[0]).toMatchObject({status:'open',capitalPaid:1,influenceSteps:0});
  expect(now.newsArchive[0].entries).toHaveLength(1);
  expect(now.newsArchive[0].changes['0'].capital).toBe(-1);
- expect(now.players[0].capital).toBe(3,'year-end $1 lost then normal $3 income');
+ expect(now.players[0].capital).toBe(roundIncome(s,0),'year-end $1 is lost, then the normal building-inclusive annual income is awarded');
  expect(now.newsF04Notices).toBeNull();
  await page.locator('#newsOpenBtn').click();await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('#newsSheetContent')).toContainText('не закрыто · списано $1');
