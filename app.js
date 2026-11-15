@@ -4,7 +4,7 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
@@ -1263,6 +1263,7 @@ function newspaperEffectShort(card){
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
   if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
+  if(card.id==='H01')return 'Эпидемия: −$2/незащищённый заражённый район; экспедиция +2 VP +1 Influence';
   if(card.id==='H03')return 'Четыре порта: −1 материал при пополнении; всего 13 вместо 17';
   if(card.id==='H04')return 'Пожертвование $10: +4 VP и +2 Influence, без действия рабочего';
   if(card.id==='F04')return 'Предписание: исправить за $4, подкупить за $2 + ★ или потерять $4 и Influence';
@@ -1344,8 +1345,28 @@ function renderF02MapMarkers(incident){
     marker.append(circle,textNode);group.append(marker);
   }
 }
+function renderH01MapMarker(epidemic){
+  $$('.h01-map-marker').forEach(marker=>marker.remove());
+  if(!epidemic?.active)return;
+  const group=$$('[data-district]').find(g=>g.dataset.district===epidemic.districtId);
+  const path=group?.querySelector('path');
+  if(!path||typeof path.getBBox!=='function')return;
+  const box=path.getBBox(),ns='http://www.w3.org/2000/svg';
+  const circle=document.createElementNS(ns,'circle'),text=document.createElementNS(ns,'text');
+  const marker=document.createElementNS(ns,'g');
+  marker.classList.add('h01-map-marker');
+  marker.setAttribute('role','img');
+  marker.setAttribute('aria-label','Очаг эпидемии: '+(districtById(epidemic.districtId)?.name||epidemic.districtId));
+  marker.setAttribute('data-h01-marker','source');
+  const x=box.x+box.width/2,y=box.y+box.height/2;
+  circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',18);
+  text.setAttribute('x',x);text.setAttribute('y',y+7);text.setAttribute('text-anchor','middle');
+  text.textContent='☣';
+  marker.append(circle,text);group.append(marker);
+}
 function renderNewspaper(){
   const card=activeNewspaper(state),forecast=newsPreview(state);
+  const persistentH01=h01Preview(state);
   const year=1899+state.round;
   const latest=state.newsArchive?.[state.newsArchive.length-1];
   const event=card||((state.finished&&latest)?null:null);
@@ -1353,6 +1374,9 @@ function renderNewspaper(){
   stripLabel.textContent=event
     ?year+' · '+event.category.toUpperCase()+' · '+event.title+' · '+newspaperEffectShort(event)
     :latest?'1906 близко · '+latest.year+' · Итоги: '+latest.title:'Нет выпуска';
+  if(persistentH01?.active&&card?.id!=='H01')stripLabel.textContent+=
+    ' · ☣ Эпидемия: '+(districtById(persistentH01.districtId)?.name||persistentH01.districtId)+
+    ', радиус '+persistentH01.radius;
   $('#newsMapBtn').setAttribute('aria-pressed',newsMapVisible?'true':'false');
   $('#newsEmergencyCancel').hidden=!newsEmergencyMode;
   $('#newsEmergencyCancelMobile').hidden=!newsEmergencyMode;
@@ -1364,8 +1388,11 @@ function renderNewspaper(){
     const id=g.dataset.district;
     g.classList.toggle('news-threat',(newsMapVisible||['F02','F03','F04'].includes(card?.id))&&affected.has(id));
     g.classList.toggle('news-protected',newsMapVisible&&protectedSet.has(id));
+    g.classList.toggle('h01-infected',!!persistentH01?.active&&persistentH01.infectedDistrictIds.includes(id));
+    g.classList.toggle('h01-protected',!!persistentH01?.active&&persistentH01.protectedDistrictIds.includes(id));
   });
   renderF02MapMarkers(card?.id==='F02'?forecast.f02:null);
+  renderH01MapMarker(persistentH01);
   $('#newsSheet').hidden=!newsSheetOpen;
   $('#newsBackdrop').hidden=!newsSheetOpen;
   document.body.classList.toggle('news-sheet-open',newsSheetOpen);
@@ -1382,19 +1409,21 @@ function renderNewspaper(){
   const legacyF01Archive=!!(archived?.cardId==='F01'&&!archived.f01);
   const legacyF02Archive=!!(archived?.cardId==='F02'&&!archived.f02);
   const legacyF03Archive=!!(archived?.cardId==='F03'&&!archived.f03);
+  const legacyH01Archive=!!(archived?.cardId==='H01'&&!archived.h01);
   const legacyH03Archive=!!(archived?.cardId==='H03'&&!archived.h03);
   const legacyH04Archive=!!(archived?.cardId==='H04'&&!archived.h04);
   const legacyF04Archive=!!(archived?.cardId==='F04'&&!archived.f04);
-  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
   const portFire=!legacyF03Archive&&(record.id==='F03'||record.cardId==='F03');
+  const epidemicNewspaper=!legacyH01Archive&&(record.id==='H01'||record.cardId==='H01');
   const seaQuarantine=!legacyH03Archive&&(record.id==='H03'||record.cardId==='H03');
   const infantCare=!legacyH04Archive&&(record.id==='H04'||record.cardId==='H04');
   const fireAudit=!legacyF04Archive&&(record.id==='F04'||record.cardId==='F04');
-  const outcomeRows=archived&&!archived.f04?(archived.entries||[]).map(e=>{
+  const outcomeRows=archived&&!archived.f04&&!archived.h01?(archived.entries||[]).map(e=>{
     const p=state.players[e.playerId]?.name||'Игрок';
     const loc=(e.districtIds||[]).map(id=>districtById(id)?.name||id).join(', ');
     const delta=archived.changes?.[e.playerId];
