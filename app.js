@@ -4,13 +4,13 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0577-c02-stolen-cargo';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0577-c02-stolen-cargo';
+} from './game-core.js?v=0578-c03-permit-offers';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0578-c03-permit-offers';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1269,6 +1269,7 @@ function newspaperEffectShort(card){
   if(card.id==='C04')return 'Уладить дело: $7 или −3 влияния';
   if(card.id==='C01')return 'Грабители: −$2/район без полиции; рейд +2 VP +1 Influence';
   if(card.id==='C02')return '2 похищенных материала · выкуп всей партии $1 · вернуть +1 VP/+1 Influence или присвоить +1 ★';
+  if(card.id==='C03')return 'До City Hall: каждому 1 бесплатная случайная карта за +1 ★; обычные торги сохраняются';
   if(card.id==='F01')return 'Общий сбор: $2 и −1 Вл каждому; при акте: $6 и −1 Вл виновнику';
   if(card.id==='F02')return 'Пожар: −$3 всем; розыск: −1 Вл всем, если не устранены';
   if(card.id==='F03')return 'Один порт закрыт; его материалы перенаправлены, запас города сохранён';
@@ -1283,6 +1284,10 @@ function newspaperEffectShort(card){
     (card.frequency==='perDistrict'?' / район':' / игрока');
 }
 function newsArchiveText(report){
+  if(report?.c03){
+    const c=report.c03,accepted=(c.decisions||[]).filter(d=>d.choice==='accepted').length;
+    return 'Сомнительные разрешения: '+accepted+' принято, '+(c.decisions||[]).filter(d=>d.choice==='declined').length+' отказов';
+  }
   if(report?.c02){
     const c=report.c02;
     return 'Похищенный груз: '+(c.status==='returned'?'возвращён':c.status==='kept'?'присвоен':'исход не определён')+
@@ -1505,15 +1510,17 @@ function renderNewspaper(){
   const legacyH01Archive=!!(archived?.cardId==='H01'&&!archived.h01);
   const legacyC01Archive=!!(archived?.cardId==='C01'&&!archived.c01);
   const legacyC02Archive=!!(archived?.cardId==='C02'&&!archived.c02);
+  const legacyC03Archive=!!(archived?.cardId==='C03'&&!archived.c03);
   const legacyH02Archive=!!(archived?.cardId==='H02'&&!archived.h02);
   const legacyH03Archive=!!(archived?.cardId==='H03'&&!archived.h03);
   const legacyH04Archive=!!(archived?.cardId==='H04'&&!archived.h04);
   const legacyF04Archive=!!(archived?.cardId==='F04'&&!archived.f04);
-  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const historical=archived&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyC03Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const streetCrimeNewspaper=!legacyC01Archive&&(record.id==='C01'||record.cardId==='C01');
   const stolenCargoNewspaper=!legacyC02Archive&&(record.id==='C02'||record.cardId==='C02');
+  const corruptPermitsNewspaper=!legacyC03Archive&&(record.id==='C03'||record.cardId==='C03');
   const fireLevy=!legacyF01Archive&&(record.id==='F01'||record.cardId==='F01');
   const arson=!legacyF02Archive&&(record.id==='F02'||record.cardId==='F02');
   const portFire=!legacyF03Archive&&(record.id==='F03'||record.cardId==='F03');
@@ -1811,6 +1818,34 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
+  const c03Offer=issue?.id==='C03'?c03CurrentOffer(state):null;
+  const c03Pending=c03Offer&&!c03Offer.completed;
+  const c03Decisions=c03Offer?.decisions||[];
+  const c03Panel=issue?.id==='C03'
+    ?'<section class="news-c03-panel"><strong>ПЕРЕД CITY HALL · СЛУЧАЙНЫЙ ПРОЕКТ</strong>'+
+      '<p>Каждый игрок может один раз взять верхнюю карту из обычной закрытой колоды проектов. Бесплатно, без действия представителя, +1 ★. Отказ — без подозрения.</p>'+
+      '<p>Рука не более '+HAND_LIMIT+' проектов. Обычные заявки, городские цели и ставки остаются доступными.</p>'+
+      (c03Offer
+        ?'<p><b>Решений: '+c03Decisions.length+'/'+c03Offer.order.length+'</b>'+
+         (c03Pending?' · следующий: '+escapeHtml(state.players[c03Offer.order[c03Offer.cursor]]?.name||'Игрок'):
+          ' · все решения получены')+
+         ' · колода '+state.deck.length+'</p>'+
+         '<ul>'+c03Decisions.map(d=>'<li>'+
+            escapeHtml(state.players[d.playerId]?.name||'Игрок')+' — '+
+            (d.choice==='accepted'?'принято «'+escapeHtml(projectById(d.projectId)?.name||d.projectId)+'», +1 ★':'отказ')+
+           '</li>').join('')+'</ul>'
+        :'<small>В этом сохранении окно разрешений до City Hall недоступно; завершённые заявки задним числом не меняются.</small>')+
+      '<small>При исходных ★★★ после успешного получения карты действуют обычные санкции ареста. Ежегодная проверка подозрения остаётся в конце года.</small></section>':'';
+  const c03Past=archived?.c03||null;
+  const c03Archive=c03Past
+    ?'<li>Перерегистрация сомнительных разрешений: '+
+       c03Past.decisions.filter(d=>d.choice==='accepted').length+' принятых, '+
+       c03Past.decisions.filter(d=>d.choice==='declined').length+' отказов</li>'+
+       c03Past.decisions.map(d=>'<li>'+escapeHtml(state.players[d.playerId]?.name||'Игрок')+
+         ': '+(d.choice==='accepted'?'проект «'+escapeHtml(projectById(d.projectId)?.name||d.projectId)+'», +1 ★':'отказ')+
+         '</li>').join('')+
+       (c03Past.legacyMissed?'<li>Историческая партия без окна C03 до мэрии; старые заявки не изменены.</li>':'')
+    :'';
   const c02Data=!archived&&persistentC02?.round===state.round?persistentC02:null;
   const c02Player=Number.isInteger(currentDeveloper(state))?currentDeveloper(state):null;
   const c02Return=c02Data?.active&&c02Player!=null?c02ReturnOptions(state,c02Player):null;
@@ -1896,7 +1931,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='C02'
+  const projections=issue?.id==='C03'
+    ?'<li>Перед заявками City Hall каждый игрок может получить 1 случайный проект за +1 ★. Не заменяет обычное участие в торгах и не расходует работников.</li>'
+    :issue?.id==='C02'
     ?'<li>Выкуп только обеих единиц за $1. Законный возврат в том же порту либо присвоение через обычную Доставку.</li>'
     :issue?.id==='C01'
     ?'<li>Один жетон на D6, угроза своему и соседним районам. Рейд снимает всё событие. Без рейда ежегодные последствия повторяются.</li>'
@@ -1931,7 +1968,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H02','H03','H04','C01','C02','C03'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1955,20 +1992,20 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||corruptPermitsNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyC03Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyC03Archive?'Архив прежней C03 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+f04Archive+
+      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+c03Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(infantCare||h01Past||h02Past||c01Past||c02Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(infantCare||h01Past||h02Past||c01Past||c02Past||c03Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>'+(infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
@@ -1979,17 +2016,18 @@ function renderNewspaper(){
         horseIllnessNewspaper?'<small>Тариф $2 за каждый платный переход действует до санитарной операции и сохраняется в следующие годы. Годовых штрафов нет.</small>':
         streetCrimeNewspaper?'<small>Один жетон. Пока не проведён рейд, в конце каждого года −$2 за район с незащищённой собственностью; полиция получает Influence за реально защищённые районы.</small>':
         stolenCargoNewspaper?'<small>Из запаса одного порта на карточку перемещены два физических материала. Покупка только всей партией, $1; дополнительных годовых штрафов нет.</small>':
+        corruptPermitsNewspaper?'<small>До заявок City Hall каждый игрок может принять одну случайную карту из обычной колоды и +1 ★, либо отказаться. Основное действие и деньги не нужны. Обычные заявки/аукцион и годовой штраф не меняются.</small>':
        arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireAudit?'<small>Выберите цель при равенстве, затем законно устраните нарушения или воспользуйтесь незаконным подкупом.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+c03Panel+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!corruptPermitsNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -2280,7 +2318,7 @@ if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendin
 function renderTop(){
 $('#roundStat').textContent=state.finished?`${MAX_ROUNDS} / ${MAX_ROUNDS}`:`${state.round} / ${MAX_ROUNDS}`;
 $('#firstStat').textContent=state.players[state.firstPlayer].name;
-$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?'Мэрия · заявки':state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':state.phase==='bread-production'?'Начало года · выпуск хлеба':state.phase==='crime-assessment'?'Конец года · годовой штраф':'Тест завершён';
+$('#phaseStat').textContent=state.phase==='draft'?'Стартовый драфт':state.phase==='declare'?(c03OfferPlayer(state)!=null?'Мэрия · сомнительные разрешения':'Мэрия · заявки'):state.phase==='bids'?'Мэрия · ставки':state.phase==='ready'?'Мэрия · вскрытие':state.phase==='development'?'Развитие города':state.phase==='upkeep'?'Начало года · простой':state.phase==='bread-production'?'Начало года · выпуск хлеба':state.phase==='crime-assessment'?'Конец года · годовой штраф':'Тест завершён';
 }
 // Original handcuff pictogram, independent of the Flaticon visual reference.
 const arrestedWorkerIcon='<svg class="arrested-worker-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="7.5" height="9.5" rx="3.3"/><rect x="14" y="4" width="7.5" height="9.5" rx="3.3"/><path d="M3.4 10.4h5.7M14.9 10.4h5.7M6.25 13.5v2.9l3.4 2.8 2.35-1.8 2.35 1.8 3.4-2.8v-2.9"/><path d="M9.6 19.2h4.8"/></svg>';
@@ -2291,7 +2329,7 @@ function renderPlayers(){
   const el=$('#playersBar');el.innerHTML='';
   const cd=currentDeclarer(state),dev=currentDeveloper(state),overviewPid=state.view==='city'?currentOverviewPlayerId():null,order=turnOrder(state),compact=isMobile();
   state.players.forEach((p,i)=>{
-    const declareActive=state.phase==='declare'&&cd===i;
+    const declareActive=state.phase==='declare'&&(cd===i||c03OfferPlayer(state)===i);
     const devActive=state.phase==='development'&&dev===i;
     const overviewActive=state.view==='city'&&overviewPid===i;
     const pill=document.createElement('button');pill.type='button';
@@ -2396,7 +2434,7 @@ const steps=[['draft','0 Драфт'],['declare','1 Заявки'],['bids','2 З
 const order={draft:0,declare:1,bids:2,ready:3,development:4,upkeep:5,finished:5};const current=order[state.phase]??0;
 $('#tenderSteps').innerHTML=steps.map(([id,label],idx)=>`<span class="step-chip ${idx===current?'active':idx<current?'done':''}">${label}</span>`).join('');
 const yearOrder=turnOrder(state).map((pid,i)=>`${i+1}. ${state.players[pid].name}`).join(' → ');
-$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'?`Порядок года: ${yearOrder}. В свою очередь можно взять до 1 городской цели, затем заявить проект или пасовать.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
+$('#hallInstruction').textContent=state.phase==='draft'?'Рынок проектов уже открыт. Каждый игрок приватно смотрит 5 стартовых карт и оставляет 2.':state.phase==='declare'&&c03OfferPlayer(state)!=null?'Газета C03 · до обычных заявок: каждый игрок по порядку может взять случайный проект и +1 ★ либо отказаться. Затем City Hall продолжится без изменений.':state.phase==='declare'?`Порядок года: ${yearOrder}. В свою очередь можно взять до 1 городской цели, затем заявить проект или пасовать.`:state.phase==='bids'?'Проекты уже выбраны. Конкурирующие игроки делают ставки по одному за защитной шторкой.':state.phase==='ready'?'Все закрытые ставки собраны. Вскройте их одновременно и определите победителей.':state.phase==='development'?`Тендеры завершены. Порядок активаций этого года: ${yearOrder}.`:state.phase==='upkeep'?'Income начислен. Требуется решить простой незавершённых строек перед началом нового года.':'Тест завершён.';
 }
 function projectIncomeText(p,con=null){
   if(p.id==='rare_goods_shop')return con?.status==='complete'?'$'+(Number.isInteger(con.fixedIncome)?con.fixedIncome:1):'$1–3';
@@ -2579,7 +2617,38 @@ bar.hidden=state.phase==='draft';
 if(state.phase==='draft'){
   // No floating selection bar. The 1/2 / 2/2 state and confirmation live on the cards.
   bar.innerHTML='';
-}else if(state.phase==='declare'){
+}else if(state.phase==='declare'&&c03OfferPlayer(state)!=null){
+ const pid=c03OfferPlayer(state),offer=c03OfferOptions(state,pid),p=state.players[pid];
+ const needArrest=offer.suspicion===3,staff=offer.availableWorkerIds;
+ const c03=state.newsC03Offer;
+ bar.innerHTML='<div class="c03-offer-panel"><div class="sticky-copy">'+
+   '<strong>THE SAN FRANCISCO CALL · C03 · '+escapeHtml(p.name)+' ('+(c03.cursor+1)+'/'+c03.order.length+')</strong>'+
+   '<span>Чиновники предлагают сомнительное разрешение. Случайная карта из колоды бесплатно, +1 ★. Обычные проекты и торги впереди. Рука '+p.portfolio.length+'/'+HAND_LIMIT+' · колода '+offer.deckRemaining+'.</span>'+
+   (!offer.canAccept?'<small class="c03-block-reason">'+
+    escapeHtml(offer.blockReason==='hand-limit'?'Рука заполнена':
+      offer.blockReason==='empty-deck'?'Колода проектов пуста':
+      offer.blockReason==='no-free-worker'?'Все представители арестованы':offer.blockReason||'Сейчас недоступно')+'</small>':'')+
+   (needArrest&&offer.canAccept?'<label class="c03-arrest-label">★★★ · Кого арестуют после получения карты?<select id="c03ArrestChoice"><option value="">Выберите представителя</option>'+
+     staff.map(id=>{const w=p.workers.find(w=>w.id===id);return '<option value="'+escapeHtml(id)+'">Представитель #'+(w?.number||'?')+'</option>';}).join('')+
+     '</select></label>':'')+
+   '</div><div class="sticky-actions c03-offer-actions">'+
+   '<button class="primary-btn" id="c03Accept" '+(!offer.canAccept||needArrest?'disabled':'')+'>Получить карту · +1 ★</button>'+
+   '<button class="secondary-btn" id="c03Decline">Отказаться · без ★</button></div></div>';
+ const choice=bar.querySelector('#c03ArrestChoice');
+ if(choice)choice.onchange=()=>{bar.querySelector('#c03Accept').disabled=!choice.value;};
+ bar.querySelector('#c03Accept').onclick=()=>{
+   const workerId=choice?.value||null;
+   const r=acceptC03Offer(state,pid,{arrestWorkerId:workerId});
+   showToast(r.ok?'Получен проект «'+(projectById(r.projectId)?.name||r.projectId)+'» · '+(r.arrested?'арест':' +1 ★'):
+     r.reason==='arrest-worker'?'При ★★★ необходимо выбрать представителя':'Получение недоступно: '+r.reason);
+   render();
+ };
+ bar.querySelector('#c03Decline').onclick=()=>{
+   const r=declineC03Offer(state,pid);
+   showToast(r.ok?'Отказ от сомнительного разрешения: без подозрения':'Отказ недоступен');
+   render();
+ };
+ }else if(state.phase==='declare'){
 const pid=currentDeclarer(state);
 if(pid==null){bar.innerHTML=`<div class="sticky-copy"><strong>Все заявки сделаны</strong><span>Перейдите к закрытым ставкам. Если конкуренции нет, сразу к вскрытию.</span></div><div class="sticky-actions"><button class="secondary-btn" id="nextTenderStage">Перейти к ставкам</button></div>`;$('#nextTenderStage').onclick=()=>{beginBidding(state);render();};}
 else {const gp=state.players[pid],goalTaken=gp.goalTakenRound===state.round;bar.innerHTML=`<div class="sticky-copy"><strong>City Hall: ${gp.name} · рука ${gp.portfolio.length}/${HAND_LIMIT}</strong><span>${goalTaken?'Городская цель уже взята. ':'Можно взять 1 городскую цель. '}Затем выберите проект или пасуйте.</span></div><div class="sticky-actions"><button class="ghost-btn" id="passTender">Пас на проект</button></div>`;$('#passTender').onclick=()=>{passDeclaration(state);render();};}

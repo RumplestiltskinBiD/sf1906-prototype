@@ -3249,3 +3249,25 @@ body.delivery-route-build #deliveryRouteLayer *{
 /* D3.2: concise consequences on the existing mandatory annual assessment sheet. */
 .crime-arrest-warning{font-size:12px;line-height:1.4;margin:8px 0;color:#744331;font-weight:650}
 @media(max-width:640px){.crime-arrest-warning{font-size:11px;margin:6px 0}}
+
+/* C03: pre-City-Hall opt-in uses the existing sticky Hall action bar. */
+.c03-offer-panel{display:flex;flex-wrap:wrap;align-items:center;gap:12px;width:100%;padding:9px 10px;border:1px solid #ae8967;border-radius:8px;background:rgba(242,225,194,.92);color:#33271c}
+.c03-offer-panel .sticky-copy{display:flex;flex:1 1 290px;min-width:0;flex-direction:column;gap:5px}
+.c03-offer-panel .sticky-copy strong{font-size:14px;line-height:1.25}
+.c03-offer-panel .sticky-copy span{font-size:12px;line-height:1.4}
+.c03-offer-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.c03-offer-actions button{min-height:44px;white-space:normal}
+.c03-block-reason{color:#7c352c;font-weight:700}
+.c03-arrest-label{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px;font-weight:700}
+.c03-arrest-label select{min-height:40px;max-width:100%;padding:6px;border-radius:6px;border:1px solid #ae8967;background:white;color:#251c14}
+.news-c03-panel{padding:12px;border:1px solid #bea178;border-radius:9px;background:#fbf1dc;font-size:13px;line-height:1.45}
+.news-c03-panel>strong{display:block;margin-bottom:7px;font-size:14px}
+.news-c03-panel ul{padding-left:19px;margin:6px 0}
+.news-c03-panel li{margin:3px 0}
+.news-c03-panel small{display:block;margin-top:8px;color:#65503c}
+@media(max-width:640px),(max-height:500px) and (max-width:960px){
+ .c03-offer-panel{padding:8px;gap:8px;max-width:100%;overflow-wrap:anywhere}
+ .c03-offer-panel .sticky-copy{flex-basis:100%}
+ .c03-offer-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+ .c03-offer-actions button{font-size:12px;padding:9px 6px;min-width:0}
+}
