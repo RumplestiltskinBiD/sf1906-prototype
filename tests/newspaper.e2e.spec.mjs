@@ -10,6 +10,8 @@ async function seededGame(page,{news='C01',phase='development',constructions=[]}
     const G=await import('/game-core.js');
     const s=G.createInitialState({rng:()=>0.45});
     s.newsCurrentIds=[news];
+     // Explicit C01 token; unrelated news never inherit a random crime incident.
+     s.newsC01Incident=news==='C01'?G.createC01Incident(1,()=>0):null;
     s.newsDeck=s.newsDeck.filter(id=>id!==news);
     s.phase=phase;s.view='city';
     s.developmentPlayer=0;s.developmentComplete=false;s.activationMainActionUsed=false;
@@ -39,22 +41,23 @@ test('newspaper is visible across market and map; issue opens on demand',async({
   await page.locator('#callBuildingNode').click();
   await expect(page.locator('#newsSheet')).toBeVisible();
 });
-test('police article forecasts correct protected and exposed locations on game map',async({page})=>{
-  await seededGame(page,{news:'C01',constructions:[
-    {projectId:'shops',districtId:'financial',playerId:0},
-    {projectId:'shops',districtId:'mission',playerId:1},
-    {projectId:'police',districtId:'financial',playerId:2}
-  ]});
-  await page.locator('#newsMapBtn').click();
-  await expect(page.locator('[data-district="financial"]')).toHaveClass(/news-protected/);
-  await expect(page.locator('[data-district="mission"]')).toHaveClass(/news-threat/);
-  await page.locator('#newsOpenBtn').click();
-  await expect(page.locator('#newsSheetContent')).toContainText('Районов под угрозой: 1');
-  await expect(page.locator('#newsSheetContent')).toContainText('с защитой: 1');
-});
+test('C01 gang article highlights the D6 zone and only really protected properties',async({page})=>{
+   await seededGame(page,{news:'C01',constructions:[
+     {projectId:'shops',districtId:'financial',playerId:0},
+     {projectId:'shops',districtId:'northbeach',playerId:1},
+     {projectId:'police',districtId:'financial',playerId:2}
+   ]});
+   await expect(page.locator('[data-c01-marker="source"]')).toHaveCount(1);
+   await expect(page.locator('[data-district="northbeach"]')).toHaveClass(/c01-threat/);
+   await expect(page.locator('[data-district="financial"]')).toHaveClass(/c01-protected/);
+   await page.locator('#newsOpenBtn').click();
+   await expect(page.locator('.news-c01-panel')).toContainText('Под угрозой');
+   await expect(page.locator('.news-c01-panel')).toContainText('Полицейский рейд');
+   await expect(page.locator('.news-c01-panel')).toContainText('прикрытых полицией 2');
+ });
 test('mobile emergency measures use map tap, ordinary worker movement and existing action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await seededGame(page,{news:'C01',constructions:[{projectId:'shops',districtId:'civic',playerId:1}]});
+  await seededGame(page,{news:'C02',constructions:[{projectId:'warehouse',districtId:'civic',playerId:1}]});
   await expect(page.locator('#newsStrip')).toBeHidden();
    await page.locator('#callBuildingNode').click();
   await page.locator('#newsEmergencyStart').click();
