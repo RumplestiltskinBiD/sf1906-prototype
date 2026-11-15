@@ -126,17 +126,16 @@ test('completed own and foreign medical sources both work, only the organizer is
   turn(s,0,0,'civic');
   const options=G.h02ExpeditionOptions(s,0),source=options.services[0];
   assert.equal(options.tariff,2);
-  assert.deepEqual(source.route,['financial','chinatown','northbeach'].length===3?
-    G.f02ServiceRoute('financial','northbeach'):[]);
-  assert.equal(source.cost,4);
+  assert.deepEqual(source.route,G.f02ServiceRoute('financial','northbeach'));
+  assert.equal(source.cost,2);
   assert.equal(source.available,true);
   const location=s.players[0].workers[0].districtId;
   const result=G.completeH02Expedition(s,0,id);
   assert.equal(result.ok,true,JSON.stringify(result));
-  assert.equal(s.players[0].capital,old[0].cash-4);
+  assert.equal(s.players[0].capital,old[0].cash-2);
   assert.equal(s.players[0].prestige,old[0].vp+3);
   assert.equal(s.players[0].influence,old[0].influence+1);
-  assert.equal(s.players[owner].capital,old[owner].cash-(owner===0?4:0));
+  assert.equal(s.players[owner].capital,old[owner].cash-(owner===0?2:0));
   if(owner===1)assert.equal(s.players[1].prestige,old[1].vp);
   assert.equal(s.players[0].workers[0].districtId,location,'worker not teleported');
   assert.equal(s.players[0].workers[0].used,true);
@@ -175,11 +174,11 @@ test('unfinished or wrong service, no route, distant worker: action never change
 });
 test('insufficient capital fails without using worker or awarding VP',()=>{
  const s=game({roll:1});build(s,'MED','std_clinic','financial',1);
- turn(s);s.players[0].capital=3;
+ turn(s);s.players[0].capital=1;
  const before=snap(s);
  assert.equal(G.completeH02Expedition(s,0,'MED').reason,'capital');
  assert.equal(snap(s),before);
- s.players[0].capital=4;
+ s.players[0].capital=2;
  assert.equal(G.completeH02Expedition(s,0,'MED').ok,true);
  assert.equal(s.players[0].capital,0);
 });
@@ -237,8 +236,8 @@ test('H01 and H02 persistence: existing epidemic expedition pays doubled roads',
  s.newsH01Incident=G.createH01Incident(1,()=>.01);s.newsH01Incident.radius=1;
  build(s,'MED','std_clinic','financial',1);
  turn(s);
- const route=G.h01ExpeditionOptions(s,0).services[0];
- assert.equal(route.tariff,2);
+ const options=G.h01ExpeditionOptions(s,0),route=options.services[0];
+ assert.equal(options.tariff,2);
  assert.equal(route.cost,2);
  assert.equal(G.completeH01Expedition(s,0,'MED').ok,true);
  assert.equal(s.newsH01Incident.resolvedRound,2);
@@ -246,7 +245,7 @@ test('H01 and H02 persistence: existing epidemic expedition pays doubled roads',
 });
 test('F02 services use the global $2 tariff even when the active paper is F02',()=>{
  const s=game({roll:2});s.newsCurrentIds=['F02'];
- s.newsF02Incident=G.createF02Incident(1,()=>.01);
+ s.newsF02Incident={round:1,roll:1,districtId:'northbeach',firePending:true,manhuntPending:true,actions:[]};
  build(s,'FIRE','std_fire','soma',1);turn(s,0,0,'civic');
  const o=G.f02OperationOptions(s,0,'fire');
  assert.equal(o.tariff,2);
