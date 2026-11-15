@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import * as G from '../game-core.js';
 
 function state(){
- const s=G.createInitialState({rng:()=>0.1});s.phase='development';s.view='city';
+ const s=G.createInitialState({rng:()=>0.1});
+ // Model ordinary logistics without an independently rolled H02 news crisis.
+ s.newsH02Incident=null;s.phase='development';s.view='city';
  s.developmentPlayer=0;s.developmentComplete=false;s.activationMainActionUsed=false;
  s.players.forEach(p=>p.capital=70);
  s.logisticsSupply.southernpacific=['Steel','Steel','Lumber','Masonry'];
