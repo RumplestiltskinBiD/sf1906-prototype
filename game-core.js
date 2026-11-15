@@ -2335,7 +2335,7 @@ function executeDeliveryCore(state,plan){
   }
   state.lastDeliveryKey=currentDeliveryKey(state,plan.playerId);
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
-  const pickupText=pickups.map(p=>deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id).join(' + ');
+  const pickupText=pickups.map(p=>p.source.kind==='stolen'?('Похищенная партия · '+(LOGISTICS_NODES.find(n=>n.id===p.source.id)?.name||p.source.id)):(deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id)).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
     const con=d.kind==='freight-yard'?null:state.constructions.find(c=>c.id===d.id);
     const districtName=d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
@@ -2344,9 +2344,9 @@ function executeDeliveryCore(state,plan){
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
   // A real supply port loads freight; export-only Gas House Cove is not a trigger.
-  const portDistricts=new Set(pickups.map(p=>p.source.kind==='node'?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
+  const portDistricts=new Set(pickups.map(p=>['node','stolen'].includes(p.source.kind)?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
     .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
   state.pendingSailorRecruitments=state.pendingSailorRecruitments||[];
   for(const con of state.constructions||[]){
