@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {createInitialState} from '../game-core.js';
 
 for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1440,height:900}]){
   test('draft cards handle 1/2 and 2/2 inline, no sticky action bar '+viewport.width+'x'+viewport.height,async({page})=>{
@@ -59,6 +60,15 @@ test('mobile horizontal draft carousel remains on tapped card after selection an
 });
 test('complete three private starter hands, then ordinary City Hall action bar resumes',async({page})=>{
   await page.setViewportSize({width:390,height:844});
+  // C03 v2 intentionally offers an extra permit BEFORE normal City Hall.
+  // Pin this existing ordinary-flow test to non-C03 news, rather than rely on
+  // a random first-year issue; the new C03 draft handoff has its own E2E.
+  const s=createInitialState({rng:()=>0.38});
+  s.newsCurrentIds=['E02'];s.newsDeck=s.newsDeck.filter(id=>id!=='E02');
+  s.newsC03Offer=null;
+  await page.addInitScript(({key,serialized})=>{
+    if(localStorage.getItem(key)===null)localStorage.setItem(key,serialized);
+  },{key:'sf1906_phase1_ui_v030a',serialized:JSON.stringify(s)});
   await page.goto('/');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
