@@ -13,13 +13,13 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
-  assert.match(html,/app\.js\?v=0572-h03-ports/);
-  assert.match(html,/styles\.css\?v=0572-h03-ports/);
+  assert.match(html,/app\.js\?v=0573-h04-charity/);
+  assert.match(html,/styles\.css\?v=0573-h04-charity/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.match(app,/game-core\.js\?v=0572-h03-ports/);
-  assert.match(app,/newspaper-cards\.js\?v=0572-h03-ports/);
+  assert.match(app,/game-core\.js\?v=0573-h04-charity/);
+  assert.match(app,/newspaper-cards\.js\?v=0573-h04-charity/);
   const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
-  assert.match(core,/newspaper-cards\.js\?v=0572-h03-ports/);
+  assert.match(core,/newspaper-cards\.js\?v=0573-h04-charity/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{

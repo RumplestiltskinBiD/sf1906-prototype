@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0572-h03-ports';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0573-h04-charity';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -953,6 +953,7 @@ export function createInitialState({rng=Math.random}={}){
     newsF02Incident:initialF02Incident,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
+    newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
     newsF04Notices:null,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
@@ -2657,6 +2658,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
   state.newsF03Incident=null;
   state.newsH03SupplyRound=null;
+  state.newsH04Donations=state.newsCurrentIds[0]==='H04'?{round:state.round,donations:[]}:null;
   state.newsF04Notices=state.newsCurrentIds[0]==='F04'?createF04Notices(state):null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. '+
@@ -2922,6 +2924,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsF02Incident=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
+    state.newsH04Donations=null;
     state.newsF04Notices=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
@@ -2932,6 +2935,13 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
   if(!Object.hasOwn(state,'newsH03SupplyRound'))state.newsH03SupplyRound=null;
+  // Old in-progress H04 saves start with no donations; existing buildings,
+  // Influence and capital stay untouched. Never reset same-year claims on load.
+  if(activeNewspaper(state)?.id==='H04'&&state.newsLastResolvedRound!==state.round){
+    if(!state.newsH04Donations||state.newsH04Donations.round!==state.round||
+       !Array.isArray(state.newsH04Donations.donations))
+      state.newsH04Donations={round:state.round,donations:[]};
+  }else if(!Object.hasOwn(state,'newsH04Donations'))state.newsH04Donations=null;
   // Legacy in-progress F02: draw exactly once on load, without touching
   // existing capital, buildings, newspaper history or next years' deck.
   if(activeNewspaper(state)?.id==='F02'&&state.newsLastResolvedRound!==state.round){
@@ -3350,6 +3360,64 @@ function resolveF02Newspaper(state,card){
   return {ok:true,report};
 }
 
+export const H04_DONATION_COST=10;
+export const H04_DONATION_VP=4;
+export const H04_DONATION_INFLUENCE=2;
+// This is a voluntary contribution during the active newspaper year, not
+// a worker action (main or free). Any player may contribute, even during
+// City Hall or while their representatives are already used or arrested.
+export function h04DonationOptions(state,playerId){
+  if(!Number.isInteger(playerId)||state?.players?.[playerId]?.id!==playerId)
+    return {ok:false,reason:'player',available:false};
+  const active=activeNewspaper(state)?.id==='H04'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round&&
+    ['draft','declare','bids','ready','development'].includes(state.phase);
+  const record=state.newsH04Donations?.round===state.round?state.newsH04Donations:null;
+  const donated=!!record?.donations?.some(x=>x.playerId===playerId);
+  const affordable=state.players[playerId].capital>=H04_DONATION_COST;
+  return {ok:true,playerId,active,donated,affordable,
+    available:active&&!donated&&affordable,cost:H04_DONATION_COST,
+    vp:H04_DONATION_VP,influenceSteps:H04_DONATION_INFLUENCE};
+}
+export function donateH04(state,playerId){
+  const opt=h04DonationOptions(state,playerId);
+  if(!opt.ok)return {ok:false,reason:opt.reason};
+  if(!opt.active)return {ok:false,reason:'not-active'};
+  if(opt.donated)return {ok:false,reason:'already-donated'};
+  if(!opt.affordable)return {ok:false,reason:'capital'};
+  // A valid active issue from an old save has its claims initialized exactly
+  // once. No main-action, free-action or worker movement state is touched.
+  if(!state.newsH04Donations||state.newsH04Donations.round!==state.round||
+     !Array.isArray(state.newsH04Donations.donations))
+    state.newsH04Donations={round:state.round,donations:[]};
+  const player=state.players[playerId];
+  const influence=moveInfluence(state,playerId,H04_DONATION_INFLUENCE);
+  player.capital-=H04_DONATION_COST;
+  player.prestige=(Number(player.prestige)||0)+H04_DONATION_VP;
+  const record={playerId,round:state.round,cost:H04_DONATION_COST,
+    vp:H04_DONATION_VP,influenceSteps:influence.steps,
+    influenceFrom:influence.from,influenceTo:influence.to};
+  state.newsH04Donations.donations.push(record);
+  if(Array.isArray(state.log))logEvent(state,player.name+
+    ' пожертвовал $10 на детские санитарные пункты: +4 VP и +'+influence.steps+
+    ' шага Influence. Рабочее действие не требовалось.','good');
+  return {ok:true,record};
+}
+function resolveH04Newspaper(state,card){
+  const donations=state.newsH04Donations?.round===state.round
+    ?state.newsH04Donations.donations||[]:[];
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:[],changes:{},serviceRecognition:[],emergency:{},
+    h04:{donations:donations.map(d=>({...d}))}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  state.newsH04Donations=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+
+    '». Пожертвований: '+donations.length+'. Дополнительных штрафов нет.','accent');
+  return {ok:true,report};
+}
+
 function resolveH03Newspaper(state,card){
   const applied=state.newsH03SupplyRound===state.round;
   const report={year:newsYear(state.round),round:state.round,
@@ -3391,6 +3459,14 @@ function resolveF03Newspaper(state,card){
 export function newsPreview(state){
   const card=activeNewspaper(state);
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='H04'){
+    const donations=state.newsH04Donations?.round===state.round
+      ?state.newsH04Donations.donations||[]:[];
+    return {card,entries:[],threatened:[],protected:[],
+      summary:{districts:0,exposed:0,safe:0},
+      h04:{donations:donations.map(d=>({...d})),
+        options:(state.players||[]).map(p=>h04DonationOptions(state,p.id))}};
+  }
   if(card.id==='H03'){
     const applied=state.newsH03SupplyRound===state.round;
     return {card,entries:[],threatened:[],protected:[],
@@ -3466,7 +3542,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03','F04','H03'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04','H03','H04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3491,6 +3567,7 @@ export function resolveNewspaper(state){
   if(card.id==='F02')return resolveF02Newspaper(state,card);
   if(card.id==='F03')return resolveF03Newspaper(state,card);
   if(card.id==='H03')return resolveH03Newspaper(state,card);
+  if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
