@@ -369,7 +369,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "H04",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_H04_V2.md",
       "title": "Врачи требуют спасти младенцев",
       "eventType": "temporary-one-year-charity",
@@ -381,13 +381,13 @@ export const NEWS_CARDS=Object.freeze([
       "duration": "current-year-only"
     },
     "category": "Болезнь",
-    "title": "Кто отвечает за больных?",
-    "article": "В редакцию поступают письма семей, которым отказали в помощи. Если врачи не найдутся, общество отвернётся от собственников.",
-    "target": "housing",
-    "resource": "prestige",
-    "delta": -1,
-    "frequency": "oncePerPlayer",
-    "defense": "clinic"
+    "title": "ВРАЧИ ТРЕБУЮТ СПАСТИ МЛАДЕНЦЕВ!",
+    "article": "В Нью-Йорке благотворители открывают медицинские пункты для борьбы со смертельными кишечными инфекциями у младенцев. Врачи Сан-Франциско требуют таких же мер, однако власти не выделяют средства. Газеты призывают состоятельных инвесторов взять инициативу в свои руки.",
+    "target": "none",
+    "resource": "capital",
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "E01",
