@@ -3581,6 +3581,193 @@ function resolveH04Newspaper(state,card){
    return {ok:true,report};
  }
 
+
+// C01 v2: a single D6 crime token, permanently threatening the focus and its
+// neighbors until a paid raid from a finished police institution removes it.
+export const C01_CRIME_DISTRICTS=Object.freeze([
+  'northbeach','northbeach','chinatown','chinatown','soma','soma'
+]);
+const C01_POLICE_IDS=Object.freeze(['std_police','police']);
+export function createC01Incident(round,rng=Math.random){
+  const raw=Number(rng()),safe=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  const index=Math.floor(safe*C01_CRIME_DISTRICTS.length);
+  return {startRound:round,roll:index+1,districtId:C01_CRIME_DISTRICTS[index],
+    resolvedRound:null,operation:null,lastAssessedRound:null,yearReports:[]};
+}
+export function c01ActiveIncident(state){
+  const c=state?.newsC01Incident;
+  return c&&c.resolvedRound==null&&C01_CRIME_DISTRICTS.includes(c.districtId)&&
+    Number.isInteger(c.startRound)&&c.startRound<=state.round?c:null;
+}
+export function c01ThreatDistrictIds(state){
+  const h=c01ActiveIncident(state);
+  if(!h)return [];
+  // The existing adjacency graph defines the radius, including its closed
+  // nodes as borders; only buildable districts may contain eligible buildings.
+  return [h.districtId,...districtNeighbors(h.districtId)]
+    .filter((id,index,all)=>all.indexOf(id)===index&&districtById(id)?.buildable);
+}
+function c01PoliceDefender(state,districtId){
+  const sources=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    C01_POLICE_IDS.includes(c.projectId)&&
+    (c.districtId===districtId||
+      (c.projectId==='police'&&districtNeighbors(districtId).includes(c.districtId))));
+  if(!sources.length)return null;
+  const order=turnOrder(state);
+  // Approved rule: local police takes precedence over overlapping market
+  // coverage. Two neighboring market police owned by different players is
+  // UNDECIDED design; deterministic technical fallback, not a new rule:
+  // frozen year turn order, then construction ID. No duplicate rewards.
+  sources.sort((a,b)=>
+    Number(b.districtId===districtId)-Number(a.districtId===districtId)||
+    order.indexOf(a.playerId)-order.indexOf(b.playerId)||
+    String(a.id).localeCompare(String(b.id)));
+  return sources[0];
+}
+export function c01Preview(state){
+  const h=state?.newsC01Incident;
+  if(!h||!C01_CRIME_DISTRICTS.includes(h.districtId))return null;
+  const active=!!c01ActiveIncident(state),threatenedDistrictIds=c01ThreatDistrictIds(state);
+  const entries=[],protectedDistrictIds=[],exposedDistrictIds=[],protectedByDistrict={};
+  for(const districtId of threatenedDistrictIds){
+    // One penalty per owner/district. Police buildings themselves are
+    // excluded, but non-police municipal facilities are still eligible.
+    const owners=[...new Set((state.constructions||[]).filter(c=>
+      c.status==='complete'&&c.districtId===districtId&&
+      !C01_POLICE_IDS.includes(c.projectId)).map(c=>c.playerId))]
+      .filter(pid=>!!state.players?.[pid]).sort((a,b)=>a-b);
+    if(!owners.length)continue;
+    const defender=c01PoliceDefender(state,districtId);
+    if(defender){
+      protectedDistrictIds.push(districtId);
+      protectedByDistrict[districtId]={ownerId:defender.playerId,policeId:defender.id,
+        policeDistrictId:defender.districtId};
+    }else exposedDistrictIds.push(districtId);
+    for(const playerId of owners)entries.push({
+      playerId,districtIds:[districtId],kind:'c01-crime',
+      defended:!!defender,capitalDue:defender?0:2,
+      protectedBy:defender?.playerId??null,policeId:defender?.id??null
+    });
+  }
+  return {startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    active,resolvedRound:h.resolvedRound,
+    operation:h.operation?{...h.operation,route:[...h.operation.route]}:null,
+    threatenedDistrictIds,protectedDistrictIds,exposedDistrictIds,protectedByDistrict,entries};
+}
+export function c01RaidOptions(state,playerId){
+  const h=c01ActiveIncident(state);
+  if(!h)return {ok:false,
+    reason:state.newsC01Incident?.resolvedRound!=null?'already-completed':'no-active-crime',
+    services:[]};
+  if(!Number.isInteger(playerId)||state.players?.[playerId]?.id!==playerId)
+    return {ok:false,reason:'player',services:[]};
+  const actionAvailable=canTakeMainAction(state,playerId)&&
+    !state.pendingConstruction&&!state.pendingWorkerAction;
+  const tariff=paidRoadEdgeCost(state);
+  const services=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    C01_POLICE_IDS.includes(c.projectId)).map(c=>{
+      const route=f02ServiceRoute(c.districtId,h.districtId);
+      const cost=route?(route.length-1)*tariff:null;
+      const reachable=actionAvailable&&workerCanReachDistrict(state,playerId,c.districtId);
+      const affordable=cost!==null&&state.players[playerId].capital>=cost;
+      return {constructionId:c.id,ownerId:c.playerId,projectId:c.projectId,
+        districtId:c.districtId,route,cost,reachable,affordable,
+        available:actionAvailable&&!!route&&reachable&&affordable};
+    });
+  return {ok:true,incident:h,tariff,actionAvailable,services,
+    canComplete:services.some(x=>x.available)};
+}
+export function completeC01Raid(state,playerId,constructionId){
+  const opts=c01RaidOptions(state,playerId);
+  if(!opts.ok)return {ok:false,reason:opts.reason};
+  if(state.pendingConstruction||state.pendingWorkerAction)
+    return {ok:false,reason:'pending-action'};
+  if(!opts.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+  const source=opts.services.find(c=>c.constructionId===constructionId);
+  if(!source)return {ok:false,reason:'invalid-service'};
+  if(!source.route)return {ok:false,reason:'route'};
+  if(!source.reachable)return {ok:false,reason:'worker-range'};
+  if(!source.affordable)return {ok:false,reason:'capital'};
+  // One real main action. Representative remains at their physical position;
+  // a separate police team drives along the existing delivery road graph.
+  const action=consumeMainAction(state,playerId);
+  if(!action.ok)return action;
+  const p=state.players[playerId];
+  p.capital-=source.cost;p.prestige=(Number(p.prestige)||0)+2;
+  const influence=moveInfluence(state,playerId,1);
+  const operation={playerId,serviceId:source.constructionId,ownerId:source.ownerId,
+    sourceDistrictId:source.districtId,route:[...source.route],cost:source.cost,
+    tariff:opts.tariff,prestige:2,influenceSteps:influence.steps,round:state.round};
+  opts.incident.resolvedRound=state.round;
+  opts.incident.operation=operation;
+  logEvent(state,p.name+' проводит полицейский рейд из '+
+    (districtById(source.districtId)?.name||source.districtId)+' в '+
+    (districtById(opts.incident.districtId)?.name||opts.incident.districtId)+
+    ' за $'+source.cost+': +2 VP и +'+influence.steps+
+    ' Influence. Банда ликвидирована во всей зоне угрозы.','good');
+  return {ok:true,operation,worker:action.worker,route:[...source.route]};
+}
+export function settleC01Year(state){
+  const h=state?.newsC01Incident;
+  if(!h||h.startRound>state.round||h.lastAssessedRound===state.round||
+     (h.resolvedRound!=null&&h.resolvedRound<state.round))
+    return {ok:false,reason:h?.lastAssessedRound===state.round?'already-settled':'no-incident'};
+  if(state.newsLastResolvedRound!==state.round)
+    return {ok:false,reason:'not-year-end'};
+  const alive=h.resolvedRound==null,preview=c01Preview(state);
+  const entries=[],changes={},influenceRewards=[];
+  if(alive&&preview){
+    for(const e of preview.entries){
+      const player=state.players[e.playerId];if(!player)continue;
+      const paid=e.defended?0:Math.min(2,Math.max(0,player.capital||0));
+      if(paid)player.capital-=paid;
+      entries.push({...e,actual:-paid});
+      if(paid){
+        changes[e.playerId]??={capital:0,influence:0,prestige:0};
+        changes[e.playerId].capital-=paid;
+      }
+    }
+    // Exactly one police owner credited per eligible protected district, not
+    // once per building and not once per affected owner.
+    for(const [districtId,defender] of Object.entries(preview.protectedByDistrict)){
+      const owner=defender.ownerId;if(!state.players[owner])continue;
+      const steps=moveInfluence(state,owner,1).steps;
+      influenceRewards.push({districtId,playerId:owner,policeId:defender.policeId,steps});
+      if(steps){
+        changes[owner]??={capital:0,influence:0,prestige:0};
+        changes[owner].influence+=steps;
+      }
+    }
+  }
+  const outcome={round:state.round,year:newsYear(state.round),
+    startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    resolved:!alive,operation:h.resolvedRound===state.round?h.operation:null,
+    threatenedDistrictIds:preview?.threatenedDistrictIds||[],
+    entries,influenceRewards,changes};
+  h.yearReports??=[];h.yearReports.push(outcome);h.lastAssessedRound=state.round;
+  const archived=(state.newsArchive||[]).findLast(r=>r.round===state.round);
+  if(archived){
+    if(archived.cardId==='C01'){
+      archived.c01=outcome;archived.entries=entries;archived.changes=changes;
+    }else archived.ongoingC01=outcome;
+  }
+  logEvent(state,'The San Francisco Call, '+outcome.year+' · Уличные банды: '+
+    (alive?'опасны '+outcome.threatenedDistrictIds.length+' районов':'ликвидированы')+
+    ', потери $'+entries.reduce((n,e)=>n-Math.min(0,e.actual),0)+
+    ', полицейских благодарностей '+influenceRewards.length+'.','accent');
+  return {ok:true,outcome};
+}
+function resolveC01Newspaper(state,card){
+  if(!state.newsC01Incident)return {ok:false,reason:'no-incident'};
+  const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  const result=settleC01Year(state);
+  if(!result.ok)return result;
+  return {ok:true,report};
+}
+
 // H01 v2: one epidemic token with an expanding area on the existing graph.
 // The initial location is drawn on reveal, never on a preview or at year end.
 export const H01_ORIGIN_DISTRICTS=Object.freeze([
@@ -3825,7 +4012,7 @@ export function newsPreview(state){
   if(card?.id==='C01'){
     const raid=c01Preview(state);
     return {card,entries:raid?.entries||[],
-      threatened:raid?.exposedDistrictIds||[],protected:raid?.protectedDistrictIds||[],
+      threatened:raid?.threatenedDistrictIds||[],protected:raid?.protectedDistrictIds||[],
       summary:{districts:raid?.threatenedDistrictIds.length||0,
         exposed:raid?.exposedDistrictIds.length||0,safe:raid?.protectedDistrictIds.length||0},
       c01:raid};
