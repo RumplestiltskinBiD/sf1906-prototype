@@ -68,6 +68,36 @@ for(const vp of viewports)test('C03 before City Hall: claim/decline all players 
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
  expect(errors).toEqual([]);
 });
+test('first-year C03 opens only after all three private starter drafts, then grants a third project',async({page})=>{
+ const vp={width:390,height:844},s=game({phase:'draft'});
+ s.starterDraftPlayer=0;s.draftRevealed=false;s.draftSelection=[];
+ await page.setViewportSize(vp);await seed(page,s);
+ await expect(page.locator('#c03Accept')).toHaveCount(0);
+ await expect(page.locator('#revealStarterDraft')).toBeVisible();
+ for(let i=0;i<3;i++){
+  await page.locator('#revealStarterDraft').click();
+  await expect(page.locator('[data-draft-card]')).toHaveCount(5);
+  await page.locator('[data-draft-card]').nth(0).click();
+  await page.locator('[data-draft-card]').nth(1).click();
+  await expect(page.locator('#confirmStarterDraft')).toBeVisible();
+  await page.locator('#confirmStarterDraft').click();
+ }
+ const before=await saved(page);
+ expect(before.phase).toBe('declare');
+ expect(before.players.map(p=>p.portfolio.length)).toEqual([2,2,2]);
+ expect(before.newsC03Offer.cursor).toBe(0);
+ await expect(page.locator('#c03Accept')).toBeEnabled();
+ await page.locator('#c03Accept').click();
+ const after=await saved(page);
+ expect(after.players[0].portfolio.length).toBe(3);
+ expect(after.players[0].suspicion).toBe(1);
+ expect(after.players[0].workers.filter(w=>w.used)).toHaveLength(0);
+ expect(after.declarationIndex).toBe(0);
+ expect(after.newsC03Offer.cursor).toBe(1);
+ await page.reload();
+ await expect(page.locator('.c03-offer-panel')).toContainText('2/3');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+});
 test('C03 ★★★ allows only explicit offender choice; actual project and jail survive reload',async({page})=>{
  const vp={width:390,height:844},s=game({stars:3});
  s.players[0].influence=0;
