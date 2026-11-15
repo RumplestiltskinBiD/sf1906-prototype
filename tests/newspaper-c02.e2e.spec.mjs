@@ -144,3 +144,28 @@ test('C02 historical old fine remains readable without creating another lot',asy
  await expect(page.locator('#newsSheetContent')).toContainText('-2');
  expect((await saved(page)).newsC02Incident).toBeNull();
 });
+
+
+test('C02 unclaimed after year remains historical only, no unapproved new-year buyout',async({page})=>{
+ const vp={width:390,height:844},s=game();
+ s.newsDeck=['E02',...s.newsDeck.filter(id=>id!=='E02')];
+ s.developmentComplete=true;s.developmentPlayer=null;
+ s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
+ await page.setViewportSize(vp);await seed(page,s);
+ await page.locator('#endRoundBtn').click();
+ const after=await saved(page);
+ expect(after.round).toBe(2);
+ expect(after.newsCurrentIds[0]).toBe('E02');
+ expect(after.newsArchive[0].c02.unresolved).toBe(true);
+ expect(after.newsArchive[0].c02.materials).toEqual(['Lumber','Masonry']);
+ expect(after.newsC02Incident.status).toBe('available');
+ await expect(page.locator('[data-c02-marker]')).toHaveCount(0);
+ await news(page,vp);
+ await expect(page.locator('.news-c02-panel')).toHaveCount(0);
+ await expect(page.locator('[data-c02-return]')).toHaveCount(0);
+ await expect(page.locator('[data-c02-keep]')).toHaveCount(0);
+ await page.locator('[data-news-archive="0"]').click();
+ await expect(page.locator('#newsSheetContent')).toContainText('исход не утверждён');
+ await page.reload();
+ expect((await saved(page)).newsArchive[0].c02.materials).toEqual(['Lumber','Masonry']);
+});
