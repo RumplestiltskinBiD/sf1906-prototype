@@ -126,6 +126,11 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
   await page.setViewportSize(vp);
   for(const condition of [{hand:5,reason:'Рука заполнена'},{empty:true,reason:'Колода проектов пуста'}]){
    const s=game(condition);await seed(page,s);
+   if(condition.empty){
+    expect((await saved(page)).deck).toHaveLength(0);
+    await page.reload();
+    expect((await saved(page)).deck).toHaveLength(0);
+   }
    await expect(page.locator('.c03-offer-panel')).toContainText(condition.reason);
    await expect(page.locator('#c03Accept')).toBeDisabled();
    await expect(page.locator('#c03Decline')).toBeEnabled();
