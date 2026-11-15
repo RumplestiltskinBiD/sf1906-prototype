@@ -57,15 +57,15 @@ test('C01 gang article highlights the D6 zone and only really protected properti
  });
 test('mobile emergency measures use map tap, ordinary worker movement and existing action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await seededGame(page,{news:'C03',constructions:[{projectId:'bank',districtId:'civic',playerId:1}]});
+  await seededGame(page,{news:'E04',constructions:[{projectId:'warehouse',districtId:'soma',playerId:1}]});
   await expect(page.locator('#newsStrip')).toBeHidden();
    await page.locator('#callBuildingNode').click();
   await page.locator('#newsEmergencyStart').click();
   await expect(page.locator('#newsEmergencyCancelMobile')).toBeVisible();
   await expect(page.locator('#newsSheet')).toBeHidden();
-  await page.locator('[data-district="civic"] path').click();
+  await page.locator('[data-district="soma"] path').click();
   const s=await page.evaluate(storage=>JSON.parse(localStorage.getItem(storage)),storage);
-  expect(s.newsEmergency.civic).toBeTruthy();
+  expect(s.newsEmergency.soma).toBeTruthy();
   expect(s.activationMainActionUsed).toBe(true);
   expect(s.players[0].capital).toBe(29);
   expect(s.players[0].workers[0].used).toBe(true);
