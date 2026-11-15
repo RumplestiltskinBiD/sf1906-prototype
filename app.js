@@ -9,8 +9,8 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0575-h02-horse-illness';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0575-h02-horse-illness';
+} from './game-core.js?v=0576-c01-police-raids';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0576-c01-police-raids';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1778,7 +1778,56 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
-  const projections=issue?.id==='H01'
+  const c01Data=!archived?persistentC01:null;
+  const c01Opts=c01Data?.active&&Number.isInteger(currentDeveloper(state))
+    ?c01RaidOptions(state,currentDeveloper(state)):null;
+  const c01Panel=c01Data&&(c01Data.active||issue?.id==='C01')
+    ?'<div class="news-c01-panel"><strong>⚔ Грабители · D6 '+c01Data.roll+' · '+
+      escapeHtml(districtById(c01Data.districtId)?.name||c01Data.districtId)+'</strong>'+
+      (c01Data.active
+        ?'<p>Под угрозой '+c01Data.threatenedDistrictIds.length+' районов · незащищённых с постройками '+
+          c01Data.exposedDistrictIds.length+' · прикрытых полицией '+c01Data.protectedDistrictIds.length+'.</p>'+
+         '<p>Зона: '+c01Data.threatenedDistrictIds.map(id=>escapeHtml(districtById(id)?.name||id)).join(', ')+'</p>'+
+         '<small>Ежегодно −$2 за каждый незащищённый район, где есть готовое неполицейское здание игрока. Стандартная полиция прикрывает свой район, рыночная также соседние. За каждый район с предотвращённым штрафом владельцу защищающей полиции +1 Influence в конце года; местная имеет приоритет.</small>'+
+         '<strong>Полицейский рейд · 1 основное действие · +2 VP и +1 Influence</strong>'+
+         '<small>Выберите свою или чужую завершённую полицию в досягаемости представителя. Полиция выезжает по дорогам за $'+(c01Opts?.tariff||paidRoadEdgeCost(state))+'/переход; представитель остаётся на месте. Рейд снимает все угрозы и ежегодные последствия.</small>'+
+         (c01Opts?.services?.length
+           ?'<div class="news-c01-services">'+c01Opts.services.map(service=>{
+             const site=state.constructions.find(c=>c.id===service.constructionId);
+             const name=projectById(site?.projectId)?.name||site?.projectId||'Полицейский участок';
+             const routeText=service.route?service.route.length-1+' переходов · $'+service.cost:'дорога недоступна';
+             const reason=!c01Opts.actionAvailable?'Нет свободного основного действия':
+               !service.route?'Нет дорожного маршрута':
+               !service.reachable?'Представитель не достигает полиции':
+               !service.affordable?'Недостаточно денег':'';
+             return '<button type="button" data-c01-raid="'+escapeHtml(String(service.constructionId))+
+               '" '+(service.available?'':'disabled')+'><b>'+escapeHtml(name)+'</b>'+
+               '<span>'+escapeHtml(districtById(service.districtId)?.name||service.districtId)+' · '+
+                 escapeHtml(state.players[service.ownerId]?.name||'Игрок')+'</span>'+
+               '<small>'+escapeHtml(routeText)+(reason?' · '+escapeHtml(reason):'')+'</small></button>';
+           }).join('')+'</div>'
+           :'<p>Нет доступного завершённого полицейского учреждения. Постройте своё или используйте чужое.</p>')+
+         (!c01Opts?'<small>Рейд доступен в городской ход действующего игрока после выбора представителя.</small>':'')
+        :'<p>Банды ликвидированы. Штрафы и Influence за защиту больше не начисляются.</p>'+
+         (c01Data.operation?'<p>Рейд: '+escapeHtml(state.players[c01Data.operation.playerId]?.name||'Игрок')+
+           ' · маршрут $'+c01Data.operation.cost+' · +2 VP и +'+c01Data.operation.influenceSteps+' Influence.</p>':''))+
+      '</div>':'';
+  const c01Past=archived?.c01||archived?.ongoingC01||null;
+  const c01Archive=c01Past
+    ?'<li>Банды · '+escapeHtml(districtById(c01Past.districtId)?.name||c01Past.districtId)+
+      ' · D6 '+c01Past.roll+' · '+(c01Past.resolved?'ликвидированы':'продолжают налёты')+'</li>'+
+      (c01Past.operation?'<li>Рейд: '+escapeHtml(state.players[c01Past.operation.playerId]?.name||'Игрок')+
+        ' · $'+c01Past.operation.cost+' · +2 VP и +'+c01Past.operation.influenceSteps+' Influence</li>':'')+
+      (c01Past.entries||[]).map(e=>'<li>'+escapeHtml(state.players[e.playerId]?.name||'Игрок')+
+        ' · '+escapeHtml(districtById(e.districtIds[0])?.name||e.districtIds[0])+
+        ': '+(e.defended?'защищено':'уплачено $'+(-e.actual))+'</li>').join('')+
+      (c01Past.influenceRewards||[]).map(e=>'<li>'+
+        escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
+        escapeHtml(districtById(e.districtId)?.name||e.districtId)+
+        ' · +'+e.steps+' Influence</li>').join(''):'';
+  const projections=issue?.id==='C01'
+    ?'<li>Один жетон на D6, угроза своему и соседним районам. Рейд снимает всё событие. Без рейда ежегодные последствия повторяются.</li>'
+    :issue?.id==='H01'
     ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
     :issue?.id==='H02'
     ?'<li>Общегородской тариф $2/переход до единственной санитарной операции, в том числе после смены газеты.</li>'
@@ -1887,6 +1936,18 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-c01-raid]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const result=completeC01Raid(state,currentDeveloper(state),button.dataset.c01Raid);
+    showToast(result.ok?'Банды ликвидированы · +2 VP и +1 Influence':
+      result.reason==='capital'?'Недостаточно денег на маршрут рейда':
+      result.reason==='worker-range'?'Представитель должен быть рядом с полицейским учреждением':
+      result.reason==='already-completed'?'Рейд уже проведён':
+      'Рейд недоступен: '+result.reason);
+    render();
   });
   $$('#newsSheetContent [data-h02-expedition]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
