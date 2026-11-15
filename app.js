@@ -1650,12 +1650,12 @@ function renderNewspaper(){
       'Поджигатель пойман · +2 VP и +1 Influence');
     render();
   });
-  $('#newsSheetContent [data-f04-choose]').forEach(button=>button.onclick=()=>{
+  document.querySelectorAll('#newsSheetContent [data-f04-choose]').forEach(button=>button.onclick=()=>{
     const result=chooseF04Notice(state,Number(button.dataset.f04Owner),button.dataset.f04Choose);
     showToast(result.ok?'Предписание назначено выбранному зданию':'Нельзя выбрать цель: '+result.reason);
     render();
   });
-  $('#newsSheetContent [data-f04-urgent], [data-f04-bribe]').forEach(button=>button.onclick=()=>{
+  document.querySelectorAll('#newsSheetContent [data-f04-urgent], [data-f04-bribe]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
       showToast('Сначала завершите или отмените текущую операцию');return;
     }
