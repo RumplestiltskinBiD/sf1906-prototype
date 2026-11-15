@@ -1575,7 +1575,9 @@ function renderNewspaper(){
       return '<li>'+escapeHtml(owner)+' · '+escapeHtml(name)+': '+escapeHtml(result)+'</li>';
     }).join(''):'<li>Предписаний нет, штрафов нет.</li>')
     :'';
-  const projections=issue?.id==='F04'
+  const projections=issue?.id==='H04'
+    ?'<li>Добровольный взнос не расходует рабочих или действия. Каждый инвестор может участвовать один раз.</li>'
+    :issue?.id==='F04'
     ?'<li>Внеплановая проверка назначает не более одного предписания владельцу, с тремя способами разрешения.</li>'
     :issue?.id==='H03'
     ?'<li>'+(h03Active?.applied?'Четыре морских узла получили на один кубик меньше; Southern Pacific без изменений.':
@@ -1600,7 +1602,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H03'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H03','H04'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1624,36 +1626,37 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||portFire||seaQuarantine||fireAudit||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||fireAudit||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+f03Archive+h03Archive+f04Archive+
+      f02Archive+f03Archive+h03Archive+h04Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(infantCare?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
-      :'<div class="news-scope"><strong>Прогноз по текущей застройке</strong>'+
+      :'<div class="news-scope"><strong>'+(infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
       (portFire?'<small>Узлы портов перераспределены при открытии выпуска; в конце года ничего дополнительно не списывается.</small>':
        seaQuarantine?'<small>Четыре морских узла недополучили по одному материалу при генерации; в конце года штрафов нет.</small>':
+       infantCare?'<small>Автоматических штрафов и начислений нет. Награда выдаётся сразу при добровольном взносе.</small>':
        arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireAudit?'<small>Выберите цель при равенстве, затем законно устраните нарушения или воспользуйтесь незаконным подкупом.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+f03Panel+h03Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
