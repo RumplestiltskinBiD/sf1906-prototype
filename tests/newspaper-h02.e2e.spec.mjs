@@ -46,7 +46,7 @@ for(const vp of screens){
   const old=await saved(page),position=old.players[0].workers[0].districtId;
   await page.locator('[data-h02-expedition="MED"]').click();
   const now=await saved(page);
-  expect(now.players[0].capital).toBe(26);
+  expect(now.players[0].capital).toBe(28);
   expect(now.players[0].prestige).toBe(3);
   expect(now.players[0].influence).toBe(31);
   expect(now.players[1].capital).toBe(30);
@@ -56,13 +56,13 @@ for(const vp of screens){
   expect(now.activationMainActionUsed).toBe(true);
   expect(now.newsH02Incident.resolvedRound).toBe(1);
   expect(now.newsH02Incident.operation.tariff).toBe(2);
-  expect(now.newsH02Incident.operation.cost).toBe(4);
+  expect(now.newsH02Incident.operation.cost).toBe(2);
   await expect(page.locator('[data-h02-marker]')).toHaveCount(0);
   await expect(page.locator('.news-h02-panel')).toContainText('Дорожный тариф вновь $1/переход');
   await expect(page.locator('[data-h02-expedition]')).toHaveCount(0);
   await page.reload();await openNews(page,vp);
   await expect(page.locator('.news-h02-panel')).toContainText('Зараза ликвидирована');
-  expect((await saved(page)).newsH02Incident.operation.cost).toBe(4);
+  expect((await saved(page)).newsH02Incident.operation.cost).toBe(2);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
   expect(errors).toEqual([]);
  });
@@ -77,7 +77,7 @@ test('H02 cannot be resolved without any completed clinic',async({page})=>{
  expect(now.players[0].capital).toBe(30);expect(now.newsH02Incident.resolvedRound).toBeNull();
 });
 test('H02 expensive route blocks destitute participant without spending action',async({page})=>{
- const vp={width:932,height:430},s=game();s.players[0].capital=3;
+ const vp={width:932,height:430},s=game();s.players[0].capital=1;
  await page.setViewportSize(vp);await seed(page,s);await openNews(page,vp);
  const button=page.locator('[data-h02-expedition="MED"]');
  await expect(button).toBeDisabled();
@@ -109,7 +109,7 @@ test('H02 remains visible and solvable under next newspaper and preserves old re
  expect(now.newsH02Incident.resolvedRound).toBe(2);
  await expect(page.locator('#newsStripLabel')).not.toContainText('Конюшни: дорога $2/переход');
  await page.reload();
- expect((await saved(page)).newsH02Incident.operation.cost).toBe(4);
+ expect((await saved(page)).newsH02Incident.operation.cost).toBe(2);
 });
 test('old pre-v2 H02 archive keeps its actual hotel fines and original headline',async({page})=>{
  const vp={width:1366,height:768},s=game({round:2});
