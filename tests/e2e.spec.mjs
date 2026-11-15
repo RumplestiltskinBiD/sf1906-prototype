@@ -130,6 +130,19 @@ test('fresh game UI can complete draft handoff and reach Development without dea
     await cards.nth(1).click();
     await page.locator('#confirmStarterDraft').click();
   }
+  // A genuinely fresh game draws a random newspaper. When C03 is the first
+  // issue, all three players must resolve their extra permit decisions
+  // BEFORE ordinary City Hall can show #passTender.
+  const firstIssue=(await stored(page)).newsCurrentIds?.[0];
+  if(firstIssue==='C03'){
+    for(let i=0;i<3;i++){
+      await expect(page.locator('#c03Decline')).toBeVisible();
+      await page.locator('#c03Decline').click();
+    }
+    const afterOffers=await stored(page);
+    expect(afterOffers.newsC03Offer.completed).toBe(true);
+    expect(afterOffers.newsC03Offer.decisions.map(d=>d.choice)).toEqual(['declined','declined','declined']);
+  }
   await expect(page.locator('#passTender')).toBeVisible();
   await page.locator('#passTender').click();
   await page.locator('#passTender').click();

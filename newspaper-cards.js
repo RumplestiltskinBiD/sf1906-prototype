@@ -399,7 +399,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E01",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E01_V2.md",
       "title": "Работодатели ищут жильё для новых рабочих",
       "eventType": "one-year-limited-rental-contracts",
@@ -417,12 +417,12 @@ export const NEWS_CARDS=Object.freeze([
       "duration": "current-year-only"
     },
     "category": "Экономика",
-    "title": "Новые семьи ищут квартиры",
-    "article": "Население растёт, а квартир становится недостаточно. Владельцы жилья ожидают удачного сезона.",
-    "target": "housing",
+    "title": "РАБОТОДАТЕЛИ ИЩУТ ЖИЛЬЁ ДЛЯ НОВЫХ РАБОЧИХ!",
+    "article": "Крупные предприятия и торговые компании привлекают в город работников. Чтобы разместить прибывающие семьи, работодатели предлагают владельцам новых жилых зданий выгодные долгосрочные арендные контракты.",
+    "target": "none",
     "resource": "capital",
-    "delta": 2,
-    "frequency": "perDistrict",
+    "delta": 0,
+    "frequency": "oncePerYear",
     "defense": null
   },
   {
