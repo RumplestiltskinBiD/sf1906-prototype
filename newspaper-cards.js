@@ -303,7 +303,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "H01",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_H01_V2.md",
       "title": "Эпидемия охватывает городские кварталы",
       "originDistrictIdsByD6": ["chinatown", "northbeach", "missionbay", "potrero", "bernal", "innerrichmond"],
@@ -313,13 +313,13 @@ export const NEWS_CARDS=Object.freeze([
       "sanitationReward": {"prestige": 2, "influence": 1}
     },
     "category": "Болезнь",
-    "title": "Лихорадка в переполненных комнатах",
-    "article": "Горожане жалуются на тесноту и недостаток врачей. Владельцы доходных домов должны приготовиться к санитарным расходам.",
-    "target": "tenement-speculative",
+    "title": "ЭПИДЕМИЯ ОХВАТЫВАЕТ ГОРОДСКИЕ КВАРТАЛЫ!",
+    "article": "В Сан-Франциско распространяется опасная лихорадка. Больницы переполнены, рабочие не выходят на смены, предприятия несут убытки. Врачи предупреждают: без срочных санитарных мер болезнь продолжит распространяться по городу.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "clinic"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "H02",
