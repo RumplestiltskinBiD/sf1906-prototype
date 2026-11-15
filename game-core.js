@@ -1126,6 +1126,9 @@ export function createInitialState({rng=Math.random}={}){
     grandCitySquareExpansionV1:true,
     advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
+    // Fresh pools already contain both Bakery and Orphanage; prevent legacy
+    // mixed-project migration from refilling a legitimately exhausted deck.
+    residentialMixedV1:true,
     steamBakeryExpansionV1:true,
     pendingBreadProduction:[],
     breadSpoilageSettledRound:0,
