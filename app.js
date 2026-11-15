@@ -1217,7 +1217,7 @@ html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materia
 }
 if((deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)||deliveryDraft.source?.kind==='stolen')&&state.players[pid].suspicion===3&&step==='unload'){
  const available=playerWorkers(state,pid).filter(w=>!w.jailed);
- html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после продажи</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
+ html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после незаконной доставки</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
    available.map(w=>'<option value="'+w.id+'" '+(deliveryDraft.arrestWorkerId===w.id?'selected':'')+'>Работник #'+w.number+'</option>').join('')+'</select></label>';
 }
 el.innerHTML=html;
@@ -1811,7 +1811,7 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
-  const c02Data=!archived?persistentC02:null;
+  const c02Data=!archived&&persistentC02?.round===state.round?persistentC02:null;
   const c02Player=Number.isInteger(currentDeveloper(state))?currentDeveloper(state):null;
   const c02Return=c02Data?.active&&c02Player!=null?c02ReturnOptions(state,c02Player):null;
   const c02CanDeliver=!!c02Data?.active&&c02Player!=null&&canUseFreeAction(state,c02Player)&&
