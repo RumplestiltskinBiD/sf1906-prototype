@@ -272,7 +272,10 @@ test('newspaper after unclaimed C02 retains physical record but never mints/re-d
  assert.equal(snap(s),before);
 });
 test('old active C02 save steals only once from remaining real stock; old archive immutable',()=>{
- const s=game(),before=snap(s.logisticsSupply);
+ const s=game();
+ // A genuine pre-v2 open save has NOT yet removed any stolen cubes.
+ s.logisticsSupply.broadway=['Steel','Masonry','Lumber','Steel'];
+ const before=snap(s.logisticsSupply);
  delete s.newsC02Incident;
  G.ensureNewspaper(s,{rng:()=>0});
  assert.equal(s.newsC02Incident.roll,1);
