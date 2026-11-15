@@ -184,9 +184,11 @@ test('foreign and own police conduct the raid; no commission, no teleport and on
   assert.equal(s.players[0].capital,starting[0].cash-1);
   assert.equal(s.players[0].prestige,starting[0].vp+2);
   assert.equal(s.players[0].influence,starting[0].influence+1);
-  if(owner===1)assert.deepEqual(s.players[1],
-    {...s.players[1]},'competitor must not be modified unexpectedly');
-  if(owner===1)assert.equal(s.players[1].capital,starting[1].cash);
+  if(owner===1){
+   assert.equal(s.players[1].capital,starting[1].cash,'foreign police receives no fee');
+   assert.equal(s.players[1].prestige,starting[1].vp,'foreign police earns no VP');
+   assert.equal(s.players[1].influence,starting[1].influence,'foreign police earns no Influence for a raid');
+  }
   assert.equal(s.players[0].workers[0].districtId,pos);
   assert.equal(s.players[0].workers[0].used,true);
   assert.equal(s.activationMainActionUsed,true);
