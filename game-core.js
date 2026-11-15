@@ -1120,6 +1120,9 @@ export function createInitialState({rng=Math.random}={}){
     boardingExpansionV1:true,
     pressAndWorkersExpansionV1:true,
     criminalTradeV1:true,
+    // New games already include brewery cards in the original pool; do not
+    // append them as a legacy expansion on save reload (critical for empty decks).
+    breweryTradeV1:true,
     grandCitySquareExpansionV1:true,
     advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
