@@ -212,8 +212,8 @@ test('transition INTO H03 generates reduced supply after new edition and leaves 
  const untouched=snapshot(s.logisticsSupply);
  G.ensureNewspaper(s,{rng:()=>{throw Error('second H03 supply roll')}});
  assert.equal(snapshot(s.logisticsSupply),untouched);
- // Next transition must end the shortage and generate normal cargo again.
- s.developmentComplete=true;s.developmentPlayer=null;
+ // The following City Hall session is simulated before ending another year.
+ s.phase='development';s.developmentComplete=true;s.developmentPlayer=null;
  const next=G.cleanupMarket(s,{rng:()=>.2});
  assert.equal(next.ok,true);
  assert.equal(s.round,3);
