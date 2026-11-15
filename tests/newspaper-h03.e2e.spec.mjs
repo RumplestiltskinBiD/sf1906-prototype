@@ -37,6 +37,7 @@ for(const vp of viewports){
    await expect(page.locator('[data-delivery-node="'+id+'"]')).not.toHaveClass(/f03-port-closed/);
   }
   await openNews(page,vp);
+  await expect(page.locator('.city-throughput')).toContainText('13');
   await expect(page.locator('.news-headline')).toHaveText('ЗАМОРСКИЕ ГРУЗЫ ЗАДЕРЖАНЫ!');
   await expect(page.locator('.news-h03-panel')).toContainText('Сгенерировано 13 вместо 17');
   await expect(page.locator('.news-h03-panel')).toContainText('Southern Pacific 4/4');
@@ -108,6 +109,7 @@ test('H03 end-year archive has no penalties and restores all normal ports',async
  expect(now.newsArchive[0].changes).toEqual({});
  expect(now.players.map(p=>({capital:p.capital,influence:p.influence,prestige:p.prestige}))).toEqual(expected);
  for(const node of LOGISTICS_NODES)expect(now.logisticsSupply[node.id]).toHaveLength(node.throughput);
+ await expect(page.locator('.city-throughput')).toContainText('17');
  await openNews(page,{width:1366,height:768});
  await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('#newsSheetContent')).toContainText('13 вместо 17');
