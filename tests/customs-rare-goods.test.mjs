@@ -4,6 +4,8 @@ import * as G from '../game-core.js';
 
 function state(){
  const s=G.createInitialState({rng:()=>0.11});
+ // Contraband tariff tests here use the no-crisis baseline; H02 has its own suite.
+ s.newsH02Incident=null;
  s.phase='development';s.view='city';s.developmentComplete=false;s.developmentPlayer=0;
  s.players.forEach(p=>{p.capital=100;p.portfolio=[];});
  s.constructions=[];
