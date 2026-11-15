@@ -247,7 +247,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "C03",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_C03_V2.md",
       "title": "В МЭРИИ СКРЫВАЮТ ФИКТИВНЫЕ ЗАЯВКИ!",
       "eventType": "corrupt-transfer-of-unallocated-project-permits",
@@ -268,16 +268,16 @@ export const NEWS_CARDS=Object.freeze([
       "noAnnualCrimeAssessmentBeforeCityHall": true,
       "normalCityHallAuctionUnchanged": true,
       "normalAnnualCrimeAssessmentAtYearEnd": true,
-      "notConnectedToGameEngine": true
+      "notConnectedToGameEngine": false
     },
     "category": "Преступность",
-    "title": "Поддельные подписи в конторах",
-    "article": "Из банков и страховых контор поступают жалобы на мошенничество. Если следователи не возьмутся за дело, предприниматели заплатят сами.",
-    "target": "bank-insurance-hotel",
+    "title": "В МЭРИИ СКРЫВАЮТ ФИКТИВНЫЕ ЗАЯВКИ!",
+    "article": "После жалоб на подставных застройщиков в мэрии назначена ревизия строительных дел. По сведениям редакции, причастные чиновники спешат бесплатно переоформить сомнительные разрешения на настоящих предпринимателей, чтобы скрыть следы махинаций до проверки.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "police"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "C04",
