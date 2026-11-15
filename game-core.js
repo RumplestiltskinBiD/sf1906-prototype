@@ -924,6 +924,7 @@ export function createInitialState({rng=Math.random}={}){
   const yearTurnOrder=players.map(p=>p.id).sort((a,b)=>players[b].influence-players[a].influence);
   const goalSetup=createCityGoalPool({rng});
   const initialF02Incident=newsCurrentIds[0]==='F02'?createF02Incident(1,rng):null;
+  const initialH01Incident=newsCurrentIds[0]==='H01'?createH01Incident(1,rng):null;
   const state={
     version:'0.44',
     industrialExpansionV1:true,
@@ -951,6 +952,7 @@ export function createInitialState({rng=Math.random}={}){
     newsEmergency:{},
     newsF01Notice:null,
     newsF02Incident:initialF02Incident,
+    newsH01Incident:initialH01Incident,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -2652,7 +2654,13 @@ function finishYearTransition(state,{rng=Math.random}={}){
   const blanks=Array(Math.max(0,5-incoming.length-survivors.length)).fill(null);
   state.market=[...incoming,...blanks,...survivors];
   state.round++;
+  // H01 persists alongside subsequent newspaper editions. Its infection
+  // radius grows once when the next calendar year actually starts.
+  if(state.newsH01Incident?.resolvedRound==null)
+    state.newsH01Incident.radius=Math.max(0,state.round-state.newsH01Incident.startRound);
   state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
+  if(state.newsCurrentIds[0]==='H01'&&!state.newsH01Incident)
+    state.newsH01Incident=createH01Incident(state.round,rng);
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -2756,6 +2764,10 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   const newspaperResult=resolveNewspaper(state);
   if(!newspaperResult.ok&&newspaperResult.reason!=='already-resolved')return newspaperResult;
+  // The original H01 token survives other newspaper editions. Assess it
+  // exactly once each year before crime assessment and annual income.
+  if(state.newsH01Incident&&state.newsH01Incident.lastAssessedRound!==state.round)
+    settleH01Year(state);
   if(state.pressCampaignQueuedRound!==state.round){
     state.pressCampaignQueuedRound=state.round;
     state.pendingPressCampaigns=(state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='press_tower'
@@ -2922,6 +2934,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsEmergency={};
     state.newsF01Notice=null;
     state.newsF02Incident=null;
+    state.newsH01Incident=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -2931,6 +2944,13 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
   }
   if(!state.newsEmergency||typeof state.newsEmergency!=='object')state.newsEmergency={};
   if(!Object.hasOwn(state,'newsF01Notice'))state.newsF01Notice=null;
+  // For old in-progress H01 saves, roll exactly one new persistent focus.
+  // Earlier historical H01 archives remain historical; no retroactive loss
+  // or hypothetical outbreak is introduced by loading those old games.
+  if(!state.newsH01Incident&&activeNewspaper(state)?.id==='H01'&&
+     state.newsLastResolvedRound!==state.round)
+    state.newsH01Incident=createH01Incident(state.round,rng);
+  if(!Object.hasOwn(state,'newsH01Incident'))state.newsH01Incident=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -3418,6 +3438,205 @@ function resolveH04Newspaper(state,card){
   return {ok:true,report};
 }
 
+// H01 v2: one epidemic token with an expanding area on the existing graph.
+// The initial location is drawn on reveal, never on a preview or at year end.
+export const H01_ORIGIN_DISTRICTS=Object.freeze([
+  'chinatown','northbeach','missionbay','potrero','bernal','innerrichmond'
+]);
+export function createH01Incident(round,rng=Math.random){
+  const raw=Number(rng()),safe=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  const index=Math.floor(safe*H01_ORIGIN_DISTRICTS.length);
+  return {startRound:round,roll:index+1,districtId:H01_ORIGIN_DISTRICTS[index],
+    radius:0,resolvedRound:null,operation:null,lastAssessedRound:null,yearReports:[]};
+}
+export function h01ActiveIncident(state){
+  const h=state?.newsH01Incident;
+  return h&&h.resolvedRound==null&&H01_ORIGIN_DISTRICTS.includes(h.districtId)
+    &&Number.isInteger(h.startRound)&&h.startRound<=state.round?h:null;
+}
+export function h01InfectedDistrictIds(state){
+  const h=h01ActiveIncident(state);if(!h)return [];
+  // Golden Gate Park may connect neighborhoods as a pass-through, but it is
+  // not an eligible penalty district; Presidio/Twin Peaks are not traversable.
+  const radius=Math.max(0,Math.floor(Number(h.radius)||0));
+  const seen=new Set([h.districtId]),queue=[[h.districtId,0]],infected=[];
+  for(let k=0;k<queue.length;k++){
+    const [id,distance]=queue[k],district=districtById(id);
+    if(district?.buildable)infected.push(id);
+    if(distance>=radius)continue;
+    for(const next of districtNeighbors(id)){
+      if(seen.has(next)||!districtById(next)?.passable)continue;
+      seen.add(next);queue.push([next,distance+1]);
+    }
+  }
+  return infected;
+}
+const H01_MEDICAL_IDS=Object.freeze(['std_clinic','clinic']);
+function h01MedicalProtection(state,districtId){
+  const clinics=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    H01_MEDICAL_IDS.includes(c.projectId)&&
+    (c.districtId===districtId||
+     (c.projectId==='clinic'&&districtNeighbors(districtId).includes(c.districtId))));
+  if(!clinics.length)return null;
+  const order=turnOrder(state);
+  // The two adjacent market clinics tie is a NOT-YET-APPROVED design edge.
+  // Deterministic technical fallback: local institution first, then the fixed
+  // year's turn order, then construction id. Never double-score one district.
+  clinics.sort((a,b)=>
+    Number(b.districtId===districtId)-Number(a.districtId===districtId)||
+    order.indexOf(a.playerId)-order.indexOf(b.playerId)||
+    String(a.id).localeCompare(String(b.id)));
+  return clinics[0];
+}
+export function h01Preview(state){
+  const h=state?.newsH01Incident;
+  if(!h||!H01_ORIGIN_DISTRICTS.includes(h.districtId))return null;
+  const active=!!h01ActiveIncident(state);
+  const districts=active?h01InfectedDistrictIds(state):[];
+  const entries=[],protectedDistrictIds=[],exposedDistrictIds=[],protectedByDistrict={};
+  for(const districtId of districts){
+    const owners=[...new Set((state.constructions||[]).filter(c=>
+      c.status==='complete'&&c.districtId===districtId&&
+      !H01_MEDICAL_IDS.includes(c.projectId)).map(c=>c.playerId))].sort((a,b)=>a-b);
+    if(!owners.length)continue;
+    const clinic=h01MedicalProtection(state,districtId);
+    if(clinic){
+      protectedDistrictIds.push(districtId);
+      protectedByDistrict[districtId]={ownerId:clinic.playerId,
+        clinicId:clinic.id,clinicDistrictId:clinic.districtId};
+    }else exposedDistrictIds.push(districtId);
+    for(const playerId of owners)
+      entries.push({playerId,districtIds:[districtId],kind:'h01-epidemic',
+        defended:!!clinic,capitalDue:clinic?0:2,
+        protectedBy:clinic?.playerId??null,clinicId:clinic?.id??null});
+  }
+  return {startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    radius:h.radius,active,resolvedRound:h.resolvedRound,
+    operation:h.operation?{...h.operation,route:[...h.operation.route]}:null,
+    infectedDistrictIds:districts,protectedDistrictIds,exposedDistrictIds,
+    protectedByDistrict,entries};
+}
+export function h01ExpeditionOptions(state,playerId){
+  const h=h01ActiveIncident(state);
+  if(!h)return {ok:false,reason:state.newsH01Incident?.resolvedRound!=null?'already-completed':'no-active-epidemic',services:[]};
+  if(!Number.isInteger(playerId)||state.players?.[playerId]?.id!==playerId)
+    return {ok:false,reason:'player',services:[]};
+  const actionAvailable=canTakeMainAction(state,playerId)&&
+    !state.pendingConstruction&&!state.pendingWorkerAction;
+  // H02's global $2/edge tariff is activated only by its implemented v2
+  // persistent incident, not by today's obsolete legacy H02 article.
+  const h02=state.newsH02Incident;
+  const tariff=h02?.active===true&&h02.resolvedRound==null?2:1;
+  const services=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    H01_MEDICAL_IDS.includes(c.projectId)).map(c=>{
+      const route=f02ServiceRoute(c.districtId,h.districtId);
+      const cost=route?(route.length-1)*tariff:null;
+      const reachable=actionAvailable&&workerCanReachDistrict(state,playerId,c.districtId);
+      const affordable=cost!==null&&state.players[playerId].capital>=cost;
+      return {constructionId:c.id,ownerId:c.playerId,projectId:c.projectId,
+        districtId:c.districtId,route,cost,reachable,affordable,
+        available:actionAvailable&&!!route&&reachable&&affordable};
+    });
+  return {ok:true,active:true,incident:h,tariff,actionAvailable,services,
+    canComplete:services.some(x=>x.available)};
+}
+export function completeH01Expedition(state,playerId,constructionId){
+  const opts=h01ExpeditionOptions(state,playerId);
+  if(!opts.ok)return {ok:false,reason:opts.reason};
+  if(!opts.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+  if(state.pendingConstruction||state.pendingWorkerAction)
+    return {ok:false,reason:'pending-action'};
+  const service=opts.services.find(c=>c.constructionId===constructionId);
+  if(!service)return {ok:false,reason:'invalid-service'};
+  if(!service.route)return {ok:false,reason:'route'};
+  if(!service.reachable)return {ok:false,reason:'worker-range'};
+  if(!service.affordable)return {ok:false,reason:'capital'};
+  // The representative stays in their own district. Only the medical team
+  // follows the paid route; the operation still spends one real main action.
+  const action=consumeMainAction(state,playerId);
+  if(!action.ok)return action;
+  const p=state.players[playerId];
+  p.capital-=service.cost;p.prestige=(Number(p.prestige)||0)+2;
+  const influence=moveInfluence(state,playerId,1);
+  const op={playerId,serviceId:service.constructionId,ownerId:service.ownerId,
+    sourceDistrictId:service.districtId,route:[...service.route],cost:service.cost,
+    tariff:opts.tariff,prestige:2,influenceSteps:influence.steps,round:state.round};
+  opts.incident.resolvedRound=state.round;
+  opts.incident.operation=op;
+  logEvent(state,p.name+' организует санитарную экспедицию через '+
+    (projectById(service.projectId)?.name||service.projectId)+' ('+
+    (districtById(service.districtId)?.name||service.districtId)+') в '+
+    (districtById(opts.incident.districtId)?.name||opts.incident.districtId)+
+    ' за $'+service.cost+': +2 VP и +'+influence.steps+' Influence.','good');
+  return {ok:true,operation:op,worker:action.worker,route:[...service.route]};
+}
+export function settleH01Year(state){
+  const h=state?.newsH01Incident;
+  if(!h||h.startRound>state.round||h.lastAssessedRound===state.round)
+    return {ok:false,reason:h?.lastAssessedRound===state.round?'already-settled':'no-incident'};
+  const alive=h.resolvedRound==null;
+  const preview=h01Preview(state);
+  const entries=[],changes={},influenceRewards=[];
+  // Only active districts with at least one non-medical finished building
+  // may trigger a penalty or any protective Influence.
+  if(alive&&preview){
+    for(const e of preview.entries){
+      const player=state.players[e.playerId];
+      if(!player)continue;
+      const paid=e.defended?0:Math.min(2,Math.max(0,player.capital||0));
+      if(paid)player.capital-=paid;
+      entries.push({...e,actual:-paid});
+      if(paid){
+        changes[e.playerId]??={capital:0,influence:0,prestige:0};
+        changes[e.playerId].capital-=paid;
+      }
+    }
+    // One credited owner per protected *district*, not per building/owner.
+    for(const [districtId,defender] of Object.entries(preview.protectedByDistrict)){
+      const owner=defender.ownerId;
+      if(!state.players[owner])continue;
+      const steps=moveInfluence(state,owner,1).steps;
+      influenceRewards.push({districtId,playerId:owner,clinicId:defender.clinicId,steps});
+      if(steps){
+        changes[owner]??={capital:0,influence:0,prestige:0};
+        changes[owner].influence+=steps;
+      }
+    }
+  }
+  const outcome={round:state.round,year:newsYear(state.round),
+    startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    radius:h.radius,resolved:!alive,operation:h.resolvedRound===state.round?h.operation:null,
+    infectedDistrictIds:preview?.infectedDistrictIds||[],
+    entries,influenceRewards,changes};
+  h.yearReports??=[];h.yearReports.push(outcome);h.lastAssessedRound=state.round;
+  const archived=(state.newsArchive||[]).findLast(r=>r.round===state.round);
+  if(archived){
+    if(archived.cardId==='H01'){
+      archived.h01=outcome;
+      archived.entries=entries;
+      archived.changes=changes;
+    }else archived.ongoingH01=outcome;
+  }
+  logEvent(state,'The San Francisco Call, '+outcome.year+' · Эпидемия: '+
+    (alive?'радиус '+outcome.radius+', незащищённых районов '+
+      (preview?.exposedDistrictIds.length||0):'ликвидирована')+
+    ', потерь $'+entries.reduce((a,e)=>a-Math.min(0,e.actual),0)+
+    ', медицинских благодарностей '+influenceRewards.length+'.','accent');
+  return {ok:true,outcome};
+}
+function resolveH01Newspaper(state,card){
+  const h=state.newsH01Incident;
+  if(!h)return {ok:false,reason:'no-incident'};
+  const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  const result=settleH01Year(state);
+  if(!result.ok)return result;
+  return {ok:true,report};
+}
+
 function resolveH03Newspaper(state,card){
   const applied=state.newsH03SupplyRound===state.round;
   const report={year:newsYear(state.round),round:state.round,
@@ -3458,6 +3677,15 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='H01'){
+    const epidemic=h01Preview(state);
+    return {card,entries:epidemic?.entries||[],
+      threatened:epidemic?.infectedDistrictIds||[],
+      protected:epidemic?.protectedDistrictIds||[],
+      summary:{districts:epidemic?.infectedDistrictIds.length||0,
+        exposed:epidemic?.exposedDistrictIds.length||0,safe:epidemic?.protectedDistrictIds.length||0},
+      h01:epidemic};
+  }
   if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
   if(card.id==='H04'){
     const donations=state.newsH04Donations?.round===state.round
@@ -3542,7 +3770,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03','F04','H03','H04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04','H01','H03','H04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3566,6 +3794,7 @@ export function resolveNewspaper(state){
   if(card.id==='F01')return resolveF01Newspaper(state,card);
   if(card.id==='F02')return resolveF02Newspaper(state,card);
   if(card.id==='F03')return resolveF03Newspaper(state,card);
+  if(card.id==='H01')return resolveH01Newspaper(state,card);
   if(card.id==='H03')return resolveH03Newspaper(state,card);
   if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);
