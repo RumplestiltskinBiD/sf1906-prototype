@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0570-f03-port';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0571-f04-audit';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -676,6 +676,7 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
+  if(f04PendingSelections(state))return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
@@ -683,6 +684,7 @@ export function canTakeMainAction(state,playerId){
     &&developmentSlotsRemaining(state,playerId)>0&&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
+  if(f04PendingSelections(state))return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
@@ -703,6 +705,7 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
   if(currentDeveloper(state)!==playerId)return {ok:false,reason:'turn'};
@@ -940,6 +943,7 @@ export function createInitialState({rng=Math.random}={}){
     newsF01Notice:null,
     newsF02Incident:initialF02Incident,
     newsF03Incident:null,
+    newsF04Notices:null,
     newsLastResolvedRound:0,
     firstPlayer:yearTurnOrder[0],
     yearTurnOrder,
@@ -995,6 +999,7 @@ export function createInitialState({rng=Math.random}={}){
   // Materials are generated at their original point in setup; only then
   // is the affected port determined and its real cargo redistributed.
   if(newsCurrentIds[0]==='F03')applyF03PortFire(state,{rng});
+  if(newsCurrentIds[0]==='F04')state.newsF04Notices=createF04Notices(state);
   return state;
 }
 
@@ -2449,6 +2454,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
     const target=targets[0];
     state.players[playerId].capital-=fee;
     target.fireSafetyModernized=true;
+    completeF04NoticeFromModernization(state,target.id);
     impacts.push({playerId,cost:fee,paid:fee,incomePenalty:0,influenceDelta:0,constructionIds:[target.id]});
   }else{
     const owners=[...new Set(targets.map(c=>c.playerId))];
@@ -2463,7 +2469,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
       impacts.push({playerId:pid,cost:due,paid,incomePenalty:shortfall?1:0,
         influenceDelta:influence.steps,constructionIds:owned.map(c=>c.id)});
     }
-    for(const c of targets)c.fireSafetyModernized=true;
+    for(const c of targets){c.fireSafetyModernized=true;completeF04NoticeFromModernization(state,c.id);}
   }
   state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
   state.actionSpaceOccupancy[firehouseId]=playerId;
@@ -2640,6 +2646,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
   state.newsF03Incident=null;
+  state.newsF04Notices=state.newsCurrentIds[0]==='F04'?createF04Notices(state):null;
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. '+
     (forthcoming.id==='F03'?'Портовые поставки меняются сразу при выходе газеты.':'Событие произойдёт в конце года.'),'accent');
@@ -2733,7 +2740,9 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   if((state.pendingPressCampaigns||[]).length)return {ok:false,reason:'pending-press-campaign'};
   if(!state.developmentComplete)return {ok:false,reason:'development-not-complete'};
   ensureNewspaper(state,{rng});
-  resolveNewspaper(state);
+  if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
+  const newspaperResult=resolveNewspaper(state);
+  if(!newspaperResult.ok&&newspaperResult.reason!=='already-resolved')return newspaperResult;
   if(state.pressCampaignQueuedRound!==state.round){
     state.pressCampaignQueuedRound=state.round;
     state.pendingPressCampaigns=(state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='press_tower'
@@ -2901,6 +2910,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsF01Notice=null;
     state.newsF02Incident=null;
     state.newsF03Incident=null;
+    state.newsF04Notices=null;
     state.newsLastResolvedRound=0;
     logEvent(state,'Газета The San Francisco Call добавлена к текущей партии; прогноз до конца года открыт.','accent');
   }
@@ -2918,6 +2928,12 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
   if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round){
     if(!f03CurrentPortIncident(state))applyF03PortFire(state,{rng});
   }else if(!Object.hasOwn(state,'newsF03Incident'))state.newsF03Incident=null;
+  // Capture F04 targets exactly once on reveal; never recompute on every preview.
+  // Older in-progress saves get a one-time migration of the remaining sites.
+  if(activeNewspaper(state)?.id==='F04'&&state.newsLastResolvedRound!==state.round){
+    if(!state.newsF04Notices||state.newsF04Notices.round!==state.round)
+      state.newsF04Notices=createF04Notices(state);
+  }else if(!Object.hasOwn(state,'newsF04Notices'))state.newsF04Notices=null;
   return state;
 }
 export function activeNewspaper(state){
@@ -3042,6 +3058,163 @@ function resolveF01Newspaper(state,card){
   logEvent(state,'The San Francisco Call, '+report.year+' · '+card.title+': '+
     (personal?'штраф за нарушение получил '+state.players[notice.accusedPlayerId].name:
       'все инвесторы оплачивают общегородской противопожарный сбор')+'.','accent');
+  return {ok:true,report};
+}
+
+// F04 targets are captured at the moment the issue appears. The owner must
+// explicitly choose among tied worst buildings; nothing is silently selected.
+// A frozen candidate list prevents newly completed buildings joining midyear.
+function createF04Notices(state){
+  const notices=[];
+  for(const p of state.players||[]){
+    const candidates=(state.constructions||[]).filter(c=>c.playerId===p.id&&
+      c.status==='complete'&&!c.fireSafetyModernized&&constructionFireRisk(c)>0);
+    const highest=Math.max(0,...candidates.map(constructionFireRisk));
+    if(!highest)continue;
+    const candidateIds=candidates.filter(c=>constructionFireRisk(c)===highest).map(c=>c.id);
+    notices.push({playerId:p.id,candidateIds,constructionId:candidateIds.length===1?candidateIds[0]:null,
+      personalFire:highest,status:candidateIds.length===1?'open':'choose',method:null});
+  }
+  return {round:state.round,notices};
+}
+function f04PendingSelections(state){
+  return activeNewspaper(state)?.id==='F04'&&state.newsLastResolvedRound!==state.round&&
+    state.newsF04Notices?.round===state.round&&
+    state.newsF04Notices.notices?.some(n=>n.status==='choose')===true;
+}
+function f04Notice(state,playerId){
+  return state.newsF04Notices?.round===state.round
+    ?state.newsF04Notices.notices.find(n=>n.playerId===playerId):null;
+}
+export function f04NoticePreview(state){
+  if(activeNewspaper(state)?.id!=='F04'||state.newsLastResolvedRound===state.round)return null;
+  const data=state.newsF04Notices?.round===state.round?state.newsF04Notices:null;
+  return {round:state.round,pendingSelections:f04PendingSelections(state),
+    notices:(data?.notices||[]).map(n=>({...n,candidateIds:[...n.candidateIds]}))};
+}
+export function chooseF04Notice(state,playerId,constructionId){
+  if(activeNewspaper(state)?.id!=='F04')return {ok:false,reason:'not-f04'};
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return {ok:false,reason:'player'};
+  const n=f04Notice(state,playerId);
+  if(!n)return {ok:false,reason:'no-notice'};
+  if(n.status!=='choose')return {ok:false,reason:'already-chosen'};
+  if(!n.candidateIds.includes(constructionId))return {ok:false,reason:'invalid-target'};
+  // One choice per owner, including before City Hall. The newspaper UI presents
+  // each tied group under its owner, rather than requiring the active turn.
+  n.constructionId=constructionId;
+  const target=(state.constructions||[]).find(c=>c.id===constructionId);
+  n.status=target?.fireSafetyModernized?'closed':'open';
+  n.method=target?.fireSafetyModernized?'firehouse':null;
+  logEvent(state,state.players[playerId].name+' выбирает для пожарного предписания «'+
+    (projectById(target?.projectId)?.name||constructionId)+'» в '+(districtById(target?.districtId)?.name||'городе')+'.','accent');
+  return {ok:true,notice:{...n,candidateIds:[...n.candidateIds]}};
+}
+function completeF04NoticeFromModernization(state,constructionId){
+  if(activeNewspaper(state)?.id!=='F04'||state.newsLastResolvedRound===state.round)return false;
+  const n=state.newsF04Notices?.round===state.round
+    ?state.newsF04Notices.notices.find(x=>x.constructionId===constructionId&&x.status==='open'):null;
+  if(!n)return false;
+  n.status='closed';n.method='firehouse';return true;
+}
+export function f04NoticeOptions(state,playerId){
+  if(activeNewspaper(state)?.id!=='F04')return {ok:false,reason:'not-f04'};
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return {ok:false,reason:'player'};
+  const n=f04Notice(state,playerId);
+  if(!n)return {ok:true,notice:null,urgent:false,bribe:false,arrestWorkerIds:[]};
+  const target=(state.constructions||[]).find(c=>c.id===n.constructionId);
+  const valid=n.status==='open'&&target?.playerId===playerId&&
+    target.status==='complete'&&!target.fireSafetyModernized&&constructionFireRisk(target)>0;
+  const unjailed=playerWorkers(state,playerId).filter(w=>!w.jailed).map(w=>w.id);
+  const pending=state.pendingConstruction||state.pendingWorkerAction;
+  return {ok:true,notice:{...n,candidateIds:[...n.candidateIds]},
+    urgent:valid&&!pending&&canTakeMainAction(state,playerId)&&state.players[playerId].capital>=4,
+    bribe:valid&&!pending&&canUseFreeAction(state,playerId)&&state.players[playerId].capital>=2&&unjailed.length>0,
+    suspicion:suspicionLevel(state,playerId),
+    arrestWorkerIds:unjailed,
+    pendingSelections:f04PendingSelections(state)};
+}
+export function resolveF04Notice(state,playerId,method,arrestWorkerId=null){
+  if(activeNewspaper(state)?.id!=='F04')return {ok:false,reason:'not-f04'};
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  if(!['urgent','bribe'].includes(method))return {ok:false,reason:'method'};
+  const options=f04NoticeOptions(state,playerId);
+  if(!options.ok)return {ok:false,reason:options.reason};
+  const n=f04Notice(state,playerId);
+  if(!n)return {ok:false,reason:'no-notice'};
+  if(n.status==='choose')return {ok:false,reason:'target-choice'};
+  if(n.status==='closed')return {ok:false,reason:'already-closed'};
+  if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
+  if(state.pendingConstruction||state.pendingWorkerAction)return {ok:false,reason:'pending-action'};
+  const target=(state.constructions||[]).find(c=>c.id===n.constructionId);
+  if(!target||target.status!=='complete'||target.playerId!==playerId||target.fireSafetyModernized)
+    return {ok:false,reason:'invalid-target'};
+  if(method==='urgent'){
+    if(state.players[playerId].capital<4)return {ok:false,reason:'capital'};
+    if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
+    // No special trip to the site is invented: like F01, the selected worker
+    // spends the action at their current position, without teleportation.
+    const action=consumeMainAction(state,playerId);
+    if(!action.ok)return action;
+    state.players[playerId].capital-=4;
+    target.fireSafetyModernized=true;
+    n.status='closed';n.method='urgent';
+    logEvent(state,state.players[playerId].name+' устраняет нарушение по F04 за $4: «'+
+      (projectById(target.projectId)?.name||target.projectId)+'», личный П −1.','accent');
+    return {ok:true,method,worker:action.worker,notice:{...n}};
+  }
+  if(state.players[playerId].capital<2)return {ok:false,reason:'capital'};
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  const result=resolveCriminalAction(state,playerId,{
+    mode:'free',arrestWorkerId,suspicionGain:1,
+    perform(draft){
+      const notice=f04Notice(draft,playerId),site=draft.constructions.find(c=>c.id===notice?.constructionId);
+      if(!notice||notice.status!=='open'||!site||site.status!=='complete'||site.fireSafetyModernized)
+        return {ok:false,reason:'invalid-target'};
+      if(draft.players[playerId].capital<2)return {ok:false,reason:'capital'};
+      draft.players[playerId].capital-=2;
+      notice.status='closed';notice.method='bribe';
+      logEvent(draft,draft.players[playerId].name+' подкупает инспектора F04 за $2; пожарный риск здания не меняется.','bad');
+      return {ok:true,cost:2,constructionId:site.id};
+    }
+  });
+  return result.ok?{...result,method,notice:{...f04Notice(state,playerId)}}:result;
+}
+function resolveF04Newspaper(state,card){
+  if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
+  const notices=state.newsF04Notices?.round===state.round?state.newsF04Notices.notices:[];
+  const entries=[],changes={},results=[];
+  for(const notice of notices){
+    const site=(state.constructions||[]).find(c=>c.id===notice.constructionId);
+    // Regular firehouse inspection is a real modernization even when it was
+    // performed by a competing investor. No additional F04 fee may be taken.
+    const improved=!!site?.fireSafetyModernized;
+    const closed=notice.status==='closed'||improved;
+    const status=closed?'closed':'open';
+    const method=notice.method||(improved?'firehouse':null);
+    const pid=notice.playerId,player=state.players[pid];
+    let paid=0,influence=0;
+    if(!closed){
+      paid=Math.min(4,Math.max(0,player.capital||0));
+      player.capital-=paid;
+      influence=moveInfluence(state,pid,-1).steps;
+      entries.push({playerId:pid,districtIds:site?[site.districtId]:[],
+        constructionId:notice.constructionId,kind:'f04-unresolved',capitalDue:4,
+        actual:-paid,influenceActual:influence});
+      changes[pid]={capital:-paid,influence,prestige:0};
+    }
+    results.push({playerId:pid,constructionId:notice.constructionId,
+      districtId:site?.districtId||null,status,method,capitalPaid:paid,influenceSteps:influence});
+  }
+  const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+    title:card.title,category:card.category,entries,changes,
+    serviceRecognition:[],emergency:{},f04:{notices:results}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  state.newsF04Notices=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · '+card.title+
+    ': закрыто '+results.filter(x=>x.status==='closed').length+
+    ' предписаний, не урегулировано '+results.filter(x=>x.status==='open').length+'.','accent');
   return {ok:true,report};
 }
 
@@ -3201,6 +3374,14 @@ export function newsPreview(state){
       protected:[],summary:{districts:incident?1:0,exposed:incident?Number(incident.firePending)+Number(incident.manhuntPending):0,safe:0},
       f02:incident?{...incident,actions:incident.actions.map(x=>({...x,route:[...x.route]}))}:null};
   }
+  if(card.id==='F04'){
+    const f04=f04NoticePreview(state);
+    const threatened=[...new Set((f04?.notices||[]).filter(n=>n.status!=='closed')
+      .flatMap(n=>(n.status==='choose'?n.candidateIds:[n.constructionId])
+        .map(id=>(state.constructions||[]).find(c=>c.id===id)?.districtId).filter(Boolean)))];
+    return {card,entries:[],threatened,protected:[],
+      summary:{districts:threatened.length,exposed:(f04?.notices||[]).filter(n=>n.status==='open').length,safe:0},f04};
+  }
   if(card.id==='F01'){
     const f01=f01NoticePreview(state);
     return {card,entries:[],threatened:[],protected:[],
@@ -3247,7 +3428,7 @@ export function newsPreview(state){
 }
 export function takeNewspaperEmergency(state,playerId,districtId){
   const card=activeNewspaper(state),player=state.players?.[playerId];
-  if(!card||['F01','F02','F03'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!card||['F01','F02','F03','F04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
   if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
   if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
   if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
@@ -3271,6 +3452,7 @@ export function resolveNewspaper(state){
   if(card.id==='F01')return resolveF01Newspaper(state,card);
   if(card.id==='F02')return resolveF02Newspaper(state,card);
   if(card.id==='F03')return resolveF03Newspaper(state,card);
+  if(card.id==='F04')return resolveF04Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;

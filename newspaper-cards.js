@@ -132,7 +132,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "F04",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_F04_V2.md",
       "title": "ИНСПЕКТОРЫ БОЛЬШЕ НЕ ЗАКРЫВАЮТ ГЛАЗА!",
       "eventType": "one-year-individual-fire-safety-audit",
@@ -176,13 +176,13 @@ export const NEWS_CARDS=Object.freeze([
       "newsArticleDoesNotDiscussBribery": true
     },
     "category": "Пожар",
-    "title": "Инспекторы предпочитают не видеть копоти",
-    "article": "От перегретых мастерских до фабричных складов — горожане говорят о халатности. Пресса потребует назвать тех, кто допустил бездействие.",
-    "target": "factory",
-    "resource": "influence",
-    "delta": -1,
-    "frequency": "oncePerPlayer",
-    "defense": "firehouse"
+    "title": "ИНСПЕКТОРЫ БОЛЬШЕ НЕ ЗАКРЫВАЮТ ГЛАЗА!",
+    "article": "После многочисленных жалоб городская управа начала внезапные проверки пожарной безопасности. Инспекторы обнаружили загромождённые выходы, ветхие лестницы и недостаточное противопожарное оборудование. Владельцам опасных зданий предписано устранить нарушения.",
+    "target": "none",
+    "resource": "capital",
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "C01",
