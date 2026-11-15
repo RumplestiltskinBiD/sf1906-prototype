@@ -102,7 +102,7 @@ test('draft of first year ends BEFORE C03 bonus (2 retained + optional third car
  assert.equal(s.phase,'declare');assert.deepEqual(s.players.map(p=>p.portfolio.length),[2,2,2]);
  const p=s.players[0],first=s.deck[0],before=p.portfolio.length;
  assert.equal(G.acceptC03Offer(s,0).ok,true);
- assert.equal(p.portfolio.length,before+1);assert.equal(p.portfolio.at(-1),first.id);
+ assert.equal(s.players[0].portfolio.length,before+1);assert.equal(s.players[0].portfolio.at(-1),first.id);
  assert.equal(s.market.some(m=>m.id===first.id&&m.uid===first.uid),false);
 });
 test('hand=5, deck=0 or all jailed prevent benefit/★, but refusal advances queue',()=>{
