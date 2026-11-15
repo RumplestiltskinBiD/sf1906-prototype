@@ -1273,6 +1273,12 @@ function newspaperEffectShort(card){
     (card.frequency==='perDistrict'?' / район':' / игрока');
 }
 function newsArchiveText(report){
+  if(report?.h01||report?.ongoingH01){
+    const h=report.h01||report.ongoingH01;
+    return 'Эпидемия: '+(h.resolved?'ликвидирована':'радиус '+h.radius)+
+      ', штрафов '+(h.entries||[]).filter(x=>x.actual<0).length+
+      ', защит '+(h.influenceRewards||[]).length;
+  }
   if(report?.h04)return (report.h04.donations||[]).map(d=>
     (state.players[d.playerId]?.name||'Игрок')+': пожертвовано $'+d.cost+
     ', +'+d.vp+' VP, +'+d.influenceSteps+' шага Influence').join('\n')||'Без пожертвований';
@@ -1621,7 +1627,60 @@ function renderNewspaper(){
       return '<li>'+escapeHtml(owner)+' · '+escapeHtml(name)+': '+escapeHtml(result)+'</li>';
     }).join(''):'<li>Предписаний нет, штрафов нет.</li>')
     :'';
-  const projections=issue?.id==='H04'
+  const h01Data=!archived?persistentH01:null;
+  const h01Opts=h01Data?.active&&Number.isInteger(currentDeveloper(state))
+    ?h01ExpeditionOptions(state,currentDeveloper(state)):null;
+  const h01Panel=h01Data&&(h01Data.active||issue?.id==='H01')
+    ?'<div class="news-h01-panel"><strong>☣ Эпидемия · D6 '+h01Data.roll+' · '+
+      escapeHtml(districtById(h01Data.districtId)?.name||h01Data.districtId)+'</strong>'+
+      (h01Data.active
+        ?'<p>Радиус '+h01Data.radius+' · заражённых районов '+h01Data.infectedDistrictIds.length+
+          ' · незащищённых '+h01Data.exposedDistrictIds.length+
+          ' · защищённых '+h01Data.protectedDistrictIds.length+'.</p>'+
+         '<small>Каждый год −$2 за заражённый незащищённый район с готовым немедицинским зданием. Клиника защищает себя и соседей, стандартная амбулатория — только свой район. За каждый действительно защищённый район владельцу медицины +1 Influence ежегодно.</small>'+
+         '<p>Районы: '+h01Data.infectedDistrictIds.map(id=>
+           escapeHtml(districtById(id)?.name||id)).join(', ')+'</p>'+
+         '<strong>Санитарная экспедиция · главное действие · +2 VP и +1 Influence</strong>'+
+         '<small>Выберите собственную или чужую завершённую клинику в досягаемости выбранного представителя. Представитель остаётся на месте; медицинская группа едет к жетону по дорогам за $1/переход.</small>'+
+         (h01Opts?.services?.length
+           ?'<div class="news-h01-services">'+h01Opts.services.map(service=>{
+             const site=state.constructions.find(c=>c.id===service.constructionId);
+             const name=projectById(site?.projectId)?.name||site?.projectId||'Медицинская служба';
+             const routeText=service.route?service.route.length-1+' переходов · $'+service.cost:'дорога недоступна';
+             const reason=!h01Opts.actionAvailable?'Нет свободного главного действия':
+               !service.route?'Маршрут закрыт':
+               !service.reachable?'Представитель не рядом с клиникой':
+               !service.affordable?'Недостаточно денег':'';
+             return '<button type="button" data-h01-expedition="'+escapeHtml(String(service.constructionId))+
+               '" '+(service.available?'':'disabled')+'><b>'+escapeHtml(name)+'</b>'+
+               '<span>'+escapeHtml(districtById(service.districtId)?.name||service.districtId)+' · '+
+                 escapeHtml(state.players[service.ownerId]?.name||'Игрок')+'</span>'+
+               '<small>'+escapeHtml(routeText)+(reason?' · '+escapeHtml(reason):'')+'</small></button>';
+           }).join('')+'</div>'
+           :'<p>Нет доступного медицинского учреждения. Постройте клинику или используйте чужую.</p>')+
+         (!h01Opts?'<small>Экспедиция доступна в городской ход действующего игрока после выбора представителя.</small>':'')
+        :'<p>Эпидемия ликвидирована. Штрафы и медицинские награды больше не начисляются.</p>'+
+         (h01Data.operation?'<p>Экспедиция: '+escapeHtml(state.players[h01Data.operation.playerId]?.name||'Игрок')+
+           ', выезд $'+h01Data.operation.cost+', +2 VP и +'+h01Data.operation.influenceSteps+' Influence.</p>':''))+
+      '</div>':'';
+  const h01Past=archived?.h01||archived?.ongoingH01||null;
+  const h01Archive=h01Past
+    ?'<li>Эпидемия · '+escapeHtml(districtById(h01Past.districtId)?.name||h01Past.districtId)+
+      ' · D6 '+h01Past.roll+' · радиус '+h01Past.radius+
+      ' · '+(h01Past.resolved?'ликвидирована':'продолжается')+'</li>'+
+      (h01Past.operation?'<li>Санитарная экспедиция: '+
+        escapeHtml(state.players[h01Past.operation.playerId]?.name||'Игрок')+
+        ' · выезд $'+h01Past.operation.cost+' · +2 VP и +'+h01Past.operation.influenceSteps+' Influence</li>':'')+
+      (h01Past.entries||[]).map(e=>'<li>'+escapeHtml(state.players[e.playerId]?.name||'Игрок')+
+        ' · '+escapeHtml(districtById(e.districtIds[0])?.name||e.districtIds[0])+
+        ': '+(e.defended?'защищено':'уплачено $'+(-e.actual))+'</li>').join('')+
+      (h01Past.influenceRewards||[]).map(e=>'<li>'+
+        escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
+        escapeHtml(districtById(e.districtId)?.name||e.districtId)+
+        ' · +'+e.steps+' Influence</li>').join(''):'';
+  const projections=issue?.id==='H01'
+    ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
+    :issue?.id==='H04'
     ?'<li>Добровольный взнос не расходует рабочих или действия. Каждый инвестор может участвовать один раз.</li>'
     :issue?.id==='F04'
     ?'<li>Внеплановая проверка назначает не более одного предписания владельцу, с тремя способами разрешения.</li>'
@@ -1648,7 +1707,7 @@ function renderNewspaper(){
         status+'</strong></li>';
     }).join('')
     :'<li>Пока нет завершённых построек под действием события. Список обновляется после новых построек.</li>';
-  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H03','H04'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
+  const isEmergencyPossible=!!issue&&!['F01','F02','F03','F04','H01','H03','H04'].includes(issue.id)&&issue.delta<0&&state.phase==='development'&&!state.developmentComplete;
   const targetDescription={
     housing:'Любое жильё',commerce:'Коммерческие здания','industry-logistics':'Фабрики и склады',factory:'Фабрики',
     'shops-club':'Торговые ряды и клубы','warehouse-factory':'Склады и фабрики',
@@ -1672,37 +1731,38 @@ function renderNewspaper(){
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
     '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||fireAudit||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    (policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||fireAudit||legacyH01Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      f02Archive+f03Archive+h03Archive+h04Archive+f04Archive+
+      f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(infantCare?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(infantCare||h01Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
       :'<div class="news-scope"><strong>'+(infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
       (portFire?'<small>Узлы портов перераспределены при открытии выпуска; в конце года ничего дополнительно не списывается.</small>':
        seaQuarantine?'<small>Четыре морских узла недополучили по одному материалу при генерации; в конце года штрафов нет.</small>':
        infantCare?'<small>Автоматических штрафов и начислений нет. Награда выдаётся сразу при добровольном взносе.</small>':
+       epidemicNewspaper?'<small>Штрафы и медицинские награды начисляются в конце года, если очаг остаётся. Экспедиция устраняет эпидемию целиком.</small>':
        arson?'<small>Два жетона в одном районе; они исчезают независимо после профильной операции.</small>':
        fireAudit?'<small>Выберите цель при равенстве, затем законно устраните нарушения или воспользуйтесь незаконным подкупом.</small>':
        fireLevy?'<small>Без действующего акта — общий сбор для всех. Действующий акт — штраф только владельцу указанного здания.</small>':
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+h01Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -1723,6 +1783,18 @@ function renderNewspaper(){
       r.reason==='invalid-target'?'Здание больше не подходит для обвинения':
       'Для акта требуется своё свободное основное действие');render();return;}
     showToast('Предписание предъявлено · основное действие использовано');render();
+  });
+  $$('#newsSheetContent [data-h01-expedition]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const result=completeH01Expedition(state,currentDeveloper(state),button.dataset.h01Expedition);
+    showToast(result.ok?'Эпидемия ликвидирована · +2 VP и +1 Influence':
+      result.reason==='capital'?'Не хватает средств на санитарный маршрут':
+      result.reason==='worker-range'?'Представитель должен находиться рядом с медицинским учреждением':
+      result.reason==='already-completed'?'Эпидемия уже устранена':
+      'Экспедиция недоступна: '+result.reason);
+    render();
   });
   $$('#newsSheetContent [data-f02-kind][data-f02-service]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
