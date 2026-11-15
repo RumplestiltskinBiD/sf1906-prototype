@@ -239,6 +239,28 @@ test('old C03 archived fine is kept; mid-City-Hall old save is NOT reopened',()=
  assert.equal(ongoing.newsC03Offer,null,'already underway auctions cannot receive a retroactive offer');
  assert.equal(G.acceptC03Offer(ongoing,0).ok,false);
 });
+test('fresh future-year C03 creates offers AFTER normal refill/order, BEFORE next City Hall declarations',()=>{
+ const s=base();s.newsCurrentIds=['E02'];s.newsC03Offer=null;
+ s.newsDeck=['C03',...s.newsDeck.filter(id=>id!=='C03')];
+ s.phase='development';s.developmentPlayer=null;s.developmentComplete=true;
+ const before=s.deck.length;
+ const r=G.cleanupMarket(s,{rng:()=>.27});
+ assert.equal(r.ok,true,JSON.stringify(r));
+ assert.equal(s.round,2);assert.equal(s.newsCurrentIds[0],'C03');
+ assert.equal(s.phase,'declare');
+ assert.equal(s.newsC03Offer.round,2);
+ assert.deepEqual(s.newsC03Offer.order,G.turnOrder(s));
+ assert.equal(G.c03OfferPlayer(s),G.turnOrder(s)[0]);
+ assert.equal(G.currentDeclarer(s),null);
+ assert.equal(s.newsC03Offer.decisions.length,0);
+ const pid=G.c03OfferPlayer(s),old=s.players[pid].portfolio.length;
+ const taken=G.acceptC03Offer(s,pid);
+ assert.equal(taken.ok,true,JSON.stringify(taken));
+ assert.equal(s.players[pid].portfolio.length,old+1);
+ assert.equal(s.players[pid].suspicion,1);
+ assert.equal(s.newsLastResolvedRound,1,'newspaper has not resolved at beginning of next year');
+ assert.equal(s.deck.length<=before,true);
+});
 test('legacy save exactly before declare may open a single new C03 offer, not duplicate after reload',()=>{
  const s=base();delete s.newsC03Offer;
  G.ensureNewspaper(s,{rng:()=>0});
