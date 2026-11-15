@@ -2266,6 +2266,11 @@ if(state.developmentComplete){
 el.innerHTML='<div class="city-turn-complete"><strong>Development Phase завершена</strong><span>Все окна активации завершены. Позиции представителей сохранятся на следующий раунд.</span></div>';
 return;
 }
+if(newsPreview(state).f04?.pendingSelections){
+  el.innerHTML='<div class="city-actions-empty" role="status">F04: сначала выберите проверяемое здание для каждого владельца с несколькими равными целями. <button type="button" id="f04ChooseFromCity" class="secondary-btn">Открыть газету и выбрать цель</button></div>';
+  el.querySelector('#f04ChooseFromCity').onclick=()=>openNewspaper();
+  return;
+}
 const pid=currentDeveloper(state),p=state.players[pid];
 const mainUsed=!!state.activationMainActionUsed;
 const serviceOnly=!mainUsed&&p.workersLeft===0;
@@ -2527,6 +2532,12 @@ const blocked=!isMobile()||state.view!=='city'||state.phase!=='development'||sta
 ||(deliveryDraft&&deliveryDraft.step!=='source')||state.pendingConstruction||state.pendingWorkerAction||pid==null;
 document.body.classList.toggle('mobile-turn-dock-active',!blocked);
 if(blocked){el.className='mobile-action-dock';el.innerHTML='';return;}
+if(newsPreview(state).f04?.pendingSelections){
+  el.className='mobile-action-dock active persistent-turn-dock';
+  el.innerHTML='<div class="mobile-action-buttons"><button type="button" id="mobileF04Choice" class="mobile-action-shortcut primary">F04 · Выбрать здание в газете</button></div>';
+  el.querySelector('#mobileF04Choice').onclick=()=>openNewspaper();
+  return;
+}
 if(deliveryDraft?.step==='source'){
   el.className='mobile-action-dock active persistent-turn-dock delivery-source-top';
   el.setAttribute('aria-label','Выбор источника доставки на карте');
