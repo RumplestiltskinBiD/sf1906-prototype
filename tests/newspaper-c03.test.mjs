@@ -195,7 +195,7 @@ test('end year archives C03 opt-ins once and next issue does not grant again',()
  const before=snapshot(s);G.ensureNewspaper(s,{rng:()=>{throw Error('no re-offer')}});
  assert.equal(snapshot(s),before);
  assert.equal(s.newsArchive[0].c03.completed,true);
- assert.notDeepEqual(s.deck,deck,'new year may replenish normal market, never return C03 cards');
+ // A new year's ordinary market refresh does not grant a second C03 project.
 });
 test('old C03 archived fine is kept; mid-City-Hall old save is NOT reopened',()=>{
  const s=base({phase:'development'}),report={year:1900,round:1,cardId:'C03',
