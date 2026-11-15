@@ -346,7 +346,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "H03",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_H03_V2.md",
       "title": "Заморские грузы задержаны",
       "eventTiming": "before-current-year-supply-refresh",
@@ -358,13 +358,13 @@ export const NEWS_CARDS=Object.freeze([
       "reward": null
     },
     "category": "Болезнь",
-    "title": "Рабочие уходят с фабрик с жаром",
-    "article": "Производство лихорадит из-за болезней и отсутствия медицинской помощи. Газета призывает инвесторов подумать не только о прибыли.",
-    "target": "industry-logistics",
+    "title": "ЗАМОРСКИЕ ГРУЗЫ ЗАДЕРЖАНЫ!",
+    "article": "На прибывшем пароходе обнаружены больные матросы. Санитарные власти задерживают суда для проверки. Поставки строительных материалов в город сокращаются.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "clinic"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "H04",
