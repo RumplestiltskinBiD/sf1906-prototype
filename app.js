@@ -1818,6 +1818,34 @@ function renderNewspaper(){
         escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
         ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
     :'';
+  const c03Offer=issue?.id==='C03'?c03CurrentOffer(state):null;
+  const c03Pending=c03Offer&&!c03Offer.completed;
+  const c03Decisions=c03Offer?.decisions||[];
+  const c03Panel=issue?.id==='C03'
+    ?'<section class="news-c03-panel"><strong>ПЕРЕД CITY HALL · СЛУЧАЙНЫЙ ПРОЕКТ</strong>'+
+      '<p>Каждый игрок может один раз взять верхнюю карту из обычной закрытой колоды проектов. Бесплатно, без действия представителя, +1 ★. Отказ — без подозрения.</p>'+
+      '<p>Рука не более '+HAND_LIMIT+' проектов. Обычные заявки, городские цели и ставки остаются доступными.</p>'+
+      (c03Offer
+        ?'<p><b>Решений: '+c03Decisions.length+'/'+c03Offer.order.length+'</b>'+
+         (c03Pending?' · следующий: '+escapeHtml(state.players[c03Offer.order[c03Offer.cursor]]?.name||'Игрок'):
+          ' · все решения получены')+
+         ' · колода '+state.deck.length+'</p>'+
+         '<ul>'+c03Decisions.map(d=>'<li>'+
+            escapeHtml(state.players[d.playerId]?.name||'Игрок')+' — '+
+            (d.choice==='accepted'?'принято «'+escapeHtml(projectById(d.projectId)?.name||d.projectId)+'», +1 ★':'отказ')+
+           '</li>').join('')+'</ul>'
+        :'<small>В этом сохранении окно разрешений до City Hall недоступно; завершённые заявки задним числом не меняются.</small>')+
+      '<small>При исходных ★★★ после успешного получения карты действуют обычные санкции ареста. Ежегодная проверка подозрения остаётся в конце года.</small></section>':'';
+  const c03Past=archived?.c03||null;
+  const c03Archive=c03Past
+    ?'<li>Перерегистрация сомнительных разрешений: '+
+       c03Past.decisions.filter(d=>d.choice==='accepted').length+' принятых, '+
+       c03Past.decisions.filter(d=>d.choice==='declined').length+' отказов</li>'+
+       c03Past.decisions.map(d=>'<li>'+escapeHtml(state.players[d.playerId]?.name||'Игрок')+
+         ': '+(d.choice==='accepted'?'проект «'+escapeHtml(projectById(d.projectId)?.name||d.projectId)+'», +1 ★':'отказ')+
+         '</li>').join('')+
+       (c03Past.legacyMissed?'<li>Историческая партия без окна C03 до мэрии; старые заявки не изменены.</li>':'')
+    :'';
   const c02Data=!archived&&persistentC02?.round===state.round?persistentC02:null;
   const c02Player=Number.isInteger(currentDeveloper(state))?currentDeveloper(state):null;
   const c02Return=c02Data?.active&&c02Player!=null?c02ReturnOptions(state,c02Player):null;
