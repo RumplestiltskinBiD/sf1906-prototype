@@ -4,13 +4,13 @@ LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTI
 projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
-resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
+resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,raiseCapital,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0576-c01-police-raids';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0576-c01-police-raids';
+} from './game-core.js?v=0577-c02-stolen-cargo';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0577-c02-stolen-cargo';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -807,7 +807,8 @@ function chooseDeliverySource(source){
 if(deliveryDraft?.step!=='source')return;
 const info=deliverySourceInfo(state,deliveryDraft.playerId,source);
 if(!info?.inventory?.length){showToast('В этом источнике нет ресурсов');return;}
-deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;deliveryDraft.cargo=[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
+deliveryDraft.source={kind:source.kind,id:source.id};deliveryDraft.step='load';deliveryDraft.haulerId=null;
+deliveryDraft.cargo=source.kind==='stolen'?[...info.inventory]:[];deliveryDraft.pickups=[];deliveryDraft.pickupSource=null;deliveryDraft.pickupOpen=false;deliveryDraft.route=[];deliveryDraft.drops=[];deliveryDraft.panelExpanded=false;deliveryDraft.menuOpen=false;deliveryDraft.focusTargetId=null;render();
 }
 function chooseDeliveryHauler(id){
 if(deliveryDraft?.step!=='load')return;
@@ -816,7 +817,7 @@ if(!h?.available){showToast('Перевозчик уже использован'
 deliveryDraft.haulerId=id;if(deliveryDraft.cargo.length>h.capacity)deliveryDraft.cargo=[];render();
 }
 function addDeliveryCargo(type){
-if(deliveryDraft?.step!=='load'||!deliveryDraft.haulerId)return;
+if(deliveryDraft?.step!=='load'||!deliveryDraft.haulerId||deliveryDraft.source?.kind==='stolen')return;
 const h=availableDeliveryHaulers(state).find(x=>x.id===deliveryDraft.haulerId);
 const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);
 if(!h||!src)return;
@@ -826,7 +827,7 @@ if((used[type]||0)>=(have[type]||0)){showToast('Больше такого рес
 if(type===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)){showToast('Только одна скрытая партия за Доставку');return;}
 deliveryDraft.cargo.push(type);render();
 }
-function clearDeliveryCargo(){if(deliveryDraft?.step==='load'){deliveryDraft.cargo=[];render();}}
+function clearDeliveryCargo(){if(deliveryDraft?.step==='load'&&deliveryDraft.source?.kind!=='stolen'){deliveryDraft.cargo=[];render();}}
 function beginDeliveryRoute(){
 if(!deliveryDraft?.haulerId||!deliveryDraft.cargo.length){showToast('Выберите перевозчика и груз');return;}
 const src=deliverySourceInfo(state,deliveryDraft.playerId,deliveryDraft.source);if(!src)return;
@@ -1063,7 +1064,7 @@ if(deliveryDraft.route?.length)focusMapOnDistrict(deliveryDraft.route.at(-1));
 }
 function confirmDelivery(){
 if(!deliveryDraft)return;const plan=deliveryPlan(),check=validateDeliveryPlan(state,plan);
-if(!check.ok){showToast(({unassigned:'Разгрузите весь груз',capital:'Недостаточно денег',capacity:'Превышена вместимость','goods-buyer-capacity':'У покупателя заполнены места для розового товара','source-stock':'Недостаточно ресурсов', 'unload-before-pickup':'Груз разгружен раньше погрузки','duplicate-pickup':'Повторная погрузка из одного источника на той же остановке'}[check.reason])||'Маршрут недопустим: '+check.reason);return;}
+if(!check.ok){showToast(({'stolen-lot':'Выкуп возможен только всей партией','illegal-mix':'Нельзя объединить выкуп и контрабанду','arrest-worker':'При ★★★ выберите работника для ареста',unassigned:'Разгрузите весь груз',capital:'Недостаточно денег',capacity:'Превышена вместимость','goods-buyer-capacity':'У покупателя заполнены места для розового товара','source-stock':'Недостаточно ресурсов', 'unload-before-pickup':'Груз разгружен раньше погрузки','duplicate-pickup':'Повторная погрузка из одного источника на той же остановке'}[check.reason])||'Маршрут недопустим: '+check.reason);return;}
 const r=executeDelivery(state,plan);if(!r.ok){showToast('Доставка не выполнена: '+r.reason);return;}
 deliveryDraft=null;document.body.classList.remove('delivery-active','delivery-route-build','delivery-unload-mode');showToast('Delivery −$'+r.cost.total+(r.completed.length?' · стройка завершена':''));
 render();
@@ -1110,6 +1111,10 @@ html+='<div class="delivery-map-prompt"><div><b>1. Выберите источн
 html+='<div class="delivery-instruction">'+(mobile?'Нажмите источник здесь или вернитесь к карте.':'1. Выберите порт, ж/д станцию или свой склад.')+'</div>';
 if(mobile)html+='<button id="deliveryHideSourceList" class="ghost-btn delivery-map-return">← Выбирать на карте</button>';
 html+='<div class="delivery-source-grid">';
+const stolen=c02Preview(state);
+if(stolen?.active){
+ html+='<button class="delivery-source-card" data-ds-stolen="'+escapeHtml(stolen.portId)+'"><b>Похищенная партия · $1 за обе</b><span>'+escapeHtml(LOGISTICS_NODES.find(n=>n.id===stolen.portId)?.name||stolen.portId)+'</span><small>'+stolen.materials.map(materialLabel).join(' + ')+' · +1 ★ · обычная Доставка</small></button>';
+}
 for(const n of LOGISTICS_NODES){
 const inv=state.logisticsSupply?.[n.id]||[],cnt=deliveryCounts(inv);
 html+='<button class="delivery-source-card" data-ds-node="'+n.id+'" '+(inv.length?'':'disabled')+'><b>'+n.shortName+'</b><span>'+districtById(n.districtId)?.name+' · '+logisticsKindLabel(n.kind)+'</span><small>Д '+(cnt.Lumber||0)+' · К '+(cnt.Masonry||0)+' · С '+(cnt.Steel||0)+' · профиль: '+logisticsProfileText(n)+'</small></button>';
@@ -1138,16 +1143,17 @@ html+='<div class="delivery-instruction">2. Перевозчик + груз из
 for(const h of haulers)html+='<button class="hauler-card '+(deliveryDraft.haulerId===h.id?'selected ':'')+(h.available?'':'used')+'" data-hauler="'+h.id+'" '+(h.available?'':'disabled')+'><b>'+h.capacity+'</b><span>мест</span><strong>$'+h.baseCost+'</strong><small>'+(h.limited?(h.available?'разовый':'ИСПОЛЬЗОВАН'):'∞ обычный')+'</small></button>';
 html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-grid">';
 for(const t of CARGO_ORDER){
-const left=(have[t]||0)-(used[t]||0),disabled=!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
+const left=(have[t]||0)-(used[t]||0),disabled=deliveryDraft.source.kind==='stolen'||!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
 const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
-  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:['contraband','goods'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
+  srcKind==='node'?'$'+RESOURCE_PRICES[t]:srcKind==='supplier'?'$'+src.unitPrice:['contraband','goods','stolen'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
 const stockText=deliveryDraft.source.kind==='supplier'?'∞ доступно':left+' ост.';
 html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+sourcePrice+'</strong><small>'+stockText+' · нужно '+(totalNeeds[t]||0)+'</small></button>';
 }
-html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn">Очистить</button></div>';
+html+='</div><div class="cargo-box"><b>Груз '+deliveryDraft.cargo.length+'/'+(sel?.capacity||'—')+'</b><span>'+((deliveryDraft.cargo||[]).map(materialShort).join(' · ')||'пусто')+'</span><button id="clearCargo" class="ghost-btn" '+(deliveryDraft.source.kind==='stolen'?'disabled':'')+'>Очистить</button></div>';
+if(deliveryDraft.source.kind==='stolen')html+='<small class="delivery-stolen-note">Два кубика — неделимая партия · выкуп $1 · +1 ★ после доставки</small>';
 const cost=deliveryDraft.haulerId?deliveryPlanCost(state,{...deliveryDraft,route:[src.districtId]}):null;
-html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost:'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>К маршруту →</button></div>';
+html+='<div class="delivery-cost-preview">'+(cost?'Материалы $'+cost.materialCost+' · перевозчик $'+cost.haulerCost+(cost.stolenLotCost?' · выкуп $'+cost.stolenLotCost:''):'Выберите перевозчика')+'</div><div class="delivery-footer"><button id="deliveryBackSource" class="ghost-btn">← Источник</button><button id="deliveryBeginRoute" class="primary-btn" '+(deliveryDraft.haulerId&&deliveryDraft.cargo.length?'':'disabled')+'>К маршруту →</button></div>';
 }else if(step==='route'&&mobile){
 const cost=deliveryPlanCost(state,deliveryDraft),routeText=deliveryDraft.route.map(shortDistrictName).join(' → ');
 const targets=deliveryRouteTargets().filter(deliveryRouteTargetCanAcceptAny);
@@ -1207,9 +1213,9 @@ if(!routeTargets.length)html+='<div class="delivery-target-empty">На марш�
 html+='</div>'+pickupSelectorHtml()+'<div class="route-continue-label"><b>ЕХАТЬ ДАЛЬШЕ</b><span>'+(hasCurrentTarget?'Необязательно — только если часть груза нужно отвезти дальше.':'Выберите следующий соседний район.')+'</span></div><div class="route-next-list">';
 next.forEach(id=>html+='<button data-route-next="'+id+'" class="route-next-btn">+'+shortDistrictName(id)+' <small>+$1</small></button>');
 html+='</div><div class="delivery-route-tools"><button id="deliveryUndoRoute" class="ghost-btn" '+(deliveryDraft.route.length>1?'':'disabled')+'>← район</button><button id="clearDrops" class="ghost-btn">Сбросить разгрузку</button></div>';
-html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><span>Догрузки <b>$'+(cost?.loadingCost||0)+'</b></span>'+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
+html+='<div class="delivery-total"><span>Материалы <b>$'+(cost?.materialCost||0)+'</b></span><span>Перевозчик <b>$'+(cost?.haulerCost||0)+'</b></span><span>Границы <b>$'+(cost?.routeCost||0)+'</b></span><span>Догрузки <b>$'+(cost?.loadingCost||0)+'</b></span>'+(cost?.stolenLotCost?'<span>Выкуп <b>$'+cost.stolenLotCost+'</b></span>':'')+(cost?.yardRentCost?'<span>Аренда <b>$'+cost.yardRentCost+'</b></span>':'')+'<strong>ИТОГО $'+(cost?.total||0)+'</strong></div><div class="delivery-footer"><button id="deliveryBackLoad" class="ghost-btn">← Груз</button><button id="deliveryConfirm" class="primary-btn" '+(canConfirm?'':'disabled')+'>Подтвердить · $'+(cost?.total||0)+'</button></div>';
 }
-if(deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)&&state.players[pid].suspicion===3&&step==='unload'){
+if((deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO)||deliveryDraft.source?.kind==='stolen')&&state.players[pid].suspicion===3&&step==='unload'){
  const available=playerWorkers(state,pid).filter(w=>!w.jailed);
  html+='<label class="delivery-instruction"><b>★★★ · Выберите работника для ареста после продажи</b><select id="contrabandArrestChoice"><option value="">Выберите работника</option>'+
    available.map(w=>'<option value="'+w.id+'" '+(deliveryDraft.arrestWorkerId===w.id?'selected':'')+'>Работник #'+w.number+'</option>').join('')+'</select></label>';
@@ -1219,6 +1225,7 @@ $('#contrabandArrestChoice')?.addEventListener('change',e=>{deliveryDraft.arrest
 $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
 $('#deliveryShowSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=true;renderDeliveryPanel();});
 $('#deliveryHideSourceList')?.addEventListener('click',()=>{deliveryDraft.listOpen=false;renderDeliveryPanel();focusDeliveryMap({detail:false});});
+$$('[data-ds-stolen]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'stolen',id:b.dataset.dsStolen}));
 $$('[data-ds-node]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'node',id:b.dataset.dsNode}));
 $$('[data-ds-supplier]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'supplier',id:b.dataset.dsSupplier}));
 $$('[data-ds-wh]').forEach(b=>b.onclick=()=>chooseDeliverySource({kind:'warehouse',id:b.dataset.dsWh}));
