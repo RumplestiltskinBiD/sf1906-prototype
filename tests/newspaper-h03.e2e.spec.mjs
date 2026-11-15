@@ -90,6 +90,29 @@ test('H03 real warehouse delivery consumes actual available cube, without refill
  expect(restored.constructions[0].warehouseInventory).toEqual([material]);
 });
 
+test('new H03 article takes effect at next-year supply refresh in browser',async({page})=>{
+ const s=game();
+ s.newsCurrentIds=['E02'];s.newsH03SupplyRound=null;
+ s.newsDeck=['H03','E03',...s.newsDeck.filter(x=>!['H03','E03'].includes(x))];
+ s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
+ s.developmentComplete=true;s.developmentPlayer=null;
+ await page.setViewportSize({width:390,height:844});await seed(page,s);
+ await page.locator('#endRoundBtn').click();
+ const now=await read(page);
+ expect(now.round).toBe(2);
+ expect(now.newsCurrentIds[0]).toBe('H03');
+ expect(now.newsH03SupplyRound).toBe(2);
+ expect(Object.values(now.logisticsSupply).flat()).toHaveLength(13);
+ await expect(page.locator('.city-throughput')).toContainText('13');
+ await openNews(page,{width:390,height:844});
+ await expect(page.locator('.news-headline')).toHaveText('ЗАМОРСКИЕ ГРУЗЫ ЗАДЕРЖАНЫ!');
+ await expect(page.locator('.news-h03-panel')).toContainText('Сгенерировано 13 вместо 17');
+ for(const [id,amount] of [['broadway',2],['pacificmail',3],['chinabasin',3],['unioniron',1],['southernpacific',4]])
+  await expect(page.locator('[data-delivery-node="'+id+'"] .node-resource')).toHaveCount(amount);
+ await page.reload();
+ expect((await read(page)).newsH03SupplyRound).toBe(2);
+});
+
 test('H03 end-year archive has no penalties and restores all normal ports',async({page})=>{
  const s=game();s.newsDeck=['E02',...s.newsDeck.filter(x=>x!=='E02')];
  s.players.forEach(p=>{p.workers.forEach(w=>w.used=true);p.workersLeft=0;});
