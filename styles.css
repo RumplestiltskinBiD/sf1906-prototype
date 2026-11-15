@@ -2482,6 +2482,25 @@ body.drawer-open .mobile-action-dock{
 .news-f03-panel ul{margin:6px 0 8px;padding-left:18px}
 .news-f03-panel li{margin:3px 0}
 .news-f03-panel small{font-size:11px;color:#5f5446}
+/* H01 persists after the next newspaper. Infection appears independently of map toggle. */
+.full-sf-map .district.h01-infected path{stroke:#b04b61!important;stroke-width:5!important;
+  stroke-dasharray:9 6;filter:drop-shadow(0 0 5px rgba(149,35,69,.28))}
+.full-sf-map .district.h01-infected.h01-protected path{stroke:#2f976c!important;stroke-dasharray:9 6}
+.h01-map-marker{pointer-events:none}
+.h01-map-marker circle{fill:#962f50;stroke:#fff4dc;stroke-width:3;filter:drop-shadow(0 0 7px rgba(0,0,0,.48))}
+.h01-map-marker text{font:900 25px system-ui,sans-serif;fill:#fff4dc;pointer-events:none}
+.news-h01-panel{margin-top:12px;padding:12px;background:#f7e7cb;border:1px solid #ba9378;
+  border-radius:8px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.news-h01-panel>strong{display:block;font-size:14px;margin-top:7px}
+.news-h01-panel>p{margin:8px 0}
+.news-h01-panel>small{display:block;font-size:12px;margin:7px 0;color:#604d42}
+.news-h01-services{display:grid;gap:7px;margin-top:10px;max-height:min(35vh,260px);overflow-y:auto}
+.news-h01-services button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;
+  width:100%;min-height:50px;padding:9px 10px;border:1px solid #a88b70;border-radius:7px;
+  background:#fff9eb;color:#32291c;font:700 12px/1.4 system-ui,sans-serif;white-space:normal;cursor:pointer}
+.news-h01-services button:disabled{opacity:.55;cursor:not-allowed}
+.news-h01-services button:focus-visible{outline:3px solid #29695a;outline-offset:1px}
+.news-h01-services button span,.news-h01-services button small{font-size:12px;font-weight:400}
 .f02-map-marker{pointer-events:none}
 .f02-map-marker circle{stroke:#fff8db;stroke-width:3;filter:drop-shadow(0 0 5px rgba(0,0,0,.4))}
 .f02-map-marker .f02-marker-fire{fill:#9c3624}

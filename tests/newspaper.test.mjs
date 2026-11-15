@@ -74,9 +74,12 @@ test('F02 v2 does not automatically suppress the fire from a completed firehouse
   assert.equal(s.players[0].capital,27);
   assert.equal(s.players[0].influence,4);
 });
-test('clinic protects neighbouring quarters with a road',()=>{
+test('H01 v2 clinic protects adjacent infected non-medical buildings',()=>{
   const s=game('H01');
-  put(s,'tenement','civic',0);
+  // The legacy test used citywide H01 housing fines. New H01 is a single
+  // actual D6 source (Chinatown here), with clinic coverage in that district.
+  s.newsH01Incident=G.createH01Incident(1,()=>0);
+  put(s,'tenement','chinatown',0);
   put(s,'clinic','financial',1);
   assert.equal(G.newsPreview(s).entries[0].defended,true);
   assert.equal(G.resolveNewspaper(s).ok,true);
