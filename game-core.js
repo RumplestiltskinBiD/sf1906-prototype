@@ -1939,6 +1939,12 @@ export function deliverySourceInfo(state,playerId,source){
     if(!wh)return null;
     return {kind:'contraband',id:wh.id,name:projectById(wh.projectId).name+' · '+(districtById(wh.districtId)?.name||wh.districtId),districtId:wh.districtId,inventory:contrabandInventory(wh),ownerId:wh.playerId};
   }
+  if(source.kind==='stolen'){
+    const lot=c02ActiveLot(state),node=LOGISTICS_NODES.find(n=>n.id===lot?.portId);
+    if(!lot||!node||source.id!==lot.portId)return null;
+    return {kind:'stolen',id:lot.portId,name:'Похищенная партия · '+node.name,
+      districtId:node.districtId,inventory:[...lot.materials],unitPrice:0};
+  }
   if(source.kind==='node'){
     const node=LOGISTICS_NODES.find(n=>n.id===source.id);
     if(!node)return null;
@@ -2063,9 +2069,10 @@ export function deliveryPlanCost(state,plan){
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
   const yardRentCost=freightYardRentCost(state,plan);
+  const stolenLotCost=deliveryPickups(plan).some(p=>p?.source?.kind==='stolen')?1:0;
   return {materialGross,procurementDiscount,industryDiscount,industrySales,procurementUsed,materialCost,
-    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,
-    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost};
+    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,stolenLotCost,
+    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost+stolenLotCost};
 }
 
 function validateRoute(route,sourceDistrictId){
@@ -2104,14 +2111,24 @@ export function validateDeliveryPlan(state,plan){
   if(!hauler)return {ok:false,reason:'hauler'};
   if(hauler.limited&&(state.haulersUsed||[]).includes(hauler.id))return {ok:false,reason:'hauler-used'};
   const pickups=deliveryPickups(plan);
+  const stolen=pickups.filter(p=>p?.source?.kind==='stolen');
+  if(stolen.length){
+    const lot=c02ActiveLot(state);
+    if(stolen.length!==1||stolen[0]!==pickups[0]||!lot||
+       stolen[0].source.id!==lot.portId||!multisetEquals(stolen[0].cargo,lot.materials))
+      return {ok:false,reason:'stolen-lot'};
+    // Exactly one intact two-cube bundle. No illegal double-purchase with
+    // contraband in the same Delivery (the multiple ★ outcome is unapproved).
+    if(deliveryAllCargo(plan).includes(CONTRABAND_CARGO))return {ok:false,reason:'illegal-mix'};
+  }
   if(!Array.isArray(plan.cargo)||!plan.cargo.length)return {ok:false,reason:'cargo'};
   if(plan.pickups!==undefined&&!Array.isArray(plan.pickups))return {ok:false,reason:'pickups'};
   if(pickups.some(p=>!Array.isArray(p.cargo)||!p.cargo.length||!p.cargo.every(t=>t in RESOURCE_PRICES||t===CONTRABAND_CARGO||PINK_GOODS.includes(t))))return {ok:false,reason:'pickup-cargo'};
   const illegalCount=deliveryAllCargo(plan).filter(t=>t===CONTRABAND_CARGO).length;
   if(illegalCount>1)return {ok:false,reason:'contraband-limit'};
   if(illegalCount&&state.lastContrabandDeliveryKey===currentContrabandDeliveryKey(state,plan.playerId))return {ok:false,reason:'contraband-once-per-activation'};
-  if(illegalCount&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed))return {ok:false,reason:'no-free-worker'};
-  if(illegalCount&&suspicionLevel(state,plan.playerId)===MAX_SUSPICION&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed&&w.id===plan.arrestWorkerId))return {ok:false,reason:'arrest-worker'};
+  if((illegalCount||stolen.length)&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed))return {ok:false,reason:'no-free-worker'};
+  if((illegalCount||stolen.length)&&suspicionLevel(state,plan.playerId)===MAX_SUSPICION&&!playerWorkers(state,plan.playerId).some(w=>!w.jailed&&w.id===plan.arrestWorkerId))return {ok:false,reason:'arrest-worker'};
   const firstSource=deliverySourceInfo(state,plan.playerId,plan.source);
   if(!firstSource)return {ok:false,reason:'source'};
   const route=Array.isArray(plan.route)?plan.route:[];
@@ -2229,7 +2246,8 @@ export function validateDeliveryPlan(state,plan){
 }
 
 export function executeDelivery(state,plan){
-  const criminal=deliveryAllCargo(plan).includes(CONTRABAND_CARGO);
+  const criminal=deliveryAllCargo(plan).includes(CONTRABAND_CARGO)||
+    deliveryPickups(plan).some(p=>p?.source?.kind==='stolen');
   if(criminal){
     const result=resolveCriminalAction(state,plan.playerId,{mode:'free',arrestWorkerId:plan.arrestWorkerId,suspicionGain:1,
       perform:draft=>executeDeliveryCore(draft,plan)});
@@ -2244,7 +2262,7 @@ function executeDeliveryCore(state,plan){
   const pickups=deliveryPickups(plan);
   for(const pickup of pickups){
     const src=deliverySourceInfo(state,plan.playerId,pickup.source);
-    if(src.kind==='supplier')continue;
+    if(src.kind==='supplier'||src.kind==='stolen')continue;
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
       src.kind==='contraband'||src.kind==='goods'?null:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
@@ -2261,6 +2279,16 @@ function executeDeliveryCore(state,plan){
   }
   const player=state.players[plan.playerId];
   player.capital-=cost.total;
+  const stolen=pickups.find(p=>p.source.kind==='stolen');
+  if(stolen){
+    const incident=state.newsC02Incident;
+    incident.status='kept';incident.claimedBy=plan.playerId;
+    incident.claim={mode:'kept',playerId:plan.playerId,round:state.round,cost:1,
+      materials:[...incident.materials],haulerId:plan.haulerId,route:[...plan.route],
+      deliveryTotal:cost.total};
+    logEvent(state,player.name+' выкупает за $1 и присваивает всю похищенную партию '+
+      incident.materials.map(materialNameRu).join(' + ')+'. Подозрение: +1 ★ (с возможным арестом).','bad');
+  }
   // The owner receives a commission only when another player purchases
   // factory output, and only after the complete delivery passed validation.
   for(const sale of cost.industrySales||[]){
@@ -2784,6 +2812,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
       forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':'Событие произойдёт в конце года.'),'accent');
   refreshLogisticsSupply(state,{rng});
+  // A new C02 newspaper removes exactly two REAL cubes after annual refill.
+  if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
   for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
