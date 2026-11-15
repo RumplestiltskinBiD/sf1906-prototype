@@ -2656,7 +2656,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.round++;
   // H01 persists alongside subsequent newspaper editions. Its infection
   // radius grows once when the next calendar year actually starts.
-  if(state.newsH01Incident?.resolvedRound==null)
+  if(state.newsH01Incident&&state.newsH01Incident.resolvedRound==null)
     state.newsH01Incident.radius=Math.max(0,state.round-state.newsH01Incident.startRound);
   state.newsCurrentIds=[state.newsDeck.shift()].filter(Boolean);
   if(state.newsCurrentIds[0]==='H01'&&!state.newsH01Incident)
@@ -2766,7 +2766,8 @@ export function cleanupMarket(state,{rng=Math.random}={}){
   if(!newspaperResult.ok&&newspaperResult.reason!=='already-resolved')return newspaperResult;
   // The original H01 token survives other newspaper editions. Assess it
   // exactly once each year before crime assessment and annual income.
-  if(state.newsH01Incident&&state.newsH01Incident.lastAssessedRound!==state.round)
+  if(state.newsH01Incident&&state.newsH01Incident.lastAssessedRound!==state.round&&
+     (state.newsH01Incident.resolvedRound==null||state.newsH01Incident.resolvedRound===state.round))
     settleH01Year(state);
   if(state.pressCampaignQueuedRound!==state.round){
     state.pressCampaignQueuedRound=state.round;
