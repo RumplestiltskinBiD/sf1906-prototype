@@ -3451,6 +3451,535 @@ function resolveH04Newspaper(state,card){
   return {ok:true,report};
 }
 
+
+ // H02 v2: a persistent citywide horse illness. The token is the expedition
+ // destination; it never limits the area affected by the $2/road-edge tariff.
+ export const H02_ORIGIN_DISTRICTS=Object.freeze([
+   'northbeach','financial','civic','soma','mission','missionbay'
+ ]);
+ export function createH02Incident(round,rng=Math.random){
+   const raw=Number(rng()),safe=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+   const index=Math.floor(safe*H02_ORIGIN_DISTRICTS.length);
+   return {startRound:round,roll:index+1,districtId:H02_ORIGIN_DISTRICTS[index],
+     resolvedRound:null,operation:null,lastAssessedRound:null,yearReports:[]};
+ }
+ export function h02ActiveIncident(state){
+   const h=state?.newsH02Incident;
+   return h&&h.resolvedRound==null&&H02_ORIGIN_DISTRICTS.includes(h.districtId)&&
+     Number.isInteger(h.startRound)&&h.startRound<=state.round?h:null;
+ }
+ // One tariff authority for ordinary deliveries and all paid road-based
+ // institutional operations, including simultaneous H01 and F02 incidents.
+ export function paidRoadEdgeCost(state){
+   return h02ActiveIncident(state)?2:DELIVERY_EDGE_COST;
+ }
+ export function h02Preview(state){
+   const h=state?.newsH02Incident;
+   if(!h||!H02_ORIGIN_DISTRICTS.includes(h.districtId))return null;
+   return {startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+     active:!!h02ActiveIncident(state),resolvedRound:h.resolvedRound,
+     tariff:paidRoadEdgeCost(state),
+     operation:h.operation?{...h.operation,route:[...h.operation.route]}:null};
+ }
+ export function h02ExpeditionOptions(state,playerId){
+   const h=h02ActiveIncident(state);
+   if(!h)return {ok:false,
+     reason:state.newsH02Incident?.resolvedRound!=null?'already-completed':'no-active-illness',
+     services:[]};
+   if(!Number.isInteger(playerId)||state.players?.[playerId]?.id!==playerId)
+     return {ok:false,reason:'player',services:[]};
+   const actionAvailable=canTakeMainAction(state,playerId)&&
+     !state.pendingConstruction&&!state.pendingWorkerAction;
+   const tariff=paidRoadEdgeCost(state);
+   const services=(state.constructions||[]).filter(c=>c.status==='complete'&&
+     H01_MEDICAL_IDS.includes(c.projectId)).map(c=>{
+       const route=f02ServiceRoute(c.districtId,h.districtId);
+       const cost=route?(route.length-1)*tariff:null;
+       const reachable=actionAvailable&&workerCanReachDistrict(state,playerId,c.districtId);
+       const affordable=cost!==null&&state.players[playerId].capital>=cost;
+       return {constructionId:c.id,ownerId:c.playerId,projectId:c.projectId,
+         districtId:c.districtId,route,cost,reachable,affordable,
+         available:actionAvailable&&!!route&&reachable&&affordable};
+     });
+   return {ok:true,active:true,incident:h,tariff,actionAvailable,services,
+     canComplete:services.some(x=>x.available)};
+ }
+ export function completeH02Expedition(state,playerId,constructionId){
+   const opts=h02ExpeditionOptions(state,playerId);
+   if(!opts.ok)return {ok:false,reason:opts.reason};
+   if(state.pendingConstruction||state.pendingWorkerAction)
+     return {ok:false,reason:'pending-action'};
+   if(!opts.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+   const service=opts.services.find(c=>c.constructionId===constructionId);
+   if(!service)return {ok:false,reason:'invalid-service'};
+   if(!service.route)return {ok:false,reason:'route'};
+   if(!service.reachable)return {ok:false,reason:'worker-range'};
+   if(!service.affordable)return {ok:false,reason:'capital'};
+   // The worker stays in place: the medical team travels over real roads.
+   // The foreign clinic owner gets no commission, and no cargo is moved.
+   const action=consumeMainAction(state,playerId);
+   if(!action.ok)return action;
+   const p=state.players[playerId];
+   p.capital-=service.cost;p.prestige=(Number(p.prestige)||0)+3;
+   const influence=moveInfluence(state,playerId,1);
+   const operation={playerId,serviceId:service.constructionId,ownerId:service.ownerId,
+     sourceDistrictId:service.districtId,route:[...service.route],cost:service.cost,
+     tariff:opts.tariff,prestige:3,influenceSteps:influence.steps,round:state.round};
+   opts.incident.resolvedRound=state.round;
+   opts.incident.operation=operation;
+   logEvent(state,p.name+' организует санитарную операцию против болезни лошадей через '+
+     (projectById(service.projectId)?.name||service.projectId)+' ('+
+     (districtById(service.districtId)?.name||service.districtId)+') в '+
+     (districtById(opts.incident.districtId)?.name||opts.incident.districtId)+
+     ' за 
+// The initial location is drawn on reveal, never on a preview or at year end.
+export const H01_ORIGIN_DISTRICTS=Object.freeze([
+  'chinatown','northbeach','missionbay','potrero','bernal','innerrichmond'
+]);
+export function createH01Incident(round,rng=Math.random){
+  const raw=Number(rng()),safe=Number.isFinite(raw)?Math.max(0,Math.min(1-Number.EPSILON,raw)):0;
+  const index=Math.floor(safe*H01_ORIGIN_DISTRICTS.length);
+  return {startRound:round,roll:index+1,districtId:H01_ORIGIN_DISTRICTS[index],
+    radius:0,resolvedRound:null,operation:null,lastAssessedRound:null,yearReports:[]};
+}
+export function h01ActiveIncident(state){
+  const h=state?.newsH01Incident;
+  return h&&h.resolvedRound==null&&H01_ORIGIN_DISTRICTS.includes(h.districtId)
+    &&Number.isInteger(h.startRound)&&h.startRound<=state.round?h:null;
+}
+export function h01InfectedDistrictIds(state){
+  const h=h01ActiveIncident(state);if(!h)return [];
+  // Golden Gate Park may connect neighborhoods as a pass-through, but it is
+  // not an eligible penalty district; Presidio/Twin Peaks are not traversable.
+  const radius=Math.max(0,Math.floor(Number(h.radius)||0));
+  const seen=new Set([h.districtId]),queue=[[h.districtId,0]],infected=[];
+  for(let k=0;k<queue.length;k++){
+    const [id,distance]=queue[k],district=districtById(id);
+    if(district?.buildable)infected.push(id);
+    if(distance>=radius)continue;
+    for(const next of districtNeighbors(id)){
+      if(seen.has(next)||!districtById(next)?.passable)continue;
+      seen.add(next);queue.push([next,distance+1]);
+    }
+  }
+  return infected;
+}
+const H01_MEDICAL_IDS=Object.freeze(['std_clinic','clinic']);
+function h01MedicalProtection(state,districtId){
+  const clinics=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    H01_MEDICAL_IDS.includes(c.projectId)&&
+    (c.districtId===districtId||
+     (c.projectId==='clinic'&&districtNeighbors(districtId).includes(c.districtId))));
+  if(!clinics.length)return null;
+  const order=turnOrder(state);
+  // The two adjacent market clinics tie is a NOT-YET-APPROVED design edge.
+  // Deterministic technical fallback: local institution first, then the fixed
+  // year's turn order, then construction id. Never double-score one district.
+  clinics.sort((a,b)=>
+    Number(b.districtId===districtId)-Number(a.districtId===districtId)||
+    order.indexOf(a.playerId)-order.indexOf(b.playerId)||
+    String(a.id).localeCompare(String(b.id)));
+  return clinics[0];
+}
+export function h01Preview(state){
+  const h=state?.newsH01Incident;
+  if(!h||!H01_ORIGIN_DISTRICTS.includes(h.districtId))return null;
+  const active=!!h01ActiveIncident(state);
+  const districts=active?h01InfectedDistrictIds(state):[];
+  const entries=[],protectedDistrictIds=[],exposedDistrictIds=[],protectedByDistrict={};
+  for(const districtId of districts){
+    const owners=[...new Set((state.constructions||[]).filter(c=>
+      c.status==='complete'&&c.districtId===districtId&&
+      !H01_MEDICAL_IDS.includes(c.projectId)).map(c=>c.playerId))].sort((a,b)=>a-b);
+    if(!owners.length)continue;
+    const clinic=h01MedicalProtection(state,districtId);
+    if(clinic){
+      protectedDistrictIds.push(districtId);
+      protectedByDistrict[districtId]={ownerId:clinic.playerId,
+        clinicId:clinic.id,clinicDistrictId:clinic.districtId};
+    }else exposedDistrictIds.push(districtId);
+    for(const playerId of owners)
+      entries.push({playerId,districtIds:[districtId],kind:'h01-epidemic',
+        defended:!!clinic,capitalDue:clinic?0:2,
+        protectedBy:clinic?.playerId??null,clinicId:clinic?.id??null});
+  }
+  return {startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    radius:h.radius,active,resolvedRound:h.resolvedRound,
+    operation:h.operation?{...h.operation,route:[...h.operation.route]}:null,
+    infectedDistrictIds:districts,protectedDistrictIds,exposedDistrictIds,
+    protectedByDistrict,entries};
+}
+export function h01ExpeditionOptions(state,playerId){
+  const h=h01ActiveIncident(state);
+  if(!h)return {ok:false,reason:state.newsH01Incident?.resolvedRound!=null?'already-completed':'no-active-epidemic',services:[]};
+  if(!Number.isInteger(playerId)||state.players?.[playerId]?.id!==playerId)
+    return {ok:false,reason:'player',services:[]};
+  const actionAvailable=canTakeMainAction(state,playerId)&&
+    !state.pendingConstruction&&!state.pendingWorkerAction;
+  const tariff=paidRoadEdgeCost(state);
+  const services=(state.constructions||[]).filter(c=>c.status==='complete'&&
+    H01_MEDICAL_IDS.includes(c.projectId)).map(c=>{
+      const route=f02ServiceRoute(c.districtId,h.districtId);
+      const cost=route?(route.length-1)*tariff:null;
+      const reachable=actionAvailable&&workerCanReachDistrict(state,playerId,c.districtId);
+      const affordable=cost!==null&&state.players[playerId].capital>=cost;
+      return {constructionId:c.id,ownerId:c.playerId,projectId:c.projectId,
+        districtId:c.districtId,route,cost,reachable,affordable,
+        available:actionAvailable&&!!route&&reachable&&affordable};
+    });
+  return {ok:true,active:true,incident:h,tariff,actionAvailable,services,
+    canComplete:services.some(x=>x.available)};
+}
+export function completeH01Expedition(state,playerId,constructionId){
+  const opts=h01ExpeditionOptions(state,playerId);
+  if(!opts.ok)return {ok:false,reason:opts.reason};
+  if(!opts.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+  if(state.pendingConstruction||state.pendingWorkerAction)
+    return {ok:false,reason:'pending-action'};
+  const service=opts.services.find(c=>c.constructionId===constructionId);
+  if(!service)return {ok:false,reason:'invalid-service'};
+  if(!service.route)return {ok:false,reason:'route'};
+  if(!service.reachable)return {ok:false,reason:'worker-range'};
+  if(!service.affordable)return {ok:false,reason:'capital'};
+  // The representative stays in their own district. Only the medical team
+  // follows the paid route; the operation still spends one real main action.
+  const action=consumeMainAction(state,playerId);
+  if(!action.ok)return action;
+  const p=state.players[playerId];
+  p.capital-=service.cost;p.prestige=(Number(p.prestige)||0)+2;
+  const influence=moveInfluence(state,playerId,1);
+  const op={playerId,serviceId:service.constructionId,ownerId:service.ownerId,
+    sourceDistrictId:service.districtId,route:[...service.route],cost:service.cost,
+    tariff:opts.tariff,prestige:2,influenceSteps:influence.steps,round:state.round};
+  opts.incident.resolvedRound=state.round;
+  opts.incident.operation=op;
+  logEvent(state,p.name+' организует санитарную экспедицию через '+
+    (projectById(service.projectId)?.name||service.projectId)+' ('+
+    (districtById(service.districtId)?.name||service.districtId)+') в '+
+    (districtById(opts.incident.districtId)?.name||opts.incident.districtId)+
+    ' за $'+service.cost+': +2 VP и +'+influence.steps+' Influence.','good');
+  return {ok:true,operation:op,worker:action.worker,route:[...service.route]};
+}
+export function settleH01Year(state){
+  const h=state?.newsH01Incident;
+  if(!h||h.startRound>state.round||h.lastAssessedRound===state.round)
+    return {ok:false,reason:h?.lastAssessedRound===state.round?'already-settled':'no-incident'};
+  // This exported settlement is intentionally callable only after the
+  // current newspaper has been resolved. Previewing an unfinished year
+  // must never debit a player or award clinic Influence ahead of schedule.
+  if(state.newsLastResolvedRound!==state.round)
+    return {ok:false,reason:'not-year-end'};
+  const alive=h.resolvedRound==null;
+  const preview=h01Preview(state);
+  const entries=[],changes={},influenceRewards=[];
+  // Only active districts with at least one non-medical finished building
+  // may trigger a penalty or any protective Influence.
+  if(alive&&preview){
+    for(const e of preview.entries){
+      const player=state.players[e.playerId];
+      if(!player)continue;
+      const paid=e.defended?0:Math.min(2,Math.max(0,player.capital||0));
+      if(paid)player.capital-=paid;
+      entries.push({...e,actual:-paid});
+      if(paid){
+        changes[e.playerId]??={capital:0,influence:0,prestige:0};
+        changes[e.playerId].capital-=paid;
+      }
+    }
+    // One credited owner per protected *district*, not per building/owner.
+    for(const [districtId,defender] of Object.entries(preview.protectedByDistrict)){
+      const owner=defender.ownerId;
+      if(!state.players[owner])continue;
+      const steps=moveInfluence(state,owner,1).steps;
+      influenceRewards.push({districtId,playerId:owner,clinicId:defender.clinicId,steps});
+      if(steps){
+        changes[owner]??={capital:0,influence:0,prestige:0};
+        changes[owner].influence+=steps;
+      }
+    }
+  }
+  const outcome={round:state.round,year:newsYear(state.round),
+    startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+    radius:h.radius,resolved:!alive,operation:h.resolvedRound===state.round?h.operation:null,
+    infectedDistrictIds:preview?.infectedDistrictIds||[],
+    entries,influenceRewards,changes};
+  h.yearReports??=[];h.yearReports.push(outcome);h.lastAssessedRound=state.round;
+  const archived=(state.newsArchive||[]).findLast(r=>r.round===state.round);
+  if(archived){
+    if(archived.cardId==='H01'){
+      archived.h01=outcome;
+      archived.entries=entries;
+      archived.changes=changes;
+    }else archived.ongoingH01=outcome;
+  }
+  logEvent(state,'The San Francisco Call, '+outcome.year+' · Эпидемия: '+
+    (alive?'радиус '+outcome.radius+', незащищённых районов '+
+      (preview?.exposedDistrictIds.length||0):'ликвидирована')+
+    ', потерь $'+entries.reduce((a,e)=>a-Math.min(0,e.actual),0)+
+    ', медицинских благодарностей '+influenceRewards.length+'.','accent');
+  return {ok:true,outcome};
+}
+function resolveH01Newspaper(state,card){
+  const h=state.newsH01Incident;
+  if(!h)return {ok:false,reason:'no-incident'};
+  const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  const result=settleH01Year(state);
+  if(!result.ok)return result;
+  return {ok:true,report};
+}
+
+function resolveH03Newspaper(state,card){
+  const applied=state.newsH03SupplyRound===state.round;
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:[],changes:{},serviceRecognition:[],emergency:{},
+    h03:{applied,removedSlots:applied?H03_SEA_PORT_IDS.length:0,
+      portIds:applied?[...H03_SEA_PORT_IDS]:[]}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  state.newsH03SupplyRound=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+
+    '». '+(applied?'Портовое снабжение сокращено на 4 материала.':'Запасы прежней партии сохранены без повторного сокращения.')+
+    ' Дополнительных штрафов нет.','accent');
+  return {ok:true,report};
+}
+
+function resolveF03Newspaper(state,card){
+  const incident=f03CurrentPortIncident(state);
+  if(!incident)return {ok:false,reason:'no-active-port-fire'};
+  // F03 merely redistributes existing city supply; the remaining stock
+  // must still be available for ordinary freight pickups during this year.
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:[],changes:{},serviceRecognition:[],emergency:{},
+    f03:{roll:incident.roll,portId:incident.portId,
+      originStock:[...incident.originStock],
+      redistributed:incident.redistributed,
+      allocations:incident.allocations.map(a=>({...a}))}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  // Expire active port closure metadata. The consumed stocks from this year
+  // remain unchanged; only the NEXT normal refresh opens every port again.
+  state.newsF03Incident=null;
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+
+    '». Портовые грузы перераспределены без дополнительных штрафов.','accent');
+  return {ok:true,report};
+}
+
+export function newsPreview(state){
+  const card=activeNewspaper(state);
+  if(card?.id==='H02'){
+    const illness=h02Preview(state);
+    return {card,entries:[],threatened:illness?.active?[illness.districtId]:[],protected:[],
+      summary:{districts:illness?.active?1:0,exposed:0,safe:0},h02:illness};
+  }
+  if(card?.id==='H01'){
+    const epidemic=h01Preview(state);
+    return {card,entries:epidemic?.entries||[],
+      threatened:epidemic?.infectedDistrictIds||[],
+      protected:epidemic?.protectedDistrictIds||[],
+      summary:{districts:epidemic?.infectedDistrictIds.length||0,
+        exposed:epidemic?.exposedDistrictIds.length||0,safe:epidemic?.protectedDistrictIds.length||0},
+      h01:epidemic};
+  }
+  if(!card)return {card:null,entries:[],threatened:[],protected:[],summary:{}};
+  if(card.id==='H04'){
+    const donations=state.newsH04Donations?.round===state.round
+      ?state.newsH04Donations.donations||[]:[];
+    return {card,entries:[],threatened:[],protected:[],
+      summary:{districts:0,exposed:0,safe:0},
+      h04:{donations:donations.map(d=>({...d})),
+        options:(state.players||[]).map(p=>h04DonationOptions(state,p.id))}};
+  }
+  if(card.id==='H03'){
+    const applied=state.newsH03SupplyRound===state.round;
+    return {card,entries:[],threatened:[],protected:[],
+      summary:{districts:0,exposed:0,safe:0},
+      h03:{applied,removedSlots:applied?H03_SEA_PORT_IDS.length:0,
+        portIds:applied?[...H03_SEA_PORT_IDS]:[]}};
+  }
+  if(card.id==='F03'){
+    const f03=f03CurrentPortIncident(state);
+    const node=LOGISTICS_NODES.find(n=>n.id===f03?.portId);
+    return {card,entries:[],threatened:node?[node.districtId]:[],protected:[],
+      summary:{districts:node?1:0,exposed:0,safe:0},
+      f03:f03?{...f03,originStock:[...f03.originStock],
+        allocations:f03.allocations.map(a=>({...a}))}:null};
+  }
+  if(card.id==='F02'){
+    const incident=f02ActiveIncident(state);
+    return {card,entries:[],threatened:incident&&(incident.firePending||incident.manhuntPending)?[incident.districtId]:[],
+      protected:[],summary:{districts:incident?1:0,exposed:incident?Number(incident.firePending)+Number(incident.manhuntPending):0,safe:0},
+      f02:incident?{...incident,actions:incident.actions.map(x=>({...x,route:[...x.route]}))}:null};
+  }
+  if(card.id==='F04'){
+    const f04=f04NoticePreview(state);
+    const threatened=[...new Set((f04?.notices||[]).filter(n=>n.status!=='closed')
+      .flatMap(n=>(n.status==='choose'?n.candidateIds:[n.constructionId])
+        .map(id=>(state.constructions||[]).find(c=>c.id===id)?.districtId).filter(Boolean)))];
+    return {card,entries:[],threatened,protected:[],
+      summary:{districts:threatened.length,exposed:(f04?.notices||[]).filter(n=>n.status==='open').length,safe:0},f04};
+  }
+  if(card.id==='F01'){
+    const f01=f01NoticePreview(state);
+    return {card,entries:[],threatened:[],protected:[],
+      summary:{districts:0,exposed:0,safe:0},f01};
+  }
+  const candidates=(state.constructions||[]).filter(c=>newspaperTargets(state,card,c));
+  // Multiple properties from one owner in one district count once.
+  const groups=new Map();
+  for(const c of candidates){
+    const key=card.frequency==='oncePerPlayer'||card.target==='service'
+      ? String(c.playerId)
+      : c.playerId+'|'+c.districtId;
+    if(!groups.has(key))groups.set(key,{playerId:c.playerId,districtIds:[],projectIds:[],kind:card.target});
+    const g=groups.get(key);
+    if(!g.districtIds.includes(c.districtId))g.districtIds.push(c.districtId);
+    if(!g.projectIds.includes(c.projectId))g.projectIds.push(c.projectId);
+  }
+  const entries=[];
+  for(const g of groups.values()){
+    if(card.target==='service'){
+      entries.push({...g,districtId:g.districtIds[0],defended:false,stationOwners:[],temporary:false,delta:card.delta});
+      continue;
+    }
+    // A once-per-player consequence is prevented only if ALL matching
+    // completed properties of that owner are defended.
+    const coverage=g.districtIds.map(id=>({
+      id,sources:newsServiceSources(state,id,card.defense),
+      temporary:!!state.newsEmergency?.[id]
+    }));
+    const exposed=coverage.filter(x=>!x.sources.length&&!x.temporary);
+    const prevented=coverage.filter(x=>x.sources.length||x.temporary);
+    const protectedGroup=exposed.length===0;
+    const stationOwners=[...new Set(prevented.flatMap(x=>x.sources.map(c=>c.playerId)))];
+    entries.push({...g,districtId:g.districtIds[0],defended:card.delta<0&&protectedGroup,
+      exposedDistrictIds:exposed.map(x=>x.id),preventedDistrictIds:prevented.map(x=>x.id),
+      stationOwners,temporary:coverage.some(x=>x.temporary),
+      delta:card.delta});
+  }
+  const threatened=[...new Set(entries.flatMap(e=>e.exposedDistrictIds||[]))];
+  const protectedIds=[...new Set(entries.flatMap(e=>e.preventedDistrictIds||[]))];
+  return {card,entries,threatened,protected:protectedIds,
+    summary:{districts:[...new Set(candidates.map(c=>c.districtId))].length,
+      exposed:threatened.length,safe:protectedIds.length}};
+}
+export function takeNewspaperEmergency(state,playerId,districtId){
+  const card=activeNewspaper(state),player=state.players?.[playerId];
+  if(!card||['F01','F02','F03','F04','H01','H02','H03','H04'].includes(card.id)||card.delta>=0)return {ok:false,reason:'not-negative-event'};
+  if(!districtById(districtId)?.buildable)return {ok:false,reason:'district-not-buildable'};
+  if(state.newsEmergency?.[districtId])return {ok:false,reason:'already-protected'};
+  if(!player||player.capital<1)return {ok:false,reason:'need-$1'};
+  const can=canTakeMainAction(state,playerId);
+  if(!can)return {ok:false,reason:'select-active-worker'};
+  // The ordinary worker's range and main action restrictions also apply.
+  const action=consumeMainAction(state,playerId,districtId);
+  if(!action.ok)return action;
+  player.capital-=1;
+  state.newsEmergency[districtId]={playerId,round:state.round,cardId:card.id};
+  logEvent(state,player.name+' тратит $1 и действие представителя на экстренные меры в '+districtById(districtId).name+
+    ' против «'+card.title+'».','good');
+  return {ok:true,action};
+}
+export function resolveNewspaper(state){
+  ensureNewspaper(state);
+  if(state.newsLastResolvedRound===state.round)return {ok:false,reason:'already-resolved'};
+  const forecast=newsPreview(state);
+  const {card,entries}=forecast;
+  if(!card)return {ok:false,reason:'no-card'};
+  if(card.id==='F01')return resolveF01Newspaper(state,card);
+  if(card.id==='F02')return resolveF02Newspaper(state,card);
+  if(card.id==='F03')return resolveF03Newspaper(state,card);
+  if(card.id==='H01')return resolveH01Newspaper(state,card);
+  if(card.id==='H02')return resolveH02Newspaper(state,card);
+  if(card.id==='H03')return resolveH03Newspaper(state,card);
+  if(card.id==='H04')return resolveH04Newspaper(state,card);
+  if(card.id==='F04')return resolveF04Newspaper(state,card);
+  const changes=new Map();
+  const write=(pid,key,amount)=>{
+    const p=state.players?.[pid];if(!p)return 0;
+    let actual=0;
+    if(key==='influence'){
+      actual=moveInfluence(state,pid,amount).steps;
+    }else{
+      actual=amount<0?Math.max(-Math.max(0,p[key]||0),amount):amount;
+      p[key]=Math.max(0,(p[key]||0)+actual);
+    }
+    const result=changes.get(pid)||{capital:0,influence:0,prestige:0};
+    result[key]+=actual;
+    changes.set(pid,result);
+    return actual;
+  };
+  const protectedByService=new Set();
+  const results=[];
+  for(const e of entries){
+    if(card.delta<0&&e.stationOwners?.length){
+      for(const pid of e.stationOwners)protectedByService.add(pid);
+    }
+    if(card.delta<0&&e.defended){
+      results.push({...e,actual:0});
+      continue;
+    }
+    const actual=write(e.playerId,card.resource,card.delta);
+    results.push({...e,actual});
+  }
+  // Once per issue, not per protected building/region. Any service owner
+  // that prevented actual eligibility for a penalty receives recognition.
+  if(card.delta<0)for(const pid of protectedByService)write(pid,'influence',1);
+  const report={year:newsYear(state.round),round:state.round,
+    cardId:card.id,title:card.title,category:card.category,
+    entries:results,changes:Object.fromEntries(changes),
+    serviceRecognition:[...protectedByService],emergency:{...state.newsEmergency}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  const message=[...changes].map(([pid,d])=>{
+    const player=state.players[pid];
+    return player.name+' ('+Object.entries(d).filter(([,n])=>n!==0).map(([k,n])=>
+      (k==='capital'?'$':k==='influence'?'Влияние ':'ПО ')+(n>0?'+':'')+n).join(', ')+')';
+  }).join('; ')||'изменений нет';
+  logEvent(state,'The San Francisco Call, '+report.year+' · Итоги: «'+card.title+'». '+message+'.','accent');
+  return {ok:true,report};
+}
++service.cost+': +3 VP, +'+influence.steps+
+     ' Influence; городской дорожный тариф восстановлен до $1.','good');
+   return {ok:true,operation,worker:action.worker,route:[...service.route]};
+ }
+ export function settleH02Year(state){
+   const h=state?.newsH02Incident;
+   if(!h||h.startRound>state.round||h.lastAssessedRound===state.round||
+      (h.resolvedRound!=null&&h.resolvedRound<state.round))
+     return {ok:false,reason:h?.lastAssessedRound===state.round?'already-settled':'no-incident'};
+   if(state.newsLastResolvedRound!==state.round)
+     return {ok:false,reason:'not-year-end'};
+   const outcome={round:state.round,year:newsYear(state.round),
+     startRound:h.startRound,roll:h.roll,districtId:h.districtId,
+     resolved:h.resolvedRound!=null,tariff:h.resolvedRound==null?2:1,
+     operation:h.resolvedRound===state.round?h.operation:null,entries:[],changes:{}};
+   h.yearReports??=[];h.yearReports.push(outcome);h.lastAssessedRound=state.round;
+   const archived=(state.newsArchive||[]).findLast(r=>r.round===state.round);
+   if(archived){
+     if(archived.cardId==='H02')archived.h02=outcome;
+     else archived.ongoingH02=outcome;
+   }
+   logEvent(state,'The San Francisco Call, '+outcome.year+' · Болезнь городских лошадей: '+
+     (outcome.resolved?'кризис устранён, стандартный тариф восстановлен':
+       'тариф $2 за переход сохраняется')+'. Годовых штрафов нет.','accent');
+   return {ok:true,outcome};
+ }
+ function resolveH02Newspaper(state,card){
+   if(!state.newsH02Incident)return {ok:false,reason:'no-incident'};
+   const report={year:newsYear(state.round),round:state.round,cardId:card.id,
+     title:card.title,category:card.category,entries:[],changes:{},
+     serviceRecognition:[],emergency:{}};
+   state.newsArchive.push(report);
+   state.newsLastResolvedRound=state.round;
+   return {ok:true,report};
+ }
+
 // H01 v2: one epidemic token with an expanding area on the existing graph.
 // The initial location is drawn on reveal, never on a preview or at year end.
 export const H01_ORIGIN_DISTRICTS=Object.freeze([
