@@ -1707,8 +1707,50 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
+  const h02Data=!archived?persistentH02:null;
+  const h02Opts=h02Data?.active&&Number.isInteger(currentDeveloper(state))
+    ?h02ExpeditionOptions(state,currentDeveloper(state)):null;
+  const h02Panel=h02Data&&(h02Data.active||issue?.id==='H02')
+    ?'<div class="news-h02-panel"><strong>♞ Зараза в конюшнях · D6 '+h02Data.roll+' · '+
+      escapeHtml(districtById(h02Data.districtId)?.name||h02Data.districtId)+'</strong>'+
+      (h02Data.active
+        ?'<p>По всему городу: <b>$2 за каждый платный дорожный переход</b> в доставках и выездах служб. Локальное движение представителей не дорожает.</p>'+
+         '<small>Кризис остаётся и при следующем выпуске газеты. Клиники не устраняют его автоматически. Никаких дополнительных годовых штрафов.</small>'+
+         '<strong>Санитарная операция · 1 основное действие · +3 VP и +1 Influence</strong>'+
+         '<small>Выберите свою или чужую завершённую клинику в досягаемости представителя. Медицинская группа едет по дорогам за $2/переход; рабочий остаётся на месте.</small>'+
+         (h02Opts?.services?.length
+           ?'<div class="news-h02-services">'+h02Opts.services.map(service=>{
+             const site=state.constructions.find(c=>c.id===service.constructionId);
+             const name=projectById(site?.projectId)?.name||site?.projectId||'Медицинская служба';
+             const routeText=service.route?service.route.length-1+' переходов · $'+service.cost:'дорога недоступна';
+             const reason=!h02Opts.actionAvailable?'Нет свободного главного действия':
+               !service.route?'Маршрут закрыт':
+               !service.reachable?'Представитель не рядом с клиникой':
+               !service.affordable?'Недостаточно денег':'';
+             return '<button type="button" data-h02-expedition="'+escapeHtml(String(service.constructionId))+
+               '" '+(service.available?'':'disabled')+'><b>'+escapeHtml(name)+'</b>'+
+               '<span>'+escapeHtml(districtById(service.districtId)?.name||service.districtId)+' · '+
+                 escapeHtml(state.players[service.ownerId]?.name||'Игрок')+'</span>'+
+               '<small>'+escapeHtml(routeText)+(reason?' · '+escapeHtml(reason):'')+'</small></button>';
+           }).join('')+'</div>'
+           :'<p>Нет доступного медицинского учреждения. Постройте клинику или используйте чужую.</p>')+
+         (!h02Opts?'<small>Операция доступна в городской ход действующего игрока после выбора представителя.</small>':'')
+        :'<p>Зараза ликвидирована. Дорожный тариф вновь $1/переход.</p>'+
+         (h02Data.operation?'<p>Операция: '+escapeHtml(state.players[h02Data.operation.playerId]?.name||'Игрок')+
+           ' · дорога $'+h02Data.operation.cost+' · +3 VP и +'+h02Data.operation.influenceSteps+' Influence.</p>':''))+
+      '</div>':'';
+  const h02Past=archived?.h02||archived?.ongoingH02||null;
+  const h02Archive=h02Past
+    ?'<li>Зараза в конюшнях · '+escapeHtml(districtById(h02Past.districtId)?.name||h02Past.districtId)+
+      ' · D6 '+h02Past.roll+' · '+(h02Past.resolved?'ликвидирована':'продолжается, тариф $2/переход')+'</li>'+
+      (h02Past.operation?'<li>Санитарная операция: '+
+        escapeHtml(state.players[h02Past.operation.playerId]?.name||'Игрок')+
+        ' · дорога $'+h02Past.operation.cost+' · +3 VP, +'+h02Past.operation.influenceSteps+' Influence</li>':'')
+    :'';
   const projections=issue?.id==='H01'
     ?'<li>Один очаг, радиус +1 в начале каждого последующего года. Санитарная экспедиция снимает все последствия.</li>'
+    :issue?.id==='H02'
+    ?'<li>Общегородской тариф $2/переход до единственной санитарной операции, в том числе после смены газеты.</li>'
     :issue?.id==='H04'
     ?'<li>Добровольный взнос не расходует рабочих или действия. Каждый инвестор может участвовать один раз.</li>'
     :issue?.id==='F04'
