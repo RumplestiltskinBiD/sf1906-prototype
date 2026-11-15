@@ -3575,6 +3575,11 @@ export function settleH01Year(state){
   const h=state?.newsH01Incident;
   if(!h||h.startRound>state.round||h.lastAssessedRound===state.round)
     return {ok:false,reason:h?.lastAssessedRound===state.round?'already-settled':'no-incident'};
+  // This exported settlement is intentionally callable only after the
+  // current newspaper has been resolved. Previewing an unfinished year
+  // must never debit a player or award clinic Influence ahead of schedule.
+  if(state.newsLastResolvedRound!==state.round)
+    return {ok:false,reason:'not-year-end'};
   const alive=h.resolvedRound==null;
   const preview=h01Preview(state);
   const entries=[],changes={},influenceRewards=[];
