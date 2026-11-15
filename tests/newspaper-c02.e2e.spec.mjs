@@ -41,8 +41,8 @@ for(const vp of views)test('C02 legal return is one main action, one $1, both or
  await news(page,vp);
  await expect(page.locator('.news-headline')).toHaveText('ЦЕЛАЯ ПАРТИЯ ГРУЗА БЕССЛЕДНО ИСЧЕЗЛА!');
  await expect(page.locator('.news-c02-panel')).toContainText('Broadway Wharf');
- await expect(page.locator('.news-c02-panel')).toContainText('Lumber');
- await expect(page.locator('.news-c02-panel')).toContainText('Masonry');
+ await expect(page.locator('.news-c02-panel')).toContainText('Дерево');
+ await expect(page.locator('.news-c02-panel')).toContainText('Камень');
  await expect(page.locator('[data-c02-return]')).toBeEnabled();
  await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
  await page.locator('[data-c02-return]').click();
