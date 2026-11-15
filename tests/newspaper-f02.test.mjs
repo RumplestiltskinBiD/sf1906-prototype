@@ -216,6 +216,8 @@ test('insufficient capital fails atomically, including at cost exactly one edge'
 test('H02 simultaneous road surcharge doubles each service edge without doubling reward',()=>{
  const s=setup();build(s,'F','std_fire','financial');
  s.newsCurrentIds=['F02','H02'];
+ // An active H02 v2 incident, not merely a newspaper ID, changes road prices.
+ s.newsH02Incident=G.createH02Incident(s.round,()=>.15);
  const opts=G.f02OperationOptions(s,0,'fire');
  assert.equal(opts.tariff,2);
  assert.equal(opts.services[0].cost,2);

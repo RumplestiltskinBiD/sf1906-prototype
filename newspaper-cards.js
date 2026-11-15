@@ -324,7 +324,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "H02",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_H02_V2.md",
       "title": "Зараза в городских конюшнях",
       "originDistrictIdsByD6": ["northbeach", "financial", "civic", "soma", "mission", "missionbay"],
@@ -335,13 +335,13 @@ export const NEWS_CARDS=Object.freeze([
       "sanitationReward": {"prestige": 3, "influence": 1}
     },
     "category": "Болезнь",
-    "title": "Болезни среди постояльцев",
-    "article": "Отели и клубы скрывают жалобы на здоровье посетителей. Без помощи врачей городу грозят расходы и недовольство публики.",
-    "target": "hotel-club-shops",
+    "title": "ЗАРАЗА В ГОРОДСКИХ КОНЮШНЯХ!",
+    "article": "Неизвестная болезнь охватила городские конюшни. Перевозчики сообщают о нехватке здоровых упряжек и повышают дорожные тарифы. Пока врачи не остановят распространение заразы, перевозки по всему Сан-Франциско будут стоить дороже.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "clinic"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "H03",

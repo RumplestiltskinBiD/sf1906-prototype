@@ -280,7 +280,7 @@ test('service-route graph respects 0-distance and closed districts',()=>{
 test('future implemented H02 tariff hook charges $2 per edge without altering free worker movement',()=>{
  const s=game();build(s,'MED','clinic','financial',1);
  active(s,0,0,'civic');
- s.newsH02Incident={active:true,resolvedRound:null};
+ s.newsH02Incident=G.createH02Incident(s.round,()=>.1);
  const opt=G.h01ExpeditionOptions(s,0);
  assert.equal(opt.tariff,2);
  assert.equal(opt.services[0].cost,2);

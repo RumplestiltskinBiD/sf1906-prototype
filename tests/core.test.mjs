@@ -4,6 +4,8 @@ import * as G from '../game-core.js';
 
 function devState({rng=()=>0.1}={}){
   const s=G.createInitialState({rng});
+  // Base-economy fixture: isolate standard $1 roads from a random H02 draw.
+  if(s.newsH02Incident)s.newsH02Incident.resolvedRound=s.round;
   s.phase='development';
   s.view='city';
   s.developmentPlayer=0;
