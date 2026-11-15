@@ -2501,6 +2501,21 @@ body.drawer-open .mobile-action-dock{
 .news-h01-services button:disabled{opacity:.55;cursor:not-allowed}
 .news-h01-services button:focus-visible{outline:3px solid #29695a;outline-offset:1px}
 .news-h01-services button span,.news-h01-services button small{font-size:12px;font-weight:400}
+.h02-map-marker{pointer-events:none}
+.h02-map-marker circle{fill:#946321;stroke:#fff4db;stroke-width:3;filter:drop-shadow(0 0 7px rgba(0,0,0,.5))}
+.h02-map-marker text{font:900 23px system-ui,sans-serif;fill:white;pointer-events:none}
+.news-h02-panel{margin-top:12px;padding:12px;background:#f8eacb;border:1px solid #ba9b67;
+  border-radius:8px;font-size:13px;line-height:1.48}
+.news-h02-panel>strong{display:block;font-size:14px;margin-top:5px}
+.news-h02-panel>p{margin:8px 0}
+.news-h02-panel>small{display:block;font-size:12px;margin:7px 0;color:#604d42}
+.news-h02-services{display:grid;gap:7px;margin-top:10px;max-height:min(35vh,260px);overflow-y:auto}
+.news-h02-services button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;
+  width:100%;border:1px solid #bca785;background:#fff9eb;border-radius:8px;padding:10px;
+  color:#33281e;cursor:pointer;touch-action:manipulation}
+.news-h02-services button:disabled{opacity:.55;cursor:not-allowed}
+.news-h02-services button:focus-visible{outline:3px solid #29695a;outline-offset:1px}
+.news-h02-services button span,.news-h02-services button small{font-size:12px;font-weight:400}
 .f02-map-marker{pointer-events:none}
 .f02-map-marker circle{stroke:#fff8db;stroke-width:3;filter:drop-shadow(0 0 5px rgba(0,0,0,.4))}
 .f02-map-marker .f02-marker-fire{fill:#9c3624}
