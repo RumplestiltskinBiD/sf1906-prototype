@@ -358,3 +358,41 @@ test('last 1905 year scores H01 once and never creates an extra newspaper',()=>{
  assert.equal(s.newsH01Incident.yearReports.length,1);
  assert.equal(G.cleanupMarket(s).ok,false);
 });
+
+test('infection can travel through Golden Gate Park while park is never a penalty district',()=>{
+ const s=game({roll:6});
+ s.newsH01Incident.radius=2;
+ const area=G.h01InfectedDistrictIds(s);
+ assert.ok(area.includes('haight'),'park pass-through connects Inner Richmond to Haight');
+ assert.ok(area.includes('innersunset'),'park pass-through connects Inner Richmond to Inner Sunset');
+ assert.ok(area.includes('sunset'),'park pass-through connects Inner Richmond to Outer Sunset');
+ assert.equal(area.includes('park'),false,'park may never be fined');
+ assert.equal(area.includes('presidio'),false);
+ assert.equal(area.includes('twinpeaks'),false);
+ const before=snap(s.players);
+ assert.equal(G.resolveNewspaper(s).ok,true);
+ assert.equal(snap(s.players),before,'no buildings means no epidemic penalty');
+});
+test('one protected infected district grants exactly one clinic Influence EACH unresolved year',()=>{
+ const s=game();
+ build(s,'MED','clinic','financial',1);
+ build(s,'T1','warehouse','chinatown',0);
+ build(s,'T2','residential_quarter','chinatown',2);
+ const first=G.resolveNewspaper(s);
+ assert.equal(first.ok,true);
+ assert.equal(first.report.h01.influenceRewards.length,1);
+ assert.equal(first.report.h01.influenceRewards[0].steps,1);
+ const afterFirst=s.players[1].influence;
+ nextYear(s,'E02');
+ s.phase='development';s.developmentComplete=true;s.developmentPlayer=null;
+ const second=G.cleanupMarket(s,{rng:()=>.39});
+ assert.equal(second.ok,true);
+ const report=s.newsArchive.find(x=>x.cardId==='E02');
+ assert.equal(report.ongoingH01.influenceRewards.length,1);
+ assert.equal(report.ongoingH01.influenceRewards[0].steps,1);
+ assert.ok(s.players[1].influence>=afterFirst+1);
+ assert.equal(s.newsH01Incident.yearReports.length,2);
+ const fixed=snap(s.newsH01Incident.yearReports);
+ assert.equal(G.settleH01Year(s).reason,'already-settled');
+ assert.equal(snap(s.newsH01Incident.yearReports),fixed);
+});
