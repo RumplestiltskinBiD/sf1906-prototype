@@ -181,7 +181,7 @@ test('at three stars bribe requires explicit arrest choice, commits cash then st
  worker.used=true;
  const res=G.resolveF04Notice(s,0,'bribe',worker.id);
  assert.equal(res.ok,true);assert.equal(res.arrested,true);
- assert.equal(worker.jailed,true);
+ assert.equal(s.players[0].workers[2].jailed,true);
  assert.equal(s.players[0].capital,18);
  assert.equal(s.players[0].suspicion,0);
  assert.equal(s.players[0].prestige,-3,'standard influence-floor arrest gives -3 VP');
