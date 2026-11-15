@@ -2897,7 +2897,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
   const forthcoming=newsCard(state.newsCurrentIds[0]);
   if(forthcoming)logEvent(state,'THE SAN FRANCISCO CALL · '+newsYear(state.round)+': '+forthcoming.title+'. '+
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
-      forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':'Событие произойдёт в конце года.'),'accent');
+      forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':
+      forthcoming.id==='C03'?'До обычных заявок City Hall каждый игрок по очереди решает, принимать ли сомнительное разрешение.':'Событие произойдёт в конце года.'),'accent');
   refreshLogisticsSupply(state,{rng});
   // A new C02 newspaper removes exactly two REAL cubes after annual refill.
   if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
