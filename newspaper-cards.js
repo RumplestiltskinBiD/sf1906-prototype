@@ -187,18 +187,24 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "C01",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_C01_V2.md",
+      "originDistrictIdsByD6": ["northbeach","northbeach","chinatown","chinatown","soma","soma"],
+      "threatRadius": 1,
+      "capitalLossPerExposedOwnerDistrict": 2,
+      "standardPoliceRadius": 0,
+      "marketPoliceRadius": 1,
+      "policeProtectionInfluencePerDistrict": 1,
       "raidReward": {"prestige": 2, "influence": 1}
     },
     "category": "Преступность",
-    "title": "Грабители хозяйничают на улицах города",
-    "article": "Торговцы жалуются на кражи, пока полиция рапортует об успехах. К концу года предприниматели рискуют понести новые убытки.",
-    "target": "shops-club",
+    "title": "ГРАБИТЕЛИ ХОЗЯЙНИЧАЮТ НА УЛИЦАХ ГОРОДА!",
+    "article": "Вооружённые банды совершают налёты на жилые кварталы, предприятия и склады. Горожане требуют вмешательства полиции, пока преступность не вышла из-под контроля.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "police"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "C02",
