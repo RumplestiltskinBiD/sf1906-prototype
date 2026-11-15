@@ -119,6 +119,9 @@ test('E01 non-residential completion never triggers contract or UI prompt',async
  await page.locator('[data-complete-build="SHOP"]').click();
  expect((await read(page)).newsE01Contracts.claims).toHaveLength(0);
  await expect(page.locator('.e01-rental-choice')).toHaveCount(0);
+ // Close the real Office drawer before using the desktop header news button.
+ // Leaving that drawer open blocks the header by design; do not force-click.
+ await page.locator('#officeDrawer [data-close-drawer]').click();
  await openNews(page,{width:1366,height:768});
  await expect(page.locator('.news-e01-panel')).toContainText('осталось 2 из 2');
 });
