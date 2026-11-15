@@ -4,7 +4,7 @@ import * as G from '../game-core.js';
 import {NEWS_CARDS} from '../newspaper-cards.js';
 
 const build=(id,playerId,projectId,districtId='soma',more={})=>({id,playerId,projectId,districtId,status:'complete',materialsDelivered:[...G.projectById(projectId).materials],warehouseInventory:[],completedRound:1,startedRound:1,...more});
-function state(){const s=G.createInitialState({rng:()=>0.2});s.newsC01Incident=null;/* Isolate non-newspaper building tests from a randomly drawn persistent C01. */s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;s.constructions=[];s.players.forEach(p=>{p.capital=50;p.portfolio=[];});s.activeWorkerId=s.players[0].workers[0].id;s.players[0].workers[0].districtId='soma';return s;}
+function state(){const s=G.createInitialState({rng:()=>0.2});s.newsC01Incident=null;/* Isolate press / building fixtures from a random C01 draw. */s.newsCurrentIds=['H03'];s.newsH03SupplyRound=null;s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;s.constructions=[];s.players.forEach(p=>{p.capital=50;p.portfolio=[];});s.activeWorkerId=s.players[0].workers[0].id;s.players[0].workers[0].districtId='soma';return s;}
 test('v0.51 mixed catalog, construction prices, money, VP, vulnerabilities and card quantities',()=>{
  assert.equal(G.PROJECTS.length,41);assert.equal(G.PROJECT_COPIES,2);
  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,11);
