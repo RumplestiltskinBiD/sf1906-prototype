@@ -72,7 +72,8 @@ for(const viewport of viewports){
 for(const viewport of viewports.slice(0,2)){
  test('F04 tied buildings wait for explicit owner decision before city actions '+viewport.width+'x'+viewport.height,async({page})=>{
   await page.setViewportSize(viewport);await seed(page,game({tied:true}));
-  await expect(page.locator('#actionBuild')).toBeDisabled();
+  await expect(page.locator('#f04ChooseFromCity')).toBeVisible();
+  await expect(page.locator('#actionBuild')).toHaveCount(0);
   await openNews(page,viewport);
   await expect(page.locator('.news-f04-warning')).toBeVisible();
   await expect(page.locator('[data-f04-choose]')).toHaveCount(2);
