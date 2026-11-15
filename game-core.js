@@ -787,7 +787,7 @@ export function completedActionSpaces(state,projectId){
   return (state.constructions||[]).filter(c=>c.projectId===projectId&&c.status==='complete');
 }
 export function canTakeMainAction(state,playerId){
-  if(f04PendingSelections(state))return false;
+  if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
@@ -795,7 +795,7 @@ export function canTakeMainAction(state,playerId){
     &&developmentSlotsRemaining(state,playerId)>0&&(state.players[playerId]?.workersLeft??0)>0&&!state.activationMainActionUsed&&!!worker;
 }
 export function canUseFreeAction(state,playerId){
-  if(f04PendingSelections(state))return false;
+  if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
@@ -816,6 +816,7 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase!=='development'||state.developmentComplete)return {ok:false,reason:'wrong-phase'};
@@ -1149,6 +1150,7 @@ export function createInitialState({rng=Math.random}={}){
     newsC01Incident:initialC01Incident,
     newsC02Incident:null,
     newsC03Offer:null,
+    newsE01Contracts:newsCurrentIds[0]==='E01'?{round:1,claims:[]}:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -1941,6 +1943,7 @@ export function completeConstruction(state,construction){
       logEvent(state,`${player.name}: «${projectById(works.projectId).name}» выплатила +$2 за завершение жилья в ${districtById(construction.districtId).name}.`,'good');
     }
   }
+  reserveE01ContractOnCompletion(state,construction,project);
   const riskAfter=districtRisk(state,construction.districtId);
   if(riskBefore&&riskAfter&&(riskBefore.earthquake.raw!==riskAfter.earthquake.raw||riskBefore.fire.raw!==riskAfter.fire.raw)){
     logEvent(state,`Риск ${districtById(construction.districtId).name}: У ${riskBefore.earthquake.raw}→${riskAfter.earthquake.raw} · П ${riskBefore.fire.raw}→${riskAfter.fire.raw}.`,'accent');
@@ -2893,6 +2896,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(state.newsCurrentIds[0]==='C01'&&!state.newsC01Incident)
     state.newsC01Incident=createC01Incident(state.round,rng);
   state.newsC03Offer=null;
+  state.newsE01Contracts=state.newsCurrentIds[0]==='E01'?{round:state.round,claims:[]}:null;
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -2985,6 +2989,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 }
 
 export function cleanupMarket(state,{rng=Math.random}={}){
+  if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
   if(state.phase==='upkeep'&&state.yearTransition){
@@ -3183,6 +3188,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsC01Incident=null;
     state.newsC02Incident=null;
     state.newsC03Offer=null;
+    state.newsE01Contracts=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -3225,6 +3231,13 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
        !(state.market||[]).some(m=>m?.claims?.length)&&!(state.goalSessionClaims||[]).length)))
     state.newsC03Offer=createC03Offer(state);
   if(!Object.hasOwn(state,'newsC03Offer'))state.newsC03Offer=null;
+  // Migrate old ACTIVE E01 saves without retroactive rent or old bonuses.
+  // Resolved historical issues remain untouched in newsArchive.
+  if(activeNewspaper(state)?.id==='E01'&&state.newsLastResolvedRound!==state.round){
+    if(!state.newsE01Contracts||state.newsE01Contracts.round!==state.round||
+       !Array.isArray(state.newsE01Contracts.claims))
+      state.newsE01Contracts={round:state.round,claims:[]};
+  }else if(!Object.hasOwn(state,'newsE01Contracts'))state.newsE01Contracts=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -3649,6 +3662,87 @@ function resolveF02Newspaper(state,card){
   logEvent(state,'The San Francisco Call, '+report.year+' · '+card.title+
     ': '+(fireUnresolved?'пожар не потушен':'пожар потушен')+', '+
     (manhuntUnresolved?'поджигатель не пойман':'поджигатель пойман')+'.','accent');
+  return {ok:true,report};
+}
+
+
+export const E01_CONTRACT_POOL=2;
+export const E01_CASH_REWARD=6;
+// Contract tokens are RESERVED on construction completion, not on reward
+// selection. This keeps first-come, first-served ordering stable when one
+// delivery completes more than one building or the page is reloaded.
+export function e01ContractPreview(state){
+  const active=activeNewspaper(state)?.id==='E01'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round;
+  const ledger=state.newsE01Contracts?.round===state.round?state.newsE01Contracts:null;
+  const claims=Array.isArray(ledger?.claims)?ledger.claims:[];
+  return {active,round:state.round,limit:E01_CONTRACT_POOL,
+    remaining:active?Math.max(0,E01_CONTRACT_POOL-claims.length):0,
+    claims:claims.map(x=>({...x})),
+    pending:active?claims.filter(x=>x.choice==null).map(x=>({...x})):[]};
+}
+export function currentE01PendingContract(state){
+  const preview=e01ContractPreview(state);
+  return preview.active?preview.pending[0]||null:null;
+}
+function reserveE01ContractOnCompletion(state,construction,project){
+  if(activeNewspaper(state)?.id!=='E01'||state.finished||
+     state.newsLastResolvedRound===state.round||!projectTypes(project).includes('Жилое'))return null;
+  if(!state.newsE01Contracts||state.newsE01Contracts.round!==state.round||
+     !Array.isArray(state.newsE01Contracts.claims))
+    state.newsE01Contracts={round:state.round,claims:[]};
+  const ledger=state.newsE01Contracts;
+  if(ledger.claims.length>=E01_CONTRACT_POOL||
+     ledger.claims.some(x=>x.playerId===construction.playerId))return null;
+  const claim={round:state.round,playerId:construction.playerId,
+    constructionId:construction.id,projectId:construction.projectId,choice:null};
+  ledger.claims.push(claim);
+  logEvent(state,state.players[construction.playerId].name+
+    ' получил арендный контракт E01 за завершение «'+project.name+
+    '»; выберите +$6 либо +1 VP и +1 Influence.','good');
+  return claim;
+}
+export function chooseE01Contract(state,playerId,choice){
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])
+    return {ok:false,reason:'player'};
+  if(!['cash','civic'].includes(choice))return {ok:false,reason:'choice'};
+  if(state.phase!=='development'||state.finished||activeNewspaper(state)?.id!=='E01'||
+     state.newsLastResolvedRound===state.round)return {ok:false,reason:'not-active'};
+  const pending=currentE01PendingContract(state);
+  if(!pending)return {ok:false,reason:'no-pending'};
+  if(pending.playerId!==playerId)return {ok:false,reason:'not-owner-turn'};
+  const record=state.newsE01Contracts.claims.find(x=>x.playerId===playerId&&x.choice==null);
+  if(!record)return {ok:false,reason:'no-pending'};
+  const player=state.players[playerId];
+  record.choice=choice;
+  if(choice==='cash'){
+    player.capital+=E01_CASH_REWARD;
+    record.capital=E01_CASH_REWARD;record.vp=0;record.influenceSteps=0;
+  }else{
+    const moved=moveInfluence(state,playerId,1);
+    player.prestige=(player.prestige||0)+1;
+    record.capital=0;record.vp=1;record.influenceSteps=moved.steps;
+    record.influenceFrom=moved.from;record.influenceTo=moved.to;
+  }
+  logEvent(state,player.name+' завершил контракт E01: '+
+    (choice==='cash'?'+$6 аванса аренды':'+1 VP и +'+record.influenceSteps+
+    ' шаг Influence')+'. Дополнительный рабочий не использован.','good');
+  return {ok:true,record:{...record}};
+}
+function resolveE01Newspaper(state,card){
+  if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
+  const claims=state.newsE01Contracts?.round===state.round?
+    state.newsE01Contracts.claims||[]:[];
+  const report={year:newsYear(state.round),round:state.round,cardId:'E01',
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{},
+    e01:{limit:E01_CONTRACT_POOL,claims:claims.map(x=>({...x})),
+      unused:E01_CONTRACT_POOL-claims.length}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  state.newsE01Contracts=null;
+  logEvent(state,'The San Francisco Call, '+report.year+
+    ' · E01: '+claims.length+' из 2 арендных контрактов заключено. Остальные истекли; старых выплат по районам нет.','accent');
   return {ok:true,report};
 }
 
@@ -4254,6 +4348,8 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='E01')return {card,entries:[],threatened:[],protected:[],
+    summary:{districts:0,exposed:0,safe:0},e01:e01ContractPreview(state)};
   if(card?.id==='C03'){
     const offer=c03CurrentOffer(state);
     return {card,entries:[],threatened:[],protected:[],summary:{districts:0,exposed:0,safe:0},
@@ -4404,6 +4500,7 @@ export function resolveNewspaper(state){
   if(card.id==='H03')return resolveH03Newspaper(state,card);
   if(card.id==='H04')return resolveH04Newspaper(state,card);
   if(card.id==='F04')return resolveF04Newspaper(state,card);
+  if(card.id==='E01')return resolveE01Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
