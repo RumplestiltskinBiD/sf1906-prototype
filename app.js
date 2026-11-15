@@ -1644,6 +1644,29 @@ function renderNewspaper(){
       'Поджигатель пойман · +2 VP и +1 Influence');
     render();
   });
+  $('#newsSheetContent [data-f04-choose]').forEach(button=>button.onclick=()=>{
+    const result=chooseF04Notice(state,Number(button.dataset.f04Owner),button.dataset.f04Choose);
+    showToast(result.ok?'Предписание назначено выбранному зданию':'Нельзя выбрать цель: '+result.reason);
+    render();
+  });
+  $('#newsSheetContent [data-f04-urgent], [data-f04-bribe]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const urgent=button.hasAttribute('data-f04-urgent');
+    const pid=Number(urgent?button.dataset.f04Urgent:button.dataset.f04Bribe);
+    const result=resolveF04Notice(state,pid,urgent?'urgent':'bribe',button.dataset.f04Arrest||null);
+    if(!result.ok){
+      showToast(result.reason==='capital'?'Недостаточно денег':
+        result.reason==='arrest-worker'?'Выберите сотрудника для ареста':
+        result.reason==='f04-choice'?'Сначала все владельцы должны выбрать цель':
+        'Предписание сейчас нельзя закрыть: '+result.reason);render();return;
+    }
+    showToast(urgent?'Нарушения устранены: −$4, здание модернизировано':
+      result.arrested?'Взятка уплачена: предписание закрыто, сотрудник арестован':
+      'Взятка уплачена: предписание закрыто, подозрение +1 ★');
+    render();
+  });
   $('#newsEmergencyStart')?.addEventListener('click',startNewsEmergency);
   $('#newsIssueMapToggle')?.addEventListener('click',toggleNewspaperMap);
   $('#newsCopyOutcome')?.addEventListener('click',async()=>{
