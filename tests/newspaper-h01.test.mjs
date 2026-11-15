@@ -396,3 +396,20 @@ test('one protected infected district grants exactly one clinic Influence EACH u
  assert.equal(G.settleH01Year(s).reason,'not-year-end');
  assert.equal(snap(s.newsH01Incident.yearReports),fixed);
 });
+
+test('four and five players pay individually per infected district, with no per-building multiplier',()=>{
+ for(const count of [4,5]){
+  const state=game({count});
+  for(let pid=0;pid<count;pid++){
+   build(state,'B'+pid,'warehouse','chinatown',pid);
+   build(state,'Bextra'+pid,'std_fire','chinatown',pid);
+  }
+  const r=G.resolveNewspaper(state);
+  assert.equal(r.ok,true);
+  assert.equal(r.report.h01.entries.length,count);
+  assert.deepEqual(state.players.map(p=>p.capital),Array(count).fill(38));
+  assert.deepEqual(r.report.h01.influenceRewards,[]);
+  assert.equal(r.report.h01.entries.reduce((a,e)=>a+e.actual,0),-2*count);
+  assert.equal(G.resolveNewspaper(state).reason,'already-resolved');
+ }
+});
