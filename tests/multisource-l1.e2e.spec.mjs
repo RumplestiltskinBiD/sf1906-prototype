@@ -5,6 +5,7 @@ const KEY='sf1906_phase1_ui_v030a';
 test.beforeEach(async({page})=>{page.setDefaultTimeout(7000);});
 const makeState=()=>{
  const s=createInitialState({rng:()=>0.1});
+ if(s.newsH02Incident)s.newsH02Incident.resolvedRound=s.round;
  s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
  s.activationMainActionUsed=false;s.activeWorkerId=null;s.players[0].capital=60;
  s.logisticsSupply.southernpacific=['Steel','Steel','Lumber','Masonry'];
