@@ -175,6 +175,14 @@ test('every article can calculate from realistic mixed completed projects',()=>{
     for(const p of G.PROJECTS)put(s,p.id,'civic',0);
     const preview=G.newsPreview(s);
     assert.equal(preview.card.id,card.id);
+    // F04 replaces the old automatic fine with an explicit owner choice
+    // when multiple completed buildings share the highest personal fire risk.
+    if(card.id==='F04'){
+      G.ensureNewspaper(s);
+      for(const n of G.f04NoticePreview(s).notices.filter(x=>x.status==='choose')){
+        assert.equal(G.chooseF04Notice(s,n.playerId,n.candidateIds[0]).ok,true);
+      }
+    }
     assert.ok(Array.isArray(preview.entries));
     assert.ok(G.resolveNewspaper(s).ok);
     assert.ok(s.players[0].capital>=0&&s.players[0].influence>=0&&s.players[0].prestige>=0);
