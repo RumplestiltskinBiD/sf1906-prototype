@@ -393,6 +393,6 @@ test('one protected infected district grants exactly one clinic Influence EACH u
  assert.ok(s.players[1].influence>=afterFirst+1);
  assert.equal(s.newsH01Incident.yearReports.length,2);
  const fixed=snap(s.newsH01Incident.yearReports);
- assert.equal(G.settleH01Year(s).reason,'already-settled');
+ assert.equal(G.settleH01Year(s).reason,'not-year-end');
  assert.equal(snap(s.newsH01Incident.yearReports),fixed);
 });
