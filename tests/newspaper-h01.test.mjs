@@ -140,7 +140,7 @@ test('local std_clinic beats neighboring market clinic when preventing real fine
  assert.equal(p.protectedByDistrict.chinatown.ownerId,2);
  G.resolveNewspaper(s);
  assert.equal(s.players[0].capital,40);
- assert.equal(s.players[2].influence,25); // 18 → 19; no other occupied position
+ assert.equal(s.players[2].influence,19); // 18 → 19; no other occupied position
  assert.equal(s.players[1].influence,24);
 });
 test('market clinic protects adjacent districts, standard clinic protects own only',()=>{
