@@ -6,6 +6,7 @@ import {newsCard} from '../newspaper-cards.js';
 const snapshot=s=>JSON.stringify(s);
 function base({count=3,phase='declare',deck=null}={}){
  const s=G.createInitialState({rng:()=>.38});
+ assert.equal(s.breweryTradeV1,true,'fresh deck must not be replenished by legacy brewery migration');
  while(s.players.length<count){
   const id=s.players.length;
   s.players.push({...structuredClone(s.players[0]),id,name:'Player '+id,key:'k'+id,
