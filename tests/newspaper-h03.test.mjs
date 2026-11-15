@@ -192,6 +192,38 @@ test('end of H03 year records one no-penalty report, next year restores normal 1
  assert.equal(s.newsArchive.length,2);
 });
 
+test('transition INTO H03 generates reduced supply after new edition and leaves other resources intact',()=>{
+ const s=G.createInitialState({rng:()=>.39});
+ s.newsCurrentIds=['E02'];
+ s.newsDeck=['H03','E03',...s.newsDeck.filter(x=>!['H03','E03'].includes(x))];
+ s.newsH03SupplyRound=null;
+ s.phase='development';s.developmentComplete=true;s.developmentPlayer=null;
+ const beforeYard=snapshot(s.freightYardInventories);
+ const beforePlayers=s.players.length;
+ const result=G.cleanupMarket(s,{rng:()=>.19});
+ assert.equal(result.ok,true);
+ assert.equal(s.round,2);
+ assert.equal(s.newsCurrentIds[0],'H03');
+ assert.equal(s.newsH03SupplyRound,2);
+ checkSupply(s,lengths);
+ assert.equal(s.players.length,beforePlayers);
+ assert.equal(snapshot(s.freightYardInventories),beforeYard);
+ assert.equal(s.newsArchive[0].cardId,'E02');
+ const untouched=snapshot(s.logisticsSupply);
+ G.ensureNewspaper(s,{rng:()=>{throw Error('second H03 supply roll')}});
+ assert.equal(snapshot(s.logisticsSupply),untouched);
+ // Next transition must end the shortage and generate normal cargo again.
+ s.developmentComplete=true;s.developmentPlayer=null;
+ const next=G.cleanupMarket(s,{rng:()=>.2});
+ assert.equal(next.ok,true);
+ assert.equal(s.round,3);
+ assert.equal(s.newsCurrentIds[0],'E03');
+ assert.equal(s.newsH03SupplyRound,null);
+ checkSupply(s,normal);
+ assert.equal(s.newsArchive[1].h03.applied,true);
+ assert.equal(s.newsArchive[1].h03.removedSlots,4);
+});
+
 test('H03 on 1905 resolves without generating a seventh year',()=>{
  const s=setup({year:6});
  s.developmentComplete=true;s.developmentPlayer=null;
