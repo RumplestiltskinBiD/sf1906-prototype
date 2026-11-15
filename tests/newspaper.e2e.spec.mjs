@@ -63,9 +63,11 @@ test('mobile emergency measures use map tap, ordinary worker movement and existi
   await page.locator('#newsEmergencyStart').click();
   await expect(page.locator('#newsEmergencyCancelMobile')).toBeVisible();
   await expect(page.locator('#newsSheet')).toBeHidden();
-  await page.locator('[data-district="soma"] path').click();
+  // Tap an uncovered neighborhood; the emergency must apply ONLY there,
+  // not silently protect the exposed SoMa port warehouse.
+  await page.locator('[data-district="civic"] path').click();
   const s=await page.evaluate(storage=>JSON.parse(localStorage.getItem(storage)),storage);
-  expect(s.newsEmergency.soma).toBeTruthy();
+  expect(s.newsEmergency.civic).toBeTruthy();
   expect(s.activationMainActionUsed).toBe(true);
   expect(s.players[0].capital).toBe(29);
   expect(s.players[0].workers[0].used).toBe(true);
@@ -73,7 +75,7 @@ test('mobile emergency measures use map tap, ordinary worker movement and existi
   expect(await page.evaluate(()=>document.documentElement.scrollWidth))
     .toBeLessThanOrEqual(393);
   await page.locator('#callBuildingNode').click();
-  await expect(page.locator('#newsSheetContent')).toContainText('ЗАЩИЩЕНО');
+  await expect(page.locator('#newsSheetContent')).toContainText('ПОД УГРОЗОЙ');
 });
 test('news settles once on end of year, next issue and archive remain accessible',async({page})=>{
   await seededGame(page,{news:'E02',constructions:[{projectId:'shops',districtId:'financial',playerId:0}]});
