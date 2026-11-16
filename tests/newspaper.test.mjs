@@ -137,13 +137,21 @@ test('temporary protection never survives the next newspaper',()=>{
   assert.equal(s.newsArchive.length,1);
   assert.notEqual(G.activeNewspaper(s)?.id,'E04');
 });
-test('positive trade issues reward owners only once per district',()=>{
+test('E02 trade issue does NOT grant obsolete automatic $2 per district (approved 08.11.2026 replacement)',()=>{
   const s=game('E02');
   put(s,'shops','financial',0);put(s,'club','financial',0);put(s,'hotel','financial',1);
-  assert.equal(G.newsPreview(s).entries.length,2);
-  G.resolveNewspaper(s);
-  assert.equal(s.players[0].capital,32);
-  assert.equal(s.players[1].capital,32);
+  assert.deepEqual(G.newsPreview(s).entries,[],'E02 requires a separate valid main worker action');
+  const before=s.players.map(p=>({capital:p.capital,prestige:p.prestige,influence:p.influence}));
+  const r=G.resolveNewspaper(s);
+  assert.equal(r.ok,true);
+  assert.deepEqual(r.report.entries,[]);
+  assert.deepEqual(r.report.changes,{});
+  assert.deepEqual(r.report.e02.events,[]);
+  s.players.forEach((p,i)=>{
+    assert.equal(p.capital,before[i].capital);
+    assert.equal(p.prestige,before[i].prestige);
+    assert.equal(p.influence,before[i].influence);
+  });
 });
 test('six-year cleanup is deterministic and issues never repeat',()=>{
   const s=G.createInitialState({rng:()=>0.42});

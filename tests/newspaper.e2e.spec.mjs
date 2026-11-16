@@ -77,7 +77,7 @@ test('mobile emergency measures use map tap, ordinary worker movement and existi
   await page.locator('#callBuildingNode').click();
   await expect(page.locator('#newsSheetContent')).toContainText('ПОД УГРОЗОЙ');
 });
-test('news settles once on end of year, next issue and archive remain accessible',async({page})=>{
+test('E02 settles once without obsolete passive trade payouts; next issue and archive remain accessible',async({page})=>{
   await seededGame(page,{news:'E02',constructions:[{projectId:'shops',districtId:'financial',playerId:0}]});
   await page.evaluate(storage=>{
     const s=JSON.parse(localStorage.getItem(storage));
@@ -92,11 +92,15 @@ test('news settles once on end of year, next issue and archive remain accessible
   expect(s.round).toBe(2);
   expect(s.newsArchive).toHaveLength(1);
   expect(s.newsArchive[0].cardId).toBe('E02');
-  expect(s.newsArchive[0].changes[0].capital).toBe(2);
+  expect(s.newsArchive[0].changes).toEqual({},'No cash/VP/Influence without a legal main action');
+  expect(s.newsArchive[0].e02.events).toEqual([]);
+  expect(s.newsArchive[0].e02.unused).toBe(3);
   await page.locator('#newsOpenBtn').click();
   await page.locator('[data-news-archive="0"]').click();
   await expect(page.locator('#newsSheetContent')).toContainText('Реальные результаты');
-  await expect(page.locator('#newsSheetContent')).toContainText('Торговля на пике');
+  await expect(page.locator('#newsSheetContent')).toContainText('ГОРОДСКАЯ ТОРГОВАЯ НЕДЕЛЯ!');
+  await expect(page.locator('#newsSheetContent')).toContainText('Мероприятия не проводились.');
+  await expect(page.locator('#newsSheetContent')).toContainText('Неиспользованные права: 3');
 });
 test('phone landscape news sheet fits screen, closes on Escape, never causes page overflow',async({page})=>{
   await page.setViewportSize({width:844,height:390});
