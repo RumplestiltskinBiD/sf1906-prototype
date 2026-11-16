@@ -315,7 +315,7 @@ test('a pending construction or worker operation blocks F02 without consuming an
  const s=setup();build(s,'F','std_fire','financial');
  for(const mutator of [
    x=>x.pendingConstruction={playerId:0,projectId:'tenement'},
-   x=>x.pendingWorkerAction={type:'raiseCapital',playerId:0}
+   x=>x.pendingWorkerAction={type:'moveWorker',playerId:0}
  ]){
    const copy=structuredClone(s);mutator(copy);
    const before=snap(copy);

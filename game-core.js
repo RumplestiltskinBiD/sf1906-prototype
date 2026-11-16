@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0582-e04-waterfront-strike';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0583-no-reward-movement';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -22,7 +22,6 @@ export const CONTRABAND_CARRIER_PAYMENT = 6;
 export const BASE_ROUND_INCOME = 3;
 export const CONSTRUCTION_UPKEEP_COST = 1;
 export const INFLUENCE_START_POSITIONS = Object.freeze([2,3,4]);
-export const RAISE_CAPITAL_AMOUNT = 3;
 export const ADVERTISING_CAMPAIGN_COST = 2;
 export const ADVERTISING_CAMPAIGN_INCOME = 2;
 export const LOAN_PRINCIPAL = 6;
@@ -2559,17 +2558,17 @@ export function roundIncome(state,playerId){
   return Math.max(0,grossRoundIncome(state,playerId)-loanInterest(state,playerId)-Math.max(0,state.players[playerId]?.fireIncomePenalty||0)-Math.max(0,state.players[playerId]?.breadIncomePenalty||0));
 }
 
-export function raiseCapital(state,playerId,targetDistrictId=null){
+/** Standalone main action: move exactly one adjacent district, with no income or reward. */
+export function moveWorker(state,playerId,targetDistrictId){
   if(!canTakeMainAction(state,playerId))return {ok:false,reason:activeWorker(state,playerId)?'turn':'worker'};
   const worker=activeWorker(state,playerId);
-  const target=targetDistrictId||worker?.districtId;
-  if(!target||!workerCanReachDistrict(state,playerId,target,worker?.id))return {ok:false,reason:'worker-range',districtId:target};
+  if(!targetDistrictId||targetDistrictId===worker.districtId)return {ok:false,reason:'no-movement'};
+  if(!workerCanReachDistrict(state,playerId,targetDistrictId,worker.id))return {ok:false,reason:'worker-range',districtId:targetDistrictId};
   const player=state.players[playerId];
-  const consumed=consumeMainAction(state,playerId,target);
+  const consumed=consumeMainAction(state,playerId,targetDistrictId);
   if(!consumed.ok)return consumed;
-  player.capital+=RAISE_CAPITAL_AMOUNT;
-  logEvent(state,`${player.name} использует Raise Capital: +${RAISE_CAPITAL_AMOUNT}.${workerMovementText(consumed)}`,'good');
-  return {ok:true,amount:RAISE_CAPITAL_AMOUNT,worker:consumed.worker,from:consumed.from,to:consumed.to};
+  logEvent(state,`${player.name} использует Перемещение.${workerMovementText(consumed)}`,'accent');
+  return {ok:true,worker:consumed.worker,from:consumed.from,to:consumed.to};
 }
 
 export function takeBankLoan(state,playerId,bankConstructionId){
