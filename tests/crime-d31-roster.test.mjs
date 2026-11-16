@@ -88,7 +88,7 @@ test('D3.1 replaced staff can use their ordinary action; status preserves replac
  const s=dev(2),w=jail(s,0,0,1);
  assert.equal(G.hireReplacementWorker(s,0,w.id).ok,true);
  assert.equal(G.selectWorker(s,0,w.id).ok,true);
- assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+ assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
  const v=G.workerRosterPreview(s,0),slot=v.workers[0];
  assert.equal(slot.status,'replaced-paid');
  assert.equal(slot.used,true);

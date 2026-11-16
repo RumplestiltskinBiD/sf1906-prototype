@@ -55,14 +55,14 @@ test('B2 an arrested worker never creates an extra activation or recovers its sp
   const s=dev();
   const w=s.players[0].workers[0];
   assert.equal(G.selectWorker(s,0,w.id).ok,true);
-  assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+  assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
   assert.equal(G.jailWorker(s,0,w.id).ok,true);
   assert.equal(G.endActivation(s,0).ok,true);
   assert.equal(G.developmentSlotsRemaining(s,0),2);
   for(const pid of [1,2]){
     const free=s.players[pid].workers[0];
     assert.equal(G.selectWorker(s,pid,free.id).ok,true);
-    assert.equal(G.raiseCapital(s,pid,'civic').ok,true);
+    assert.equal(G.moveWorker(s,pid,G.workerReachableDistricts(s,pid).find(id=>id!==G.activeWorker(s,pid)?.districtId)).ok,true);
     assert.equal(G.endActivation(s,pid).ok,true);
   }
   assert.equal(G.currentDeveloper(s),0);
@@ -77,7 +77,7 @@ test('B2 cannot skip remaining slots while a worker or current main action is av
   const s=dev();
   assert.equal(G.endActivation(s,0,{skipRemainingService:true}).reason,'main-action-required');
   const w=s.players[0].workers[0];
-  G.selectWorker(s,0,w.id);G.raiseCapital(s,0,'civic');
+  G.selectWorker(s,0,w.id);G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId));
   assert.equal(G.endActivation(s,0,{skipRemainingService:true}).reason,'service-only');
   assert.equal(G.endActivation(s,0).ok,true);
   assert.deepEqual(s.developmentSlotsUsed,[1,0,0]);

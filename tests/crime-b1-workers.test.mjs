@@ -38,7 +38,7 @@ test('B1 jail is a low-level worker state, not a crime/fine transaction',()=>{
   const s=dev(),worker=s.players[0].workers[0];
   worker.districtId='mission';
   assert.equal(G.selectWorker(s,0,worker.id).ok,true);
-  s.pendingWorkerAction={type:'raiseCapital',playerId:0};
+  s.pendingWorkerAction={type:'moveWorker',playerId:0};
   const capital=s.players[0].capital,inf=s.players[0].influence,points=s.players[0].prestige;
   const result=G.jailWorker(s,0,worker.id);
   assert.equal(result.ok,true);
@@ -63,7 +63,7 @@ test('B1 jail is a low-level worker state, not a crime/fine transaction',()=>{
 test('B1 used worker may be jailed without refreshing its main action',()=>{
   const s=dev(),w=s.players[0].workers[0];
   assert.equal(G.selectWorker(s,0,w.id).ok,true);
-  assert.equal(G.raiseCapital(s,0,w.districtId).ok,true);
+  assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
   assert.equal(w.used,true);
   assert.equal(G.jailWorker(s,0,w.id).ok,true);
   assert.equal(w.used,true);
@@ -74,7 +74,7 @@ test('B1 jail does not prevent the other two workers from acting',()=>{
   const first=s.players[0].workers[0];
   assert.equal(G.jailWorker(s,0,first.id).ok,true);
   assert.equal(G.selectWorker(s,0,s.players[0].workers[1].id).ok,true);
-  assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+  assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
   assert.equal(s.players[0].workersLeft,1);
 });
 test('B1 all three can be jailed without inventing a fourth worker',()=>{

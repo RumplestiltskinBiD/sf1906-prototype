@@ -708,7 +708,7 @@ test('one player can start multiple constructions in the same year using separat
   for(const pid of [1,2]){
     const other=G.playerWorkers(s,pid)[0];other.districtId='civic';
     assert.equal(G.selectWorker(s,pid,other.id).ok,true);
-    assert.equal(G.raiseCapital(s,pid,'civic').ok,true);
+    assert.equal(G.moveWorker(s,pid,G.workerReachableDistricts(s,pid).find(id=>id!==G.activeWorker(s,pid)?.districtId)).ok,true);
     assert.equal(G.endActivation(s,pid).ok,true);
   }
   assert.equal(G.currentDeveloper(s),0);
@@ -791,7 +791,7 @@ test('complete six-year Phase I lifecycle reaches finished state with workers re
       const worker=G.playerWorkers(s,pid).find(w=>!w.used);
       assert.ok(worker,`round ${round}, player ${pid}`);
       assert.equal(G.selectWorker(s,pid,worker.id).ok,true);
-      assert.equal(G.raiseCapital(s,pid,worker.districtId).ok,true);
+      assert.equal(G.moveWorker(s,pid,G.workerReachableDistricts(s,pid).find(id=>id!==G.activeWorker(s,pid)?.districtId)).ok,true);
       assert.equal(G.endActivation(s,pid).ok,true);
       activations++;
       assert.ok(activations<=9);
