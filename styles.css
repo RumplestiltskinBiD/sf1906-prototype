@@ -3397,3 +3397,23 @@ body.delivery-route-build #deliveryRouteLayer *{
   .news-e04-ports{grid-template-columns:repeat(2,minmax(0,1fr))}
   .news-e04-ports button{min-height:36px;font-size:10px}
 }
+
+
+/* E05: civic-services support is a no-extra-action annual forecast. */
+.news-e05-panel{display:grid;gap:8px;margin:10px 0;padding:12px;
+  border:1px solid #a58d6b;border-radius:10px;background:#f6efe4;
+  color:#443a2f;line-height:1.42;min-width:0;overflow-wrap:anywhere}
+.news-e05-panel p{margin:0}
+.news-e05-panel>strong{font-size:15px}
+.news-e05-counts{display:grid;gap:6px;min-width:0}
+.news-e05-player{display:grid;gap:2px;padding:8px 10px;background:#fff;
+  border:1px solid #d4c5ac;border-radius:7px;min-width:0}
+.news-e05-player b{font-size:13px}
+.news-e05-player span{font-size:12px;font-weight:750}
+.news-e05-player small,.news-e05-panel>small{font-size:11px;line-height:1.4}
+.e05-discount-note{font-weight:750;color:#24664e;overflow-wrap:anywhere}
+@media(max-width:640px){.news-e05-panel{padding:9px}
+  .news-e05-player{padding:7px}.news-e05-player span{font-size:11px}}
+@media(orientation:landscape) and (max-height:500px) and (max-width:1000px){
+  .news-e05-panel{gap:5px}.news-e05-player{padding:5px 8px}
+}
