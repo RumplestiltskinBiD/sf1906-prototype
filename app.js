@@ -2240,7 +2240,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='E03'
+  const projections=issue?.id==='E04'
+    ?'<li>+$2 за подтверждённую Доставку с одной или несколькими морскими погрузками. Железная дорога и склады без надбавки. При урегулировании новые рейсы обычной стоимости.</li>'
+    :issue?.id==='E03'
     ?'<li>2 разных материала, реальный маршрут или свой завершённый склад. Никаких частичных выплат.</li>'
     :issue?.id==='E02'
     ?'<li>Одно основное действие на игрока. Торговые здания считаются при проведении мероприятия, не при выходе газеты.</li>'
