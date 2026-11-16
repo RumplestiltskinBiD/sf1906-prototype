@@ -13,13 +13,13 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
-  assert.match(html,/app\.js\?v=0580-e02-trade-week/);
-  assert.match(html,/styles\.css\?v=0580-e02-trade-week/);
+  assert.match(html,/app\.js\?v=0581-e03-western-aid/);
+  assert.match(html,/styles\.css\?v=0581-e03-western-aid/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.match(app,/game-core\.js\?v=0580-e02-trade-week/);
-  assert.match(app,/newspaper-cards\.js\?v=0580-e02-trade-week/);
+  assert.match(app,/game-core\.js\?v=0581-e03-western-aid/);
+  assert.match(app,/newspaper-cards\.js\?v=0581-e03-western-aid/);
   const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
-  assert.match(core,/newspaper-cards\.js\?v=0580-e02-trade-week/);
+  assert.match(core,/newspaper-cards\.js\?v=0581-e03-western-aid/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
