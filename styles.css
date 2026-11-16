@@ -2464,6 +2464,20 @@ body.drawer-open .mobile-action-dock{
 .news-f04-choices button{display:block;width:100%;min-height:44px;padding:9px 10px;text-align:left;background:#fff9eb;color:#33271a;border:1px solid #ad906a;border-radius:6px;font:700 12px/1.45 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
 .news-f04-choices button:disabled{opacity:.55;cursor:not-allowed}
 .news-f04-choices button:focus-visible{outline:3px solid #286356;outline-offset:1px}
+.news-e02-panel{margin-top:12px;padding:12px;border:1px solid #c19e6d;border-radius:8px;background:#f7e7cb;color:#483925;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.news-e02-panel>strong{display:block;margin-bottom:7px;font-size:14px}
+.news-e02-panel>p{margin:8px 0}
+.news-e02-panel small{display:block;font-size:11px;color:#65513e}
+.news-e02-events{padding-left:20px;margin:9px 0}
+.news-e02-venues{display:grid;gap:7px;max-height:280px;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+.news-e02-venues button{display:block;min-width:0;min-height:44px;padding:9px 11px;text-align:left;white-space:normal;overflow-wrap:anywhere;background:#fff9e9;color:#493722;border:1px solid #b69b70;border-radius:8px;cursor:pointer}
+.news-e02-venues button b,.news-e02-venues button small{display:block}
+.news-e02-venues button small{font-size:11px;margin-top:4px}
+.news-e02-venues button:disabled{opacity:.57;cursor:not-allowed}
+.news-e02-venues button:focus-visible,.e02-context-btn:focus-visible{outline:3px solid #286356;outline-offset:2px}
+.e02-context-panel{display:grid;gap:7px;padding:10px;border:1px solid #c9b58e;border-radius:8px;background:#fbefd9}
+.e02-context-btn{min-width:0;min-height:42px;white-space:normal;overflow-wrap:anywhere;text-align:left}
+.e02-context-btn:disabled{opacity:.6;cursor:not-allowed}
 .news-h04-panel{margin-top:12px;padding:12px;background:#f7e7cb;border:1px solid #c19e6d;border-radius:8px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .news-h04-panel>strong{display:block;font-size:14px}
 .news-h04-panel>p{margin:7px 0 12px}
