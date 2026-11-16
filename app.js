@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
-projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
+isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -2780,13 +2780,14 @@ function renderStandardProjects(){
     p.id==='std_fire'?'П −1 · служба своего района · земля +1':
     p.id==='std_police'?'Полиция в районе · земля +1':'Медицина в районе · земля +1';
    const selected=state.pendingConstruction?.projectId===p.id;
+   const subsidized=isE05CivicSubsidy(state,p.id);
    return '<article class="standard-project-card typed-project '+(selected?'standard-selected':'')+'" '+projectTypeStyle(p)+'>'
-    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>Проект $'+STANDARD_PROJECT_FEE+' · 1 VP</span></div>'
+    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>Проект $'+(subsidized?0:STANDARD_PROJECT_FEE)+' · 1 VP</span></div>'
     +'<div class="standard-project-resource">'+resourcePills(p.materials)+'</div>'
-    +'<small>'+note+'</small>'
+    +'<small>'+(subsidized?'E05: земля и оформление $0 · материалы обычные · ': '')+note+'</small>'
     +'<button type="button" class="primary-btn standard-project-button" data-standard-build="'+p.id+'" '+(enabled?'':'disabled')+'>Выбрать район</button></article>';
  }).join('');
- el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>Без тендера · проект $'+STANDARD_PROJECT_FEE+' + земля + материалы</span></div><div class="standard-projects-grid">'+cards+'</div>';
+ el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>'+(activeNewspaper(state)?.id==='E05'&&state.newsLastResolvedRound!==state.round?'E05: пожарный, клиника, полиция — земля и сбор $0; склад оплачивается':'Без тендера · проект $'+STANDARD_PROJECT_FEE+' + земля + материалы')+'</span></div><div class="standard-projects-grid">'+cards+'</div>';
  el.querySelectorAll('[data-standard-build]').forEach(b=>b.onclick=()=>{if(pid!=null)startConstructionFlow(pid,b.dataset.standardBuild);});
 }
 function renderCityOverview(){
