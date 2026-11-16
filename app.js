@@ -1131,6 +1131,14 @@ const el=$('#deliveryPanel');if(!el)return;
 const valid=!!deliveryDraft&&deliveryDraft.playerId===currentDeveloper(state)&&canUseFreeAction(state,deliveryDraft.playerId);
 const visible=valid&&state.view==='city';
 const mobile=visible&&isMobile(),step=deliveryDraft?.step;
+const mapSourceShortcut=$('#deliverySourceToolbarBtn');
+if(mapSourceShortcut){
+  const available=mobile&&step==='source'&&!deliveryDraft.listOpen&&!e03AidPreview(state).active;
+  mapSourceShortcut.hidden=!available;
+  mapSourceShortcut.onclick=available?()=>{
+    deliveryDraft.listOpen=true;renderDeliveryPanel();
+  }:null;
+}
 document.body.classList.toggle('delivery-active',visible);
 document.body.classList.toggle('delivery-route-build',!!(mobile&&step==='route'));
 document.body.classList.toggle('delivery-unload-mode',!!(mobile&&step==='unload'));
@@ -1151,10 +1159,10 @@ el.className='delivery-panel active'
 +(mobile&&step==='unload'&&deliveryDraft.focusTargetId?' unload-target-open':'')
 +(mobile&&deliveryDraft.listOpen?' list-open':'');
 if(mobile&&step==='source'&&!deliveryDraft.listOpen){
-  // Map markers can overlap at ANY time, not only during E03.
-  // Keep the map-first workflow and provide a real, keyboard/touch-accessible
-  // source list as an alternative whenever individual markers are unreachable.
+  // Regular mobile logistics is map-first and must not cover factory/source tokens.
+  // A separate map-toolbar button opens the same real source list on demand.
   const aid=e03AidPreview(state).active;
+  if(!aid){el.className='delivery-panel';el.innerHTML='';return;}
   el.className='delivery-panel active mobile-map-source';
   el.innerHTML='<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ</small><strong>Выберите источник на карте или из списка</strong></div>'+
     '<button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>'+
