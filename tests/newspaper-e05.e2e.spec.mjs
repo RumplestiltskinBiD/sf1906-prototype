@@ -158,7 +158,7 @@ for(const vp of views){
   await expect(cards.nth(0)).toContainText('3 завершённых служб → +3 Influence');
   await expect(cards.nth(1)).toContainText('1 завершённых служб → +1 Influence');
   await expect(cards.nth(2)).toContainText('0 завершённых служб');
-  await expect(cards.nth(0)).toContainText('civic'.toUpperCase()=== 'CIVIC' ? 'Civic Center':'Civic Center');
+  await expect(cards.nth(0)).toContainText('Civic Center');
   await expect(cards.nth(0)).not.toContainText('Сиротский приют');
   await fits(page,vp);
  });
@@ -206,14 +206,14 @@ test('E05 real year-close pays once, records annual service counts and next-year
  expect(after.newsArchive[0].e05.awards.map(a=>a.count)).toEqual([6,1,0]);
  expect(after.newsArchive[0].e05.totalSites).toBe(7);
  expect(after.newsArchive[0].e05.awards[0].influenceSteps).toBe(6);
- expect(after.players[0].influence).toBe(11);
+ expect(after.players[0].influence).toBe(12,'player 0 skips occupied Influence 9 on the way to six steps');
  expect(after.players[1].influence).toBe(10);
  expect(after.players[2].influence).toBe(13);
- expect(after.yearTurnOrder[0]).toBe(2,'13 remains higher than 11');
+ expect(after.yearTurnOrder[0]).toBe(2,'13 remains higher than 12');
  await page.reload();
  const reloaded=await saved(page);
  expect(reloaded.newsArchive).toHaveLength(1);
- expect(reloaded.players[0].influence).toBe(11);
+ expect(reloaded.players[0].influence).toBe(12);
  await page.locator('#newsOpenBtn').click();
  await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('.news-headline')).toHaveText('ГОРОД БЛАГОДАРИТ СВОИХ ЗАЩИТНИКОВ!');
