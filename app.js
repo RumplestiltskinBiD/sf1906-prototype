@@ -836,6 +836,7 @@ if(isMobile())focusMapOnDistrict(src.districtId);
 }
 
 function deliveryTargetDistrict(drop){
+  if(drop.kind==='e03-aid')return E03_AID_DISTRICTS.includes(drop.id)?drop.id:null;
   if(drop.kind==='freight-yard')return FREIGHT_YARD.districtId;
   return (state.constructions||[]).find(c=>c.id===drop.id)?.districtId||null;
 }
@@ -976,6 +977,14 @@ function freightYardTarget(){return {id:FREIGHT_YARD.id,districtId:FREIGHT_YARD.
 function deliveryCanDrop(kind,id,type){
 if(!deliveryDropPhase()||(deliveryRemaining()[type]||0)<=0)return false;
 const assigned=deliveryTarget(kind,id)?.materials||[];
+if(kind==='e03-aid'){
+  const preview=e03AidPreview(state);
+  const drop=deliveryTarget(kind,id),fromStorage=(drop?.warehouseContributions||[]).map(x=>x.type);
+  return preview.active&&E03_AID_DISTRICTS.includes(id)&&deliveryDraft.route.includes(id)&&
+    !preview.claims.some(x=>x.playerId===deliveryDraft.playerId||x.districtId===id)&&
+    E03_AID_MATERIALS.includes(type)&&assigned.length+fromStorage.length<2&&
+    ![...assigned,...fromStorage].includes(type);
+}
 if(kind==='freight-yard')return type in RESOURCE_PRICES&&id===FREIGHT_YARD.id&&deliveryDraft.source?.kind!=='freight-yard'&&deliveryDraft.route.includes(FREIGHT_YARD.districtId)&&freightYardInventory(state,deliveryDraft.playerId).length+assigned.length<FREIGHT_YARD.capacityPerPlayer;
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||!deliveryDraft.route.includes(con.districtId))return false;
@@ -993,6 +1002,7 @@ return RESOURCE_ORDER.every(t=>Math.max(0,(req[t]||0)-(cc[t]||0))<=(left[t]||0))
 }
 function deliveryRouteTargetKind(con){
 if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return null;
+if(con.kind==='e03-aid')return e03AidPreview(state).active?'e03-aid':null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
 if(con.status==='complete'&&goodsBuyerCapacity(con.projectId)>0)return 'goods-sale';
 if(con.status==='complete'&&con.projectId==='rare_goods_shop')return 'contraband-sale';
@@ -1000,9 +1010,12 @@ if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='bakery'&&con.status==='complete'?'bakery':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
 function deliveryTargetKind(con){return deliveryDropPhase()?deliveryRouteTargetKind(con):null;}
-function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());return a;}
+function deliveryRouteTargets(){const a=(state.constructions||[]).filter(x=>deliveryRouteTargetKind(x));
+if(e03AidPreview(state).active){const preview=e03AidPreview(state);for(const districtId of E03_AID_DISTRICTS){if(deliveryDraft?.route?.includes(districtId)&&!preview.claims.some(x=>x.districtId===districtId||x.playerId===deliveryDraft.playerId))a.push({id:districtId,districtId,kind:'e03-aid'});}}
+if(deliveryDraft?.route?.includes(FREIGHT_YARD.districtId)&&deliveryDraft.source?.kind!=='freight-yard')a.push(freightYardTarget());return a;}
 function deliveryRouteTargetCanAcceptAny(con){
 const kind=deliveryRouteTargetKind(con);if(!kind)return false;
+if(kind==='e03-aid')return E03_AID_MATERIALS.some(type=>deliveryCanDrop(kind,con.id,type));
 if(kind==='freight-yard')return freightYardInventory(state,deliveryDraft.playerId).length<FREIGHT_YARD.capacityPerPlayer;
 if(kind==='goods-sale')return PINK_GOODS.some(type=>deliveryCanDrop(kind,con.id,type));
 if(kind==='contraband-sale')return deliveryCanDrop(kind,con.id,CONTRABAND_CARGO);
@@ -1036,11 +1049,54 @@ let d=deliveryTarget(kind,id);if(!d){const district=deliveryTargetDistrict({kind
 if(kind==='goods-sale'){d.goodsSourceIds=d.goodsSourceIds||[];d.goodsSourceIds.push(deliveryPinkOriginForDrop(id,type));}
 render();
 }
+
+function e03WarehouseContributionButtons(id){
+  if(!deliveryDraft||!E03_AID_DISTRICTS.includes(id))return '';
+  const drop=deliveryTarget('e03-aid',id);
+  const stored=drop?.warehouseContributions||[],fresh=drop?.materials||[];
+  if(stored.length+fresh.length>=2)return '';
+  const collected=[...fresh,...stored.map(x=>x.type)];
+  const sources=completedWarehouses(state,deliveryDraft.playerId,id);
+  const buttons=[];
+  for(const wh of sources){
+    const inv=[...(wh.warehouseInventory||[])];
+    const loaded=[{source:deliveryDraft.source,cargo:deliveryDraft.cargo},...(deliveryDraft.pickups||[])]
+      .filter(p=>p.source?.kind==='warehouse'&&p.source.id===wh.id).flatMap(p=>p.cargo||[]);
+    for(const type of E03_AID_MATERIALS){
+      const already=(stored.filter(c=>c.warehouseId===wh.id&&c.type===type).length)+
+        loaded.filter(t=>t===type).length;
+      if(inv.filter(t=>t===type).length<=already||collected.includes(type))continue;
+      buttons.push('<button type="button" data-e03-warehouse="'+escapeHtml(String(wh.id))+
+        '" data-e03-warehouse-district="'+id+'" data-e03-warehouse-type="'+type+'">'+
+        escapeHtml(projectById(wh.projectId)?.name||'Склад')+' · '+materialLabel(type)+'</button>');
+    }
+  }
+  return buttons.length?'<div class="delivery-e03-stock"><small>Добавить один материал из своего готового склада в этом районе (без новой поездки)</small>'+
+    buttons.join('')+'</div>':'';
+}
+function addE03DeliveryStock(id,warehouseId,type){
+  if(!deliveryDropPhase()||!E03_AID_DISTRICTS.includes(id)||!deliveryDraft.route.includes(id))return;
+  const wh=completedWarehouses(state,deliveryDraft.playerId,id).find(w=>String(w.id)===String(warehouseId));
+  const allowed=E03_AID_MATERIALS.includes(type);
+  if(!wh||!allowed)return;
+  let drop=deliveryTarget('e03-aid',id);
+  if(!drop){drop={kind:'e03-aid',id,routeIndex:deliveryDraft.route.lastIndexOf(id),materials:[],warehouseContributions:[]};deliveryDraft.drops.push(drop);}
+  const stored=drop.warehouseContributions||[],used=[...drop.materials,...stored.map(x=>x.type)];
+  const pickupUsed=[{source:deliveryDraft.source,cargo:deliveryDraft.cargo},...(deliveryDraft.pickups||[])]
+    .filter(p=>p.source?.kind==='warehouse'&&String(p.source.id)===String(wh.id))
+    .flatMap(p=>p.cargo||[]);
+  const requested=stored.filter(c=>String(c.warehouseId)===String(wh.id)).map(c=>c.type);
+  if(used.length>=2||used.includes(type)||
+     (wh.warehouseInventory||[]).filter(x=>x===type).length<=
+     [...requested,...pickupUsed].filter(x=>x===type).length)return;
+  drop.warehouseContributions=stored.concat({warehouseId:wh.id,type});
+  render();
+}
 function clearDeliveryDrops(){
 if(deliveryDraft&&['route','unload'].includes(deliveryDraft.step)){deliveryDraft.drops=[];deliveryDraft.focusTargetId=null;render();}
 }
 function deliveryPlan(){
-return {playerId:deliveryDraft.playerId,arrestWorkerId:deliveryDraft.arrestWorkerId||null,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials],...(d.goodsSourceIds?{goodsSourceIds:[...d.goodsSourceIds]}:{})}))};
+return {playerId:deliveryDraft.playerId,arrestWorkerId:deliveryDraft.arrestWorkerId||null,source:{...deliveryDraft.source},haulerId:deliveryDraft.haulerId,cargo:[...deliveryDraft.cargo],pickups:(deliveryDraft.pickups||[]).map(p=>({source:{...p.source},routeIndex:p.routeIndex,cargo:[...p.cargo]})),route:[...deliveryDraft.route],drops:(deliveryDraft.drops||[]).filter(d=>d.materials.length).map(d=>({kind:d.kind,id:d.id,routeIndex:d.routeIndex,materials:[...d.materials],...(d.goodsSourceIds?{goodsSourceIds:[...d.goodsSourceIds]}:{}),...(d.warehouseContributions?{warehouseContributions:d.warehouseContributions.map(c=>({...c}))}:{})}))};
 }
 function confirmDeliveryRoute(){
 if(!isMobile()||deliveryDraft?.step!=='route')return;
