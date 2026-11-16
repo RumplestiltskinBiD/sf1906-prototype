@@ -2182,6 +2182,7 @@ function validateRoute(route,sourceDistrictId){
 }
 
 function targetDistrictId(state,target){
+  if(target.kind==='e03-aid')return E03_AID_DISTRICTS.includes(target.id)?target.id:null;
   if(target.kind==='construction'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
@@ -2252,6 +2253,8 @@ export function validateDeliveryPlan(state,plan){
   if(plan.drops!==undefined&&!Array.isArray(plan.drops))return {ok:false,reason:'drops'};
   const drops=plan.drops||[];
   if(!multisetEquals(deliveryAllCargo(plan),drops.flatMap(d=>d.materials||[])))return {ok:false,reason:'unassigned'};
+  const aidDrops=drops.filter(d=>d?.kind==='e03-aid');
+  if(aidDrops.length>1)return {ok:false,reason:'aid-limit'};
   const dropsByStop=new Map(),constructionDraft=new Map(),warehouseDraft=new Map(),goodsBuyerDraft=new Map();
   let freightYardDraft=[...freightYardInventory(state,plan.playerId)];
   for(const drop of drops){
@@ -2261,7 +2264,13 @@ export function validateDeliveryPlan(state,plan){
     if(!districtId||!Number.isInteger(idx)||idx<0||idx>=route.length||route[idx]!==districtId)return {ok:false,reason:'target-route'};
     if(!dropsByStop.has(idx))dropsByStop.set(idx,[]);
     dropsByStop.get(idx).push(...drop.materials);
-    if(drop.kind==='goods-sale'){
+    if(drop.kind==='e03-aid'){
+      if(drop.materials.length<1||drop.materials.length>2)
+        return {ok:false,reason:'aid-materials'};
+      const check=e03ValidateMaterials(state,plan.playerId,drop.id,drop.materials,
+        drop.warehouseContributions||[],pickups);
+      if(!check.ok)return check;
+    }else if(drop.kind==='goods-sale'){
       const target=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!target||target.status!=='complete'||!goodsBuyerCapacity(target.projectId)
         ||drop.materials.some(t=>!PINK_GOODS.includes(t))||!Array.isArray(drop.goodsSourceIds)
@@ -2396,7 +2405,16 @@ function executeDeliveryCore(state,plan){
   if(cost.procurementUsed)state.procurementRemaining=Math.max(0,(state.procurementRemaining||0)-cost.procurementUsed);
   const constructionIds=[];
   for(const drop of plan.drops||[]){
-    if(drop.kind==='construction'){
+    if(drop.kind==='e03-aid'){
+      for(const item of drop.warehouseContributions||[]){
+        const wh=state.constructions.find(c=>c.id===item.warehouseId);
+        removeMaterials(wh.warehouseInventory,[item.type]);
+      }
+      e03Award(state,plan.playerId,drop.id,
+        [...drop.materials,...(drop.warehouseContributions||[]).map(x=>x.type)],
+        (drop.warehouseContributions||[]).length?'delivery-and-warehouse':'delivery',
+        drop.warehouseContributions||[]);
+    }else if(drop.kind==='construction'){
       const con=state.constructions.find(c=>c.id===drop.id);
       con.materialsDelivered=con.materialsDelivered||[];
       con.materialsDelivered.push(...drop.materials);
@@ -2434,9 +2452,9 @@ function executeDeliveryCore(state,plan){
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
   const pickupText=pickups.map(p=>p.source.kind==='stolen'?('Похищенная партия · '+(LOGISTICS_NODES.find(n=>n.id===p.source.id)?.name||p.source.id)):(deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id)).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
-    const con=d.kind==='freight-yard'?null:state.constructions.find(c=>c.id===d.id);
-    const districtName=d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
-    const dest=d.kind==='freight-yard'?FREIGHT_YARD.name:
+    const con=['freight-yard','e03-aid'].includes(d.kind)?null:state.constructions.find(c=>c.id===d.id);
+    const districtName=d.kind==='e03-aid'?districtById(d.id)?.name:d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
+    const dest=d.kind==='e03-aid'?'Фонд помощи E03':d.kind==='freight-yard'?FREIGHT_YARD.name:
       d.kind==='warehouse'?'Warehouse':d.kind==='bakery'?'Пекарня':'«'+(projectById(con?.projectId)?.name||'стройка')+'»';
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
