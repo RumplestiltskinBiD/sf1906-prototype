@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,deliveryNeighbors,RESOURCE_PRICES} from '../game-core.js';
+import {createInitialState,createH02Incident,deliveryNeighbors,RESOURCE_PRICES} from '../game-core.js';
 const KEY='sf1906_phase1_ui_v030a';
 const views=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
 function store(id,district='sunset',stock=['Lumber','Steel'],owner=0,status='complete',projectId='warehouse'){
@@ -59,6 +59,7 @@ for(const vp of views){
   await expect(page.locator('[data-e03-token]')).toHaveCount(2);
   await news(page,vp);
   await expect(page.locator('.news-headline')).toHaveText('ЗАПАДНЫЕ КВАРТАЛЫ ПРОСЯТ ПОМОЩИ!');
+  await expect(page.locator('#newsSheetContent .news-forecast > b')).toHaveText('ПОМОЩЬ ЗАПАДНЫМ КВАРТАЛАМ');
   await expect(page.locator('.news-e03-panel')).toContainText('+$13, +2 VP и +1 Influence');
   await expect(page.locator('[data-e03-store-district="outerrichmond"]')).toBeEnabled();
   const before=await saved(page);
@@ -170,4 +171,42 @@ test('E03 invalid missing stock and wrong district never show warehouse claim; l
  await page.locator('[data-news-archive="0"]').click();
  await expect(page.locator('.news-headline')).toHaveText('Грузы и новые заказы');
  await expect(page.locator('#newsSheetContent')).toContainText('Архив предыдущей редакции E03');
+});
+
+test('E03 browser delivery displays and charges persistent H02 double road tariff',async({page})=>{
+ const s=game({warehouses:[]});
+ s.newsH02Incident=createH02Incident(1,()=>.3);
+ await page.setViewportSize({width:1366,height:768});
+ await seed(page,s);
+ const queue=[['soma']],seen=new Set(['soma']);
+ let road;
+ for(let i=0;i<queue.length;i++){
+  const current=queue[i];
+  if(current.at(-1)==='outerrichmond'){road=current;break;}
+  for(const next of deliveryNeighbors(current.at(-1))){
+   if(!seen.has(next)){seen.add(next);queue.push([...current,next]);}
+  }
+ }
+ expect(road).toBeTruthy();
+ const expectedCost=RESOURCE_PRICES.Lumber+RESOURCE_PRICES.Steel+2*(road.length-1);
+ await page.locator('#actionDelivery').click();
+ await page.locator('[data-ds-node="southernpacific"]').click();
+ await page.locator('[data-hauler="dray2a"]').click();
+ await page.locator('[data-load="Lumber"]').click();
+ await page.locator('[data-load="Steel"]').click();
+ await page.locator('#deliveryBeginRoute').click();
+ for(const districtId of road.slice(1))await page.locator('[data-route-next="'+districtId+'"]').click();
+ await page.locator('[data-drop-kind="e03-aid"][data-drop-type="Lumber"]').click();
+ await page.locator('[data-drop-kind="e03-aid"][data-drop-type="Steel"]').click();
+ await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+ await expect(page.locator('#deliveryConfirm')).toContainText('Подтвердить доставку · $'+expectedCost);
+ const before=await saved(page);
+ await page.locator('#deliveryConfirm').click();
+ const after=await saved(page);
+ expect(after.newsE03Aid.claims).toHaveLength(1);
+ expect(after.newsE03Aid.claims[0]).toMatchObject({districtId:'outerrichmond',via:'delivery',capital:13,prestige:2,influenceSteps:1});
+ expect(after.players[0].capital).toBe(before.players[0].capital+13-expectedCost);
+ expect(after.players[0].prestige).toBe(before.players[0].prestige+2);
+ expect(after.logisticsSupply.southernpacific).toEqual(['Masonry','Steel']);
+ expect(after.lastDeliveryKey).toBeTruthy();
 });
