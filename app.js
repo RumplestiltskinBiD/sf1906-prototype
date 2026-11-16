@@ -1151,16 +1151,14 @@ el.className='delivery-panel active'
 +(mobile&&step==='unload'&&deliveryDraft.focusTargetId?' unload-target-open':'')
 +(mobile&&deliveryDraft.listOpen?' list-open':'');
 if(mobile&&step==='source'&&!deliveryDraft.listOpen){
-  // When E03 requires a precise two-material handoff, provide an accessible
-  // source list even if multiple physical warehouse tokens overlap on the map.
-  // Ordinary map-first logistics keeps its established UI in other years.
-  if(!e03AidPreview(state).active){
-    el.className='delivery-panel';el.innerHTML='';return;
-  }
+  // Map markers can overlap at ANY time, not only during E03.
+  // Keep the map-first workflow and provide a real, keyboard/touch-accessible
+  // source list as an alternative whenever individual markers are unreachable.
+  const aid=e03AidPreview(state).active;
   el.className='delivery-panel active mobile-map-source';
   el.innerHTML='<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ</small><strong>Выберите источник на карте или из списка</strong></div>'+
     '<button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>'+
-    '<div class="delivery-map-prompt"><b>Помощь E03 · материалы Д / К / С</b>'+
+    '<div class="delivery-map-prompt"><b>'+(aid?'Помощь E03 · материалы Д / К / С':'Доставка · выбор источника')+'</b>'+
     '<button id="deliveryShowSourceList" type="button" class="ghost-btn">Список источников</button></div>';
   $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
   $('#deliveryShowSourceList')?.addEventListener('click',()=>{
