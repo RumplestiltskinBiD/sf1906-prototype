@@ -460,7 +460,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E03",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E03_V2.md",
       "title": "Западные кварталы просят помощи",
       "eventType": "one-year-community-material-aid",
@@ -479,12 +479,12 @@ export const NEWS_CARDS=Object.freeze([
       "rewardEachDistrict": {"capital": 13, "prestige": 2, "influence": 1}
     },
     "category": "Экономика",
-    "title": "Грузы и новые заказы",
-    "article": "Спрос на изделия фабрик растёт, а склады работают без передышки. Газета ожидает дополнительную прибыль для производителей.",
-    "target": "industry-logistics",
+    "title": "ЗАПАДНЫЕ КВАРТАЛЫ ПРОСЯТ ПОМОЩИ!",
+    "article": "Рабочим семьям западных окраин не хватает средств на строительство и ремонт жилья. Газета призывает состоятельных горожан помочь с доставкой материалов; благотворительный фонд возместит расходы.",
+    "target": "none",
     "resource": "capital",
-    "delta": 2,
-    "frequency": "perDistrict",
+    "delta": 0,
+    "frequency": "oncePerYear",
     "defense": null
   },
   {
