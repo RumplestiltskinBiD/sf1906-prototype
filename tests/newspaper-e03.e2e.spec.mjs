@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,deliveryNeighbors} from '../game-core.js';
+import {createInitialState,deliveryNeighbors,RESOURCE_PRICES} from '../game-core.js';
 const KEY='sf1906_phase1_ui_v030a';
 const views=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
 function store(id,district='sunset',stock=['Lumber','Steel'],owner=0,status='complete',projectId='warehouse'){
@@ -149,7 +149,7 @@ test('E03 desktop long-haul from Southern Pacific to Outer Richmond uses real ro
  await page.locator('#deliveryConfirm').click();
  const after=await saved(page);
  expect(after.newsE03Aid.claims[0]).toMatchObject({districtId:'outerrichmond',via:'delivery'});
- expect(after.players[0].capital).toBe(before.players[0].capital+13-(3+5+road.length-1));
+ expect(after.players[0].capital).toBe(before.players[0].capital+13-(RESOURCE_PRICES.Lumber+RESOURCE_PRICES.Steel+road.length-1));
  expect(after.logisticsSupply.southernpacific).toEqual(['Masonry','Steel']);
 });
 test('E03 invalid missing stock and wrong district never show warehouse claim; legacy archive preserved',async({page})=>{
