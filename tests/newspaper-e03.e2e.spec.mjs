@@ -11,6 +11,7 @@ function game({district='sunset',warehouses=[store('W1')],round=1}={}){
  const s=createInitialState({rng:()=>.31});
  s.phase='development';s.view='city';s.round=round;
  s.newsCurrentIds=['E03'];s.newsLastResolvedRound=round-1;
+ s.newsH02Incident=null; // Baseline $1/edge; persistent H02 tariff is verified separately in core.
  s.newsDeck=s.newsDeck.filter(id=>id!=='E03');s.newsE03Aid={round,claims:[]};
  s.developmentComplete=false;s.developmentPlayer=0;s.activationMainActionUsed=false;
  s.developmentSlotsUsed=[0,0,0];s.players.forEach((p,i)=>{
@@ -36,8 +37,12 @@ async function news(page,vp){
 }
 async function deliveryFromWarehouse(page,vp,id='W1',types=['Lumber','Steel']){
  await page.locator('#actionDelivery').click();
- if(vp.width<1000)await page.locator('[data-delivery-warehouse="'+id+'"]').click();
- else await page.locator('[data-ds-wh="'+id+'"]').click();
+ if(vp.width<1000){
+  // Use real fallback for overlapping warehouse map tokens.
+  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
+  await page.locator('#deliveryShowSourceList').click();
+ }
+ await page.locator('[data-ds-wh="'+id+'"]').click();
  await page.locator('[data-hauler="dray2a"]').click();
  for(const type of types)await page.locator('[data-load="'+type+'"]').click();
  await page.locator('#deliveryBeginRoute').click();
@@ -85,7 +90,8 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
   await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
   await page.locator('#deliveryLockRoute').click();
   await expect(page.locator('.e03-map-token[data-e03-token="sunset"]')).toBeVisible();
-  await page.locator('.e03-map-token[data-e03-token="sunset"]').click();
+  await expect(page.locator('[data-e03-unload-target="sunset"]')).toBeVisible();
+  await page.locator('[data-e03-unload-target="sunset"]').click();
   await expect(page.locator('[data-drop-kind="e03-aid"][data-drop-type="Lumber"]')).toBeEnabled();
   await page.locator('[data-drop-kind="e03-aid"][data-drop-type="Lumber"]').click();
   await page.locator('[data-drop-kind="e03-aid"][data-drop-type="Steel"]').click();
@@ -110,7 +116,8 @@ test('E03 mobile mixed new cargo and one local warehouse cube is one atomic hand
  await seed(page,game({warehouses:[store('SOURCE','sunset',['Lumber']),store('STOCK','sunset',['Steel'])]}));
  await deliveryFromWarehouse(page,vp,'SOURCE',['Lumber']);
  await page.locator('#deliveryLockRoute').click();
- await page.locator('.e03-map-token[data-e03-token="sunset"]').click();
+ await expect(page.locator('[data-e03-unload-target="sunset"]')).toBeVisible();
+  await page.locator('[data-e03-unload-target="sunset"]').click();
  await page.locator('[data-drop-kind="e03-aid"][data-drop-type="Lumber"]').click();
  await expect(page.locator('[data-e03-warehouse="STOCK"][data-e03-warehouse-type="Steel"]')).toBeEnabled();
  await page.locator('[data-e03-warehouse="STOCK"][data-e03-warehouse-type="Steel"]').click();
