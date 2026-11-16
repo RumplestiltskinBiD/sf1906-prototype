@@ -176,7 +176,7 @@ test('normal worker movement from adjacent district consumes one action and move
 
 test('nonadjacent worker cannot teleport to distant fair; failed action does not mutate any state',()=>{
  const s=game();
- site(s,'DISTANT','shops',1,'outer_sunset');
+ site(s,'DISTANT','shops',1,'sunset');
  const options=G.e02TradeOptions(s,0);
  assert.equal(options.venues.length,1);
  assert.equal(options.venues[0].reachable,false);
