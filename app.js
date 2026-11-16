@@ -1501,6 +1501,36 @@ function renderC02MapMarker(lot){
   label.setAttribute('x',x);label.setAttribute('y',y+6);label.setAttribute('text-anchor','middle');
   label.textContent='▣';marker.append(circle,label);group.append(marker);
 }
+function renderE03MapTokens(preview){
+  $('.e03-map-token').forEach(el=>el.remove());
+  if(!preview?.active)return;
+  for(const token of preview.tokens){
+    const group=$('[data-district]').find(g=>g.dataset.district===token.districtId);
+    const path=group?.querySelector('path');
+    if(!path||typeof path.getBBox!=='function')continue;
+    const box=path.getBBox(),ns='http://www.w3.org/2000/svg';
+    const marker=document.createElementNS(ns,'g'),circle=document.createElementNS(ns,'circle'),label=document.createElementNS(ns,'text');
+    const x=box.x+box.width/2,y=box.y+box.height/2;
+    marker.classList.add('e03-map-token');
+    if(token.claimed)marker.classList.add('claimed');
+    marker.dataset.e03Token=token.districtId;
+    marker.setAttribute('role','img');
+    marker.setAttribute('aria-label','Помощь '+(districtById(token.districtId)?.name||token.districtId)+
+      (token.claimed?' — выполнено':' — 2 разных стройматериала'));
+    circle.setAttribute('cx',x);circle.setAttribute('cy',y);circle.setAttribute('r',17);
+    label.setAttribute('x',x);label.setAttribute('y',y+6);label.setAttribute('text-anchor','middle');
+    label.textContent=token.claimed?'✓':'▣';
+    marker.append(circle,label);
+    marker.addEventListener('click',event=>{
+      if(!token.claimed&&deliveryDraft?.step==='unload'&&deliveryDraft.route?.includes(token.districtId)&&
+         deliveryRouteTargets().some(t=>t.kind==='e03-aid'&&t.id===token.districtId)){
+        event.stopPropagation();
+        deliveryDraft.focusTargetId=token.districtId;render();
+      }
+    });
+    group.append(marker);
+  }
+}
 function renderC01MapMarker(incident){
   $$('.c01-map-marker').forEach(marker=>marker.remove());
   if(!incident?.active)return;
@@ -1557,6 +1587,7 @@ function renderNewspaper(){
   renderH02MapMarker(persistentH02);
   renderC01MapMarker(persistentC01);
   renderC02MapMarker(persistentC02);
+  renderE03MapTokens(card?.id==='E03'?forecast.e03:null);
   $('#newsSheet').hidden=!newsSheetOpen;
   $('#newsBackdrop').hidden=!newsSheetOpen;
   document.body.classList.toggle('news-sheet-open',newsSheetOpen);
