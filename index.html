@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#171b1d" />
   <title>San Francisco 1906 — v0.53.1 Desktop HUD Fix</title>
-  <link rel="stylesheet" href="./styles.css?v=0580-e02-trade-week" />
+  <link rel="stylesheet" href="./styles.css?v=0581-e03-western-aid" />
 </head>
 <body>
 <div class="app-shell">
@@ -96,6 +96,7 @@
         <div class="city-board-wrap">
           <div class="city-board-toolbar">
             <span class="map-toolbar-label">КАРТА</span>
+            <button type="button" id="deliverySourceToolbarBtn" class="delivery-source-shortcut" hidden>Список источников</button>
             <button type="button" class="news-emergency-cancel-mobile" id="newsEmergencyCancelMobile" hidden>Отменить экстренные меры</button>
             <button type="button" class="city-objects-shortcut" id="cityObjectsShortcut" aria-label="Открыть список строек, складов и необходимых материалов" hidden>Стройки 0 · Склады 0</button>
             <span class="map-risk-controls"><button type="button" id="riskViewBtn" aria-pressed="false">РИСК</button></span>
@@ -134,6 +135,8 @@
             <g id="deliveryRouteLayer" transform="translate(0 -11)"></g>
             <g id="constructionLayer" transform="translate(0 -11)"></g>
             <g id="workerLayer" transform="translate(0 -11)"></g>
+            <!-- E03 charity tokens above construction/worker tokens for touch hit-testing. -->
+            <g id="e03TokenLayer" transform="translate(0 -11)"></g>
             <!-- Neutral newspaper landmark (non-destructive overlay; location provisional). -->
             <g id="callBuildingNode" class="call-building-node" role="button" tabindex="0" aria-label="Открыть The San Francisco Call" transform="translate(1065 365)">
               <rect class="call-building-pin" x="-24" y="-14" width="48" height="28" rx="5"></rect>
@@ -192,6 +195,6 @@
 <div class="v051-decision-backdrop press-backdrop" id="pressCampaignBackdrop" hidden></div>
 <section class="v051-decision-sheet press-sheet" id="pressCampaignSheet" role="dialog" aria-modal="true" aria-label="Газетный небоскрёб — выбор кампании" hidden></section>
 <div class="toast" id="toast"></div>
-<script type="module" src="./app.js?v=0580-e02-trade-week"></script>
+<script type="module" src="./app.js?v=0581-e03-western-aid"></script>
 </body>
 </html>

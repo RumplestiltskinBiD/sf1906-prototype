@@ -2464,6 +2464,28 @@ body.drawer-open .mobile-action-dock{
 .news-f04-choices button{display:block;width:100%;min-height:44px;padding:9px 10px;text-align:left;background:#fff9eb;color:#33271a;border:1px solid #ad906a;border-radius:6px;font:700 12px/1.45 system-ui,sans-serif;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
 .news-f04-choices button:disabled{opacity:.55;cursor:not-allowed}
 .news-f04-choices button:focus-visible{outline:3px solid #286356;outline-offset:1px}
+.news-e03-panel{margin-top:12px;padding:12px;border:1px solid #bc9b70;border-radius:8px;background:#f6e9d1;color:#423526;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.news-e03-panel>strong{display:block;font-size:14px;margin-bottom:8px}
+.news-e03-panel p{margin:7px 0}
+.news-e03-tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:9px;margin:11px 0}
+.news-e03-token{padding:10px;border:1px solid #b89970;border-radius:7px;min-width:0;background:#fff8e9}
+.news-e03-token.claimed{background:#edf2e5}
+.news-e03-token strong,.news-e03-token small{display:block}
+.news-e03-token small{margin-top:6px;font-size:11px;color:#67543c}
+.news-e03-store-pairs{display:grid;gap:5px;max-height:180px;overflow-y:auto;margin-top:9px}
+.news-e03-store-pairs button{min-height:44px;text-align:left;white-space:normal;overflow-wrap:anywhere;border:1px solid #a58b65;border-radius:6px;background:#fff;padding:8px;color:#3b3025;cursor:pointer}
+.news-e03-store-pairs button:disabled{opacity:.55;cursor:not-allowed}
+.delivery-e03-choose{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;min-width:0}
+.delivery-e03-choose button{min-height:38px;flex:1 1 170px;min-width:0;max-width:100%;font-size:11px;border:1px solid #996f38;border-radius:7px;padding:6px 9px;background:#fff1d1;color:#443020;cursor:pointer;white-space:normal;overflow-wrap:anywhere;text-align:center;font-weight:750}
+.delivery-e03-choose button:focus-visible{outline:3px solid #256c6d;outline-offset:2px}
+@media(orientation:landscape) and (max-height:500px) and (max-width:1000px){.delivery-e03-choose{margin-top:2px}.delivery-e03-choose button{min-height:34px;font-size:9px;padding:4px}}
+.delivery-e03-stock{display:grid;gap:4px;padding:7px;margin-top:5px;border-radius:6px;background:#edf0e5;max-height:160px;overflow-y:auto}
+.delivery-e03-stock button{display:block;min-height:40px;width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;border:1px solid #8b9a80;border-radius:6px;background:white;color:#2b3c2b;padding:6px}
+.news-e03-store-pairs button:focus-visible,.delivery-e03-stock button:focus-visible{outline:3px solid #2a6256;outline-offset:1px}
+.e03-map-token circle{fill:#f3d49c;stroke:#56402c;stroke-width:2;pointer-events:visiblePainted}
+.e03-map-token text{fill:#513720;font-size:22px;pointer-events:none;font-weight:bold}
+.e03-map-token.claimed circle{fill:#b6c6af;stroke:#516650}
+.e03-map-token.claimed text{fill:#37543c}
 .news-e02-panel{margin-top:12px;padding:12px;border:1px solid #c19e6d;border-radius:8px;background:#f7e7cb;color:#483925;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
 .news-e02-panel>strong{display:block;margin-bottom:7px;font-size:14px}
 .news-e02-panel>p{margin:8px 0}
@@ -3284,4 +3306,56 @@ body.delivery-route-build #deliveryRouteLayer *{
  .c03-offer-panel .sticky-copy{flex-basis:100%}
  .c03-offer-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px}
  .c03-offer-actions button{font-size:12px;padding:9px 6px;min-width:0}
+}
+
+/* Mobile map markers can overlap. This optional list exposes the same real
+   unload targets without intercepting map-first delivery or inventing a route. */
+@media (max-width:1000px){
+  .delivery-mobile-target-picker{display:grid;gap:4px;margin-top:5px;min-width:0}
+  .delivery-mobile-target-picker>.ghost-btn{min-height:32px;font-size:10px}
+  .delivery-mobile-target-list{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+    max-height:min(24vh,170px);overflow-y:auto;overscroll-behavior:contain;
+    padding:3px;border-radius:7px;background:#ede4d6
+  }
+  .delivery-mobile-target-list button{
+    min-height:38px;min-width:0;padding:5px 7px;text-align:left;
+    white-space:normal;overflow-wrap:anywhere;font-size:10px;font-weight:650;
+    color:#3b3025;background:#fff;border:1px solid #9c917f;border-radius:6px;
+    cursor:pointer
+  }
+  .delivery-mobile-target-list button:focus-visible{outline:3px solid #256c6d;outline-offset:1px}
+}
+@media (max-width:1000px) and (orientation:landscape) and (max-height:500px){
+  .delivery-mobile-target-list{max-height:18vh}
+  .delivery-mobile-target-list button{min-height:32px;font-size:9px}
+}
+
+/* Optional mobile source picker lives in the map toolbar, never in a
+   blocking Delivery panel until expressly opened by the player. */
+.delivery-source-shortcut[hidden]{display:none!important}
+.delivery-source-shortcut{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:34px;padding:5px 9px;border:1px solid #39766f;border-radius:7px;
+  background:#e2f4ed;color:#224f4b;font-size:11px;font-weight:800;
+  cursor:pointer;white-space:nowrap
+}
+.delivery-source-shortcut:focus-visible{outline:3px solid #d2a74d;outline-offset:2px}
+
+/* Landscape unload: keep the actual map target tappable above the action dock.
+   The bottom nav is redundant during a modal Delivery and otherwise overlaps
+   low map tokens; all interactive dock controls remain fully clickable. */
+@media (orientation:landscape) and (max-height:500px) and (max-width:960px){
+  body.delivery-unload-mode .nav-rail{display:none!important}
+  body.delivery-unload-mode .delivery-panel.mobile-unload{
+    bottom:5px!important;
+    pointer-events:none!important;
+  }
+  body.delivery-unload-mode .delivery-panel.mobile-unload button,
+  body.delivery-unload-mode .delivery-panel.mobile-unload input,
+  body.delivery-unload-mode .delivery-panel.mobile-unload select,
+  body.delivery-unload-mode .delivery-panel.mobile-unload .delivery-mobile-target-list,
+  body.delivery-unload-mode .delivery-panel.mobile-unload .delivery-e03-stock{
+    pointer-events:auto!important;
+  }
 }
