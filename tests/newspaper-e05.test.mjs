@@ -246,7 +246,7 @@ test('year-end E05 reward changes NEXT year order without extra worker action or
  assert.equal(r.ok,true,JSON.stringify(r));
  assert.equal(s.round,2);
  assert.equal(s.newsArchive.find(a=>a.cardId==='E05').e05.awards[0].count,6);
- assert.equal(s.yearTurnOrder[0],0,'next year's order uses E05 Influence');
+ assert.equal(s.yearTurnOrder[0],0,'next-year order uses E05 Influence');
  assert.equal(s.players[0].influence,13,'occupied 7 and 9 must be skipped across six real steps');
  assert.deepEqual(s.players.map(p=>p.prestige),initial.map(p=>p.prestige),'E05 itself awards no VP');
  assert.equal(s.newsCurrentIds[0],'E06');
