@@ -3241,12 +3241,10 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
        !Array.isArray(state.newsE01Contracts.claims))
       state.newsE01Contracts={round:state.round,claims:[]};
   }else if(!Object.hasOwn(state,'newsE01Contracts'))state.newsE01Contracts=null;
-  // E02 legacy in-progress saves start with an empty annual ledger, never with retroactive rewards.
-  if(activeNewspaper(state)?.id==='E02'&&state.newsLastResolvedRound!==state.round){
-    if(!state.newsE02TradeWeek||state.newsE02TradeWeek.round!==state.round||
-       !Array.isArray(state.newsE02TradeWeek.events))
-      state.newsE02TradeWeek={round:state.round,events:[]};
-  }else if(!Object.hasOwn(state,'newsE02TradeWeek'))state.newsE02TradeWeek=null;
+  // Lazy E02 upgrade: active older saves can have no/current-year stale ledger.
+  // Read-only previews treat them as unused; the first real organizer action
+  // creates the ledger. Never mutate unrelated saves during ensureNewspaper.
+  if(!Object.hasOwn(state,'newsE02TradeWeek'))state.newsE02TradeWeek=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
