@@ -193,7 +193,7 @@ test('card base VP is shown once and legacy prestige copy is absent',async()=>{
 // Fail in the fast core phase if a newspaper E2E spec contains a syntax error.
 // Otherwise Playwright may discover the defect only after installing Chromium.
 test('newspaper browser specifications parse before full browser regression',()=>{
-  for(const file of ['tests/newspaper.e2e.spec.mjs','tests/newspaper-e03.e2e.spec.mjs']){
+  for(const file of ['tests/newspaper.e2e.spec.mjs','tests/newspaper-e03.e2e.spec.mjs','tests/newspaper-e04.e2e.spec.mjs']){
     const parsed=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
     assert.equal(parsed.status,0,file+' syntax error:\n'+(parsed.stderr||parsed.stdout));
   }
