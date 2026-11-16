@@ -349,7 +349,7 @@ test('mobile Delivery can rent the Western Freight Yard and shows the $2 fee bef
   await page.locator('[data-hauler="dray2a"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await page.locator('#deliveryBeginRoute').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   await page.locator('[data-district="western"]').click();
   await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
   await page.locator('#deliveryLockRoute').click();
@@ -526,7 +526,7 @@ test('Office Begin Construction button works and creates a construction through 
   await expect(page.locator('[data-start-project="tenement"]')).toBeEnabled();
   await page.locator('[data-start-project="tenement"]').click();
   await expect(page.locator('#constructionMode')).toHaveClass(/active/);
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   await expect(page.locator('#confirmConstruction')).toBeVisible();
   await page.locator('#confirmConstruction').click();
 
