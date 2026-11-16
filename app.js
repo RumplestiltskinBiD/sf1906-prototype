@@ -3453,12 +3453,20 @@ const goodsSlots=x.status==='complete'&&goodsBuyerCapacity(x.projectId)?' · Р�
 return `<div class="mini-construction typed-project type-stripe-compact ${x.status==='complete'?'done':''}" ${projectTypeStyle(pr)}><span class="player-dot ${pl.key}"></span><span><b>${pr.name}</b><small>${pl.name} · ${x.status==='complete'?`готово · VP +${pr.prestige||0} · Доход +$${completedConstructionBaseIncome(pr,x)+(x.projectId==='wagonboarding'?(x.wagonLevel||1)-1:0)+canneryIncomeBonus(state,x)+workforceIncomeBonus(state,x)}${land}${goodsSlots}`:`материалы ${prog.delivered}/${prog.required}`}</small></span><button class="mini-open" data-open-construction="${x.id}">Открыть</button></div>`;
 }).join(''):'Пока нет.';
 
-const tradeDev=currentDeveloper(state),tradeOpts=activeNewspaper(state)?.id==='E02'&&tradeDev!=null
-  ?e02TradeOptions(state,tradeDev):null;
+const tradeDev=currentDeveloper(state);
+const tradeOpts=activeNewspaper(state)?.id==='E02'&&tradeDev!=null?e02TradeOptions(state,tradeDev):null;
 const tradeVenues=(tradeOpts?.venues||[]).filter(v=>v.districtId===d.id);
 const tradeHtml=tradeVenues.length
   ?'<div class="detail-section e02-context-panel"><div class="detail-label">Торговая неделя E02 · '+tradeVenues[0].tradeCount+' Торговых</div>'+
-    '<div class="detail-text">Одно основное действие; +
+    '<div class="detail-text">Одно основное действие; организатору денежная награда и +1 VP, владельцу выбранной площадки +1 Influence.</div>'+
+    tradeVenues.map(v=>'<button type="button" class="primary-btn full e02-context-btn" data-e02-context-venue="'+
+      escapeHtml(String(v.constructionId))+'" '+(v.available?'':'disabled')+'>'+
+      escapeHtml(projectById(v.projectId)?.name||v.projectId)+' · '+escapeHtml(state.players[v.ownerId]?.name||'Владелец')+
+      ' · $'+v.cash+(v.reachable?'':' · вне радиуса')+'</button>').join('')+
+    (tradeOpts.used?'<small>Вы уже провели мероприятие в этом году.</small>':
+      !tradeOpts.actionAvailable?'<small>Нужен свободный представитель и основное действие.</small>':'')+'</div>'
+  :'';
+const neighborNames=districtNeighbors(d.id).map(id=>districtById(id)?.name).filter(Boolean).join(', ');
 const statsHtml=d.buildable===false
 ?`<div class="district-stats special-stats"><div><span>СТАТУС</span><strong>${d.passable===false?'CLOSED':'PASSAGE'}</strong></div><div><span>СТРОИТЬ</span><strong>НЕТ</strong></div><div><span>ПЕРЕДВИЖЕНИЕ</span><strong>${d.passable===false?'НЕТ':'ДА'}</strong></div></div>`
 :`<div class="district-stats"><div><span>LAND VALUE</span><strong>${ds.landValue}</strong></div><div><span>ПЛОЩАДКИ</span><strong>${used} / 5</strong></div><div><span>СВОБОДНО</span><strong>${free}</strong></div></div>`;
