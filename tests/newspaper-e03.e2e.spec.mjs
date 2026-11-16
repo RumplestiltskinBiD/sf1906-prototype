@@ -36,8 +36,8 @@ async function news(page,vp){
 }
 async function deliveryFromWarehouse(page,vp,id='W1',types=['Lumber','Steel']){
  await page.locator('#actionDelivery').click();
- if(vp.width<1000)await page.locator('#deliveryShowSourceList').click();
- await page.locator('[data-ds-wh="'+id+'"]').click();
+ if(vp.width<1000)await page.locator('[data-delivery-warehouse="'+id+'"]').click();
+ else await page.locator('[data-ds-wh="'+id+'"]').click();
  await page.locator('[data-hauler="dray2a"]').click();
  for(const type of types)await page.locator('[data-load="'+type+'"]').click();
  await page.locator('#deliveryBeginRoute').click();
