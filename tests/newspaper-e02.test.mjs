@@ -226,7 +226,7 @@ test('an archived, abandoned or redeveloped trade building cannot host a new eve
  assert.equal(perform(s,0,'abandoned').reason,'invalid-venue');
 });
 
-test('owner Influence uses live track rules: occupied cells skipped and upper bound honored',()=>{
+test('owner Influence uses live track rules and skips occupied positions',()=>{
  const s=game();
  site(s,'H','pub',1);
  s.players[1].influence=12;
