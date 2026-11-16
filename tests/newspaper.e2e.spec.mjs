@@ -26,15 +26,17 @@ async function seededGame(page,{news='C01',phase='development',constructions=[]}
   },{storage,news,phase,constructions});
   await page.reload();
 }
-test('newspaper is visible across market and map; issue opens on demand',async({page})=>{
-  await page.goto('/');
+test('newspaper shows E01 in-year contract accurately across market and map',async({page})=>{
+  await seededGame(page,{news:'E01'});
   await expect(page.locator('#newsStrip')).toBeVisible();
   await expect(page.locator('#newsStripLabel')).toContainText('1900');
   await expect(page.locator('#newsSheet')).toBeHidden();
   await page.locator('#newsOpenBtn').click();
   await expect(page.locator('#newsSheet')).toBeVisible();
-  await expect(page.locator('#newsSheetContent .news-headline')).toBeVisible();
-  await expect(page.locator('#newsSheetContent .news-forecast')).toContainText(/конец года/i);
+  await expect(page.locator('#newsSheetContent .news-headline')).toHaveText('РАБОТОДАТЕЛИ ИЩУТ ЖИЛЬЁ ДЛЯ НОВЫХ РАБОЧИХ!');
+  await expect(page.locator('#newsSheetContent .news-forecast > b')).toHaveText('АРЕНДНЫЕ КОНТРАКТЫ');
+  await expect(page.locator('#newsSheetContent .news-forecast')).toContainText('2 арендных контракта');
+  await expect(page.locator('#newsSheetContent .news-forecast')).toContainText('+$6 или +1 VP и +1 Influence');
   await page.locator('#newsCloseBtn').click();
   await expect(page.locator('#newsSheet')).toBeHidden();
   await page.locator('.nav-btn[data-view="city"]').click();
@@ -51,6 +53,7 @@ test('C01 gang article highlights the D6 zone and only really protected properti
    await expect(page.locator('[data-district="northbeach"]')).toHaveClass(/c01-threat/);
    await expect(page.locator('[data-district="financial"]')).toHaveClass(/c01-protected/);
    await page.locator('#newsOpenBtn').click();
+   await expect(page.locator('#newsSheetContent .news-forecast > b')).toHaveText('ПРОГНОЗ НА КОНЕЦ ГОДА');
    await expect(page.locator('.news-c01-panel')).toContainText('Под угрозой');
    await expect(page.locator('.news-c01-panel')).toContainText('Полицейский рейд');
    await expect(page.locator('.news-c01-panel')).toContainText('прикрытых полицией 2');
