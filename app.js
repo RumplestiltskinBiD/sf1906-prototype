@@ -1502,7 +1502,9 @@ function renderC02MapMarker(lot){
   label.textContent='▣';marker.append(circle,label);group.append(marker);
 }
 function renderE03MapTokens(preview){
-  $$('.e03-map-token').forEach(el=>el.remove());
+  const tokenLayer=$('#e03TokenLayer');
+  if(!tokenLayer)return;
+  tokenLayer.replaceChildren();
   if(!preview?.active)return;
   for(const token of preview.tokens){
     const group=$$('[data-district]').find(g=>g.dataset.district===token.districtId);
@@ -1528,7 +1530,7 @@ function renderE03MapTokens(preview){
         deliveryDraft.focusTargetId=token.districtId;render();
       }
     });
-    group.append(marker);
+    tokenLayer.append(marker);
   }
 }
 function renderC01MapMarker(incident){
