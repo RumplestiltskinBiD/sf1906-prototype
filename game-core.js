@@ -2469,7 +2469,7 @@ function executeDeliveryCore(state,plan){
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} + забастовка E04 $${cost.marineSurcharge||0} = $${cost.total}.`,'accent');
   // A real supply port loads freight; export-only Gas House Cove is not a trigger.
   const portDistricts=new Set(pickups.map(p=>['node','stolen'].includes(p.source.kind)?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
     .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
