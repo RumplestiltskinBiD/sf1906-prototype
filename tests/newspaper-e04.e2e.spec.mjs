@@ -46,6 +46,8 @@ for(const vp of views){
   await expect(page.locator('.news-headline')).toHaveText('ЗАБАСТОВКА НА НАБЕРЕЖНОЙ!');
   await expect(page.locator('#newsSheetContent .news-forecast > b')).toHaveText('ЗАБАСТОВКА НА НАБЕРЕЖНОЙ');
   await expect(page.locator('.news-e04-panel')).toContainText('каждая Доставка с морской погрузкой +$2');
+  await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
+  await expect(page.locator('#newsIssueMapToggle')).toHaveCount(0);
   await expect(page.locator('[data-e04-port="soma"]')).toBeEnabled();
   const before=await saved(page);
   await page.locator('[data-e04-port="soma"]').click();
