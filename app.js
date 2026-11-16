@@ -1385,6 +1385,13 @@ pts.forEach((p,i)=>html+='<g class="delivery-route-stop '+(i===pts.length-1?'cur
 layer.innerHTML=html;
 }
 
+function e05ServiceLabel(count){
+  const n=Math.max(0,Math.floor(Number(count)||0)),last=n%10,lastTwo=n%100;
+  const noun=lastTwo>=11&&lastTwo<=14?'завершённых служб':
+    last===1?'завершённая служба':
+    last>=2&&last<=4?'завершённые службы':'завершённых служб';
+  return n+' '+noun;
+}
 function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
   if(card.id==='E05')return 'Стандартная клиника, пожарный и полицейский пост: земля и сбор $0; в конце года +1 Influence за КАЖДУЮ свою завершённую службу';
@@ -1832,7 +1839,7 @@ function renderNewspaper(){
       '<div class="news-e05-counts"><strong>Текущий прогноз Influence</strong>'+
       (e05Preview?.perPlayer||[]).map(p=>
         '<div class="news-e05-player"><b>'+escapeHtml(state.players.find(x=>x.id===p.playerId)?.name||'Игрок')+'</b>'+
-        '<span>'+p.count+' завершённых служб → +'+p.count+' Influence в конце года</span>'+
+        '<span>'+e05ServiceLabel(p.count)+' → +'+p.count+' Influence в конце года</span>'+
         (p.sites.length?'<small>'+p.sites.map(c=>escapeHtml(projectById(c.projectId)?.name||c.projectId)+
           ' · '+escapeHtml(districtById(c.districtId)?.name||c.districtId)).join('; ')+'</small>':
           '<small>Пока нет завершённых подходящих учреждений</small>')+
@@ -1842,7 +1849,7 @@ function renderNewspaper(){
   const e05Archive=civicRecognitionNewspaper&&archived?.e05
     ?(archived.e05.awards||[]).map(a=>
       '<li>'+escapeHtml(state.players.find(p=>p.id===a.playerId)?.name||'Игрок')+
-      ': '+a.count+' завершённых служб → +'+a.influenceSteps+' Influence'+
+      ': '+e05ServiceLabel(a.count)+' → +'+a.influenceSteps+' Influence'+
       (a.projects?.length?' ('+a.projects.map(id=>escapeHtml(projectById(id)?.name||id)).join(', ')+')':'')+
       '</li>').join('')+
       '<li>Всего зачтено служб: '+archived.e05.totalSites+
