@@ -68,11 +68,11 @@ test('D2 all three jailed have genuine service turn; hire allows a main action i
  assert.equal(G.hireReplacementWorker(s,0,first.id).ok,true);
  assert.equal(G.selectWorker(s,0,first.id).ok,true);
  assert.equal(G.canTakeMainAction(s,0),true);
- assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
- assert.equal(s.players[0].capital,14);
+ assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+ assert.equal(s.players[0].capital,17);
  assert.equal(G.canTakeMainAction(s,0),false);
  assert.equal(G.hireReplacementWorker(s,0,s.players[0].workers[1].id).ok,true);
- assert.equal(s.players[0].capital,7);
+ assert.equal(s.players[0].capital,10);
  assert.equal(G.canTakeMainAction(s,0),false,'no second main action in current activation');
  assert.equal(G.endActivation(s,0).ok,true);
  assert.deepEqual(s.developmentSlotsUsed,[1,0,0]);
@@ -137,7 +137,7 @@ test('D2 may hire after current main action but cannot reactivate main until nex
  const s=city(2),w=prison(s,0,0,1);
  const other=s.players[0].workers[1];
  assert.equal(G.selectWorker(s,0,other.id).ok,true);
- assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
+ assert.equal(G.raiseCapital(s,0,'civic').ok,true);
  assert.equal(s.activationMainActionUsed,true);
  const hired=G.hireReplacementWorker(s,0,w.id);
  assert.equal(hired.ok,true);
@@ -147,12 +147,12 @@ test('D2 may hire after current main action but cannot reactivate main until nex
  assert.equal(G.developmentSlotsRemaining(s,0),2);
  for(const playerId of [1,2]){
   assert.equal(G.selectWorker(s,playerId,s.players[playerId].workers[0].id).ok,true);
-  assert.equal(G.moveWorker(s,playerId,G.workerReachableDistricts(s,playerId).find(id=>id!==G.activeWorker(s,playerId)?.districtId)).ok,true);
+  assert.equal(G.raiseCapital(s,playerId,'civic').ok,true);
   assert.equal(G.endActivation(s,playerId).ok,true);
  }
  assert.equal(G.currentDeveloper(s),0);
  assert.equal(G.selectWorker(s,0,w.id).ok,true);
- assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
+ assert.equal(G.raiseCapital(s,0,'civic').ok,true);
  assert.equal(s.players[0].workers.length,3);
 });
 

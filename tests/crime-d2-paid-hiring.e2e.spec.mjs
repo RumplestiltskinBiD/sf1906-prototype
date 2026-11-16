@@ -64,20 +64,20 @@ for(const size of [{width:390,height:844},{width:932,height:430},{width:1440,hei
    await expect(page.locator('[data-select-worker="P1W1"]')).toBeEnabled();
    await page.locator('[data-select-worker="P1W1"]').click();
   }else await worker.click();
-  await expect(page.locator('#actionMoveWorker')).toBeEnabled();
-  await page.locator('#actionMoveWorker').click();
-  // Movement is spatial: click the adjacent SoMa district from Civic Center.
-  await page.locator('[data-district="soma"]').click();
+  await expect(page.locator('#actionRaiseCapital')).toBeEnabled();
+  await page.locator('#actionRaiseCapital').click();
+  // Raise Capital is spatial: click the new employee's Civic Center origin.
+  await page.locator('[data-district="civic"]').click();
   next=await saved(page);
   expect(next.activationMainActionUsed).toBe(true);
   expect(next.players[0].workers[0].used).toBe(true);
-  expect(next.players[0].workers[0].districtId).toBe('soma');
-  expect(next.players[0].capital).toBe(14);
+  expect(next.players[0].workers[0].districtId).toBe('civic');
+  expect(next.players[0].capital).toBe(17);
   expect(next.developmentSlotsUsed).toEqual([0,0,0]);
   await page.reload();
   next=await saved(page);
   expect(next.players[0].workers[0].jailed).toBe(false);
-  expect(next.players[0].capital).toBe(14);
+  expect(next.players[0].capital).toBe(17);
   expect(next.players[0].workers).toHaveLength(3);
   expect(errors).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);

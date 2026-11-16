@@ -236,7 +236,7 @@ test('Market Street cannot teleport worker from Noe Valley to Financial District
   await seed(page,s);
   await page.goto('/');
   await page.locator('[data-worker-token="'+w.id+'"]').click();
-  await page.locator('#actionMoveWorker').click();
+  await page.locator('#actionRaiseCapital').click();
   const financial=page.locator('[data-district="financial"]');
   await expect(financial).not.toHaveClass(/move-target/);
   const mission=page.locator('[data-district="mission"]');
@@ -244,7 +244,7 @@ test('Market Street cannot teleport worker from Noe Valley to Financial District
   await mission.click();
   const saved=await stored(page);
   expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('mission');
-  expect(saved.players[0].capital).toBe(50);
+  expect(saved.players[0].capital).toBe(53);
 });
 
 test('historical supplier markers sit inside their gameplay districts',async({page})=>{
@@ -349,7 +349,7 @@ test('mobile Delivery can rent the Western Freight Yard and shows the $2 fee bef
   await page.locator('[data-hauler="dray2a"]').click();
   await page.locator('[data-load="Masonry"]').click();
   await page.locator('#deliveryBeginRoute').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   await page.locator('[data-district="western"]').click();
   await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
   await page.locator('#deliveryLockRoute').click();
@@ -526,7 +526,7 @@ test('Office Begin Construction button works and creates a construction through 
   await expect(page.locator('[data-start-project="tenement"]')).toBeEnabled();
   await page.locator('[data-start-project="tenement"]').click();
   await expect(page.locator('#constructionMode')).toHaveClass(/active/);
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   await expect(page.locator('#confirmConstruction')).toBeVisible();
   await page.locator('#confirmConstruction').click();
 
@@ -658,8 +658,8 @@ test('a complete Development round uses all 9 workers and advances cleanly to ro
     const worker=page.locator('[data-select-worker]:not([disabled])').first();
     await expect(worker).toBeVisible();
     await worker.click();
-    await page.locator('#actionMoveWorker').click();
-    await page.locator('[data-district="soma"]').click();
+    await page.locator('#actionRaiseCapital').click();
+    await page.locator('[data-district="civic"]').click();
     await expect(page.locator('#actionEndActivation')).toBeVisible();
     await page.locator('#actionEndActivation').click();
   }
@@ -954,7 +954,7 @@ test('available main and building actions are visibly highlighted including Shop
   await page.goto('/');
 
   await expect(page.locator('#actionBuild')).toHaveClass(/action-available/);
-  await expect(page.locator('#actionMoveWorker')).toHaveClass(/action-available/);
+  await expect(page.locator('#actionRaiseCapital')).toHaveClass(/action-available/);
   await expect(page.locator('.shops-card')).toHaveClass(/action-available/);
   await expect(page.locator('[data-shops-action="SHOP"]')).toHaveClass(/available-action/);
 
@@ -1135,8 +1135,8 @@ test('exhaustive worker highlighting matches physical adjacency only',async({pag
     s.activeWorkerId=w.id;
     await page.evaluate(({key,value})=>localStorage.setItem(key,value),{key:STORAGE_KEY,value:JSON.stringify(s)});
     await page.reload();
-    await page.locator('#actionMoveWorker').click();
-    const expected=new Set(neighbors.filter(x=>!closed.has(x)));
+    await page.locator('#actionRaiseCapital').click();
+    const expected=new Set([from,...neighbors.filter(x=>!closed.has(x))]);
     for(const id of Object.keys(adjacency)){
       const district=page.locator('[data-district="'+id+'"]');
       if(expected.has(id)){
@@ -1170,10 +1170,10 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   await page.locator('[data-start-project="tenement"]').click();
   await expect(page.locator('[data-district="northbeach"]')).toHaveClass(/build-dim/);
 
-  // Cancel, switch to the worker in Pacific Heights, then choose Movement.
+  // Cancel, switch to the worker in Pacific Heights, then choose Raise Capital.
   await page.locator('#cancelConstruction').click();
   await page.locator('[data-worker-token="'+near.id+'"]').click();
-  await page.locator('#actionMoveWorker').click();
+  await page.locator('#actionRaiseCapital').click();
 
   const north=page.locator('[data-district="northbeach"]');
   await expect(north).toHaveClass(/move-target/);
@@ -1189,7 +1189,7 @@ test('stale build-dim never hides a later legal move target',async({page})=>{
   const saved=await stored(page);
   const moved=saved.players[0].workers.find(w=>w.id===near.id);
   expect(moved.districtId).toBe('northbeach');
-  expect(saved.players[0].capital).toBe(beforeCapital);
+  expect(saved.players[0].capital).toBe(beforeCapital+3);
 });
 
 test('Risk view exposes district У/П levels without replacing the map',async({page})=>{
@@ -1216,7 +1216,7 @@ test('construction preview shows the district risk change before confirmation',a
   await page.goto('/');
   await page.locator('#officeBtn').click();
   await page.locator('[data-start-project="tenement"]').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   const preview=page.locator('#contextPanel .risk-preview-box');
   await expect(preview).toBeVisible();
   await expect(preview).toContainText('ПРОГНОЗ ПОСЛЕ ЗАВЕРШЕНИЯ');
@@ -1239,7 +1239,7 @@ test('portrait mobile Risk view and construction preview stay inside the usable 
   await expect(riskBtn).toBeVisible();
   await riskBtn.click();
   await expect(page.locator('.city-board')).toHaveClass(/risk-mode/);
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   await expect(page.locator('#contextPanel')).toHaveClass(/mobile-open/);
   await expect(page.locator('#contextPanel .district-risk-panel')).toBeVisible();
   await page.waitForTimeout(300);
@@ -1265,7 +1265,7 @@ test('portrait mobile Risk view and construction preview stay inside the usable 
   await page.locator('#contextClose').click();
   await page.locator('#officeBtn').click();
   await page.locator('[data-start-project="tenement"]').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('[data-district="civic"]').click();
   const preview=page.locator('#contextPanel .risk-preview-box');
   await expect(preview).toBeVisible();
   const previewBox=await preview.boundingBox();
@@ -1343,11 +1343,10 @@ test('tester Undo restores the previous gameplay state without undoing UI select
   await page.goto('/');
 
   await expect(page.locator('#undoBtn')).toBeDisabled();
-  await page.locator('#actionMoveWorker').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('#actionRaiseCapital').click();
+  await page.locator('[data-district="civic"]').click();
   let saved=await stored(page);
-  expect(saved.players[0].capital).toBe(50);
-  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('soma');
+  expect(saved.players[0].capital).toBe(53);
   await expect(page.locator('#undoBtn')).toBeEnabled();
 
   await page.locator('#undoBtn').click();
@@ -1355,7 +1354,6 @@ test('tester Undo restores the previous gameplay state without undoing UI select
   expect(saved.players[0].capital).toBe(50);
   expect(saved.activationMainActionUsed).toBe(false);
   expect(saved.activeWorkerId).toBe(w.id);
-  expect(saved.players[0].workers.find(x=>x.id===w.id)?.districtId).toBe('civic');
 });
 
 test('mobile market overview compares all five projects during City Hall after draft',async({page})=>{
@@ -1400,8 +1398,8 @@ test('mobile action toolbar replaces newspaper strip above the map and stays usa
 
   const w=s.players[0].workers[0];
   await page.locator('[data-dock-worker="'+w.id+'"]').click();
-  await page.locator('#actionMoveWorker').click();
-  await page.locator('[data-district="soma"]').click();
+  await page.locator('#actionRaiseCapital').click();
+  await page.locator('[data-district="civic"]').click();
 
   await expect(dock).toBeVisible();
   await expect(dock).toHaveAttribute('aria-label',/основное действие использовано/);

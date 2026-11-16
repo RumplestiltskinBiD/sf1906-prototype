@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0581-e03-western-aid';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0583-no-reward-movement';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -1152,6 +1152,7 @@ export function createInitialState({rng=Math.random}={}){
     newsE01Contracts:newsCurrentIds[0]==='E01'?{round:1,claims:[]}:null,
     newsE02TradeWeek:newsCurrentIds[0]==='E02'?{round:1,events:[]}:null,
     newsE03Aid:newsCurrentIds[0]==='E03'?{round:1,claims:[]}:null,
+    newsE04Strike:newsCurrentIds[0]==='E04'?{round:1,resolution:null,marineDeliveries:0,surchargePaid:0}:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -2166,9 +2167,10 @@ export function deliveryPlanCost(state,plan){
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
   const yardRentCost=freightYardRentCost(state,plan);
   const stolenLotCost=deliveryPickups(plan).some(p=>p?.source?.kind==='stolen')?1:0;
+  const marineSurcharge=e04DeliverySurcharge(state,plan);
   return {materialGross,procurementDiscount,industryDiscount,industrySales,procurementUsed,materialCost,
-    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,stolenLotCost,
-    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost+stolenLotCost};
+    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,stolenLotCost,marineSurcharge,
+    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost+stolenLotCost+marineSurcharge};
 }
 
 function validateRoute(route,sourceDistrictId){
@@ -2384,6 +2386,14 @@ function executeDeliveryCore(state,plan){
   }
   const player=state.players[plan.playerId];
   player.capital-=cost.total;
+  // Statistics change only for actual, validated marine deliveries, never estimates.
+  if(cost.marineSurcharge){
+    const ledger=state.newsE04Strike?.round===state.round?state.newsE04Strike:
+      {round:state.round,resolution:null,marineDeliveries:0,surchargePaid:0};
+    ledger.marineDeliveries=(ledger.marineDeliveries||0)+1;
+    ledger.surchargePaid=(ledger.surchargePaid||0)+cost.marineSurcharge;
+    state.newsE04Strike=ledger;
+  }
   const stolen=pickups.find(p=>p.source.kind==='stolen');
   if(stolen){
     const incident=state.newsC02Incident;
@@ -2458,7 +2468,7 @@ function executeDeliveryCore(state,plan){
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} = $${cost.total}.`,'accent');
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} + забастовка E04 $${cost.marineSurcharge||0} = $${cost.total}.`,'accent');
   // A real supply port loads freight; export-only Gas House Cove is not a trigger.
   const portDistricts=new Set(pickups.map(p=>['node','stolen'].includes(p.source.kind)?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
     .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
@@ -2918,6 +2928,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsE01Contracts=state.newsCurrentIds[0]==='E01'?{round:state.round,claims:[]}:null;
   state.newsE02TradeWeek=state.newsCurrentIds[0]==='E02'?{round:state.round,events:[]}:null;
   state.newsE03Aid=state.newsCurrentIds[0]==='E03'?{round:state.round,claims:[]}:null;
+  state.newsE04Strike=state.newsCurrentIds[0]==='E04'?{round:state.round,resolution:null,marineDeliveries:0,surchargePaid:0}:null;
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -3212,6 +3223,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsE01Contracts=null;
     state.newsE02TradeWeek=null;
     state.newsE03Aid=null;
+    state.newsE04Strike=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -3265,6 +3277,8 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
   // Read-only previews treat them as unused; the first real organizer action
   // creates the ledger. Never mutate unrelated saves during ensureNewspaper.
   if(!Object.hasOwn(state,'newsE02TradeWeek'))state.newsE02TradeWeek=null;
+  // Older active E04 saves start with no ledger; history and existing money remain intact.
+  if(!Object.hasOwn(state,'newsE04Strike'))state.newsE04Strike=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -3810,6 +3824,81 @@ function resolveE03Newspaper(state,card){
   state.newsE03Aid=null;
   logEvent(state,'The San Francisco Call, '+report.year+
     ': фонд получил '+claims.length+' из двух партий помощи; неиспользованные жетоны сняты.','accent');
+  return {ok:true,report};
+}
+
+
+export const E04_MARINE_NODE_IDS=Object.freeze(['broadway','pacificmail','chinabasin','unioniron']);
+export const E04_MARINE_SURCHARGE=2;
+export const E04_SETTLEMENT_COST=5;
+export const E04_SETTLEMENT_VP=3;
+export function e04StrikePreview(state){
+  const issueOpen=activeNewspaper(state)?.id==='E04'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round;
+  const ledger=state.newsE04Strike?.round===state.round?state.newsE04Strike:null;
+  const resolution=ledger?.resolution||null;
+  return {issueOpen,active:!!issueOpen&&!resolution,settled:!!resolution,round:state.round,
+    resolution:resolution?{...resolution}:null,marineDeliveries:ledger?.marineDeliveries||0,
+    surchargePaid:ledger?.surchargePaid||0,
+    portDistrictIds:DISTRICTS.filter(d=>d.port===true).map(d=>d.id)};
+}
+export function e04SettlementOptions(state,playerId){
+  const preview=e04StrikePreview(state);
+  const player=Number.isInteger(playerId)?state.players?.[playerId]:null;
+  const actionAvailable=!!player&&preview.active&&canTakeMainAction(state,playerId)&&
+    !state.pendingConstruction&&!state.pendingWorkerAction;
+  const funded=!!player&&player.capital>=E04_SETTLEMENT_COST;
+  const districts=preview.portDistrictIds.map(districtId=>{
+    const reachable=!!player&&workerCanReachDistrict(state,playerId,districtId);
+    return {districtId,reachable,available:actionAvailable&&funded&&reachable};
+  });
+  return {...preview,playerId,actionAvailable,funded,districts};
+}
+export function settleE04Strike(state,playerId,districtId){
+  const preview=e04StrikePreview(state);
+  if(!preview.issueOpen)return {ok:false,reason:'not-active'};
+  if(preview.settled)return {ok:false,reason:'already-settled'};
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return {ok:false,reason:'player'};
+  if(!preview.portDistrictIds.includes(districtId))return {ok:false,reason:'not-port'};
+  if(state.pendingConstruction||state.pendingWorkerAction)return {ok:false,reason:'pending-action'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
+  if(state.players[playerId].capital<E04_SETTLEMENT_COST)return {ok:false,reason:'capital'};
+  if(!workerCanReachDistrict(state,playerId,districtId))return {ok:false,reason:'worker-range'};
+  const action=consumeMainAction(state,playerId,districtId);
+  if(!action.ok)return action;
+  const player=state.players[playerId];
+  player.capital-=E04_SETTLEMENT_COST;
+  player.prestige=(player.prestige||0)+E04_SETTLEMENT_VP;
+  const influence=moveInfluence(state,playerId,1);
+  const ledger=state.newsE04Strike?.round===state.round?state.newsE04Strike:
+    {round:state.round,resolution:null,marineDeliveries:0,surchargePaid:0};
+  const resolution={round:state.round,playerId,districtId,cost:E04_SETTLEMENT_COST,
+    prestige:E04_SETTLEMENT_VP,influenceSteps:influence.steps,
+    influenceFrom:influence.from,influenceTo:influence.to};
+  ledger.resolution=resolution;state.newsE04Strike=ledger;
+  logEvent(state,player.name+' помог семьям докеров и урегулировал забастовку в '+
+    districtById(districtId).name+': −$5, +3 VP, +'+influence.steps+
+    ' Influence. Портовая надбавка $2 отменена для всех.','good');
+  return {ok:true,resolution:{...resolution},action};
+}
+function e04DeliverySurcharge(state,plan){
+  return e04StrikePreview(state).active&&deliveryPickups(plan).some(p=>
+    p?.source?.kind==='node'&&E04_MARINE_NODE_IDS.includes(p.source.id)&&
+    Array.isArray(p.cargo)&&p.cargo.length>0)?E04_MARINE_SURCHARGE:0;
+}
+function resolveE04Newspaper(state,card){
+  const preview=e04StrikePreview(state);
+  const report={year:newsYear(state.round),round:state.round,cardId:'E04',
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{},
+    e04:{resolution:preview.resolution?{...preview.resolution}:null,
+      marineDeliveries:preview.marineDeliveries,surchargePaid:preview.surchargePaid}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  state.newsE04Strike=null;
+  logEvent(state,'The San Francisco Call, '+report.year+
+    ': забастовка '+(report.e04.resolution?'урегулирована':'закончилась без урегулирования')+
+    '; рейсов с надбавкой '+report.e04.marineDeliveries+
+    ', всего $'+report.e04.surchargePaid+'. Дополнительных годовых выплат нет.','accent');
   return {ok:true,report};
 }
 
@@ -4564,6 +4653,8 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='E04')return {card,entries:[],threatened:[],protected:[],
+    summary:{districts:0,exposed:0,safe:0},e04:e04StrikePreview(state)};
   if(card?.id==='E03')return {card,entries:[],threatened:E03_AID_DISTRICTS,protected:[],
     summary:{districts:2,exposed:0,safe:0},e03:e03AidPreview(state)};
   if(card?.id==='E02')return {card,entries:[],threatened:[],protected:[],
@@ -4723,6 +4814,7 @@ export function resolveNewspaper(state){
   if(card.id==='E01')return resolveE01Newspaper(state,card);
   if(card.id==='E02')return resolveE02Newspaper(state,card);
   if(card.id==='E03')return resolveE03Newspaper(state,card);
+  if(card.id==='E04')return resolveE04Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;

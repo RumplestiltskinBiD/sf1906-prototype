@@ -490,7 +490,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E04",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E04_V2.md",
       "title": "Забастовка на набережной",
       "eventType": "one-year-waterfront-strike",
@@ -510,13 +510,13 @@ export const NEWS_CARDS=Object.freeze([
       "automaticEndAtYearClose": true
     },
     "category": "Экономика",
-    "title": "На пристанях очереди",
-    "article": "Из-за нехватки рабочих доставка грузов замедляется. Чиновники спорят, пока фабрики и склады рискуют деньгами.",
-    "target": "port-freight",
+    "title": "ЗАБАСТОВКА НА НАБЕРЕЖНОЙ!",
+    "article": "Докеры требуют справедливой оплаты и безопасного труда. Суда простаивают, семьи рабочих остались без заработка. Газета призывает горожан помочь разрешить конфликт.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "emergency"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   },
   {
     "id": "E05",

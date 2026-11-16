@@ -139,7 +139,7 @@ test('urgent action and illegal bribe reject absent workers, wrong turn, insuffi
   if(bad==='wrong-turn')s.developmentPlayer=1;
   if(bad==='no-worker')s.activeWorkerId=null;
   if(bad==='no-capital')s.players[0].capital=3;
-  if(bad==='pending')s.pendingWorkerAction={type:'moveWorker'};
+  if(bad==='pending')s.pendingWorkerAction={type:'raiseCapital'};
   if(bad==='action-used')s.activationMainActionUsed=true;
   const before=snapshot(s),res=G.resolveF04Notice(s,0,'urgent');
   assert.equal(res.ok,false,bad);assert.equal(snapshot(s),before,bad);
@@ -148,7 +148,7 @@ test('urgent action and illegal bribe reject absent workers, wrong turn, insuffi
   const s=setup();building(s,'A');reveal(s);
   if(bad==='wrong-turn')s.developmentPlayer=1;
   if(bad==='no-capital')s.players[0].capital=1;
-  if(bad==='pending')s.pendingWorkerAction={type:'moveWorker'};
+  if(bad==='pending')s.pendingWorkerAction={type:'raiseCapital'};
   if(bad==='no-unjailed')s.players[0].workers.forEach(w=>w.jailed=true);
   const before=snapshot(s),res=G.resolveF04Notice(s,0,'bribe');
   assert.equal(res.ok,false,bad);assert.equal(snapshot(s),before,bad);

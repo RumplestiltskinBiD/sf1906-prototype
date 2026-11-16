@@ -29,7 +29,7 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
   expect(restored.constructions).toEqual([]);
   expect(restored.market.every(c=>!c||c.id!=='streetcar')).toBe(true);
   await page.locator('[data-worker-token="'+worker.id+'"]').click();
-  await page.locator('#actionMoveWorker').click();
+  await page.locator('#actionRaiseCapital').click();
   await expect(page.locator('[data-district="financial"]')).not.toHaveClass(/move-target/);
   await expect(page.locator('[data-district="mission"]')).toHaveClass(/move-target/);
   const panel=await page.locator('#contextPanel').count();
@@ -38,7 +38,7 @@ for(const vp of [{width:390,height:844},{width:932,height:430}]){
   await page.locator('[data-district="mission"]').click();
   const saved=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),STORE));
   expect(saved.players[0].workers[0].districtId).toBe('mission');
-  expect(saved.players[0].capital).toBe(47);
+  expect(saved.players[0].capital).toBe(50);
  });
 }
 test('old 0.44 save replaces retired market/hand/draft/deck cards and preserves built sites',async({page})=>{
