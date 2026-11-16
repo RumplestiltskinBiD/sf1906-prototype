@@ -143,3 +143,46 @@ test('old saved projects receive extra cards only once on migration',async({page
   expect(second.deck).toHaveLength(first.deck.length);
   expect(second.players.map(p=>p.capital)).toEqual(first.players.map(p=>p.capital));
 });
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('ordinary mobile Delivery can select two overlapping warehouses as source AND destination '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  await seededGame(page,{news:'E01',constructions:[
+    {projectId:'warehouse',districtId:'sunset',playerId:0},
+    {projectId:'warehouse',districtId:'sunset',playerId:0}
+  ]});
+  await page.evaluate(key=>{
+    const s=JSON.parse(localStorage.getItem(key));
+    s.constructions[0].warehouseInventory=['Lumber'];
+    s.constructions[1].warehouseInventory=['Steel'];
+    localStorage.setItem(key,JSON.stringify(s));
+  },storage);
+  await page.reload();
+  await page.locator('#actionDelivery').click();
+  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
+  await page.locator('#deliveryShowSourceList').click();
+  await expect(page.locator('[data-ds-wh="E2E0"]')).toBeVisible();
+  await expect(page.locator('[data-ds-wh="E2E1"]')).toBeVisible();
+  await page.locator('[data-ds-wh="E2E0"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Lumber"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
+  await page.locator('#deliveryLockRoute').click();
+  await expect(page.locator('#deliveryToggleTargetList')).toBeVisible();
+  await page.locator('#deliveryToggleTargetList').click();
+  await expect(page.locator('[data-delivery-unload-target="E2E1"]')).toBeVisible();
+  await expect(page.locator('[data-delivery-unload-target="E2E0"]')).toHaveCount(0);
+  await page.locator('[data-delivery-unload-target="E2E1"]').click();
+  await page.locator('[data-drop-kind="warehouse"][data-drop-id="E2E1"][data-drop-type="Lumber"]').click();
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  const before=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),storage);
+  await page.locator('#deliveryConfirm').click();
+  const after=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),storage);
+  expect(after.constructions[0].warehouseInventory).toEqual([]);
+  expect(after.constructions[1].warehouseInventory).toEqual(['Steel','Lumber']);
+  expect(after.players[0].capital).toBe(before.players[0].capital);
+  expect(after.lastDeliveryKey).toBeTruthy();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(3);
+ });
+}
