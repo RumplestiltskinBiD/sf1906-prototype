@@ -7,9 +7,9 @@ function cityScenario(){
   s.phase='development';s.view='city';
   s.developmentPlayer=0;s.developmentComplete=false;
   s.activationMainActionUsed=false;s.activeWorkerId=null;
-  // This HUD regression checks generic map/emergency controls: E04 still
-  // uses those legacy actions. Approved C01 v2 has a dedicated police raid.
-  s.newsCurrentIds=['E04'];s.newsC01Incident=null;s.newsC02Incident=null;s.newsC03Offer=null;
+  // Generic map/emergency controls still apply to unimplemented E06's
+  // current legacy negative article; E04 v2 has its own settlement action.
+  s.newsCurrentIds=['E06'];s.newsC01Incident=null;s.newsC02Incident=null;s.newsC03Offer=null;
   s.players[0].capital=30;
   return s;
 }
