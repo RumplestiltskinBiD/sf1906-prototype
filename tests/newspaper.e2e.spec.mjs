@@ -159,8 +159,9 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
   },storage);
   await page.reload();
   await page.locator('#actionDelivery').click();
-  await expect(page.locator('#deliveryShowSourceList')).toBeVisible();
-  await page.locator('#deliveryShowSourceList').click();
+  await expect(page.locator('#deliveryPanel')).toBeHidden();
+  await expect(page.locator('#deliverySourceToolbarBtn')).toBeVisible();
+  await page.locator('#deliverySourceToolbarBtn').click();
   await expect(page.locator('[data-ds-wh="E2E0"]')).toBeVisible();
   await expect(page.locator('[data-ds-wh="E2E1"]')).toBeVisible();
   await page.locator('[data-ds-wh="E2E0"]').click();
