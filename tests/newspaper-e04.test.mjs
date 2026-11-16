@@ -195,7 +195,7 @@ test('invalid port, distant port, unselected worker, no action, and insufficient
   s=>{s.activeWorkerId=null;return {pid:0,district:'soma',reason:'main-action-unavailable'};},
   s=>{s.activationMainActionUsed=true;return {pid:0,district:'soma',reason:'main-action-unavailable'};},
   s=>{s.players[0].capital=4;return {pid:0,district:'soma',reason:'capital'};},
-  s=>{s.pendingWorkerAction={type:'raiseCapital',playerId:0};return {pid:0,district:'soma',reason:'pending-action'};},
+  s=>{s.pendingWorkerAction={type:'moveWorker',playerId:0};return {pid:0,district:'soma',reason:'pending-action'};},
   s=>({pid:99,district:'soma',reason:'player'})
  ];
  for(const modify of cases){
