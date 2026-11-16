@@ -428,7 +428,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E02",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E02_V2.md",
       "title": "Городская торговая неделя",
       "eventType": "one-year-trade-week",
@@ -449,12 +449,12 @@ export const NEWS_CARDS=Object.freeze([
       "selectedVenueCanBeOwnedByOrganizer": true
     },
     "category": "Экономика",
-    "title": "Торговля на пике",
-    "article": "Магазины, рестораны и гостиницы принимают всё больше посетителей. Городские купцы предсказывают прибыльный год.",
-    "target": "shops-club-hotel",
+    "title": "ГОРОДСКАЯ ТОРГОВАЯ НЕДЕЛЯ!",
+    "article": "Купеческие объединения и торговые предприятия объявляют неделю выставок, оптовых торгов и распродаж. Организаторы привлекают покупателей, а владельцы выбранных площадок получают признание в городе.",
+    "target": "none",
     "resource": "capital",
-    "delta": 2,
-    "frequency": "perDistrict",
+    "delta": 0,
+    "frequency": "oncePerYear",
     "defense": null
   },
   {
