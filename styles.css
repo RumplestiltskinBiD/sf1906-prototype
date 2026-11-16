@@ -3307,3 +3307,26 @@ body.delivery-route-build #deliveryRouteLayer *{
  .c03-offer-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:7px}
  .c03-offer-actions button{font-size:12px;padding:9px 6px;min-width:0}
 }
+
+/* Mobile map markers can overlap. This optional list exposes the same real
+   unload targets without intercepting map-first delivery or inventing a route. */
+@media (max-width:1000px){
+  .delivery-mobile-target-picker{display:grid;gap:4px;margin-top:5px;min-width:0}
+  .delivery-mobile-target-picker>.ghost-btn{min-height:32px;font-size:10px}
+  .delivery-mobile-target-list{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+    max-height:min(24vh,170px);overflow-y:auto;overscroll-behavior:contain;
+    padding:3px;border-radius:7px;background:#ede4d6
+  }
+  .delivery-mobile-target-list button{
+    min-height:38px;min-width:0;padding:5px 7px;text-align:left;
+    white-space:normal;overflow-wrap:anywhere;font-size:10px;font-weight:650;
+    color:#3b3025;background:#fff;border:1px solid #9c917f;border-radius:6px;
+    cursor:pointer
+  }
+  .delivery-mobile-target-list button:focus-visible{outline:3px solid #256c6d;outline-offset:1px}
+}
+@media (max-width:1000px) and (orientation:landscape) and (max-height:500px){
+  .delivery-mobile-target-list{max-height:18vh}
+  .delivery-mobile-target-list button{min-height:32px;font-size:9px}
+}
