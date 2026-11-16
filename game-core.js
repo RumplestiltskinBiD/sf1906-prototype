@@ -1584,9 +1584,12 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
     const names=project.accessAny.map(x=>x==='road'?'улица':x==='rail'?'Rail':x==='port'?'Port':x).join(' или ');
     reasons.push(`Требуется ${names} access.`);
   }
-  const bureauDiscount=!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
-  const landCost=ds?(replacing?0:Math.max(0,ds.landValue-bureauDiscount)):0;
-  const standardFee=project?.standard?STANDARD_PROJECT_FEE:0;
+  // E05 pays BOTH the land and the standard project fee, but does not buy
+  // building materials, move workers, or consume a saved Bureau contract.
+  const e05Subsidy=isE05CivicSubsidy(state,projectId);
+  const bureauDiscount=!e05Subsidy&&!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
+  const landCost=ds?(e05Subsidy||replacing?0:Math.max(0,ds.landValue-bureauDiscount)):0;
+  const standardFee=e05Subsidy?0:project?.standard?STANDARD_PROJECT_FEE:0;
   const totalCost=landCost+standardFee;
   if(player&&ds&&player.capital<totalCost) reasons.push(`Не хватает капитала на землю и проект ($${totalCost}).`);
   return {
@@ -1595,6 +1598,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
     cost:totalCost,
     landCost,
     standardFee,
+    e05Subsidy,
     baseCost:ds?.landValue??0,
     bureauDiscount,
     redevelopment:replacing,
@@ -1636,10 +1640,10 @@ export function beginConstruction(state,playerId,projectId,districtId,{redevelop
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  const discountText=check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
+  const discountText=check.e05Subsidy?' (E05: город оплачивает землю и оформление)':check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
   logEvent(state,`${player.name} ${former?'перестраивает пансион в':'начал строительство'} «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.landCost}${discountText}${check.standardFee?' + стандартный проект $'+check.standardFee:''}${former?', повторно использовано Lumber ×'+check.redeemedLumber:''}.${workerMovementText(consumed)}`,'good');
   const completedImmediately=!!(former&&completeConstruction(state,construction).ok);
-  return {ok:true,construction,cost:check.cost,landCost:check.landCost,standardFee:check.standardFee,bureauDiscount:check.bureauDiscount,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
+  return {ok:true,construction,cost:check.cost,landCost:check.landCost,standardFee:check.standardFee,bureauDiscount:check.bureauDiscount,e05Subsidy:check.e05Subsidy,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
 }
 
 export function resourcePrice(type){return RESOURCE_PRICES[type]??null;}
@@ -3828,6 +3832,67 @@ function resolveE03Newspaper(state,card){
 }
 
 
+
+export const E05_SUBSIDIZED_STANDARD_IDS=Object.freeze(['std_clinic','std_fire','std_police']);
+export const E05_RECOGNIZED_SERVICE_IDS=Object.freeze([
+  'std_clinic','clinic','std_fire','firehouse','std_police','police'
+]);
+function e05IsActive(state){
+  return activeNewspaper(state)?.id==='E05'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round;
+}
+export function isE05CivicSubsidy(state,projectId){
+  return e05IsActive(state)&&E05_SUBSIDIZED_STANDARD_IDS.includes(projectId);
+}
+export function e05RecognitionPreview(state){
+  const active=e05IsActive(state),eligible=new Set(E05_RECOGNIZED_SERVICE_IDS);
+  const perPlayer=(state.players||[]).map(p=>{
+    const sites=(state.constructions||[])
+      .filter(c=>c.playerId===p.id&&c.status==='complete'&&eligible.has(c.projectId))
+      .map(c=>({constructionId:c.id,projectId:c.projectId,districtId:c.districtId,
+        completedRound:c.completedRound??null}));
+    return {playerId:p.id,count:sites.length,sites};
+  });
+  const prior=(state.newsArchive||[]).find(a=>a.cardId==='E05'&&a.round===state.round);
+  return {active,round:state.round,subsidizedProjectIds:[...E05_SUBSIDIZED_STANDARD_IDS],
+    recognizedProjectIds:[...E05_RECOGNIZED_SERVICE_IDS],perPlayer,
+    settled:state.newsLastResolvedRound===state.round,
+    alreadyAwarded:!!prior?.e05};
+}
+function resolveE05Newspaper(state,card){
+  const projection=e05RecognitionPreview(state);
+  // Keep the current year's fixed turn order while awarding steps. A change
+  // of influence must affect the NEXT year only; moveInfluence skips occupied spaces.
+  const order=Array.isArray(state.yearTurnOrder)&&state.yearTurnOrder.length===state.players.length&&
+    new Set(state.yearTurnOrder).size===state.players.length&&
+    state.yearTurnOrder.every(pid=>state.players.some(p=>p.id===pid))
+    ?[...state.yearTurnOrder]:state.players.map(p=>p.id);
+  const changes={},awards=[];
+  for(const pid of order){
+    const player=state.players.find(p=>p.id===pid);
+    const entry=projection.perPlayer.find(p=>p.playerId===pid);
+    const move=entry.count?moveInfluence(state,pid,entry.count):
+      {from:player.influence,to:player.influence,steps:0,delta:0};
+    const awarded={playerId:pid,count:entry.count,
+      siteIds:entry.sites.map(c=>c.constructionId),
+      projects:entry.sites.map(c=>c.projectId),
+      influenceSteps:move.steps,influenceFrom:move.from,influenceTo:move.to};
+    awards.push(awarded);
+    if(move.steps)changes[pid]={capital:0,influence:move.steps,prestige:0};
+  }
+  const report={year:newsYear(state.round),round:state.round,cardId:'E05',
+    title:card.title,category:card.category,entries:[],changes,
+    serviceRecognition:[],emergency:{},
+    e05:{awards,order,totalSites:awards.reduce((n,a)=>n+a.count,0)}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  logEvent(state,'The San Francisco Call, '+report.year+
+    ' · E05: благодарность городским службам, '+
+    awards.map(a=>state.players.find(p=>p.id===a.playerId).name+
+      ' '+a.count+' завершённых служб → +'+a.influenceSteps+' Influence').join('; ')+
+    '. Никаких дополнительных VP или денежных выплат.','accent');
+  return {ok:true,report};
+}
+
 export const E04_MARINE_NODE_IDS=Object.freeze(['broadway','pacificmail','chinabasin','unioniron']);
 export const E04_MARINE_SURCHARGE=2;
 export const E04_SETTLEMENT_COST=5;
@@ -4653,6 +4718,8 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='E05')return {card,entries:[],threatened:[],protected:[],
+    summary:{districts:0,exposed:0,safe:0},e05:e05RecognitionPreview(state)};
   if(card?.id==='E04')return {card,entries:[],threatened:[],protected:[],
     summary:{districts:0,exposed:0,safe:0},e04:e04StrikePreview(state)};
   if(card?.id==='E03')return {card,entries:[],threatened:E03_AID_DISTRICTS,protected:[],
@@ -4815,6 +4882,7 @@ export function resolveNewspaper(state){
   if(card.id==='E02')return resolveE02Newspaper(state,card);
   if(card.id==='E03')return resolveE03Newspaper(state,card);
   if(card.id==='E04')return resolveE04Newspaper(state,card);
+  if(card.id==='E05')return resolveE05Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
