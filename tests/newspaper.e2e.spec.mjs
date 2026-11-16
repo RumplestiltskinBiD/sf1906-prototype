@@ -77,7 +77,7 @@ test('mobile emergency measures use map tap, ordinary worker movement and existi
   await page.locator('#callBuildingNode').click();
   await expect(page.locator('#newsSheetContent')).toContainText('ПОД УГРОЗОЙ');
 });
-test('news settles once on end of year, next issue and archive remain accessible',async({page})=>{
+test('E02 settles once without obsolete passive trade payouts; next issue and archive remain accessible',async({page})=>{
   await seededGame(page,{news:'E02',constructions:[{projectId:'shops',districtId:'financial',playerId:0}]});
   await page.evaluate(storage=>{
     const s=JSON.parse(localStorage.getItem(storage));
