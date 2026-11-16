@@ -155,8 +155,8 @@ for(const vp of views){
   await page.setViewportSize(vp);await seed(page,s);await news(page,vp);
   const cards=page.locator('.news-e05-player');
   await expect(cards).toHaveCount(3);
-  await expect(cards.nth(0)).toContainText('3 завершённых служб → +3 Influence');
-  await expect(cards.nth(1)).toContainText('1 завершённых служб → +1 Influence');
+  await expect(cards.nth(0)).toContainText('3 завершённые службы → +3 Influence');
+  await expect(cards.nth(1)).toContainText('1 завершённая служба → +1 Influence');
   await expect(cards.nth(2)).toContainText('0 завершённых служб');
   await expect(cards.nth(0)).toContainText('Civic Center');
   await expect(cards.nth(0)).not.toContainText('Сиротский приют');
@@ -180,9 +180,9 @@ test('E05 newly completed standard post appears in forecast without early Influe
  expect(after.players[0].influence).toBe(before.players[0].influence,'E05 pays only at year end');
  await page.locator('#officeDrawer [data-close-drawer]').click();
  await news(page,vp);
- await expect(page.locator('.news-e05-player').first()).toContainText('1 завершённых служб → +1 Influence');
+ await expect(page.locator('.news-e05-player').first()).toContainText('1 завершённая служба → +1 Influence');
  await page.reload();await news(page,vp);
- await expect(page.locator('.news-e05-player').first()).toContainText('1 завершённых служб');
+ await expect(page.locator('.news-e05-player').first()).toContainText('1 завершённая служба');
 });
 test('E05 real year-close pays once, records annual service counts and next-year order in save/archive',async({page})=>{
  const vp={width:1366,height:768},s=game({round:1});
