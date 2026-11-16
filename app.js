@@ -1246,6 +1246,28 @@ const aidOptions=deliveryRouteTargets().filter(t=>t.kind==='e03-aid'&&
 if(aidOptions.length)html+='<div class="delivery-e03-choose">'+
   aidOptions.map(t=>'<button type="button" data-e03-unload-target="'+t.id+'">'+
     '▣ Сдать помощь · '+districtById(t.id).name+'</button>').join('')+'</div>';
+const otherTargets=deliveryRouteTargets().filter(t=>t.kind!=='e03-aid'&&deliveryTargetAcceptsAny(t));
+if(otherTargets.length){
+  html+='<div class="delivery-mobile-target-picker"><button id="deliveryToggleTargetList" type="button" class="ghost-btn">'+
+    (deliveryDraft.targetListOpen?'Скрыть точки разгрузки':'Список точек разгрузки ('+otherTargets.length+')')+'</button>';
+  if(deliveryDraft.targetListOpen){
+    html+='<div class="delivery-mobile-target-list">'+otherTargets.map(t=>{
+      const kind=deliveryRouteTargetKind(t),district=districtById(t.districtId)?.name||t.districtId;
+      const localIndex=(state.constructions||[]).filter(c=>c.districtId===t.districtId)
+        .findIndex(c=>c.id===t.id);
+      const number=localIndex>=0?' №'+(localIndex+1):'';
+      const label=kind==='warehouse'?'Склад'+number+' · '+warehouseInventory(t).map(materialShort).join(', '):
+        kind==='construction'?(projectById(t.projectId)?.name||'Стройка')+number:
+        kind==='bakery'?'Пекарня'+number:
+        kind==='freight-yard'?'Городской грузовой двор':
+        kind==='goods-sale'?(projectById(t.projectId)?.name||'Торговля')+number:
+        kind==='contraband-sale'?'Лавка редких товаров'+number:'Точка разгрузки'+number;
+      return '<button type="button" data-delivery-unload-target="'+escapeHtml(t.id)+'">'+
+        escapeHtml(label+' · '+district)+'</button>';
+    }).join('')+'</div>';
+  }
+  html+='</div>';
+}
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
@@ -1322,10 +1344,18 @@ $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTarg
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
 $$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
-$$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
+$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
   const target=deliveryRouteTargets().find(t=>t.kind==='e03-aid'&&t.id===b.dataset.e03UnloadTarget);
   if(!target||!deliveryTargetAcceptsAny(target))return;
   deliveryDraft.focusTargetId=target.id;render();
+});
+$('#deliveryToggleTargetList')?.addEventListener('click',()=>{
+  deliveryDraft.targetListOpen=!deliveryDraft.targetListOpen;render();
+});
+$('[data-delivery-unload-target]').forEach(b=>b.onclick=()=>{
+  const target=deliveryRouteTargets().find(t=>t.id===b.dataset.deliveryUnloadTarget);
+  if(!target||!deliveryTargetAcceptsAny(target))return;
+  deliveryDraft.focusTargetId=target.id;deliveryDraft.targetListOpen=false;render();
 });
 $('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=true;deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;render();});
 $('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
