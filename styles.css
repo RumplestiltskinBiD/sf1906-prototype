@@ -3330,3 +3330,14 @@ body.delivery-route-build #deliveryRouteLayer *{
   .delivery-mobile-target-list{max-height:18vh}
   .delivery-mobile-target-list button{min-height:32px;font-size:9px}
 }
+
+/* Optional mobile source picker lives in the map toolbar, never in a
+   blocking Delivery panel until expressly opened by the player. */
+.delivery-source-shortcut[hidden]{display:none!important}
+.delivery-source-shortcut{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:34px;padding:5px 9px;border:1px solid #39766f;border-radius:7px;
+  background:#e2f4ed;color:#224f4b;font-size:11px;font-weight:800;
+  cursor:pointer;white-space:nowrap
+}
+.delivery-source-shortcut:focus-visible{outline:3px solid #d2a74d;outline-offset:2px}
