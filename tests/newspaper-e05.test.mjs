@@ -195,9 +195,13 @@ for(const count of [0,1,2,4,6]){
   const s=game(),ids=G.E05_RECOGNIZED_SERVICE_IDS;
   for(let i=0;i<count;i++)site(s,'S'+i,ids[i],0,['civic','soma','mission','western','pacific','northbeach'][i]);
   const start=s.players[0].influence;
+  const expected=G.moveInfluence(structuredClone(s),0,count);
   const r=G.resolveNewspaper(s);
   assert.equal(r.ok,true,JSON.stringify(r));
-  assert.equal(s.players[0].influence,start+count);
+  assert.equal(s.players[0].influence,expected.to,
+    'real Influence steps must leap over opponent-occupied positions');
+  assert.equal(r.report.e05.awards[0].influenceFrom,start);
+  assert.equal(r.report.e05.awards[0].influenceTo,expected.to);
   assert.equal(r.report.e05.awards[0].count,count);
   assert.equal(r.report.e05.awards[0].influenceSteps,count);
   assert.equal(r.report.e05.totalSites,count);
