@@ -13,13 +13,13 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
-  assert.match(html,/app\.js\?v=0581-e03-western-aid/);
-  assert.match(html,/styles\.css\?v=0581-e03-western-aid/);
+  assert.match(html,/app\.js\?v=0582-e04-waterfront-strike/);
+  assert.match(html,/styles\.css\?v=0582-e04-waterfront-strike/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.match(app,/game-core\.js\?v=0581-e03-western-aid/);
-  assert.match(app,/newspaper-cards\.js\?v=0581-e03-western-aid/);
+  assert.match(app,/game-core\.js\?v=0582-e04-waterfront-strike/);
+  assert.match(app,/newspaper-cards\.js\?v=0582-e04-waterfront-strike/);
   const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
-  assert.match(core,/newspaper-cards\.js\?v=0581-e03-western-aid/);
+  assert.match(core,/newspaper-cards\.js\?v=0582-e04-waterfront-strike/);
 });
 
 test('Delivery UI contains all progressive flow handlers',async()=>{
@@ -193,7 +193,7 @@ test('card base VP is shown once and legacy prestige copy is absent',async()=>{
 // Fail in the fast core phase if a newspaper E2E spec contains a syntax error.
 // Otherwise Playwright may discover the defect only after installing Chromium.
 test('newspaper browser specifications parse before full browser regression',()=>{
-  for(const file of ['tests/newspaper.e2e.spec.mjs','tests/newspaper-e03.e2e.spec.mjs']){
+  for(const file of ['tests/newspaper.e2e.spec.mjs','tests/newspaper-e03.e2e.spec.mjs','tests/newspaper-e04.e2e.spec.mjs']){
     const parsed=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
     assert.equal(parsed.status,0,file+' syntax error:\n'+(parsed.stderr||parsed.stdout));
   }

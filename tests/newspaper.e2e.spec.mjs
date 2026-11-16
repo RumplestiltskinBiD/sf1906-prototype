@@ -60,7 +60,7 @@ test('C01 gang article highlights the D6 zone and only really protected properti
  });
 test('mobile emergency measures use map tap, ordinary worker movement and existing action',async({page})=>{
   await page.setViewportSize({width:390,height:844});
-  await seededGame(page,{news:'E04',constructions:[{projectId:'warehouse',districtId:'soma',playerId:1}]});
+  await seededGame(page,{news:'E06',constructions:[{projectId:'warehouse',districtId:'soma',playerId:1}]});
   await expect(page.locator('#newsStrip')).toBeHidden();
    await page.locator('#callBuildingNode').click();
   await page.locator('#newsEmergencyStart').click();

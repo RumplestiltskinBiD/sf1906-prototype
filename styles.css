@@ -3359,3 +3359,41 @@ body.delivery-route-build #deliveryRouteLayer *{
     pointer-events:auto!important;
   }
 }
+
+
+/* E04 Waterfront Strike: one in-year global effect, and accessible negotiation
+   from the newspaper/map, with no blocking overlay or extra map tokens. */
+.news-e04-panel{
+  display:grid;gap:7px;margin:10px 0;padding:12px;
+  border:1px solid #a98b63;border-radius:10px;background:#f7efe2;
+  color:#443b31;line-height:1.42;min-width:0
+}
+.news-e04-panel>strong{font-size:15px}
+.news-e04-panel p{margin:0;overflow-wrap:anywhere}
+.news-e04-panel .news-e04-status{
+  padding:8px;background:#e9e4d8;border-left:3px solid #7e795c;
+  font-weight:750;border-radius:5px
+}
+.news-e04-panel small{font-size:11px;line-height:1.4}
+.news-e04-ports{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.news-e04-ports>strong,.news-e04-ports>small{grid-column:1/-1}
+.news-e04-ports button{
+  min-width:0;min-height:42px;padding:7px;text-align:left;
+  background:#fff;border:1px solid #9d885f;border-radius:7px;
+  color:#453b2b;font-weight:700;font-size:12px;cursor:pointer;
+  overflow-wrap:anywhere;white-space:normal
+}
+.news-e04-ports button:disabled{opacity:.48;cursor:not-allowed}
+.news-e04-ports button:focus-visible,.e04-context-panel button:focus-visible{
+  outline:3px solid #29736c;outline-offset:2px
+}
+.e04-context-panel{display:grid;gap:7px}
+@media(max-width:640px){
+  .news-e04-panel{padding:8px}
+  .news-e04-ports{grid-template-columns:1fr}
+  .news-e04-ports button{min-height:44px;font-size:12px}
+}
+@media(orientation:landscape) and (max-height:500px) and (max-width:1000px){
+  .news-e04-ports{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .news-e04-ports button{min-height:36px;font-size:10px}
+}
