@@ -1304,8 +1304,8 @@ $('#deliveryLockRoute')?.addEventListener('click',confirmDeliveryRoute);
 $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
-$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
+$$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
+$$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
 $('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=true;deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;render();});
 $('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
 $$('[data-extra-source-kind]').forEach(b=>b.onclick=()=>chooseExtraPickup(b.dataset.extraSourceKind,b.dataset.extraSourceId));
@@ -1502,10 +1502,10 @@ function renderC02MapMarker(lot){
   label.textContent='▣';marker.append(circle,label);group.append(marker);
 }
 function renderE03MapTokens(preview){
-  $('.e03-map-token').forEach(el=>el.remove());
+  $$('.e03-map-token').forEach(el=>el.remove());
   if(!preview?.active)return;
   for(const token of preview.tokens){
-    const group=$('[data-district]').find(g=>g.dataset.district===token.districtId);
+    const group=$$('[data-district]').find(g=>g.dataset.district===token.districtId);
     const path=group?.querySelector('path');
     if(!path||typeof path.getBBox!=='function')continue;
     const box=path.getBBox(),ns='http://www.w3.org/2000/svg';
@@ -2248,7 +2248,7 @@ function renderNewspaper(){
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
-  $('#newsSheetContent [data-e03-store-district]').forEach(button=>button.onclick=()=>{
+  $$('#newsSheetContent [data-e03-store-district]').forEach(button=>button.onclick=()=>{
     const pid=currentDeveloper(state),options=e03WarehouseAidOptions(state,pid);
     const chosen=options.tokens.find(x=>x.districtId===button.dataset.e03StoreDistrict);
     const pair=chosen?.pairs[Number(button.dataset.e03StorePair)];
@@ -2259,7 +2259,7 @@ function renderNewspaper(){
     showToast(r.ok?'Материалы переданы · +$13, +2 VP, +1 Influence':'Нельзя сдать материалы: '+r.reason);
     render();
   });
-  $('#newsSheetContent [data-e02-venue]').forEach(button=>button.onclick=()=>{
+  $$('#newsSheetContent [data-e02-venue]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
       showToast('Сначала завершите или отмените текущую операцию');return;
     }
