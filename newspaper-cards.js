@@ -521,7 +521,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E05",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E05_V2.md",
       "title": "Город благодарит своих защитников",
       "eventType": "one-year-community-service-commemoration",
@@ -543,12 +543,12 @@ export const NEWS_CARDS=Object.freeze([
       }
     },
     "category": "Общественная жизнь",
-    "title": "Город признаёт заслуги служащих",
-    "article": "Несмотря на недостатки администрации, многие благодарят врачей, пожарных и патрульных. Пресса призывает мэрию поддержать добросовестные службы.",
-    "target": "service",
+    "title": "ГОРОД БЛАГОДАРИТ СВОИХ ЗАЩИТНИКОВ!",
+    "article": "Жители требуют поддержать врачей, пожарных и полицейских. По их инициативе мэрия оплачивает участки и оформление новых служб, а прежних благотворителей отмечают общественным признанием.",
+    "target": "none",
     "resource": "influence",
-    "delta": 1,
-    "frequency": "oncePerPlayer",
+    "delta": 0,
+    "frequency": "oncePerYear",
     "defense": null
   },
   {

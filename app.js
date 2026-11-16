@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
-projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
+isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -9,8 +9,8 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0583-no-reward-movement';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0583-no-reward-movement';
+} from './game-core.js?v=0584-e05-civic-services';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0584-e05-civic-services';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1385,8 +1385,16 @@ pts.forEach((p,i)=>html+='<g class="delivery-route-stop '+(i===pts.length-1?'cur
 layer.innerHTML=html;
 }
 
+function e05ServiceLabel(count){
+  const n=Math.max(0,Math.floor(Number(count)||0)),last=n%10,lastTwo=n%100;
+  const noun=lastTwo>=11&&lastTwo<=14?'завершённых служб':
+    last===1?'завершённая служба':
+    last>=2&&last<=4?'завершённые службы':'завершённых служб';
+  return n+' '+noun;
+}
 function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
+  if(card.id==='E05')return 'Стандартная клиника, пожарный и полицейский пост: земля и сбор $0; в конце года +1 Influence за КАЖДУЮ свою завершённую службу';
   if(card.id==='E04')return 'Забастовка: +$2 за рейс с морской погрузкой; урегулирование в порту $5 + действие → +3 VP и +1 Influence';
   if(card.id==='E03')return 'По 1 жетону помощи в Outer Richmond и Outer Sunset · 2 разных стройматериала → +$13, +2 VP, +1 Influence';
   if(card.id==='E02')return 'Одна торговая ярмарка на игрока: +$4–6 и +1 VP организатору, +1 Influence владельцу площадки';
@@ -1680,12 +1688,14 @@ function renderNewspaper(){
   const legacyE02Archive=!!(archived?.cardId==='E02'&&!archived.e02);
   const legacyE03Archive=!!(archived?.cardId==='E03'&&!archived.e03);
   const legacyE04Archive=!!(archived?.cardId==='E04'&&!archived.e04);
-  const historical=archived&&!legacyE01Archive&&!legacyE02Archive&&!legacyE03Archive&&!legacyE04Archive&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyC03Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const legacyE05Archive=!!(archived?.cardId==='E05'&&!archived.e05);
+  const historical=archived&&!legacyE01Archive&&!legacyE02Archive&&!legacyE03Archive&&!legacyE04Archive&&!legacyE05Archive&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyC03Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const rentalNewspaper=!legacyE01Archive&&(record.id==='E01'||record.cardId==='E01');
   const tradeWeekNewspaper=!legacyE02Archive&&(record.id==='E02'||record.cardId==='E02');
   const westernAidNewspaper=!legacyE03Archive&&(record.id==='E03'||record.cardId==='E03');
   const waterfrontStrikeNewspaper=!legacyE04Archive&&(record.id==='E04'||record.cardId==='E04');
+  const civicRecognitionNewspaper=!legacyE05Archive&&(record.id==='E05'||record.cardId==='E05');
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const streetCrimeNewspaper=!legacyC01Archive&&(record.id==='C01'||record.cardId==='C01');
   const stolenCargoNewspaper=!legacyC02Archive&&(record.id==='C02'||record.cardId==='C02');
@@ -1820,6 +1830,31 @@ function renderNewspaper(){
 
 
 
+
+  const e05Preview=issue?.id==='E05'?forecast.e05:null;
+  const e05Panel=issue?.id==='E05'
+    ?'<section class="news-e05-panel"><strong>Город благодарит своих защитников · помощь и признание</strong>'+
+      '<p>В этом году старт строительства <b>стандартной клиники, пожарного и полицейского поста</b> — <b>земля $0 + оформление $0</b>. Нужны обычное основное действие и реальные материалы с доставкой. Стандартный склад и рыночные службы платят по обычным правилам.</p>'+
+      '<p><b>В конце этого года:</b> +1 шаг Influence <b>за каждую свою завершённую</b> клинику, пожарную часть или полицейский участок (стандартный и рыночный), в том числе завершённые в прошлые годы. Незавершённые здания и склады не учитываются; VP и денег событие не даёт.</p>'+
+      '<div class="news-e05-counts"><strong>Текущий прогноз Influence</strong>'+
+      (e05Preview?.perPlayer||[]).map(p=>
+        '<div class="news-e05-player"><b>'+escapeHtml(state.players.find(x=>x.id===p.playerId)?.name||'Игрок')+'</b>'+
+        '<span>'+e05ServiceLabel(p.count)+' → +'+p.count+' Influence в конце года</span>'+
+        (p.sites.length?'<small>'+p.sites.map(c=>escapeHtml(projectById(c.projectId)?.name||c.projectId)+
+          ' · '+escapeHtml(districtById(c.districtId)?.name||c.districtId)).join('; ')+'</small>':
+          '<small>Пока нет завершённых подходящих учреждений</small>')+
+        '</div>').join('')+'</div>'+
+      '<small>Прогноз обновляется при завершении зданий. Влияние начисляется только один раз, при закрытии года, и влияет на очередность следующего года.</small>'+
+      '</section>':'';
+  const e05Archive=civicRecognitionNewspaper&&archived?.e05
+    ?(archived.e05.awards||[]).map(a=>
+      '<li>'+escapeHtml(state.players.find(p=>p.id===a.playerId)?.name||'Игрок')+
+      ': '+e05ServiceLabel(a.count)+' → +'+a.influenceSteps+' Influence'+
+      (a.projects?.length?' ('+a.projects.map(id=>escapeHtml(projectById(id)?.name||id)).join(', ')+')':'')+
+      '</li>').join('')+
+      '<li>Всего зачтено служб: '+archived.e05.totalSites+
+      '. За каждую завершённую службу один шаг; в других годах E05 не повторяется.</li>'
+    :'';
   const e04Preview=issue?.id==='E04'?forecast.e04:null;
   const e04Dev=currentDeveloper(state);
   const e04Options=issue?.id==='E04'&&Number.isInteger(e04Dev)?e04SettlementOptions(state,e04Dev):null;
@@ -2241,7 +2276,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='E04'
+  const projections=issue?.id==='E05'
+    ?'<li>Бесплатны только земля и стандартный проектный сбор для трёх служебных постов; материалы и доставка без скидки. Прогноз по готовым службам — ниже.</li>'
+    :issue?.id==='E04'
     ?'<li>+$2 за подтверждённую Доставку с одной или несколькими морскими погрузками. Железная дорога и склады без надбавки. При урегулировании новые рейсы обычной стоимости.</li>'
     :issue?.id==='E03'
     ?'<li>2 разных материала, реальный маршрут или свой завершённый склад. Никаких частичных выплат.</li>'
@@ -2309,25 +2346,26 @@ function renderNewspaper(){
     ' · '+escapeHtml(record.category||archived?.category||'Газета')+'</div>'+
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
-    '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':westernAidNewspaper?'ПОМОЩЬ ЗАПАДНЫМ КВАРТАЛАМ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА НА НАБЕРЕЖНОЙ':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||corruptPermitsNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyC03Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':westernAidNewspaper?'ПОМОЩЬ ЗАПАДНЫМ КВАРТАЛАМ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА НА НАБЕРЕЖНОЙ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
+    (rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||corruptPermitsNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyC03Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyE04Archive?'Архив предыдущей редакции E04 — смотрите фактические изменения ниже':legacyE03Archive?'Архив предыдущей редакции E03 — смотрите фактические начисления ниже':legacyE02Archive?'Архив предыдущей редакции E02 — смотрите фактические начисления ниже':legacyE01Archive?'Архив предыдущей редакции E01 — смотрите фактические начисления ниже':legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyC03Archive?'Архив прежней C03 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyE05Archive?'Архив предыдущей редакции E05 — фактические начисления сохранены ниже':legacyE04Archive?'Архив предыдущей редакции E04 — смотрите фактические изменения ниже':legacyE03Archive?'Архив предыдущей редакции E03 — смотрите фактические начисления ниже':legacyE02Archive?'Архив предыдущей редакции E02 — смотрите фактические начисления ниже':legacyE01Archive?'Архив предыдущей редакции E01 — смотрите фактические начисления ниже':legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyC03Archive?'Архив прежней C03 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      e04Archive+e03Archive+e02Archive+e01Archive+f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+c03Archive+f04Archive+
+      e05Archive+e04Archive+e03Archive+e02Archive+e01Archive+f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+c03Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||infantCare||h01Past||h02Past||c01Past||c02Past||c03Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||infantCare||h01Past||h02Past||c01Past||c02Past||c03Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
-      :'<div class="news-scope"><strong>'+(westernAidNewspaper?'ЖЕТОНЫ ПОМОЩИ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА И ПЕРЕГОВОРЫ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
-      (waterfrontStrikeNewspaper?'<small>+$2 только за оплаченный рейс с морской погрузкой. Переговоры можно провести один раз: $5 и главное действие за +3 VP и +1 Influence. В конце года без дополнительных штрафов.</small>':
+      :'<div class="news-scope"><strong>'+(westernAidNewspaper?'ЖЕТОНЫ ПОМОЩИ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА И ПЕРЕГОВОРЫ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
+      (civicRecognitionNewspaper?'<small>В год E05 земля и стандартный сбор трёх видов постов равны $0. В конце года одно начисление +1 Influence за каждую готовую собственную службу; деньги и VP от E05 не выдаются.</small>':
+       waterfrontStrikeNewspaper?'<small>+$2 только за оплаченный рейс с морской погрузкой. Переговоры можно провести один раз: $5 и главное действие за +3 VP и +1 Influence. В конце года без дополнительных штрафов.</small>':
        westernAidNewspaper?'<small>Ровно два жетона на год; без бесплатных перевозок, других штрафов или годовой выплаты.</small>':
        tradeWeekNewspaper?'<small>Только основное действие в доступном районе. Награды сразу после мероприятия; пассивной годовой выплаты нет.</small>':
        rentalNewspaper?'<small>Награда только за новые завершения жилья в год E01, после выбора владельца. Ни штрафов, ни автоматических выплат в конце года.</small>':
@@ -2345,11 +2383,11 @@ function renderNewspaper(){
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+e04Panel+e03Panel+e02Panel+e01Panel+c03Panel+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+e05Panel+e04Panel+e03Panel+e02Panel+e01Panel+c03Panel+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!rentalNewspaper&&!tradeWeekNewspaper&&!westernAidNewspaper&&!waterfrontStrikeNewspaper&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!corruptPermitsNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!rentalNewspaper&&!tradeWeekNewspaper&&!westernAidNewspaper&&!waterfrontStrikeNewspaper&&!civicRecognitionNewspaper&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!corruptPermitsNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
@@ -2749,13 +2787,14 @@ function renderStandardProjects(){
     p.id==='std_fire'?'П −1 · служба своего района · земля +1':
     p.id==='std_police'?'Полиция в районе · земля +1':'Медицина в районе · земля +1';
    const selected=state.pendingConstruction?.projectId===p.id;
+   const subsidized=isE05CivicSubsidy(state,p.id);
    return '<article class="standard-project-card typed-project '+(selected?'standard-selected':'')+'" '+projectTypeStyle(p)+'>'
-    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>Проект $'+STANDARD_PROJECT_FEE+' · 1 VP</span></div>'
+    +'<div class="standard-project-card-title"><b>'+p.name+'</b><span>Проект $'+(subsidized?0:STANDARD_PROJECT_FEE)+' · 1 VP</span></div>'
     +'<div class="standard-project-resource">'+resourcePills(p.materials)+'</div>'
-    +'<small>'+note+'</small>'
+    +'<small>'+(subsidized?'E05: земля и оформление $0 · материалы обычные · ': '')+note+'</small>'
     +'<button type="button" class="primary-btn standard-project-button" data-standard-build="'+p.id+'" '+(enabled?'':'disabled')+'>Выбрать район</button></article>';
  }).join('');
- el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>Без тендера · проект $'+STANDARD_PROJECT_FEE+' + земля + материалы</span></div><div class="standard-projects-grid">'+cards+'</div>';
+ el.innerHTML='<div class="standard-projects-head"><strong>Стандартные городские проекты</strong><span>'+(activeNewspaper(state)?.id==='E05'&&state.newsLastResolvedRound!==state.round?'E05: пожарный, клиника, полиция — земля и сбор $0; склад оплачивается':'Без тендера · проект $'+STANDARD_PROJECT_FEE+' + земля + материалы')+'</span></div><div class="standard-projects-grid">'+cards+'</div>';
  el.querySelectorAll('[data-standard-build]').forEach(b=>b.onclick=()=>{if(pid!=null)startConstructionFlow(pid,b.dataset.standardBuild);});
 }
 function renderCityOverview(){
@@ -3639,7 +3678,7 @@ const pending=state.pendingConstruction;if(!pending)return;
 const r=beginConstruction(state,pending.playerId,pending.projectId,state.selectedDistrictId,{redevelopId});
 if(!r.ok){showToast(r.reasons?.[0]||'Нельзя начать строительство здесь');render();return;}
 mobileContextOpen=false;
-const land=r.standardFee?`земля $${r.landCost} + проект $${r.standardFee} = $${r.cost}`:r.bureauDiscount>0?`земля $${r.landCost} · contract −$${r.bureauDiscount}`:`земля $${r.landCost}`;
+const land=r.e05Subsidy?'E05: земля $0 + проектный сбор $0':r.standardFee?`земля $${r.landCost} + проект $${r.standardFee} = $${r.cost}`:r.bureauDiscount>0?`земля $${r.landCost} · contract −$${r.bureauDiscount}`:`земля $${r.landCost}`;
 showToast(`Основное действие: ${r.redevelopment?'перестройка · Lumber ×'+r.redeemedLumber:'стройка начата'} · ${land}${r.completedImmediately?' · сразу завершено':''}. Worker #${r.worker?.number} теперь в ${districtById(state.selectedDistrictId)?.name}.`);
 render();
 }
@@ -3704,7 +3743,7 @@ let constructionHtml='';
 if(state.pendingConstruction){
 const pending=state.pendingConstruction,pl=state.players[pending.playerId],pr=projectById(pending.projectId),check=constructionEligibility(state,pending.playerId,pending.projectId,d.id);
 const redeemHtml=redevelopmentOptions(pending,d.id).map(({con,check:rc})=>'<div class="redevelop-option"><b>Перестроить «Виста-дель-Мар» · уровень '+(con.wagonLevel||1)+'</b><small>Без повторной покупки земли · Lumber ×'+rc.redeemedLumber+' · 1 рабочий</small><button class="primary-btn full" data-redevelop-wagon="'+con.id+'" '+(rc.ok?'':'disabled')+'>Перестроить на этом участке</button>'+(rc.ok?'':'<small>'+rc.reasons.join(' · ')+'</small>')+'</div>').join('');
-const landPriceLine=check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.landCost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.landCost}</b></span>`;
+const landPriceLine=check.e05Subsidy?'<span class="e05-discount-note">E05 · город оплачивает землю и оформление</span><span>Земля <b>$0</b></span><span>Стандартный проект <b>$0</b></span>':check.bureauDiscount>0?`<span>Земля <b>$${check.baseCost} → $${check.landCost}</b></span><span>Contract <b>−$${check.bureauDiscount}</b></span>`:`<span>Земля <b>$${check.landCost}</b></span>`;
 const priceLine=landPriceLine+(check.standardFee?`<span>Проект <b>$${check.standardFee}</b></span><span>Итого <b>$${check.cost}</b></span>`:'<span>Представитель <b>1</b></span>');
 constructionHtml=`<div class="construction-confirm ${check.ok?'ok':'blocked'}"><div class="detail-label">Начать строительство</div><strong>${pl.name} · ${pr.name}</strong>${redeemHtml}<div class="context-requirements"><b>Требования</b><div class="requirement-chip-row">${requirementChips(pr)}</div></div>${constructionRiskPreviewHtml(d.id,pr.id)}<div class="construction-cost">${priceLine}</div>${check.ok?'<button class="primary-btn full" id="confirmConstruction">Начать строительство</button>':`<div class="eligibility-errors">${check.reasons.map(x=>`<div>• ${x}</div>`).join('')}</div>`}</div>`;
 }
