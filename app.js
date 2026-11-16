@@ -1323,8 +1323,8 @@ $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
-$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
+$$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
+$$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
   const target=deliveryRouteTargets().find(t=>t.kind==='e03-aid'&&t.id===b.dataset.e03UnloadTarget);
   if(!target||!deliveryTargetAcceptsAny(target))return;
   deliveryDraft.focusTargetId=target.id;render();
