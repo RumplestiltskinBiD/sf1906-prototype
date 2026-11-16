@@ -1150,9 +1150,22 @@ el.className='delivery-panel active'
 +(mobile&&step==='unload'?' mobile-unload':'')
 +(mobile&&step==='unload'&&deliveryDraft.focusTargetId?' unload-target-open':'')
 +(mobile&&deliveryDraft.listOpen?' list-open':'');
-if(mobile&&step==='source'){
-  el.className='delivery-panel';
-  el.innerHTML='';
+if(mobile&&step==='source'&&!deliveryDraft.listOpen){
+  // When E03 requires a precise two-material handoff, provide an accessible
+  // source list even if multiple physical warehouse tokens overlap on the map.
+  // Ordinary map-first logistics keeps its established UI in other years.
+  if(!e03AidPreview(state).active){
+    el.className='delivery-panel';el.innerHTML='';return;
+  }
+  el.className='delivery-panel active mobile-map-source';
+  el.innerHTML='<div class="delivery-head"><div><small>СВОБОДНОЕ ДЕЙСТВИЕ</small><strong>Выберите источник на карте или из списка</strong></div>'+
+    '<button id="cancelDelivery" class="delivery-close delivery-cancel-text">Отмена</button></div>'+
+    '<div class="delivery-map-prompt"><b>Помощь E03 · материалы Д / К / С</b>'+
+    '<button id="deliveryShowSourceList" type="button" class="ghost-btn">Список источников</button></div>';
+  $('#cancelDelivery')?.addEventListener('click',cancelDeliveryFlow);
+  $('#deliveryShowSourceList')?.addEventListener('click',()=>{
+    deliveryDraft.listOpen=true;renderDeliveryPanel();
+  });
   return;
 }
 const pid=deliveryDraft.playerId,p=state.players[pid];
@@ -1230,6 +1243,11 @@ html+='<div class="ux3-unload-dock '+(focus?'target-open':'')+'">';
 if(!focus){
 html+='<div class="ux3-unload-copy"><small>РАЗГРУЗКА · МАРШРУТ ЗАФИКСИРОВАН</small><strong>Осталось: Д '+(left.Lumber||0)+' · К '+(left.Masonry||0)+' · С '+(left.Steel||0)+' · Р '+(left.Beer||0)+' · Х '+(left.Bread||0)+' · Ф '+(left.Contraband||0)+'</strong><span>Тапните подсвеченную стройку, торговое здание, пекарню, склад или грузовой двор на карте.</span></div>'
 +'<button id="deliveryBackRoute" class="ghost-btn ux3-unload-back">← Маршрут</button>';
+const aidOptions=deliveryRouteTargets().filter(t=>t.kind==='e03-aid'&&
+  E03_AID_MATERIALS.some(type=>deliveryCanDrop('e03-aid',t.id,type)));
+if(aidOptions.length)html+='<div class="delivery-e03-choose">'+
+  aidOptions.map(t=>'<button type="button" data-e03-unload-target="'+t.id+'">'+
+    '▣ Сдать помощь · '+districtById(t.id).name+'</button>').join('')+'</div>';
 }else{
 let kind=deliveryRouteTargetKind(focus),label='',cap='';
 if(kind==='construction'){const pr=projectById(focus.projectId);label=pr.name;cap='Стройка '+((focus.materialsDelivered||[]).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+pr.materials.length;}
@@ -1305,7 +1323,12 @@ $('#deliveryBackRoute')?.addEventListener('click',backToDeliveryRoute);
 $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTargetId=null;render();});
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
-$$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
+$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
+$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
+  const target=deliveryRouteTargets().find(t=>t.kind==='e03-aid'&&t.id===b.dataset.e03UnloadTarget);
+  if(!target||!deliveryTargetAcceptsAny(target))return;
+  deliveryDraft.focusTargetId=target.id;render();
+});
 $('#deliveryShowPickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=true;deliveryDraft.routeDropOpen=false;deliveryDraft.focusTargetId=null;render();});
 $('#deliveryHidePickups')?.addEventListener('click',()=>{deliveryDraft.pickupOpen=false;deliveryDraft.pickupSource=null;render();});
 $$('[data-extra-source-kind]').forEach(b=>b.onclick=()=>chooseExtraPickup(b.dataset.extraSourceKind,b.dataset.extraSourceId));
