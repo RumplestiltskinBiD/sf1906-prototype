@@ -3341,3 +3341,21 @@ body.delivery-route-build #deliveryRouteLayer *{
   cursor:pointer;white-space:nowrap
 }
 .delivery-source-shortcut:focus-visible{outline:3px solid #d2a74d;outline-offset:2px}
+
+/* Landscape unload: keep the actual map target tappable above the action dock.
+   The bottom nav is redundant during a modal Delivery and otherwise overlaps
+   low map tokens; all interactive dock controls remain fully clickable. */
+@media (orientation:landscape) and (max-height:500px) and (max-width:960px){
+  body.delivery-unload-mode .nav-rail{display:none!important}
+  body.delivery-unload-mode .delivery-panel.mobile-unload{
+    bottom:5px!important;
+    pointer-events:none!important;
+  }
+  body.delivery-unload-mode .delivery-panel.mobile-unload button,
+  body.delivery-unload-mode .delivery-panel.mobile-unload input,
+  body.delivery-unload-mode .delivery-panel.mobile-unload select,
+  body.delivery-unload-mode .delivery-panel.mobile-unload .delivery-mobile-target-list,
+  body.delivery-unload-mode .delivery-panel.mobile-unload .delivery-e03-stock{
+    pointer-events:auto!important;
+  }
+}
