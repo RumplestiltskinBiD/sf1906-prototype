@@ -1152,6 +1152,7 @@ export function createInitialState({rng=Math.random}={}){
     newsC03Offer:null,
     newsE01Contracts:newsCurrentIds[0]==='E01'?{round:1,claims:[]}:null,
     newsE02TradeWeek:newsCurrentIds[0]==='E02'?{round:1,events:[]}:null,
+    newsE03Aid:newsCurrentIds[0]==='E03'?{round:1,claims:[]}:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -2899,6 +2900,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsC03Offer=null;
   state.newsE01Contracts=state.newsCurrentIds[0]==='E01'?{round:state.round,claims:[]}:null;
   state.newsE02TradeWeek=state.newsCurrentIds[0]==='E02'?{round:state.round,events:[]}:null;
+  state.newsE03Aid=state.newsCurrentIds[0]==='E03'?{round:state.round,claims:[]}:null;
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -3192,6 +3194,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsC03Offer=null;
     state.newsE01Contracts=null;
     state.newsE02TradeWeek=null;
+    state.newsE03Aid=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -3673,6 +3676,125 @@ function resolveF02Newspaper(state,card){
 }
 
 
+
+
+export const E03_AID_DISTRICTS=Object.freeze(['outerrichmond','sunset']);
+export const E03_AID_MATERIALS=Object.freeze(['Lumber','Masonry','Steel']);
+export const E03_AID_REWARD=Object.freeze({capital:13,prestige:2,influence:1});
+// E03 is a finite local aid contract, NOT a passive year-end district subsidy.
+// Legacy saves with no ledger are read without mutation and start with both offers.
+export function e03AidPreview(state){
+  const active=activeNewspaper(state)?.id==='E03'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round;
+  const claims=state.newsE03Aid?.round===state.round&&Array.isArray(state.newsE03Aid.claims)
+    ?state.newsE03Aid.claims:[];
+  return {active,round:state.round,claims:claims.map(c=>({...c,materials:[...c.materials]})),
+    tokens:E03_AID_DISTRICTS.map(districtId=>({districtId,
+      claimed:claims.some(c=>c.districtId===districtId),
+      claimantId:claims.find(c=>c.districtId===districtId)?.playerId??null}))};
+}
+function e03AidEligibility(state,playerId,districtId){
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])return {ok:false,reason:'player'};
+  if(!E03_AID_DISTRICTS.includes(districtId))return {ok:false,reason:'district'};
+  const preview=e03AidPreview(state);
+  if(!preview.active)return {ok:false,reason:'not-e03'};
+  if(preview.claims.some(c=>c.playerId===playerId))return {ok:false,reason:'player-claimed'};
+  if(preview.claims.some(c=>c.districtId===districtId))return {ok:false,reason:'token-claimed'};
+  return {ok:true};
+}
+function e03ValidateMaterials(state,playerId,districtId,fresh,contributions=[],pickups=[]){
+  const eligibility=e03AidEligibility(state,playerId,districtId);
+  if(!eligibility.ok)return eligibility;
+  if(!Array.isArray(fresh)||!Array.isArray(contributions)||!Array.isArray(pickups))
+    return {ok:false,reason:'materials'};
+  if(contributions.some(x=>!x||typeof x.warehouseId!=='string'||typeof x.type!=='string'))
+    return {ok:false,reason:'warehouse-contribution'};
+  const materials=[...fresh,...contributions.map(c=>c.type)];
+  if(materials.length!==2||new Set(materials).size!==2||
+     !materials.every(type=>E03_AID_MATERIALS.includes(type)))
+    return {ok:false,reason:'aid-materials'};
+  const withdrawals=new Map();
+  for(const c of contributions){
+    const wh=(state.constructions||[]).find(w=>w.id===c.warehouseId);
+    if(!wh||wh.playerId!==playerId||wh.districtId!==districtId||
+       wh.status!=='complete'||!isWarehouseConstruction(wh))
+      return {ok:false,reason:'aid-warehouse'};
+    const arr=withdrawals.get(wh.id)||[];
+    arr.push(c.type);withdrawals.set(wh.id,arr);
+  }
+  for(const [whId,materials] of withdrawals){
+    const wh=state.constructions.find(c=>c.id===whId);
+    const outgoing=pickups.filter(p=>p.source?.kind==='warehouse'&&p.source.id===whId)
+      .flatMap(p=>p.cargo||[]);
+    if(!hasMaterials(wh.warehouseInventory||[],[...materials,...outgoing]))
+      return {ok:false,reason:'aid-warehouse-stock'};
+  }
+  return {ok:true,materials,contributions:contributions.map(c=>({...c}))};
+}
+function e03Award(state,playerId,districtId,materials,via,warehouseContributions=[]){
+  // Call only AFTER the complete Delivery/warehouse transfer was validated.
+  const p=state.players[playerId],influence=moveInfluence(state,playerId,E03_AID_REWARD.influence);
+  p.capital+=E03_AID_REWARD.capital;
+  p.prestige=(p.prestige||0)+E03_AID_REWARD.prestige;
+  if(!state.newsE03Aid||state.newsE03Aid.round!==state.round||
+     !Array.isArray(state.newsE03Aid.claims))state.newsE03Aid={round:state.round,claims:[]};
+  const claim={round:state.round,playerId,districtId,materials:[...materials],
+    via,warehouseContributions:warehouseContributions.map(c=>({...c})),
+    capital:E03_AID_REWARD.capital,prestige:E03_AID_REWARD.prestige,
+    influenceSteps:influence.steps,influenceFrom:influence.from,influenceTo:influence.to};
+  state.newsE03Aid.claims.push(claim);
+  logEvent(state,p.name+' передал два разных стройматериала для помощи жителям '+
+    districtById(districtId).name+' ('+materials.map(materialNameRu).join(' + ')+
+    '): +$13, +2 VP, +'+influence.steps+' Influence. Жетон убран.','good');
+  return claim;
+}
+export function e03WarehouseAidOptions(state,playerId){
+  const preview=e03AidPreview(state);
+  const actionAvailable=preview.active&&canUseFreeAction(state,playerId);
+  const tokens=preview.tokens.map(t=>{
+    const pairs=[];
+    if(!t.claimed&&preview.active&&state.players?.[playerId]){
+      const whs=completedWarehouses(state,playerId,t.districtId);
+      const inventory=whs.flatMap(w=>(w.warehouseInventory||[])
+        .filter(x=>E03_AID_MATERIALS.includes(x)).map(type=>({warehouseId:w.id,type})));
+      for(let i=0;i<inventory.length;i++)for(let j=i+1;j<inventory.length;j++){
+        const pair=[inventory[i],inventory[j]];
+        if(pair[0].type===pair[1].type)continue;
+        if(e03ValidateMaterials(state,playerId,t.districtId,[],pair).ok)
+          pairs.push({contributions:pair.map(c=>({...c})),materials:pair.map(x=>x.type)});
+      }
+    }
+    return {...t,pairs,available:actionAvailable&&!preview.claims.some(x=>x.playerId===playerId)&&pairs.length>0};
+  });
+  return {active:preview.active,playerId,actionAvailable,
+    alreadyClaimed:preview.claims.some(x=>x.playerId===playerId),tokens,claims:preview.claims};
+}
+export function claimE03WarehouseAid(state,playerId,districtId,contributions){
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'not-active-player'};
+  const v=e03ValidateMaterials(state,playerId,districtId,[],contributions);
+  if(!v.ok)return v;
+  for(const c of contributions){
+    const warehouse=state.constructions.find(w=>w.id===c.warehouseId);
+    removeMaterials(warehouse.warehouseInventory,[c.type]);
+  }
+  const claim=e03Award(state,playerId,districtId,v.materials,'warehouse',contributions);
+  return {ok:true,claim};
+}
+function resolveE03Newspaper(state,card){
+  const claims=state.newsE03Aid?.round===state.round?state.newsE03Aid.claims||[]:[];
+  const report={year:newsYear(state.round),round:state.round,cardId:'E03',
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{},
+    e03:{claims:claims.map(c=>({...c,materials:[...c.materials],
+      warehouseContributions:c.warehouseContributions.map(w=>({...w}))})),
+      unused:Math.max(0,E03_AID_DISTRICTS.length-claims.length)}};
+  state.newsArchive.push(report);
+  state.newsLastResolvedRound=state.round;
+  state.newsE03Aid=null;
+  logEvent(state,'The San Francisco Call, '+report.year+
+    ': фонд получил '+claims.length+' из двух партий помощи; неиспользованные жетоны сняты.','accent');
+  return {ok:true,report};
+}
 
 export const E02_MAX_EVENTS_PER_PLAYER=1;
 export const E02_ORGANIZER_VP=1;
@@ -4425,6 +4547,8 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='E03')return {card,entries:[],threatened:E03_AID_DISTRICTS,protected:[],
+    summary:{districts:2,exposed:0,safe:0},e03:e03AidPreview(state)};
   if(card?.id==='E02')return {card,entries:[],threatened:[],protected:[],
     summary:{districts:0,exposed:0,safe:0},e02:e02TradeWeekPreview(state)};
   if(card?.id==='E01')return {card,entries:[],threatened:[],protected:[],
@@ -4581,6 +4705,7 @@ export function resolveNewspaper(state){
   if(card.id==='F04')return resolveF04Newspaper(state,card);
   if(card.id==='E01')return resolveE01Newspaper(state,card);
   if(card.id==='E02')return resolveE02Newspaper(state,card);
+  if(card.id==='E03')return resolveE03Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;
