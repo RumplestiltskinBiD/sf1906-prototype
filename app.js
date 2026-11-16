@@ -1344,7 +1344,7 @@ $('#deliveryCloseTarget')?.addEventListener('click',()=>{deliveryDraft.focusTarg
 $('#clearDrops')?.addEventListener('click',clearDeliveryDrops);
 $$('[data-drop-type]').forEach(b=>b.onclick=()=>addDeliveryDrop(b.dataset.dropKind,b.dataset.dropId,b.dataset.dropType));
 $$('[data-e03-warehouse]').forEach(b=>b.onclick=()=>addE03DeliveryStock(b.dataset.e03WarehouseDistrict,b.dataset.e03Warehouse,b.dataset.e03WarehouseType));
-$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
+$$('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
   const target=deliveryRouteTargets().find(t=>t.kind==='e03-aid'&&t.id===b.dataset.e03UnloadTarget);
   if(!target||!deliveryTargetAcceptsAny(target))return;
   deliveryDraft.focusTargetId=target.id;render();
@@ -1352,7 +1352,7 @@ $('[data-e03-unload-target]').forEach(b=>b.onclick=()=>{
 $('#deliveryToggleTargetList')?.addEventListener('click',()=>{
   deliveryDraft.targetListOpen=!deliveryDraft.targetListOpen;render();
 });
-$('[data-delivery-unload-target]').forEach(b=>b.onclick=()=>{
+$$('[data-delivery-unload-target]').forEach(b=>b.onclick=()=>{
   const target=deliveryRouteTargets().find(t=>t.id===b.dataset.deliveryUnloadTarget);
   if(!target||!deliveryTargetAcceptsAny(target))return;
   deliveryDraft.focusTargetId=target.id;deliveryDraft.targetListOpen=false;render();
