@@ -34,7 +34,7 @@ function prison(s,pid,index,round){
 
 test('D3.2 timeline: 1901 annual arrest -> 1902 paid hire in own city action -> 1903 no duplicate free replacement',()=>{
  const s=city(2),p=s.players[0];
- p.capital=2;p.influence=0;p.suspicion=3;
+ p.capital=4;p.influence=0;p.suspicion=3;
  let r=endYear(s);
  assert.equal(r.reason,'crime-choice');
  assert.equal(s.crimeAssessment.cursor,0);
@@ -48,30 +48,30 @@ test('D3.2 timeline: 1901 annual arrest -> 1902 paid hire in own city action -> 
  assert.equal(arrested.arrestedRound,2);
  assert.equal(p.suspicion,0);
  assert.equal(p.prestige,-3);
- assert.equal(p.capital,5,'income strictly after arrest');
+ assert.equal(p.capital,7,'income strictly after arrest');
  const resumed=JSON.parse(JSON.stringify(s));
  assert.equal(G.paidReplacementOptions(resumed,0).active,false,'hiring forbidden during City Hall');
  assert.equal(G.hireReplacementWorker(resumed,0,arrested.id).reason,'not-active-turn');
  resumeCity(resumed);
  const curr=resumed.players[0],other=worker(resumed,0,1);
  assert.equal(G.selectWorker(resumed,0,other.id).ok,true);
- assert.equal(G.raiseCapital(resumed,0,'civic').ok,true);
- assert.equal(curr.capital,8);
+ assert.equal(G.moveWorker(resumed,0,G.workerReachableDistricts(resumed,0).find(id=>id!==G.activeWorker(resumed,0)?.districtId)).ok,true);
+ assert.equal(curr.capital,7,'movement grants no money');
  assert.equal(G.hireReplacementWorker(resumed,0,arrested.id).ok,true);
- assert.equal(curr.capital,1);
+ assert.equal(curr.capital,0);
  assert.equal(curr.workers[0].replacementKind,'paid');
  assert.equal(curr.workers[0].replacementRound,3);
  assert.equal(G.canTakeMainAction(resumed,0),false,'hiring does not create a second main action');
  assert.equal(G.endActivation(resumed,0).ok,true);
  for(const pid of [1,2]){
   assert.equal(G.selectWorker(resumed,pid,worker(resumed,pid,0).id).ok,true);
-  assert.equal(G.raiseCapital(resumed,pid,'civic').ok,true);
+  assert.equal(G.moveWorker(resumed,pid,G.workerReachableDistricts(resumed,pid).find(id=>id!==G.activeWorker(resumed,pid)?.districtId)).ok,true);
   assert.equal(G.endActivation(resumed,pid).ok,true);
  }
  assert.equal(G.currentDeveloper(resumed),0);
  assert.equal(G.selectWorker(resumed,0,arrested.id).ok,true);
- assert.equal(G.raiseCapital(resumed,0,'civic').ok,true);
- assert.equal(curr.capital,4);
+ assert.equal(G.moveWorker(resumed,0,G.workerReachableDistricts(resumed,0).find(id=>id!==G.activeWorker(resumed,0)?.districtId)).ok,true);
+ assert.equal(curr.capital,0,'further movement grants no money');
  assert.deepEqual(resumed.developmentSlotsUsed,[1,1,1]);
  assert.equal(G.endActivation(resumed,0).ok,true);
  r=endYear(resumed);

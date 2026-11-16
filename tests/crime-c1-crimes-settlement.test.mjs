@@ -77,7 +77,7 @@ test('C1.3 settlement works after a spent main action; yearly marker roundtrip a
  const s=development(),p=s.players[0];G.setSuspicion(s,0,3);
  const id=p.workers[0].id;
  assert.equal(G.selectWorker(s,0,id).ok,true);
- assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+ assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
  assert.equal(G.settleLegalCase(s,0,'cash').mainActionUsed,true);
  assert.equal(s.activationMainActionUsed,true);
  assert.equal(p.workers[0].used,true);
@@ -106,12 +106,12 @@ test('C1.3 on three stars, quick crime resolves reward BEFORE arrest of chosen U
  const s=development(),p=s.players[0];p.influence=0;
  const w=p.workers[0],id=w.id;
  assert.equal(G.selectWorker(s,0,id).ok,true);
- assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+ assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
  assert.equal(G.endActivation(s,0).ok,true);
  // Remaining players can complete their activations until P0's next service/fast window.
  for(const pid of [1,2]){
    G.selectWorker(s,pid,s.players[pid].workers[0].id);
-   G.raiseCapital(s,pid,'civic');
+   G.moveWorker(s,pid,G.workerReachableDistricts(s,pid).find(id=>id!==G.activeWorker(s,pid)?.districtId));
    G.endActivation(s,pid);
  }
  assert.equal(G.currentDeveloper(s),0);
@@ -135,9 +135,9 @@ test('C1.3 main crime catches EXACT actor after action completes; no extra actio
  const w=s.players[0].workers[1];G.selectWorker(s,0,w.id);
  const before=s.players[0].capital;
  const r=G.resolveCriminalAction(s,0,{mode:'main',workerId:w.id,suspicionGain:1,
-   perform:draft=>G.raiseCapital(draft,0,'civic')});
+   perform:draft=>G.moveWorker(draft,0,G.workerReachableDistricts(draft,0).find(id=>id!==G.activeWorker(draft,0)?.districtId))});
  assert.equal(r.ok,true);assert.equal(r.arrested,true);
- assert.equal(s.players[0].capital,before+G.RAISE_CAPITAL_AMOUNT);
+ assert.equal(s.players[0].capital,before);
  assert.equal(s.players[0].workers[1].jailed,true);
  assert.equal(s.players[0].workers[1].used,true);
  assert.equal(s.players[0].workers[0].jailed,false);
@@ -186,7 +186,7 @@ test('C1.3 main callback must consume the designated worker and free callback ca
    perform:d=>{d.players[0].capital+=5;return {ok:true};}}).reason,'main-action-required');
  assert.equal(JSON.stringify(s),before);
  assert.equal(G.resolveCriminalAction(s,0,{mode:'free',suspicionGain:1,arrestWorkerId:w.id,
-   perform:d=>G.raiseCapital(d,0,'civic')}).reason,'free-action-contract');
+   perform:d=>G.moveWorker(d,0,G.workerReachableDistricts(d,0).find(id=>id!==G.activeWorker(d,0)?.districtId))}).reason,'free-action-contract');
  assert.equal(JSON.stringify(s),before);
 });
 

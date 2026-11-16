@@ -79,7 +79,7 @@ test('C1.2 used worker may be arrested but receives no refunded main action',()=
   const s=fresh();s.phase='development';s.developmentPlayer=0;s.developmentComplete=false;
   const p=s.players[0],w=p.workers[0];
   assert.equal(G.selectWorker(s,0,w.id).ok,true);
-  assert.equal(G.raiseCapital(s,0,'civic').ok,true);
+  assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!==G.activeWorker(s,0)?.districtId)).ok,true);
   assert.equal(w.used,true);assert.equal(s.activationMainActionUsed,true);
   G.setSuspicion(s,0,1);
   const beforeSlots=JSON.stringify(s.developmentSlotsUsed);
@@ -97,7 +97,7 @@ test('C1.2 arrest of selected worker clears pending actions but never touches ot
   const s=fresh(),w=s.players[1].workers[1];
   s.phase='development';s.developmentPlayer=1;s.developmentComplete=false;
   assert.equal(G.selectWorker(s,1,w.id).ok,true);
-  s.pendingWorkerAction={type:'raiseCapital',playerId:1};
+  s.pendingWorkerAction={type:'moveWorker',playerId:1};
   s.pendingConstruction={projectId:'tenement'};
   G.setSuspicion(s,1,2);G.setSuspicion(s,0,1);
   const p0=JSON.stringify(s.players[0]);
