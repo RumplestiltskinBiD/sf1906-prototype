@@ -258,8 +258,12 @@ test('legacy active E02 save gets empty current ledger without payout for existi
  delete s.newsE02TradeWeek;
  const before=s.players.map(p=>[p.capital,p.prestige,p.influence]);
  G.ensureNewspaper(s);G.ensureNewspaper(s);
- assert.deepEqual(s.newsE02TradeWeek,{round:3,events:[]});
+ assert.equal(s.newsE02TradeWeek,null,'legacy state remains lazily inactive until a real action');
  assert.deepEqual(s.players.map(p=>[p.capital,p.prestige,p.influence]),before);
+ activate(s,0);
+ assert.equal(perform(s,0,'OLD').ok,true);
+ assert.equal(s.newsE02TradeWeek.round,3);
+ assert.equal(s.newsE02TradeWeek.events.length,1);
 });
 
 test('E02 end-year archives actual events, never creates a passive trade income',()=>{
