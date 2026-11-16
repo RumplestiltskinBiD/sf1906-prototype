@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0583-no-reward-movement';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0584-e05-civic-services';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
