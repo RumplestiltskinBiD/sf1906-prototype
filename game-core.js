@@ -870,21 +870,12 @@ export function emptyMarketCard(card){
 }
 export function createProjectCardPool({rng=Math.random}={}){
   const cards=[];let serial=1;
-  // Keep the original market/starter-draft and subsequent RNG sequence stable.
-  // Disperse two new campus copies in the unseen part of the shuffled deck.
-  for(let copy=0;copy<PROJECT_COPIES;copy++)
-    for(const project of PROJECTS.filter(p=>p.id!=='polytechnic_campus'))
-      cards.push({uid:`PC${serial++}`,id:project.id});
-  const shuffled=shuffle(cards,rng);
-  if(PROJECTS.some(p=>p.id==='polytechnic_campus')){
-    const firstUnseen=5+PLAYER_NAMES.length*STARTER_DRAFT_SIZE;
-    const unseen=Math.max(0,shuffled.length-firstUnseen);
-    for(let i=0;i<PROJECT_COPIES;i++){
-      const index=Math.min(shuffled.length,firstUnseen+Math.floor(unseen*(i+1)/(PROJECT_COPIES+1))+i);
-      shuffled.splice(index,0,{uid:`PC${serial++}`,id:'polytechnic_campus'});
-    }
-  }
-  return shuffled;
+  // All new and existing market projects share the same shuffle. Keeping the
+  // campus out of the opening market/draft would make it nearly impossible
+  // to see in a six-year playtest; do not put it into fixed late-deck slots.
+  for(let copy=0;copy<PROJECT_COPIES;copy++)for(const project of PROJECTS)
+    cards.push({uid:`PC${serial++}`,id:project.id});
+  return shuffle(cards,rng);
 }
 export function currentDraftPlayer(state){return state.phase==='draft'?state.starterDraftPlayer:null;}
 export function toggleStarterDraftCard(state,uid){

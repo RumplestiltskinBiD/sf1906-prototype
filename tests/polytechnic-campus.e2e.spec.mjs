@@ -109,6 +109,7 @@ test('A campus in player hand uses an actual construction action, land payment a
 test('legacy save gains exactly two campus cards once without changing existing market, holdings or cash',async({page})=>{
  const s=game();s.constructions=[];
  delete s.polytechnicCampusExpansionV1;
+ s.market=s.market.map(c=>c?.id===id?{...c,id:'tenement'}:c);
  s.deck=s.deck.filter(c=>c.id!==id);
  s.starterDraftHands=s.starterDraftHands.map(h=>h.filter(c=>c.id!==id));
  s.players[0].portfolio=['bank','tenement'];
@@ -130,6 +131,8 @@ test('legacy save gains exactly two campus cards once without changing existing 
 });
 test('legacy part-owned and emptied-deck saves cannot mint extra copies or refill an already new game',async({page})=>{
  const s=game();s.players[0].portfolio=[id];
+ s.market=s.market.map(c=>c?.id===id?{...c,id:'tenement'}:c);
+ s.starterDraftHands=s.starterDraftHands.map(h=>h.filter(c=>c.id!==id));
  s.deck=s.deck.filter(c=>c.id!==id);delete s.polytechnicCampusExpansionV1;
  await seed(page,s);
  const one=await saved(page);

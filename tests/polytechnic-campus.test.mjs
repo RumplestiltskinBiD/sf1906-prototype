@@ -41,15 +41,24 @@ test('Issue #207: exact approved hybrid card, market price, recipe, risk and two
  assert.equal(new Set(pool.map(c=>c.uid)).size,pool.length);
  assert.equal(pool.filter(c=>c.id===id).length,2);
 });
-test('fresh game has exactly two hidden campus copies and an explicit migration sentinel',()=>{
+test('fresh game shuffles exactly two campus copies through market, draft and deck',()=>{
  const s=G.createInitialState({rng:()=>0.2});
  assert.equal(s.polytechnicCampusExpansionV1,true);
- assert.equal(s.market.filter(c=>c?.id===id).length,0);
- assert.equal(s.starterDraftHands.flat().filter(c=>c.id===id).length,0);
- assert.equal(s.deck.filter(c=>c.id===id).length,2);
+ const count=[...s.market,...s.starterDraftHands.flat(),...s.deck].filter(c=>c?.id===id).length;
+ assert.equal(count,2);
  const before=snap(s);
  G.ensureNewspaper(s);
  assert.equal(snap(s),before);
+ // Different genuine shuffle streams can show the campus at the start.
+ // Prevent special-case placement deep in the deck where no one sees it.
+ let early=0;
+ for(let seed=1;seed<=50;seed++){
+   let n=seed>>>0;
+   const rng=()=>((n=(Math.imul(n,1664525)+1013904223)>>>0)/4294967296);
+   const pool=G.createProjectCardPool({rng});
+   if(pool.slice(0,5+G.PLAYER_NAMES.length*G.STARTER_DRAFT_SIZE).some(c=>c.id===id))early++;
+ }
+ assert.ok(early>0,'campus must have a real chance to appear in opening market or draft');
 });
 test('construction spends one real worker and exact current land cost, never pays start benefits',()=>{
  const s=game();s.players[0].portfolio=[id];
