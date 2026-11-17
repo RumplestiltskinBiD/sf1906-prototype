@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0585-e06-relief-fund';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0586-polytechnic-campus';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -36,7 +36,7 @@ export const STARTING_WORKER_DISTRICT = 'civic';
 export const PROJECT_COPIES = 2;
 // Fixed fee for standard projects, payable once at construction start in addition to land.
 export const STANDARD_PROJECT_FEE = 2;
-export const LAND_VALUE_COMPLETION_CHANGE = {grand_city_square:2,std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
+export const LAND_VALUE_COMPLETION_CHANGE = {polytechnic_campus:1,grand_city_square:2,std_fire:1,std_police:1,std_clinic:1,factory:-1,firehouse:1,clinic:1,police:1,publicworks:1,school:1,streetcar:1,fireworkshop:1};
 export const BUILDING_TYPES = Object.freeze(['Жилое','Бизнес','Промышленное','Общественное','Торговое']);
 export const MARKET_STREET_DISTRICTS = Object.freeze(['noe','mission','civic','soma','financial']);
 export const POOR_GROUND_DISTRICTS = Object.freeze(['marina','financial','soma','mission','missionbay']);
@@ -286,6 +286,7 @@ export function applyF03PortFire(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
+  {prestige:2,income:1,id:'polytechnic_campus',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Политехнический кампус',type:'Жильё / Городская служба',open:3,materials:['Lumber','Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · при завершении стоимость земли +1 · научная программа ожидает внедрения исследований',benefit:'Доход +$1/год · +1 к стоимости земли района при завершении',actionName:'Научная программа (пока недоступна)',actionText:'Получение и финансирование R01–R08 пока не подключены к игре; в будущем завершённый кампус даст доступ к исследованиям. Сейчас действие не выполняется.',limits:'У +1 / П 0. Земля +1 только при завершении (максимум 6). 4-й материал можно доставить отдельным завершающим рейсом без склада. Не заменяет полицейские, пожарные или медицинские службы.'},
   {prestige:2,income:3,id:'residential_quarter',types:['Жилое'],risk:{earthquake:0,fire:1},name:'Жилой квартал',type:'Жилое',open:4,materials:['Lumber','Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$3/год · малоэтажная квартальная застройка',benefit:'Доход +$3/год',actionName:'—',actionText:'Отдельного действия нет.',limits:'Последний материал можно доставить на стройку отдельным рейсом. При полном комплекте материалов строительство завершается без склада.'},
   {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0.',benefit:'Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · регистрация собственности или реорганизация',benefit:'Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
@@ -869,7 +870,11 @@ export function emptyMarketCard(card){
 }
 export function createProjectCardPool({rng=Math.random}={}){
   const cards=[];let serial=1;
-  for(let copy=0;copy<PROJECT_COPIES;copy++)for(const project of PROJECTS)cards.push({uid:`PC${serial++}`,id:project.id});
+  // All new and existing market projects share the same shuffle. Keeping the
+  // campus out of the opening market/draft would make it nearly impossible
+  // to see in a six-year playtest; do not put it into fixed late-deck slots.
+  for(let copy=0;copy<PROJECT_COPIES;copy++)for(const project of PROJECTS)
+    cards.push({uid:`PC${serial++}`,id:project.id});
   return shuffle(cards,rng);
 }
 export function currentDraftPlayer(state){return state.phase==='draft'?state.starterDraftPlayer:null;}
@@ -1126,6 +1131,7 @@ export function createInitialState({rng=Math.random}={}){
     grandCitySquareExpansionV1:true,
     advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
+    polytechnicCampusExpansionV1:true,
     // Fresh pools already contain both Bakery and Orphanage; prevent legacy
     // mixed-project migration from refilling a legitimately exhausted deck.
     residentialMixedV1:true,
