@@ -32,7 +32,7 @@ test('customs and rare-goods additions expand trading and mixed catalog; two-cop
     const pure=G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]===category);
     assert.equal(pure.length,6,category);
   }
-  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,11);
+  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,12);
 });
 
 test('new mono-type card recipes, income, prestige, hazards and large-building rules',()=>{

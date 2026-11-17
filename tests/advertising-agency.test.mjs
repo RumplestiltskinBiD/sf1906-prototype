@@ -21,7 +21,7 @@ function game(){
 test('agency is the sixth pure Business project; compact printed card and two current catalog copies',()=>{
   const agency=G.projectById(AGENCY);
   assert.deepEqual(G.projectTypes(agency),['Бизнес']);
-  assert.equal(G.PROJECTS.length,41);
+  assert.equal(G.PROJECTS.length,42);
   assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===1&&G.projectTypes(p)[0]==='Бизнес').length,6);
   assert.equal(G.createProjectCardPool({rng:()=>0.2}).filter(c=>c.id===AGENCY).length,2);
   assert.equal(agency.open,6);

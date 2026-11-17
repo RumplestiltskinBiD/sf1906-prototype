@@ -154,13 +154,13 @@ test('Land Value increase happens once, is local, stacks across owners and is ca
  }
 });
 test('owner income pays in ordinary yearly gross, outsider gets none, no science or visitor cash yet',()=>{
- const s=game();const c=site(s,{tag:'F'});
+ const s=game();const beforeInfluence=s.players[0].influence;const c=site(s,{tag:'F'});
  assert.equal(G.completeConstruction(s,c).ok,true);
  assert.equal(G.grossRoundIncome(s,0),G.BASE_ROUND_INCOME+1);
  assert.equal(G.grossRoundIncome(s,1),G.BASE_ROUND_INCOME);
  assert.equal(s.players[0].capital,60);
  assert.equal(s.players[1].capital,60);
- assert.equal(s.players[0].influence,2,'no speculative research/visitor reward');
+ assert.equal(s.players[0].influence,beforeInfluence,'no speculative research/visitor reward');
  assert.equal(s.researchMarket,undefined);
  const roundTrip=JSON.parse(snap(s));
  assert.equal(G.buildingIncome(roundTrip,0),1);
