@@ -96,13 +96,16 @@ test('E06 criminal route uses occupied Influence track correctly and clamps at z
 });
 test('E06 ★★★ illegal selection arrests a chosen non-jailed employee, applies normal sanction',()=>{
  const s=game();s.players[0].suspicion=3;
- const acting=s.players[0].workers[0],chosen=s.players[0].workers[1];
- const r=G.chooseE06Relief(s,0,'misappropriate',chosen.id);
+ const actorId=s.players[0].workers[0].id,chosenId=s.players[0].workers[1].id;
+ const r=G.chooseE06Relief(s,0,'misappropriate',chosenId);
  assert.equal(r.ok,true,JSON.stringify(r));
  assert.equal(r.arrested,true);
- assert.equal(r.record.arrestedWorkerId,chosen.id);
- assert.equal(chosen.jailed,true);
- assert.equal(acting.jailed,false);assert.equal(acting.used,true);
+ assert.equal(r.record.arrestedWorkerId,chosenId);
+ // Transactional criminal actions replace the cloned game-state object.
+ // Verify the committed worker objects, not stale references from before commit.
+ assert.equal(s.players[0].workers.find(w=>w.id===chosenId).jailed,true);
+ assert.equal(s.players[0].workers.find(w=>w.id===actorId).jailed,false);
+ assert.equal(s.players[0].workers.find(w=>w.id===actorId).used,true);
  assert.equal(s.players[0].suspicion,0);
  assert.equal(s.players[0].capital,38);
  assert.equal(s.players[0].influence,0,'5→4 from theft, 3-step sanction impossible');
