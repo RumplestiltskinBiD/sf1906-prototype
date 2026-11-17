@@ -554,7 +554,7 @@ export const NEWS_CARDS=Object.freeze([
   {
     "id": "E06",
     "designV2": {
-      "status": "approved-for-playtest-data-only",
+      "status": "implemented-for-playtest",
       "specification": "docs/NEWSPAPER_E06_V2.md",
       "title": "Деньги для безработных под угрозой",
       "headlineTheme": "гражданский фонд, общественные работы и скандал с поддельными зарплатными ведомостями",
@@ -584,13 +584,13 @@ export const NEWS_CARDS=Object.freeze([
       "noOtherPlayerDependency": true
     },
     "category": "Экономика",
-    "title": "Страховщики требуют денег",
-    "article": "Страховые конторы намерены поднять расценки для опасных кварталов. Успеют ли владельцы улучшить пожарную безопасность до конца года?",
-    "target": "high-fire",
+    "title": "ДЕНЬГИ ДЛЯ БЕЗРАБОТНЫХ ПОД УГРОЗОЙ!",
+    "article": "Гражданский комитет собрал пожертвования для трудоустройства нуждающихся семей. Частным подрядчикам доверены деньги на зарплаты, но газета сообщает о подозрениях в подделке ведомостей.",
+    "target": "none",
     "resource": "capital",
-    "delta": -2,
-    "frequency": "perDistrict",
-    "defense": "emergency"
+    "delta": 0,
+    "frequency": "oncePerYear",
+    "defense": null
   }
 ]);
 export const NEWS_CATEGORIES=Object.freeze({

@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0584-e05-civic-services';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0585-e06-relief-fund';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -1065,7 +1065,7 @@ export function resolveCriminalAction(state,playerId,{mode,workerId=null,arrestW
   const actor=mode==='main'?activeWorker(state,playerId):null;
   if(mode==='main'&&(!actor||!workerId||actor.id!==workerId))return {ok:false,reason:'acting-worker'};
   const prior=suspicionLevel(state,playerId),caught=prior===MAX_SUSPICION;
-  const offenderId=caught?(mode==='main'?workerId:arrestWorkerId):null;
+  const offenderId=caught?(mode==='main'?(arrestWorkerId||workerId):arrestWorkerId):null;
   if(caught&&!uncaptured.some(w=>w.id===offenderId))return {ok:false,reason:'arrest-worker'};
   const slotsBefore=JSON.stringify(state.developmentSlotsUsed);
   // State contains JSON-serializable game data only, as required by saves.
@@ -1153,6 +1153,7 @@ export function createInitialState({rng=Math.random}={}){
     newsE02TradeWeek:newsCurrentIds[0]==='E02'?{round:1,events:[]}:null,
     newsE03Aid:newsCurrentIds[0]==='E03'?{round:1,claims:[]}:null,
     newsE04Strike:newsCurrentIds[0]==='E04'?{round:1,resolution:null,marineDeliveries:0,surchargePaid:0}:null,
+    newsE06Relief:newsCurrentIds[0]==='E06'?{round:1,choices:[]}:null,
     newsF03Incident:null,
     newsH03SupplyRound:newsCurrentIds[0]==='H03'?1:null,
     newsH04Donations:newsCurrentIds[0]==='H04'?{round:1,donations:[]}:null,
@@ -2933,6 +2934,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   state.newsE02TradeWeek=state.newsCurrentIds[0]==='E02'?{round:state.round,events:[]}:null;
   state.newsE03Aid=state.newsCurrentIds[0]==='E03'?{round:state.round,claims:[]}:null;
   state.newsE04Strike=state.newsCurrentIds[0]==='E04'?{round:state.round,resolution:null,marineDeliveries:0,surchargePaid:0}:null;
+  state.newsE06Relief=state.newsCurrentIds[0]==='E06'?{round:state.round,choices:[]}:null;
   state.newsEmergency={};
   state.newsF01Notice=null;
   state.newsF02Incident=state.newsCurrentIds[0]==='F02'?createF02Incident(state.round,rng):null;
@@ -3228,6 +3230,7 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
     state.newsE02TradeWeek=null;
     state.newsE03Aid=null;
     state.newsE04Strike=null;
+    state.newsE06Relief=null;
     state.newsF03Incident=null;
     state.newsH03SupplyRound=null;
     state.newsH04Donations=null;
@@ -3283,6 +3286,9 @@ export function ensureNewspaper(state,{rng=Math.random}={}){
   if(!Object.hasOwn(state,'newsE02TradeWeek'))state.newsE02TradeWeek=null;
   // Older active E04 saves start with no ledger; history and existing money remain intact.
   if(!Object.hasOwn(state,'newsE04Strike'))state.newsE04Strike=null;
+  // An active pre-E06-v2 save gets an empty ledger only on first participation;
+  // never replay old insurance penalties or rewrite archived historical issues.
+  if(!Object.hasOwn(state,'newsE06Relief'))state.newsE06Relief=null;
   if(!Number.isInteger(state.newsLastResolvedRound))state.newsLastResolvedRound=0;
   // An old in-progress H03 save retains its already generated/used cargo.
   // Only a fresh annual supply generation records H03's reduced volumes.
@@ -3832,6 +3838,116 @@ function resolveE03Newspaper(state,card){
 }
 
 
+
+
+export const E06_RELIEF_HONEST_COST=6;
+export const E06_RELIEF_HONEST_VP=3;
+export const E06_RELIEF_HONEST_INFLUENCE=2;
+export const E06_RELIEF_STOLEN_CASH=8;
+export function e06ReliefPreview(state){
+  const active=activeNewspaper(state)?.id==='E06'&&!state.finished&&
+    state.newsLastResolvedRound!==state.round;
+  const choices=state.newsE06Relief?.round===state.round&&
+    Array.isArray(state.newsE06Relief.choices)?state.newsE06Relief.choices:[];
+  return {active,round:state.round,choices:choices.map(c=>({...c})),
+    remainingPlayers:active?(state.players||[]).filter(p=>!choices.some(c=>c.playerId===p.id)).map(p=>p.id):[]};
+}
+export function e06ReliefOptions(state,playerId){
+  if(!Number.isInteger(playerId)||state.players?.[playerId]?.id!==playerId)
+    return {ok:false,reason:'player',honest:false,misappropriate:false,arrestWorkerIds:[]};
+  const preview=e06ReliefPreview(state);
+  const used=preview.choices.some(c=>c.playerId===playerId);
+  const pending=!!(state.pendingConstruction||state.pendingWorkerAction);
+  const actionAvailable=preview.active&&!used&&!pending&&canTakeMainAction(state,playerId);
+  const player=state.players[playerId],suspicion=suspicionLevel(state,playerId);
+  const arrestWorkerIds=playerWorkers(state,playerId).filter(w=>!w.jailed).map(w=>w.id);
+  return {ok:true,active:preview.active,used,actionAvailable,pending,
+    playerId,workerId:activeWorker(state,playerId)?.id||null,
+    capital:player.capital,suspicion,arrestRequired:suspicion===MAX_SUSPICION,
+    arrestWorkerIds,honest:actionAvailable&&player.capital>=E06_RELIEF_HONEST_COST,
+    misappropriate:actionAvailable&&arrestWorkerIds.length>0,choices:preview.choices};
+}
+export function chooseE06Relief(state,playerId,choice,arrestWorkerId=null){
+  if(!['honest','misappropriate'].includes(choice))return {ok:false,reason:'choice'};
+  const options=e06ReliefOptions(state,playerId);
+  if(!options.ok)return {ok:false,reason:options.reason};
+  if(!options.active)return {ok:false,reason:'not-active'};
+  if(options.used)return {ok:false,reason:'already-participated'};
+  if(options.pending)return {ok:false,reason:'pending-action'};
+  if(!options.actionAvailable)return {ok:false,reason:'main-action-unavailable'};
+  if(choice==='honest'&&!options.honest)return {ok:false,reason:'capital'};
+  if(choice==='misappropriate'&&!options.misappropriate)return {ok:false,reason:'no-free-worker'};
+  if(choice==='misappropriate'&&options.arrestRequired&&!options.arrestWorkerIds.includes(arrestWorkerId))
+    return {ok:false,reason:'arrest-worker'};
+  const ensureLedger=draft=>{
+    if(!draft.newsE06Relief||draft.newsE06Relief.round!==draft.round||
+       !Array.isArray(draft.newsE06Relief.choices))
+      draft.newsE06Relief={round:draft.round,choices:[]};
+    if(draft.newsE06Relief.choices.some(c=>c.playerId===playerId))
+      return null;
+    return draft.newsE06Relief.choices;
+  };
+  if(choice==='honest'){
+    const entries=ensureLedger(state);
+    if(!entries)return {ok:false,reason:'already-participated'};
+    const consumed=consumeMainAction(state,playerId);
+    if(!consumed.ok)return consumed;
+    const player=state.players[playerId],before=player.influence;
+    player.capital-=E06_RELIEF_HONEST_COST;
+    player.prestige=(player.prestige||0)+E06_RELIEF_HONEST_VP;
+    const influence=moveInfluence(state,playerId,E06_RELIEF_HONEST_INFLUENCE);
+    const record={round:state.round,playerId,choice,capitalDelta:-E06_RELIEF_HONEST_COST,
+      vp:E06_RELIEF_HONEST_VP,influenceSteps:influence.steps,
+      influenceFrom:before,influenceTo:influence.to,
+      suspicionBefore:options.suspicion,suspicionAfter:options.suspicion,
+      arrestedWorkerId:null};
+    entries.push(record);
+    logEvent(state,player.name+' организовал оплаченные общественные работы: −$6, +3 VP, +'+
+      influence.steps+' Influence.','good');
+    return {ok:true,record,action:consumed};
+  }
+  // Illegal route: the existing transactional criminal mechanism guarantees
+  // that cash, action, suspicion and arrest all commit together or not at all.
+  const result=resolveCriminalAction(state,playerId,{
+    mode:'main',workerId:options.workerId,arrestWorkerId,suspicionGain:1,
+    perform(draft){
+      const entries=ensureLedger(draft);
+      if(!entries)return {ok:false,reason:'already-participated'};
+      const consumed=consumeMainAction(draft,playerId);
+      if(!consumed.ok)return consumed;
+      const player=draft.players[playerId],before=player.influence;
+      player.capital+=E06_RELIEF_STOLEN_CASH;
+      const influence=moveInfluence(draft,playerId,-1);
+      const record={round:draft.round,playerId,choice,capitalDelta:E06_RELIEF_STOLEN_CASH,
+        vp:0,influenceSteps:influence.steps,influenceFrom:before,influenceTo:influence.to,
+        suspicionBefore:options.suspicion,suspicionAfter:null,arrestedWorkerId:null};
+      entries.push(record);
+      logEvent(draft,player.name+' присвоил $8 фонда: '+influence.steps+
+        ' Influence, подозрение +1 ★ либо арест при ★★★.','bad');
+      return {ok:true,record};
+    }
+  });
+  if(!result.ok)return result;
+  const record=state.newsE06Relief.choices.find(x=>x.playerId===playerId);
+  record.suspicionAfter=suspicionLevel(state,playerId);
+  record.arrestedWorkerId=result.arrest?.workerId||null;
+  record.arrestVpPenalty=result.arrest?.vpPenalty||0;
+  record.influenceAfterArrest=state.players[playerId].influence;
+  return {ok:true,record,arrest:result.arrest,arrested:result.arrested,action:result.effect};
+}
+function resolveE06Newspaper(state,card){
+  const preview=e06ReliefPreview(state);
+  const report={year:newsYear(state.round),round:state.round,cardId:'E06',
+    title:card.title,category:card.category,entries:[],changes:{},
+    serviceRecognition:[],emergency:{},
+    e06:{choices:preview.choices,unused:Math.max(0,state.players.length-preview.choices.length)}};
+  state.newsArchive.push(report);state.newsLastResolvedRound=state.round;
+  state.newsE06Relief=null;
+  logEvent(state,'The San Francisco Call, '+report.year+': фонд помощи — '+
+    report.e06.choices.length+' участников, '+report.e06.unused+
+    ' отказались. Все выплаты сделаны при выборе; годовых штрафов нет.','accent');
+  return {ok:true,report};
+}
 
 export const E05_SUBSIDIZED_STANDARD_IDS=Object.freeze(['std_clinic','std_fire','std_police']);
 export const E05_RECOGNIZED_SERVICE_IDS=Object.freeze([
@@ -4718,6 +4834,8 @@ function resolveF03Newspaper(state,card){
 
 export function newsPreview(state){
   const card=activeNewspaper(state);
+  if(card?.id==='E06')return {card,entries:[],threatened:[],protected:[],
+    summary:{districts:0,exposed:0,safe:0},e06:e06ReliefPreview(state)};
   if(card?.id==='E05')return {card,entries:[],threatened:[],protected:[],
     summary:{districts:0,exposed:0,safe:0},e05:e05RecognitionPreview(state)};
   if(card?.id==='E04')return {card,entries:[],threatened:[],protected:[],
@@ -4883,6 +5001,7 @@ export function resolveNewspaper(state){
   if(card.id==='E03')return resolveE03Newspaper(state,card);
   if(card.id==='E04')return resolveE04Newspaper(state,card);
   if(card.id==='E05')return resolveE05Newspaper(state,card);
+  if(card.id==='E06')return resolveE06Newspaper(state,card);
   const changes=new Map();
   const write=(pid,key,amount)=>{
     const p=state.players?.[pid];if(!p)return 0;

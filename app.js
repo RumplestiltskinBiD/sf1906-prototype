@@ -1,6 +1,6 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
-LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
+LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
 isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
@@ -9,8 +9,8 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0584-e05-civic-services';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0584-e05-civic-services';
+} from './game-core.js?v=0585-e06-relief-fund';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0585-e06-relief-fund';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -1394,6 +1394,7 @@ function e05ServiceLabel(count){
 }
 function newspaperEffectShort(card){
   if(!card)return 'Выпуск отсутствует';
+  if(card.id==='E06')return 'Фонд помощи: одно основное действие, честно −$6 → +3 VP и +2 Influence; присвоить +$8 → −1 Influence и +1 ★';
   if(card.id==='E05')return 'Стандартная клиника, пожарный и полицейский пост: земля и сбор $0; в конце года +1 Influence за КАЖДУЮ свою завершённую службу';
   if(card.id==='E04')return 'Забастовка: +$2 за рейс с морской погрузкой; урегулирование в порту $5 + действие → +3 VP и +1 Influence';
   if(card.id==='E03')return 'По 1 жетону помощи в Outer Richmond и Outer Sunset · 2 разных стройматериала → +$13, +2 VP, +1 Influence';
@@ -1417,6 +1418,7 @@ function newspaperEffectShort(card){
     (card.frequency==='perDistrict'?' / район':' / игрока');
 }
 function newsArchiveText(report){
+  if(report?.e06)return 'Фонд помощи: '+(report.e06.choices||[]).length+' участников, '+report.e06.unused+' отказов';
   if(report?.e03)return 'Западная помощь: '+(report.e03.claims||[]).length+' из 2 заказов выполнено';
   if(report?.e02)return 'Торговая неделя: '+(report.e02.events||[]).length+' мероприятий, неиспользованных прав '+report.e02.unused;
   if(report?.c03){
@@ -1689,13 +1691,15 @@ function renderNewspaper(){
   const legacyE03Archive=!!(archived?.cardId==='E03'&&!archived.e03);
   const legacyE04Archive=!!(archived?.cardId==='E04'&&!archived.e04);
   const legacyE05Archive=!!(archived?.cardId==='E05'&&!archived.e05);
-  const historical=archived&&!legacyE01Archive&&!legacyE02Archive&&!legacyE03Archive&&!legacyE04Archive&&!legacyE05Archive&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyC03Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
+  const legacyE06Archive=!!(archived?.cardId==='E06'&&!archived.e06);
+  const historical=archived&&!legacyE01Archive&&!legacyE02Archive&&!legacyE03Archive&&!legacyE04Archive&&!legacyE05Archive&&!legacyE06Archive&&!legacyF01Archive&&!legacyF02Archive&&!legacyF03Archive&&!legacyH01Archive&&!legacyC01Archive&&!legacyC02Archive&&!legacyC03Archive&&!legacyH02Archive&&!legacyH03Archive&&!legacyH04Archive&&!legacyF04Archive?newsCardByHistory(archived.cardId):null;
   const record=archived?(historical||archived):displayed;
   const rentalNewspaper=!legacyE01Archive&&(record.id==='E01'||record.cardId==='E01');
   const tradeWeekNewspaper=!legacyE02Archive&&(record.id==='E02'||record.cardId==='E02');
   const westernAidNewspaper=!legacyE03Archive&&(record.id==='E03'||record.cardId==='E03');
   const waterfrontStrikeNewspaper=!legacyE04Archive&&(record.id==='E04'||record.cardId==='E04');
   const civicRecognitionNewspaper=!legacyE05Archive&&(record.id==='E05'||record.cardId==='E05');
+  const reliefFundNewspaper=!legacyE06Archive&&(record.id==='E06'||record.cardId==='E06');
   const policeAudit=record.id==='C04'||record.cardId==='C04';
   const streetCrimeNewspaper=!legacyC01Archive&&(record.id==='C01'||record.cardId==='C01');
   const stolenCargoNewspaper=!legacyC02Archive&&(record.id==='C02'||record.cardId==='C02');
@@ -1831,6 +1835,48 @@ function renderNewspaper(){
 
 
 
+  const e06Preview=issue?.id==='E06'?forecast.e06:null;
+  const e06Dev=currentDeveloper(state);
+  const e06Options=issue?.id==='E06'&&Number.isInteger(e06Dev)
+    ?e06ReliefOptions(state,e06Dev):null;
+  const e06Panel=issue?.id==='E06'
+    ?'<section class="news-e06-panel"><strong>Фонд общественных работ · добровольный выбор</strong>'+
+      '<p>Каждому подрядчику могут доверить <b>$8 фонда</b>. Один раз за год события каждый игрок может потратить <b>одно основное действие</b>, не перемещаясь в особый район и не используя чужие здания.</p>'+
+      '<div class="news-e06-options">'+
+        '<button type="button" data-e06-choice="honest" '+(e06Options?.honest?'':'disabled')+'><b>Честно организовать работы</b><span>−$6 собственных · +3 VP · +2 Influence</span></button>'+
+        (e06Options?.arrestRequired
+          ?e06Options.arrestWorkerIds.map(workerId=>{
+            const w=playerWorkers(state,e06Dev).find(w=>w.id===workerId);
+            return '<button type="button" data-e06-choice="misappropriate" data-e06-arrest="'+escapeHtml(workerId)+'" '+
+              (e06Options?.misappropriate?'':'disabled')+'><b>Присвоить $8 · арестовать представителя #'+w.number+'</b><span>−1 Influence · ★★★ → арест и санкции</span></button>';
+          }).join('')
+          :'<button type="button" data-e06-choice="misappropriate" '+(e06Options?.misappropriate?'':'disabled')+'><b>Присвоить деньги фонда</b><span>+$8 · −1 Influence · +1 ★</span></button>')+
+      '</div>'+
+      (e06Options?.arrestRequired&&e06Options?.actionAvailable
+        ?'<small class="news-e06-warning">Подозрение уже ★★★: незаконный вариант вызовет арест выбранного незаключённого представителя, сброс подозрения и обычные штрафы C1.2.</small>':'')+
+      (e06Options&&!e06Options.actionAvailable
+        ?'<small>Выберите свободного представителя в свой ход и оставьте основное действие неиспользованным. После участия повторять нельзя.</small>':
+        e06Options&&!e06Options.honest?'<small>Для честного варианта необходимо $6 собственных средств.</small>':'')+
+      '<div class="news-e06-ledger"><strong>Участие инвесторов</strong>'+
+      (state.players||[]).map(p=>{
+        const entry=e06Preview?.choices.find(x=>x.playerId===p.id);
+        return '<div class="news-e06-player"><b>'+escapeHtml(p.name)+'</b><span>'+
+          (entry?(entry.choice==='honest'?'Общественные работы: −$6, +3 VP, +'+entry.influenceSteps+' Influence':
+            'Присвоено $8: '+entry.influenceSteps+' Influence, '+(entry.arrestedWorkerId?'арест представителя':'подозрение +1 ★')):
+            'Ещё не участвовал')+'</span></div>';
+      }).join('')+'</div>'+
+      '<small>Начисления немедленные. В конце года новых наград или штрафов от E06 нет; обычная проверка подозрения сохраняется.</small>'+
+      '</section>':'';
+  const e06Archive=reliefFundNewspaper&&archived?.e06
+    ?(archived.e06.choices||[]).map(entry=>
+      '<li>'+escapeHtml(state.players[entry.playerId]?.name||'Игрок')+': '+
+      (entry.choice==='honest'
+        ?'честные работы −$6, +3 VP, +'+entry.influenceSteps+' Influence'
+        :'присвоение +$8, '+entry.influenceSteps+' Influence, '+(entry.arrestedWorkerId?'арест и санкции':'подозрение +1 ★'))+
+      '</li>').join('')+
+      '<li>Участников: '+archived.e06.choices.length+
+      '; не участвовали: '+archived.e06.unused+'. Дополнительных годовых выплат нет.</li>'
+    :'';
   const e05Preview=issue?.id==='E05'?forecast.e05:null;
   const e05Panel=issue?.id==='E05'
     ?'<section class="news-e05-panel"><strong>Город благодарит своих защитников · помощь и признание</strong>'+
@@ -2276,7 +2322,9 @@ function renderNewspaper(){
         escapeHtml(state.players[e.playerId]?.name||'Игрок')+' · защита '+
         escapeHtml(districtById(e.districtId)?.name||e.districtId)+
         ' · +'+e.steps+' Influence</li>').join(''):'';
-  const projections=issue?.id==='E05'
+  const projections=issue?.id==='E06'
+    ?'<li>Доверенные средства выдаются только при выборе. Честный путь расходует $6 личного капитала; незаконный добавляет $8 и подозрение. Никаких выплат автоматически.</li>'
+    :issue?.id==='E05'
     ?'<li>Бесплатны только земля и стандартный проектный сбор для трёх служебных постов; материалы и доставка без скидки. Прогноз по готовым службам — ниже.</li>'
     :issue?.id==='E04'
     ?'<li>+$2 за подтверждённую Доставку с одной или несколькими морскими погрузками. Железная дорога и склады без надбавки. При урегулировании новые рейсы обычной стоимости.</li>'
@@ -2346,25 +2394,26 @@ function renderNewspaper(){
     ' · '+escapeHtml(record.category||archived?.category||'Газета')+'</div>'+
     '<h3 class="news-headline">'+escapeHtml(record.title)+'</h3>'+
     '<p class="news-editorial">'+escapeHtml(record.article||'Итоги года опубликованы редакцией.')+'</p>'+
-    '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':westernAidNewspaper?'ПОМОЩЬ ЗАПАДНЫМ КВАРТАЛАМ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА НА НАБЕРЕЖНОЙ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
-    (rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||corruptPermitsNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyC03Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
+    '<div class="news-forecast"><b>'+(archived?'ИТОГ ГОДА':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':westernAidNewspaper?'ПОМОЩЬ ЗАПАДНЫМ КВАРТАЛАМ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА НА НАБЕРЕЖНОЙ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':reliefFundNewspaper?'ФОНД ПОМОЩИ БЕЗРАБОТНЫМ':'ПРОГНОЗ НА КОНЕЦ ГОДА')+'</b>'+
+    (rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||reliefFundNewspaper||legacyE06Archive||policeAudit||fireLevy||arson||portFire||seaQuarantine||infantCare||epidemicNewspaper||horseIllnessNewspaper||streetCrimeNewspaper||stolenCargoNewspaper||corruptPermitsNewspaper||fireAudit||legacyH01Archive||legacyC01Archive||legacyC02Archive||legacyC03Archive||legacyH02Archive||legacyF01Archive||legacyF02Archive||legacyF03Archive||legacyH03Archive||legacyH04Archive||legacyF04Archive?'':'<p>Объекты: '+escapeHtml(targetDescription[record.target]||record.target||'см. журнал')+'.</p>')+
     '<p><strong>'+(archived?'Исходный эффект':'Ожидаемый эффект')+': '+
-    escapeHtml(legacyE05Archive?'Архив предыдущей редакции E05 — фактические начисления сохранены ниже':legacyE04Archive?'Архив предыдущей редакции E04 — смотрите фактические изменения ниже':legacyE03Archive?'Архив предыдущей редакции E03 — смотрите фактические начисления ниже':legacyE02Archive?'Архив предыдущей редакции E02 — смотрите фактические начисления ниже':legacyE01Archive?'Архив предыдущей редакции E01 — смотрите фактические начисления ниже':legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyC03Archive?'Архив прежней C03 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
+    escapeHtml(legacyE06Archive?'Архив предыдущей редакции E06 — фактические начисления сохранены ниже':legacyE05Archive?'Архив предыдущей редакции E05 — фактические начисления сохранены ниже':legacyE04Archive?'Архив предыдущей редакции E04 — смотрите фактические изменения ниже':legacyE03Archive?'Архив предыдущей редакции E03 — смотрите фактические начисления ниже':legacyE02Archive?'Архив предыдущей редакции E02 — смотрите фактические начисления ниже':legacyE01Archive?'Архив предыдущей редакции E01 — смотрите фактические начисления ниже':legacyF01Archive?'Архив предыдущей редакции F01 — смотрите фактические списания ниже':legacyF02Archive?'Архив предыдущей редакции F02 — смотрите фактические списания ниже':legacyF03Archive?'Архив предыдущей редакции F03 — смотрите фактические списания ниже':legacyH01Archive?'Архив предыдущей редакции H01 — смотрите фактические списания ниже':legacyC01Archive?'Архив прежней C01 — смотрите фактические списания ниже':legacyC02Archive?'Архив прежней C02 — смотрите фактические списания ниже':legacyC03Archive?'Архив прежней C03 — смотрите фактические списания ниже':legacyH02Archive?'Архив предыдущей редакции H02 — смотрите фактические списания ниже':legacyH03Archive?'Архив предыдущей редакции H03 — смотрите фактические списания ниже':legacyH04Archive?'Архив предыдущей редакции H04 — смотрите фактические потери ниже':legacyF04Archive?'Архив предыдущей редакции F04 — смотрите фактические списания ниже':newspaperEffectShort(record))+'</strong></p>'+
     (fireLevy?'<p>Предписание предъявляется только завершённому зданию соперника с положительным личным П в районе с максимальным П.</p>':'')+
     (record.defense?'<p>Противодействие: '+escapeHtml(defenseDescription[record.defense]||'Не требуется')+
     '. Экстренные меры: $1 и одно главное действие представителя защищают один район.</p>':'')+
     '</div>'+
     (archived?
       '<div class="news-scope"><strong>Реальные результаты</strong><ul class="news-protection-details">'+
-      e05Archive+e04Archive+e03Archive+e02Archive+e01Archive+f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+c03Archive+f04Archive+
+      e06Archive+e05Archive+e04Archive+e03Archive+e02Archive+e01Archive+f02Archive+f03Archive+h03Archive+h04Archive+h01Archive+h02Archive+c01Archive+c02Archive+c03Archive+f04Archive+
       (fireLevy?'<li>'+(archived.f01?.mode==='personal'
          ?'Личный штраф: '+escapeHtml(state.players[archived.f01.filed?.accusedPlayerId]?.name||'Игрок')+' ($6 и −1 Influence).'
          :'Общий противопожарный сбор: каждый игрок ($2 и −1 Influence).')+'</li>':'')+
-      (outcomeRows||(rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||infantCare||h01Past||h02Past||c01Past||c02Past||c03Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
+      (outcomeRows||(rentalNewspaper||legacyE01Archive||tradeWeekNewspaper||legacyE02Archive||westernAidNewspaper||legacyE03Archive||waterfrontStrikeNewspaper||legacyE04Archive||civicRecognitionNewspaper||legacyE05Archive||reliefFundNewspaper||legacyE06Archive||infantCare||h01Past||h02Past||c01Past||c02Past||c03Past?'':policeAudit?'<li>Служебная проверка завершена; обычная стоимость восстановлена.</li>':fireAudit?'':'<li>В этом году никто не пострадал.</li>'))+'</ul>'+
       '<p class="news-outcomes">Признание служб: '+(archived.serviceRecognition||[]).map(pid=>state.players[pid]?.name).join(', ')+
       '</p><button type="button" class="news-copy" id="newsCopyOutcome">Копировать итоги года</button></div>'
-      :'<div class="news-scope"><strong>'+(westernAidNewspaper?'ЖЕТОНЫ ПОМОЩИ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА И ПЕРЕГОВОРЫ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
-      (civicRecognitionNewspaper?'<small>В год E05 земля и стандартный сбор трёх видов постов равны $0. В конце года одно начисление +1 Influence за каждую готовую собственную службу; деньги и VP от E05 не выдаются.</small>':
+      :'<div class="news-scope"><strong>'+(westernAidNewspaper?'ЖЕТОНЫ ПОМОЩИ':waterfrontStrikeNewspaper?'ЗАБАСТОВКА И ПЕРЕГОВОРЫ':civicRecognitionNewspaper?'ПОДДЕРЖКА ГОРОДСКИХ СЛУЖБ':reliefFundNewspaper?'РАСПРЕДЕЛЕНИЕ СРЕДСТВ ФОНДА':tradeWeekNewspaper?'ТОРГОВЫЕ МЕРОПРИЯТИЯ':rentalNewspaper?'АРЕНДНЫЕ КОНТРАКТЫ':infantCare?'ПРОГРАММА ПОЖЕРТВОВАНИЙ':'Прогноз по текущей застройке')+'</strong>'+
+      (reliefFundNewspaper?'<small>Одно основное действие на игрока; немедленная выплата за один из двух вариантов. Автоматического начисления и районных страховых штрафов нет.</small>':
+       civicRecognitionNewspaper?'<small>В год E05 земля и стандартный сбор трёх видов постов равны $0. В конце года одно начисление +1 Influence за каждую готовую собственную службу; деньги и VP от E05 не выдаются.</small>':
        waterfrontStrikeNewspaper?'<small>+$2 только за оплаченный рейс с морской погрузкой. Переговоры можно провести один раз: $5 и главное действие за +3 VP и +1 Influence. В конце года без дополнительных штрафов.</small>':
        westernAidNewspaper?'<small>Ровно два жетона на год; без бесплатных перевозок, других штрафов или годовой выплаты.</small>':
        tradeWeekNewspaper?'<small>Только основное действие в доступном районе. Награды сразу после мероприятия; пассивной годовой выплаты нет.</small>':
@@ -2383,15 +2432,34 @@ function renderNewspaper(){
        policeAudit?'<small>До конца года: $7 либо −3 шага Influence за −1 ★. Нужна зона полиции; обычные санкции сохраняются.</small>':
        '<small>Районов под угрозой: '+group?.exposed+
       ' · с защитой: '+group?.safe+'. Проверка будет только после всех ходов года.</small>')+
-      '<ul class="news-protection-details">'+projections+'</ul>'+e05Panel+e04Panel+e03Panel+e02Panel+e01Panel+c03Panel+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
+      '<ul class="news-protection-details">'+projections+'</ul>'+e06Panel+e05Panel+e04Panel+e03Panel+e02Panel+e01Panel+c03Panel+c02Panel+c01Panel+h01Panel+h02Panel+fireTargets+f02Panel+f03Panel+h03Panel+h04Panel+f04Panel+'</div>'+
       (isEmergencyPossible?'<button type="button" class="news-emergency-action" id="newsEmergencyStart">'+
        'Экстренные меры → выбрать район на карте ($1 + действие)</button>':'')
     )+
-    (!archived&&!rentalNewspaper&&!tradeWeekNewspaper&&!westernAidNewspaper&&!waterfrontStrikeNewspaper&&!civicRecognitionNewspaper&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!corruptPermitsNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
+    (!archived&&!rentalNewspaper&&!tradeWeekNewspaper&&!westernAidNewspaper&&!waterfrontStrikeNewspaper&&!civicRecognitionNewspaper&&!reliefFundNewspaper&&!policeAudit&&!fireLevy&&!arson&&!portFire&&!seaQuarantine&&!infantCare&&!epidemicNewspaper&&!horseIllnessNewspaper&&!streetCrimeNewspaper&&!stolenCargoNewspaper&&!corruptPermitsNewspaper&&!fireAudit?'<button type="button" class="news-issue-map-action" id="newsIssueMapToggle">'+(newsMapVisible?'Скрыть зоны на карте':'Показать зоны на карте')+'</button>':'')+
     '<div class="news-archive"><button type="button" class="'+(!archived?'active':'')+
     '" data-news-current="1">'+(card?'ТЕКУЩИЙ ВЫПУСК':'ПОСЛЕДНИЕ ИТОГИ')+'</button>'+remaining+'</div>'+
     '<small style="display:block;color:#715c41">Газетные статьи — художественные игровые тексты, не исторические цитаты.</small>';
 
+  $$('#newsSheetContent [data-e06-choice]').forEach(button=>button.onclick=()=>{
+    if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
+      showToast('Сначала завершите или отмените текущую операцию');return;
+    }
+    const pid=currentDeveloper(state);
+    const result=chooseE06Relief(state,pid,button.dataset.e06Choice,button.dataset.e06Arrest||null);
+    if(!result.ok){
+      showToast(result.reason==='capital'?'Для честного пути не хватает $6':
+        result.reason==='already-participated'?'В этом году вы уже использовали фонд':
+        result.reason==='arrest-worker'?'Выберите незаключённого представителя для ареста':
+        'Фонд сейчас недоступен: '+result.reason);
+      render();return;
+    }
+    showToast(result.record.choice==='honest'
+      ?'Работы профинансированы: −$6, +3 VP, +'+result.record.influenceSteps+' Influence'
+      :result.arrested?'Средства присвоены: +$8, представитель арестован'
+        :'Средства присвоены: +$8, −1 Influence, +1 ★');
+    render();
+  });
   $$('#newsSheetContent [data-e04-port]').forEach(button=>button.onclick=()=>{
     if(deliveryDraft||state.pendingConstruction||state.pendingWorkerAction||fireActionDraft||justiceDraft){
       showToast('Сначала завершите или отмените текущую операцию');return;

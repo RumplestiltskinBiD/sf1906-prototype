@@ -7,8 +7,8 @@ function cityScenario(){
   s.phase='development';s.view='city';
   s.developmentPlayer=0;s.developmentComplete=false;
   s.activationMainActionUsed=false;s.activeWorkerId=null;
-  // Generic map/emergency controls still apply to unimplemented E06's
-  // current legacy negative article; E04 v2 has its own settlement action.
+  // E06 v2 is an individual relief-fund choice, not the former insurance
+  // penalty. It must not expose obsolete district emergency/map controls.
   s.newsCurrentIds=['E06'];s.newsC01Incident=null;s.newsC02Incident=null;s.newsC03Offer=null;
   s.players[0].capital=30;
   return s;
@@ -48,24 +48,29 @@ test('mobile replaces SF Call strip with three usable, non-bottom-floating actio
   }
 });
 for(const viewport of [{width:390,height:844},{width:932,height:430}]){
-  test('SF Call remains usable from map, with forecast map and emergency cancellation '+viewport.width+'x'+viewport.height,async({page})=>{
+  test('SF Call E06 remains reachable on mobile without removed generic emergency controls '+viewport.width+'x'+viewport.height,async({page})=>{
     await page.setViewportSize(viewport);
     await load(page,cityScenario());
     const node=page.locator('#callBuildingNode');
     await expect(node).toBeVisible();
     await node.click();
     await expect(page.locator('#newsSheet')).toBeVisible();
-    await expect(page.locator('#newsIssueMapToggle')).toBeVisible();
-    await page.locator('#newsIssueMapToggle').click();
-    await expect(page.locator('#newsSheet')).toBeHidden();
-    await expect(page.locator('.city-board')).toHaveClass(/news-map/);
-    await node.click();
-    await expect(page.locator('#newsSheet')).toBeVisible();
-    await page.locator('#newsEmergencyStart').click();
-    await expect(page.locator('#newsEmergencyCancelMobile')).toBeVisible();
-    await expect(page.locator('#newsStrip')).toBeHidden();
-    await page.locator('#newsEmergencyCancelMobile').click();
+    await expect(page.locator('.news-headline')).toHaveText('ДЕНЬГИ ДЛЯ БЕЗРАБОТНЫХ ПОД УГРОЗОЙ!');
+    await expect(page.locator('.news-e06-panel')).toBeVisible();
+    await expect(page.locator('[data-e06-choice]')).toHaveCount(2);
+    await expect(page.locator('[data-e06-choice="honest"]')).toBeDisabled();
+    await expect(page.locator('[data-e06-choice="misappropriate"]')).toBeDisabled();
+    // No representative selected. A newspaper click must not start an action,
+    // expose the old insurance-era emergency workflow or change player money.
+    await expect(page.locator('#newsIssueMapToggle')).toHaveCount(0);
+    await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
     await expect(page.locator('#newsEmergencyCancelMobile')).toBeHidden();
+    const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
+    expect(saved.players[0].capital).toBe(30);
+    expect(saved.activationMainActionUsed).toBe(false);
+    expect(saved.newsEmergency).toEqual({});
+    await page.locator('#newsCloseBtn').click();
+    await expect(page.locator('#newsSheet')).toBeHidden();
     await expect(page.locator('#mobileActionDock [data-mobile-action]')).toHaveCount(3);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
