@@ -96,6 +96,9 @@ test('E06 criminal route uses occupied Influence track correctly and clamps at z
 });
 test('E06 ★★★ illegal selection arrests a chosen non-jailed employee, applies normal sanction',()=>{
  const s=game();s.players[0].suspicion=3;
+ // At Influence 3 the illegal −1 step leaves only two downward steps;
+ // the approved arrest fallback must set Influence to 0 AND deduct 3 VP.
+ s.players[0].influence=3;
  const actorId=s.players[0].workers[0].id,chosenId=s.players[0].workers[1].id;
  const r=G.chooseE06Relief(s,0,'misappropriate',chosenId);
  assert.equal(r.ok,true,JSON.stringify(r));
@@ -108,7 +111,7 @@ test('E06 ★★★ illegal selection arrests a chosen non-jailed employee, appl
  assert.equal(s.players[0].workers.find(w=>w.id===actorId).used,true);
  assert.equal(s.players[0].suspicion,0);
  assert.equal(s.players[0].capital,38);
- assert.equal(s.players[0].influence,0,'5→4 from theft, 3-step sanction impossible');
+ assert.equal(s.players[0].influence,0,'3→2 from theft, only 2 sanction steps remain');
  assert.equal(s.players[0].prestige,-3);
  assert.equal(s.players[0].workersLeft,1,'one worker used, another arrested');
 });
