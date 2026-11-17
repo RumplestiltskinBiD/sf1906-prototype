@@ -9,8 +9,8 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0585-e06-relief-fund';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0585-e06-relief-fund';
+} from './game-core.js?v=0586-polytechnic-campus';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0586-polytechnic-campus';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -414,6 +414,26 @@ if(!parsed.residentialMixedV1){
  const spacing=Math.max(1,Math.floor((deck.length+cards.length)/(cards.length+1)));
  cards.forEach((card,i)=>deck.splice(Math.min((i+1)*spacing,deck.length),0,card));
  parsed.deck=deck;parsed.residentialMixedV1=true;
+}
+// Issue #207: introduce missing campus copies once into the hidden deck
+// of existing games without touching the live market, drafts or existing cards.
+if(!parsed.polytechnicCampusExpansionV1){
+  const id='polytechnic_campus';
+  const seen=[...(parsed.market||[]).map(c=>c?.id),
+    ...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),
+    ...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const missing=Math.max(0,PROJECT_COPIES-seen.filter(x=>x===id).length);
+  const deck=parsed.deck||[];
+  for(let i=0;i<missing;i++){
+    const pos=Math.min(deck.length,Math.floor((deck.length+1)*(i+1)/(missing+1)));
+    deck.splice(pos,0,{uid:'CAMPUS-V1-'+(i+1),id});
+  }
+  parsed.deck=deck;
+  parsed.polytechnicCampusExpansionV1=true;
 }
 parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.pendingWorkforceLinks.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)):[];
 parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
