@@ -51,7 +51,7 @@ for(const vp of views){
   await page.setViewportSize(vp);await seed(page,game({cash:6}));await news(page,vp);
   await expect(page.locator('.news-headline')).toHaveText('ДЕНЬГИ ДЛЯ БЕЗРАБОТНЫХ ПОД УГРОЗОЙ!');
   await expect(page.locator('#newsSheetContent .news-forecast > b')).toHaveText('ФОНД ПОМОЩИ БЕЗРАБОТНЫМ');
-  await expect(page.locator('.news-e06-panel')).toContainText('Одно');
+  await expect(page.locator('.news-e06-panel')).toContainText('одно основное действие');
   await expect(page.locator('.news-e06-player')).toHaveCount(3);
   await expect(page.locator('[data-e06-choice="honest"]')).toBeEnabled();
   await expect(page.locator('[data-e06-choice="misappropriate"]')).toBeEnabled();
@@ -104,7 +104,9 @@ for(const vp of views){
 }
 test('E06 illegal suspicion ★★★ offers explicit arrest-worker selection and correct sanction',async({page})=>{
  const vp={width:390,height:844};
- await page.setViewportSize(vp);await seed(page,game({cash:0,suspicion:3}));await news(page,vp);
+ const state=game({cash:0,suspicion:3});
+ state.players[0].influence=3; // After the illegal step, fewer than 3 sanction steps remain.
+ await page.setViewportSize(vp);await seed(page,state);await news(page,vp);
  await expect(page.locator('.news-e06-warning')).toContainText('арест');
  const buttons=page.locator('[data-e06-choice="misappropriate"][data-e06-arrest]');
  await expect(buttons).toHaveCount(3);
@@ -139,7 +141,8 @@ test('E06 year transition keeps only already paid benefits; never pays again',as
  s.developmentComplete=true;s.developmentPlayer=null;s.activeWorkerId=null;
  s.newsDeck=['H03',...s.newsDeck.filter(id=>id!=='H03')];
  await page.setViewportSize(vp);await seed(page,s);await news(page,vp);
- await expect(page.locator('[data-e06-choice]')).toBeDisabled();
+ await expect(page.locator('[data-e06-choice]')).toHaveCount(2);
+ for(const button of await page.locator('[data-e06-choice]').all())await expect(button).toBeDisabled();
  await page.locator('#newsCloseBtn').click();
  await page.locator('#endRoundBtn').click();
  const a=await saved(page);

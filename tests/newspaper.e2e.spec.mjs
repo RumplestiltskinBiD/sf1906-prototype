@@ -58,27 +58,30 @@ test('C01 gang article highlights the D6 zone and only really protected properti
    await expect(page.locator('.news-c01-panel')).toContainText('Полицейский рейд');
    await expect(page.locator('.news-c01-panel')).toContainText('прикрытых полицией 2');
  });
-test('mobile emergency measures use map tap, ordinary worker movement and existing action',async({page})=>{
+test('E06 mobile uses a real relief choice, never invents obsolete emergency protection or touches a rival warehouse',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await seededGame(page,{news:'E06',constructions:[{projectId:'warehouse',districtId:'soma',playerId:1}]});
   await expect(page.locator('#newsStrip')).toBeHidden();
-   await page.locator('#callBuildingNode').click();
-  await page.locator('#newsEmergencyStart').click();
-  await expect(page.locator('#newsEmergencyCancelMobile')).toBeVisible();
-  await expect(page.locator('#newsSheet')).toBeHidden();
-  // Tap an uncovered neighborhood; the emergency must apply ONLY there,
-  // not silently protect the exposed SoMa port warehouse.
-  await page.locator('[data-district="civic"] path').click();
-  const s=await page.evaluate(storage=>JSON.parse(localStorage.getItem(storage)),storage);
-  expect(s.newsEmergency.civic).toBeTruthy();
-  expect(s.activationMainActionUsed).toBe(true);
-  expect(s.players[0].capital).toBe(29);
-  expect(s.players[0].workers[0].used).toBe(true);
-  await expect(page.locator('#newsEmergencyCancelMobile')).toBeHidden();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth))
-    .toBeLessThanOrEqual(393);
   await page.locator('#callBuildingNode').click();
-  await expect(page.locator('#newsSheetContent')).toContainText('ПОД УГРОЗОЙ');
+  await expect(page.locator('#newsSheet')).toBeVisible();
+  await expect(page.locator('.news-e06-panel')).toContainText('Фонд общественных работ');
+  await expect(page.locator('#newsEmergencyStart')).toHaveCount(0);
+  await expect(page.locator('#newsIssueMapToggle')).toHaveCount(0);
+  await expect(page.locator('[data-e06-choice="honest"]')).toBeEnabled();
+  const before=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),storage);
+  await page.locator('[data-e06-choice="honest"]').click();
+  const s=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),storage);
+  expect(s.newsEmergency.civic).toBeUndefined();
+  expect(s.players[0].capital).toBe(before.players[0].capital-6);
+  expect(s.players[0].prestige).toBe(before.players[0].prestige+3);
+  expect(s.activationMainActionUsed).toBe(true);
+  expect(s.players[0].workers[0].used).toBe(true);
+  expect(s.constructions).toEqual(before.constructions,'the rival SoMa warehouse must stay unchanged');
+  expect(s.newsE06Relief.choices).toHaveLength(1);
+  await expect(page.locator('.news-e06-player').first()).toContainText('Общественные работы');
+  await expect(page.locator('#newsEmergencyCancelMobile')).toBeHidden();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+    .toBeLessThanOrEqual(3);
 });
 test('E02 settles once without obsolete passive trade payouts; next issue and archive remain accessible',async({page})=>{
   await seededGame(page,{news:'E02',constructions:[{projectId:'shops',districtId:'financial',playerId:0}]});
