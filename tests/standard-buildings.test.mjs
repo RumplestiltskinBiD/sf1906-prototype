@@ -17,7 +17,7 @@ test('four unlimited standard public projects have fixed recipes and remain out 
    assert.equal(G.projectById(project.id).id,project.id);
    assert.equal(G.createProjectCardPool({rng:()=>0.3}).filter(c=>c.id===project.id).length,0);
  }
- assert.equal(G.PROJECTS.length,42);assert.equal(G.PROJECTS.filter(p=>p.id==='warehouse').length,1);
+ assert.equal(G.PROJECTS.length,43);assert.equal(G.PROJECTS.filter(p=>p.id==='warehouse').length,1);
 });
 
 test('standard construction charges $2 project fee once, as well as land, and stays out of portfolio',()=>{

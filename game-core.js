@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0586-polytechnic-campus';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0587-chinese-herbal-pharmacy';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -292,8 +292,9 @@ export const PROJECTS = [
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · регистрация собственности или реорганизация',benefit:'Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Продажа в любом завершённом здании с местом для розового товара: перевозчик +$3, производитель и получатель по +$1 за кубик.',limits:'Пиво не складируется; нужен завершённый получатель со свободным местом из общего годового лимита. Обычные повозки, маршрут и тарифы.'},
   {prestige:1,income:1,id:'steam_bakery',types:['Промышленное'],risk:{earthquake:0,fire:2},name:'Паровая хлебопекарная фабрика',type:'Промышленность',open:5,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · Хлеб: выпуск 2 или 4/год · П+2 · риск потери Income',benefit:'2 или 4 розовых кубика Хлеба/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Хлебное производство',actionText:'При завершении и в начале каждого следующего года обязательно выберите выпуск: 2 или 4 Хлеба. Любой игрок может отвезти кубики любому покупателю розовых товаров в пределах общего лимита. Выплаты $3/$1/$1.',limits:'Весь непроданный Хлеб списывается в конце года: −1 к постоянному Income владельца за каждый остаток, до годовой выплаты. Штраф не восстанавливается; в 1905 также применяется. Хлеб на обычных складах не хранится. Никакого добровольного пропуска производства.'},
-  {prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в завершённую лавку редких товаров: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
-  {prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
+  {contrabandStockCapacity:CONTRABAND_STOCK_CAPACITY,prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в любое завершённое здание, принимающее Контрабанду: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
+  {prestige:1,income:1,id:'chinese_herbal_pharmacy',types:['Бизнес','Торговое'],risk:{earthquake:0,fire:2},name:'Китайская аптекарская лавка',type:'Коммерция / Аптека',open:4,materials:['Lumber','Lumber','Lumber'],freeLandDistrict:'chinatown',acceptsContraband:true,requires:'Нет дополнительных требований',effect:'Доход +$1/год (+$1 при завершённом медицинском учреждении рядом) · принимает Контрабанду · бесплатная земля в Chinatown',benefit:'Доход +$1/год · +$1 при медицинском учреждении в своём или соседнем районе',actionName:'Тайный сбыт',actionText:'Принимает Контрабанду из любого допустимого источника. Владелец +$1 за успешную продажу, перевозчик +$6 и +1 ★.',limits:'Связи в Chinatown: при начале строительства земля $0 независимо от Land Value, контракт Строительного бюро не расходуется. Частная практика: +1 Income, если в своём/соседнем районе есть хотя бы одна завершённая клиника или амбулатория; не суммируется. Аптека не является медицинской службой.'},
+  {acceptsContraband:true,prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
   {prestige:3,income:0,id:'orphanage',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Сиротский приют',type:'Жильё / Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Политическое влияние +1 при завершении · +4 VP после катастрофы 1906, если не уничтожен',benefit:'+1 Влияние при завершении · ещё 4 VP при выживании после землетрясения и пожаров',actionName:'Уцелевший приют',actionText:'После всех землетрясений и пожаров 1906 получите +4 VP, если приют цел или повреждён. Разрушенный или сгоревший не получает бонус.',limits:'Не является пожарным, полицейским или медицинским учреждением; бонус 1906 учитывается однократно после Фазы II.'},
   {prestige:1,income:2,id:'tenement',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Рабочий доходный дом',type:'Жильё',open:2,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +2 · много жителей',benefit:'Доход +2 / раунд · много жителей',actionName:'—',actionText:'Отдельного действия нет.',limits:'Нет дополнительных ограничений.'},
@@ -1132,6 +1133,7 @@ export function createInitialState({rng=Math.random}={}){
     advertisingAgencyExpansionV1:true,
     residentialQuarterExpansionV1:true,
     polytechnicCampusExpansionV1:true,
+    chineseHerbalPharmacyExpansionV1:true,
     // Fresh pools already contain both Bakery and Orphanage; prevent legacy
     // mixed-project migration from refilling a legitimately exhausted deck.
     residentialMixedV1:true,
@@ -1594,8 +1596,9 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   // E05 pays BOTH the land and the standard project fee, but does not buy
   // building materials, move workers, or consume a saved Bureau contract.
   const e05Subsidy=isE05CivicSubsidy(state,projectId);
-  const bureauDiscount=!e05Subsidy&&!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
-  const landCost=ds?(e05Subsidy||replacing?0:Math.max(0,ds.landValue-bureauDiscount)):0;
+  const districtLandWaived=!!(project?.freeLandDistrict&&project.freeLandDistrict===districtId&&ds);
+  const bureauDiscount=!districtLandWaived&&!e05Subsidy&&!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
+  const landCost=ds?(e05Subsidy||replacing||districtLandWaived?0:Math.max(0,ds.landValue-bureauDiscount)):0;
   const standardFee=e05Subsidy?0:project?.standard?STANDARD_PROJECT_FEE:0;
   const totalCost=landCost+standardFee;
   if(player&&ds&&player.capital<totalCost) reasons.push(`Не хватает капитала на землю и проект ($${totalCost}).`);
@@ -1606,6 +1609,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
     landCost,
     standardFee,
     e05Subsidy,
+    districtLandWaived,
     baseCost:ds?.landValue??0,
     bureauDiscount,
     redevelopment:replacing,
@@ -1647,7 +1651,7 @@ export function beginConstruction(state,playerId,projectId,districtId,{redevelop
   state.constructions.push(construction);
   state.pendingConstruction=null;
   state.selectedDistrictId=districtId;
-  const discountText=check.e05Subsidy?' (E05: город оплачивает землю и оформление)':check.bureauDiscount>0?` (Construction Contract −$${check.bureauDiscount})`:'';
+  const discountText=check.e05Subsidy?' (E05: город оплачивает землю и оформление)':check.districtLandWaived?' (связи в Chinatown: земля бесплатно)':check.bureauDiscount>0?` (Construction Contract −${check.bureauDiscount})`:'';
   logEvent(state,`${player.name} ${former?'перестраивает пансион в':'начал строительство'} «${projectById(projectId).name}» в ${districtById(districtId).name}: земля $${check.landCost}${discountText}${check.standardFee?' + стандартный проект $'+check.standardFee:''}${former?', повторно использовано Lumber ×'+check.redeemedLumber:''}.${workerMovementText(consumed)}`,'good');
   const completedImmediately=!!(former&&completeConstruction(state,construction).ok);
   return {ok:true,construction,cost:check.cost,landCost:check.landCost,standardFee:check.standardFee,bureauDiscount:check.bureauDiscount,e05Subsidy:check.e05Subsidy,worker:consumed.worker,redevelopment:!!former,redeemedLumber:check.redeemedLumber||0,completedImmediately};
@@ -1873,7 +1877,7 @@ export function completeConstruction(state,construction){
     const business=completedBefore.filter(c=>projectTypes(c.projectId).includes('Бизнес')).length;
     construction.fixedIncome=Math.max(1,Math.min(3,Math.max(land,1+business)));
   }
-  if(project.id==='customs_warehouse')construction.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  if(contrabandSourceCapacity(project)>0)construction.contrabandStock=contrabandSourceCapacity(project);
   if(project.id==='brewery')construction.beerStock=BREWERY_STOCK_CAPACITY;
   if(project.id===BREAD_FACTORY_ID){
     construction.breadStock=0;
@@ -2031,8 +2035,26 @@ export function goodsBuyerUsed(state,construction){
 }
 export function goodsBuyerRemaining(state,construction){return Math.max(0,goodsBuyerCapacity(construction?.projectId)-goodsBuyerUsed(state,construction));}
 export function currentDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
-export function completedCustomsWarehouses(state){return (state.constructions||[]).filter(c=>c.status==='complete'&&c.projectId==='customs_warehouse');}
-export function contrabandInventory(c){return Array.from({length:Math.max(0,Math.min(CONTRABAND_STOCK_CAPACITY,Number.isInteger(c?.contrabandStock)?c.contrabandStock:0))},()=>CONTRABAND_CARGO);}
+// Contraband partners declare capabilities on their project cards, not in route code.
+export function contrabandSourceCapacity(projectOrId){
+  const project=typeof projectOrId==='string'?projectById(projectOrId):projectOrId;
+  return Number.isInteger(project?.contrabandStockCapacity)&&project.contrabandStockCapacity>0?project.contrabandStockCapacity:0;
+}
+export function acceptsContraband(projectOrId){
+  const project=typeof projectOrId==='string'?projectById(projectOrId):projectOrId;
+  return project?.acceptsContraband===true;
+}
+export function completedContrabandSources(state){
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&contrabandSourceCapacity(c.projectId)>0);
+}
+// Backward compatible historical selector; generic delivery uses the capability selector.
+export function completedCustomsWarehouses(state){
+  return completedContrabandSources(state).filter(c=>c.projectId==='customs_warehouse');
+}
+export function contrabandInventory(c){
+  const capacity=contrabandSourceCapacity(c?.projectId);
+  return Array.from({length:Math.max(0,Math.min(capacity,Number.isInteger(c?.contrabandStock)?c.contrabandStock:0))},()=>CONTRABAND_CARGO);
+}
 export function currentContrabandDeliveryKey(state,playerId){return `${state.round}:${playerId}:${(state.developmentSlotsUsed||[])[playerId]||0}`;}
 export function deliverySourceInfo(state,playerId,source){
   if(!source)return null;
@@ -2043,7 +2065,7 @@ export function deliverySourceInfo(state,playerId,source){
       districtId:producer.districtId,inventory:producer.projectId==='brewery'?beerInventory(producer):breadInventory(producer),ownerId:producer.playerId,unitPrice:0};
   }
   if(source.kind==='contraband'){
-    const wh=completedCustomsWarehouses(state).find(c=>c.id===source.id);
+    const wh=completedContrabandSources(state).find(c=>c.id===source.id);
     if(!wh)return null;
     return {kind:'contraband',id:wh.id,name:projectById(wh.projectId).name+' · '+(districtById(wh.districtId)?.name||wh.districtId),districtId:wh.districtId,inventory:contrabandInventory(wh),ownerId:wh.playerId};
   }
@@ -2292,7 +2314,7 @@ export function validateDeliveryPlan(state,plan){
       goodsBuyerDraft.set(target.id,planned+drop.materials.length);
     }else if(drop.kind==='contraband-sale'){
       const shop=(state.constructions||[]).find(c=>c.id===drop.id);
-      if(!shop||shop.projectId!=='rare_goods_shop'||shop.status!=='complete'||drop.materials.length!==1||drop.materials[0]!==CONTRABAND_CARGO)return {ok:false,reason:'contraband-buyer'};
+      if(!shop||!acceptsContraband(shop.projectId)||shop.status!=='complete'||drop.materials.length!==1||drop.materials[0]!==CONTRABAND_CARGO)return {ok:false,reason:'contraband-buyer'};
     }else if(drop.kind==='construction'){
       const con=(state.constructions||[]).find(c=>c.id===drop.id);
       if(!con||con.playerId!==plan.playerId||con.status!=='under-construction')return {ok:false,reason:'target'};
@@ -2459,7 +2481,7 @@ function executeDeliveryCore(state,plan){
       state.players[warehouse.playerId].capital+=1;
       state.players[receiving.playerId].capital+=1;
       state.lastContrabandDeliveryKey=currentContrabandDeliveryKey(state,plan.playerId);
-      logEvent(state,`${player.name}: контрабанда продана в «${projectById(receiving.projectId).name}» — перевозчик +${CONTRABAND_CARRIER_PAYMENT}, пакгауз +$1, лавка +$1; +1 ★ организатору.`,'bad');
+      logEvent(state,`${player.name}: контрабанда продана в «${projectById(receiving.projectId).name}» — перевозчик +${CONTRABAND_CARRIER_PAYMENT}, источник +$1, получатель +$1; +1 ★ организатору.`,'bad');
     }else if(drop.kind==='bakery'){
       bakeryInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
     }else if(drop.kind==='warehouse'){
@@ -2551,9 +2573,16 @@ export function resolvePressCampaign(state,constructionId,choice){
   return {ok:true,choice,playerId:c.playerId};
 }
 
+// Independent private practice: the presence of nearby medicine increases demand.
+export function herbalPharmacyIncomeBonus(state,construction){
+  if(construction?.projectId!=='chinese_herbal_pharmacy'||construction.status!=='complete')return 0;
+  const nearby=new Set([construction.districtId,...districtNeighbors(construction.districtId)]);
+  return (state.constructions||[]).some(c=>c.status==='complete'&&nearby.has(c.districtId)
+    &&serviceFamilyForProject(c.projectId)==='clinic')?1:0;
+}
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
+    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+herbalPharmacyIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
 export function advertisingIncomeBonus(state,playerId){
@@ -2956,7 +2985,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
   refreshLogisticsSupply(state,{rng});
   // A new C02 newspaper removes exactly two REAL cubes after annual refill.
   if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
-  for(const wh of completedCustomsWarehouses(state))wh.contrabandStock=CONTRABAND_STOCK_CAPACITY;
+  for(const producer of completedContrabandSources(state))producer.contrabandStock=contrabandSourceCapacity(producer.projectId);
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
   for(const con of completedBreadFactories(state)){con.breadStock=0;con.breadProductionRound=null;}
