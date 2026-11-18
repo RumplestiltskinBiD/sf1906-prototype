@@ -36,6 +36,8 @@ test('approved herbal pharmacy: types, cost, wood recipe, fire risk, capabilitie
  assert.deepEqual(p.risk,{earthquake:0,fire:2});
  assert.equal(p.freeLandDistrict,'chinatown');assert.equal(G.acceptsContraband(id),true);
  assert.equal(G.contrabandSourceCapacity(id),0);
+ assert.match(G.projectById('customs_warehouse').actionText,/любое завершённое здание, принимающее Контрабанду/);
+ assert.doesNotMatch(G.projectById('customs_warehouse').actionText,/лавку редких товаров/);
  assert.equal(G.serviceFamilyForProject(id),null);
  assert.equal(G.PROJECTS.length,43);
  assert.equal(G.PROJECTS.filter(x=>x.types?.length===2).length,13);
