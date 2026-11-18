@@ -7,10 +7,10 @@ createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,curre
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
-roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,hallOfJusticeOptions,useHallOfJustice,
+roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,migrateHerbalPrivatePracticeSnapshot,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0587-chinese-herbal-pharmacy';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0587-chinese-herbal-pharmacy';
+} from './game-core.js?v=0588-herbal-income-snapshot';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0588-herbal-income-snapshot';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -455,6 +455,8 @@ if(!parsed.chineseHerbalPharmacyExpansionV1){
   parsed.deck=deck;
   parsed.chineseHerbalPharmacyExpansionV1=true;
 }
+// Freeze income of already-finished old-version pharmacies exactly once.
+migrateHerbalPrivatePracticeSnapshot(parsed);
 parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.pendingWorkforceLinks.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)):[];
 parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
 parsed.pressCampaignQueuedRound=Number(parsed.pressCampaignQueuedRound)||0;

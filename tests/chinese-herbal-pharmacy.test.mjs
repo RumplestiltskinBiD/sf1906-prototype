@@ -88,24 +88,111 @@ test('three wood finish once: +1 VP, +1 Income, P+2, never a medical service',()
  assert.equal(G.completeConstruction(s,c).ok,false);
  assert.equal(s.players[0].prestige,1);
 });
-test('private practice counts any finished clinic or outpatient post in own/adjacent district, no stacking',()=>{
- const s=game();const pharmacy=built(s,id,0,'chinatown');
- assert.equal(G.herbalPharmacyIncomeBonus(s,pharmacy),0);
- assert.equal(G.buildingIncome(s,0),1);
- const unfinished=built(s,'clinic',1,'financial',{status:'under-construction'});
- assert.equal(G.buildingIncome(s,0),1);
- unfinished.status='complete';
- assert.equal(G.herbalPharmacyIncomeBonus(s,pharmacy),1);
+test('private practice freezes +1 Income when a finished neighboring clinic exists at pharmacy completion',()=>{
+ const s=game(),pharmacy=built(s,id,0,'chinatown',{status:'under-construction',completedRound:null});
+ const clinic=built(s,'clinic',1,'financial');
+ assert.equal(G.herbalPharmacyIncomeBonus(s,pharmacy),0,'unfinished pharmacy earns nothing');
+ assert.equal(G.completeConstruction(s,pharmacy).ok,true);
+ assert.equal(pharmacy.herbalPrivatePracticeBonus,1);
  assert.equal(G.buildingIncome(s,0),2);
- assert.equal(G.roundIncome(s,0),5);
- const standard=built(s,'std_clinic',2,'northbeach');
- assert.equal(G.buildingIncome(s,0),2,'different owner and multiple adjacent clinics do not stack');
- unfinished.status='abandoned';assert.equal(G.buildingIncome(s,0),2);
- standard.status='redeveloped';assert.equal(G.buildingIncome(s,0),1,'no permanent phantom income after clinics close');
+ assert.equal(G.roundIncome(s,0),5,'base $3, pharmacy $1, permanent practice $1');
+ const extra=built(s,'std_clinic',2,'northbeach');
+ assert.equal(G.buildingIncome(s,0),2,'two neighboring providers cannot stack');
+ clinic.status='abandoned';extra.status='redeveloped';
+ assert.equal(G.buildingIncome(s,0),2,'removing every clinic after completion never removes the bonus');
+ const from=snap(s);
+ assert.equal(G.completeConstruction(s,pharmacy).ok,false);
+ assert.equal(snap(s),from,'second completion cannot award again');
+ const revived=JSON.parse(snap(s));
+ assert.equal(G.herbalPharmacyIncomeBonus(revived,revived.constructions[0]),1);
+ assert.equal(G.buildingIncome(revived,0),2,'save/reload preserves the locked Income');
+});
+test('new clinical building cannot activate a pharmacy that finished without medicine nearby',()=>{
+ const s=game(),pharmacy=built(s,id,0,'chinatown',{status:'under-construction',completedRound:null});
+ const pending=built(s,'clinic',1,'financial',{status:'under-construction'});
+ assert.equal(G.completeConstruction(s,pharmacy).ok,true);
+ assert.equal(pharmacy.herbalPrivatePracticeBonus,0,'unfinished neighbor is ineligible');
+ assert.equal(G.buildingIncome(s,0),1);
+ pending.status='complete';
+ assert.equal(G.buildingIncome(s,0),1,'a later neighboring completed clinic cannot unlock the old pharmacy');
+ const nearby=built(s,'std_clinic',2,'chinatown');
+ assert.equal(G.buildingIncome(s,0),1,'even a later local standard clinic cannot unlock it');
+ nearby.status='abandoned';
  const distant=built(s,'std_clinic',1,'mission');
- assert.equal(G.buildingIncome(s,0),1,'distant clinic is not adjacent to Chinatown');
- distant.districtId='chinatown';assert.equal(G.buildingIncome(s,0),2,'standard clinic in same district counts');
- const saved=JSON.parse(snap(s));assert.equal(G.buildingIncome(saved,0),2,'dynamic benefit survives JSON save');
+ assert.equal(G.buildingIncome(s,0),1,'distant clinic does not matter');
+ distant.districtId='financial';
+ assert.equal(G.buildingIncome(s,0),1,'moving a clinic into range never recalculates');
+ const revived=JSON.parse(snap(s));
+ assert.equal(G.buildingIncome(revived,0),1,'saved permanent income remains base only');
+});
+test('both clinic types of any owner work in own or adjacent district, but not distant ones',()=>{
+ for(const medicalId of ['clinic','std_clinic']){
+  for(const district of ['chinatown','financial','northbeach']){
+   const s=game();
+   const pharmacy=built(s,id,0,'chinatown',{status:'under-construction',completedRound:null});
+   built(s,medicalId,2,district);
+   assert.equal(G.hasMedicalNeighborAtPharmacyCompletion(s,pharmacy),true,medicalId+' '+district);
+   assert.equal(G.completeConstruction(s,pharmacy).ok,true);
+   assert.equal(pharmacy.herbalPrivatePracticeBonus,1,medicalId+' '+district);
+  }
+  const far=game(),pharmacy=built(far,id,0,'chinatown',{status:'under-construction',completedRound:null});
+  built(far,medicalId,1,'mission');
+  assert.equal(G.hasMedicalNeighborAtPharmacyCompletion(far,pharmacy),false);
+  assert.equal(G.completeConstruction(far,pharmacy).ok,true);
+  assert.equal(pharmacy.herbalPrivatePracticeBonus,0,'distant provider is irrelevant');
+ }
+});
+test('two copies take independent snapshots at their own completion dates',()=>{
+ const s=game(),first=built(s,id,0,'chinatown',{status:'under-construction',completedRound:null});
+ assert.equal(G.completeConstruction(s,first).ok,true);
+ assert.equal(first.herbalPrivatePracticeBonus,0);
+ const med=built(s,'std_clinic',2,'financial');
+ const second=built(s,id,1,'chinatown',{status:'under-construction',completedRound:null});
+ assert.equal(G.completeConstruction(s,second).ok,true);
+ assert.equal(second.herbalPrivatePracticeBonus,1);
+ assert.equal(first.herbalPrivatePracticeBonus,0);
+ assert.equal(G.buildingIncome(s,0),1);assert.equal(G.buildingIncome(s,1),2);
+ med.status='redeveloped';
+ assert.equal(G.buildingIncome(s,0),1);assert.equal(G.buildingIncome(s,1),2);
+});
+test('old-version completed pharmacies get one-time snapshot from visible service at migration, not yearly',()=>{
+ const s=game();
+ const clinic=built(s,'std_clinic',1,'financial');
+ const first=built(s,id,0,'chinatown');
+ const second=built(s,id,2,'mission');
+ assert.equal(first.herbalPrivatePracticeBonus,undefined);
+ assert.equal(second.herbalPrivatePracticeBonus,undefined);
+ delete s.herbalPrivatePracticeSnapshotV1;
+ assert.equal(G.migrateHerbalPrivatePracticeSnapshot(s),2);
+ assert.equal(first.herbalPrivatePracticeBonus,1);
+ assert.equal(second.herbalPrivatePracticeBonus,0);
+ assert.equal(s.herbalPrivatePracticeSnapshotV1,true);
+ assert.equal(G.buildingIncome(s,0),2);
+ assert.equal(G.buildingIncome(s,2),1);
+ clinic.status='redeveloped';
+ built(s,'clinic',1,'mission');
+ assert.equal(G.migrateHerbalPrivatePracticeSnapshot(s),0,'do not recompute migration');
+ assert.equal(first.herbalPrivatePracticeBonus,1);
+ assert.equal(second.herbalPrivatePracticeBonus,0);
+ assert.equal(G.buildingIncome(s,0),2);
+ assert.equal(G.buildingIncome(s,2),1);
+ const restored=JSON.parse(snap(s));
+ assert.equal(G.migrateHerbalPrivatePracticeSnapshot(restored),0);
+ assert.equal(G.buildingIncome(restored,0),2);
+ assert.equal(G.buildingIncome(restored,2),1);
+});
+test('legacy migration leaves unfinished pharmacies and other project income untouched',()=>{
+ const s=game(),pharmacy=built(s,id,0,'chinatown',{status:'under-construction'});
+ built(s,'clinic',1,'financial');
+ const business=built(s,'tenement',2,'civic');
+ delete s.herbalPrivatePracticeSnapshotV1;
+ assert.equal(G.migrateHerbalPrivatePracticeSnapshot(s),0);
+ assert.equal(pharmacy.herbalPrivatePracticeBonus,undefined);
+ assert.equal(G.buildingIncome(s,0),0);
+ assert.equal(G.buildingIncome(s,2),G.projectById(business.projectId).income);
+ assert.equal(G.completeConstruction(s,pharmacy).ok,true);
+ assert.equal(pharmacy.herbalPrivatePracticeBonus,1);
+ assert.equal(G.buildingIncome(s,0),2);
 });
 test('all real buyer/source capabilities: existing customs can ship to new pharmacy, no buyer star',()=>{
  const s=game();const source=built(s,'customs_warehouse',1,'soma',{contrabandStock:2});
