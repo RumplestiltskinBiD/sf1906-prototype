@@ -1,5 +1,5 @@
 /**
- * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R08), обновлено 2026-11-05.
+ * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R08), обновлено 2026-11-19.
  *
  * ТОЛЬКО ДАННЫЕ КАРТ: файл не подключён к игровому движку и ничего не меняет
  * в действующих сохранениях, балансе, интерфейсе или логике игры.
@@ -34,16 +34,17 @@ export const RESEARCH_CARDS = Object.freeze([
     fundingCost: 4,
     sponsorReward: { vp: 3, influence: 1 },
     requirementText: 'Нет.',
-    effectText: 'При строительстве здания с положительным приростом У можно дополнительно заплатить $2 и уменьшить прирост У этого здания на 1. Пожароопасность не меняется.',
+    effectText: 'При завершении строительства здания с положительным приростом У можно дополнительно заплатить $2 и уменьшить прирост У этого здания на 1. Пожароопасность не меняется.',
     effect: {
       type: 'optional-building-earthquake-reinforcement',
       extraCost: 2,
       earthquakeDeltaReduction: 1,
       eligibleWhenProjectEarthquakeDeltaPositive: true,
       fireDeltaReduction: 0,
-      repeatableForSameBuilding: false
+      repeatableForSameBuilding: false,
+      paymentTiming: 'on-construction-completion-before-risk-applies'
     },
-    implementationOpenQuestion: 'Точная точка оплаты в многоэтапной стройке — при начале или завершении — ещё не зафиксирована.'
+    implementationStatus: 'approved-data-only-not-wired-to-game-engine'
   },
   {
     id: 'R03',
