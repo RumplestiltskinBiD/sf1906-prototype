@@ -884,7 +884,7 @@ function deliveryTargetDistrict(drop){
 function deliveryPickupSources(){
   const d=deliveryDraft;if(d?.step!=='route')return [];
   const visit=d.route.length-1,district=d.route[visit];
-  const sources=[...completedBreweries(state).filter(c=>beerInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedBreadFactories(state).filter(c=>breadInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedCustomsWarehouses(state).filter(c=>contrabandInventory(c).length).map(c=>({kind:'contraband',id:c.id})),...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
+  const sources=[...completedBreweries(state).filter(c=>beerInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedBreadFactories(state).filter(c=>breadInventory(c).length).map(c=>({kind:'goods',id:c.id})),...completedContrabandSources(state).filter(c=>contrabandInventory(c).length).map(c=>({kind:'contraband',id:c.id})),...LOGISTICS_NODES.map(n=>({kind:'node',id:n.id})),
     ...NEUTRAL_MATERIAL_SUPPLIERS.map(n=>({kind:'supplier',id:n.id})),
     ...completedWarehouses(state,d.playerId).map(w=>({kind:'warehouse',id:w.id})),
     ...completedIndustrialProducers(state).map(p=>({kind:'industry',id:p.id})),
