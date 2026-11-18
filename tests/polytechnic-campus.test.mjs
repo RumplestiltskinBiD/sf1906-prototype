@@ -34,7 +34,7 @@ test('Issue #207: exact approved hybrid card, market price, recipe, risk and two
  assert.equal(project.accessAny,undefined);assert.equal(project.standard,undefined);
  assert.match(project.actionText,/пока не подключены/);
  assert.equal(G.PROJECTS.length,43);
- assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,12);
+ assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,13);
  assert.equal(G.PROJECT_COPIES,2);
  const pool=G.createProjectCardPool({rng:()=>0.2});
  assert.equal(pool.length,86);
