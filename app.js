@@ -6,11 +6,11 @@ createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,devel
 createInitialState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
-availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedCustomsWarehouses,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
-roundIncome,grossRoundIncome,buildingIncome,hallOfJusticeOptions,useHallOfJustice,
+availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
+roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0586-polytechnic-campus';
-import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0586-polytechnic-campus';
+} from './game-core.js?v=0587-chinese-herbal-pharmacy';
+import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0587-chinese-herbal-pharmacy';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -144,7 +144,7 @@ warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
 completedRound:x.completedRound??null,
 fireSafetyModernized:!!x.fireSafetyModernized,
  wagonLevel:x.projectId==='wagonboarding'?Math.max(1,Math.min(3,Number(x.wagonLevel)||1)):x.wagonLevel,
-contrabandStock:x.projectId==='customs_warehouse'&&x.status==='complete'?Math.max(0,Math.min(2,Number.isInteger(x.contrabandStock)?x.contrabandStock:2)):0,
+contrabandStock:contrabandSourceCapacity(x.projectId)>0&&x.status==='complete'?Math.max(0,Math.min(contrabandSourceCapacity(x.projectId),Number.isInteger(x.contrabandStock)?x.contrabandStock:contrabandSourceCapacity(x.projectId))):0,
 beerStock:x.projectId==='brewery'&&x.status==='complete'?Math.max(0,Math.min(2,Number.isInteger(x.beerStock)?x.beerStock:2)):0,
 breadStock:x.projectId===BREAD_FACTORY_ID&&x.status==='complete'?Math.max(0,Math.min(4,Number.isInteger(x.breadStock)?x.breadStock:0)):0,
 breadProductionRound:x.projectId===BREAD_FACTORY_ID&&x.status==='complete'&&Number.isInteger(x.breadProductionRound)?x.breadProductionRound:null,
@@ -434,6 +434,26 @@ if(!parsed.polytechnicCampusExpansionV1){
   }
   parsed.deck=deck;
   parsed.polytechnicCampusExpansionV1=true;
+}
+// Legacy saves gain only the missing herbal pharmacy copies, without rewriting
+// markets, hands, existing constructions or legitimately exhausted new decks.
+if(!parsed.chineseHerbalPharmacyExpansionV1){
+  const id='chinese_herbal_pharmacy';
+  const seen=[...(parsed.market||[]).map(c=>c?.id),
+    ...(parsed.deck||[]).map(c=>c?.id),
+    ...(parsed.players||[]).flatMap(p=>p.portfolio||[]),
+    ...(parsed.starterDraftHands||[]).flatMap(h=>(h||[]).map(c=>c?.id)),
+    ...(parsed.starterDiscards||[]).map(c=>c?.id),
+    ...(parsed.expired||[]).map(c=>c?.id),
+    ...(parsed.constructions||[]).map(c=>c.projectId)];
+  const missing=Math.max(0,PROJECT_COPIES-seen.filter(x=>x===id).length);
+  const deck=parsed.deck||[];
+  for(let i=0;i<missing;i++){
+    const pos=Math.min(deck.length,Math.floor((deck.length+1)*(i+1)/(missing+1)));
+    deck.splice(pos,0,{uid:'HERBAL-V1-'+(i+1),id});
+  }
+  parsed.deck=deck;
+  parsed.chineseHerbalPharmacyExpansionV1=true;
 }
 parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.pendingWorkforceLinks.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='workers_complex'&&c.status==='complete'&&!c.linkedIndustryId)):[];
 parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
@@ -1011,7 +1031,7 @@ if(kind==='freight-yard')return type in RESOURCE_PRICES&&id===FREIGHT_YARD.id&&d
 const con=(state.constructions||[]).find(x=>x.id===id);
 if(!con||!deliveryDraft.route.includes(con.districtId))return false;
 if(kind==='goods-sale')return con.status==='complete'&&goodsBuyerCapacity(con.projectId)>0&&PINK_GOODS.includes(type)&&goodsBuyerRemaining(state,con)>assigned.length&&!!deliveryPinkOriginForDrop(con.id,type);
-if(kind==='contraband-sale')return con.projectId==='rare_goods_shop'&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
+if(kind==='contraband-sale')return acceptsContraband(con.projectId)&&con.status==='complete'&&type===CONTRABAND_CARGO&&!(deliveryDraft.drops||[]).some(d=>d.kind==='contraband-sale'&&d.materials?.includes(CONTRABAND_CARGO));
 if(con.playerId!==deliveryDraft.playerId||type===CONTRABAND_CARGO||PINK_GOODS.includes(type))return false;
 if(kind==='bakery')return con.projectId==='bakery'&&con.status==='complete'&&type==='Lumber'&&bakeryInventory(con).length+assigned.length<1;
 if(kind==='warehouse')return isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===id)&&warehouseInventory(con).length+assigned.length<warehouseStorageCapacity(con);
@@ -1027,7 +1047,7 @@ if(!con||!deliveryDraft||!deliveryDraft.route.includes(con.districtId))return nu
 if(con.kind==='e03-aid')return e03AidPreview(state).active?'e03-aid':null;
 if(con.id===FREIGHT_YARD.id)return deliveryDraft.source?.kind==='freight-yard'?null:'freight-yard';
 if(con.status==='complete'&&goodsBuyerCapacity(con.projectId)>0)return 'goods-sale';
-if(con.status==='complete'&&con.projectId==='rare_goods_shop')return 'contraband-sale';
+if(con.status==='complete'&&acceptsContraband(con.projectId))return 'contraband-sale';
 if(con.playerId!==deliveryDraft.playerId)return null;
 return con.status==='under-construction'?'construction':con.projectId==='bakery'&&con.status==='complete'?'bakery':isWarehouseConstruction(con)&&con.status==='complete'&&!(deliveryDraft.source?.kind==='warehouse'&&deliveryDraft.source.id===con.id)?'warehouse':null;
 }
@@ -1230,7 +1250,7 @@ for(const producer of [...completedBreweries(state),...completedBreadFactories(s
   const cap=isBread?(producer.breadProductionQuantity||2):2;
   html+='<button class="delivery-source-card warehouse-source" data-ds-goods="'+producer.id+'" '+(stock?'':'disabled')+'><b>'+projectById(producer.projectId).name+'</b><span>'+districtById(producer.districtId)?.name+' · владелец '+state.players[producer.playerId].name+'</span><small>'+(isBread?'Хлеб':'Пиво')+': '+stock+'/'+cap+' розовых кубиков · Доставка +$3/кубик</small></button>';
 }
-for(const wh of completedCustomsWarehouses(state)){const stock=contrabandInventory(wh).length;html+='<button class="delivery-source-card" data-ds-contraband="'+wh.id+'" '+(stock?'':'disabled')+'><b>Таможенный пакгауз</b><span>'+districtById(wh.districtId)?.name+' · владелец '+state.players[wh.playerId].name+'</span><small>Фиолетовых кубиков: '+stock+'/2 · продажа +$6 и +1 ★</small></button>';}
+for(const wh of completedContrabandSources(state)){const stock=contrabandInventory(wh).length;html+='<button class="delivery-source-card" data-ds-contraband="'+wh.id+'" '+(stock?'':'disabled')+'><b>'+projectById(wh.projectId).name+'</b><span>'+districtById(wh.districtId)?.name+' · владелец '+state.players[wh.playerId].name+'</span><small>Фиолетовых кубиков: '+stock+'/'+contrabandSourceCapacity(wh.projectId)+' · продажа +$6 и +1 ★</small></button>';}
 html+='<button class="delivery-source-card freight-yard-source" data-ds-yard="'+FREIGHT_YARD.id+'" '+(yi.length?'':'disabled')+'><b>Грузовой двор</b><span>Western Addition · ваша секция '+yi.length+'/2</span><small>Д '+(yc.Lumber||0)+' · К '+(yc.Masonry||0)+' · С '+(yc.Steel||0)+' · уже оплачено</small></button></div>';
 }
 }else if(step==='load'){
@@ -1290,7 +1310,7 @@ if(otherTargets.length){
         kind==='bakery'?'Пекарня'+number:
         kind==='freight-yard'?'Городской грузовой двор':
         kind==='goods-sale'?(projectById(t.projectId)?.name||'Торговля')+number:
-        kind==='contraband-sale'?'Лавка редких товаров'+number:'Точка разгрузки'+number;
+        kind==='contraband-sale'?(projectById(t.projectId)?.name||'Тайный сбыт')+number:'Точка разгрузки'+number;
       return '<button type="button" data-delivery-unload-target="'+escapeHtml(t.id)+'">'+
         escapeHtml(label+' · '+district)+'</button>';
     }).join('')+'</div>';
@@ -1304,7 +1324,7 @@ else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehou
 else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(focus).length+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/1';}
 else if(kind==='e03-aid'){label='Фонд помощи · '+districtById(focus.id).name;cap='2 разных материала · +$13, +2 VP, +1 Influence';}
 else if(kind==='goods-sale'){label=projectById(focus.projectId).name;cap='Розовые товары '+(goodsBuyerUsed(state,focus)+(deliveryTarget(kind,focus.id)?.materials.length||0))+'/'+goodsBuyerCapacity(focus.projectId)+' за год · +$3 перевозчику';}
-else if(kind==='contraband-sale'){label='Лавка редких товаров';cap='Нелегальный сбыт · +$6 и +1 ★';}
+else if(kind==='contraband-sale'){label=projectById(focus.projectId).name;cap='Нелегальный сбыт · +$6 и +1 ★';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,focus.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,focus.id)?.materials||[];
 html+='<div class="ux3-unload-target"><div><small>РАЗГРУЗКА</small><strong>'+label+'</strong><span>'+districtById(focus.districtId)?.name+' · '+cap+'</span><em>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</em></div><div class="drop-buttons">';
@@ -1329,7 +1349,7 @@ else if(kind==='warehouse'){label='Склад';cap='На складе '+(warehou
 else if(kind==='bakery'){label='Пекарня';cap='Дерево '+(bakeryInventory(con).length+(deliveryTarget(kind,con.id)?.materials.length||0))+'/1';}
 else if(kind==='e03-aid'){label='Фонд помощи · '+districtById(con.id).name;cap='2 разных материала · +$13, +2 VP, +1 Influence';}
 else if(kind==='goods-sale'){label=projectById(con.projectId).name;cap='Розовые товары '+(goodsBuyerUsed(state,con)+(deliveryTarget(kind,con.id)?.materials.length||0))+'/'+goodsBuyerCapacity(con.projectId)+' за год · +$3 перевозчику';}
-else if(kind==='contraband-sale'){label='Лавка редких товаров';cap='Нелегальный сбыт · +$6 и +1 ★';}
+else if(kind==='contraband-sale'){label=projectById(con.projectId).name;cap='Нелегальный сбыт · +$6 и +1 ★';}
 else {const yi=freightYardInventory(state,pid),n=(deliveryTarget(kind,con.id)?.materials.length||0);label='Городской грузовой двор';cap='Ваша секция '+(yi.length+n)+'/2 · '+(yi.length?'аренда активна':'занять +$2');}
 const assigned=deliveryTarget(kind,con.id)?.materials||[];
 html+='<div class="delivery-target-card"><b>'+label+'</b><span>'+districtById(con.districtId)?.name+' · '+cap+'</span><small>Назначено: '+(assigned.map(materialShort).join(' · ')||'—')+'</small><div class="drop-buttons">';
@@ -2950,7 +2970,7 @@ function projectIncomeText(p,con=null){
   return '$'+(p.income||0);
 }
 function completedConstructionBaseIncome(pr,con){
-  return con.projectId==='rare_goods_shop'?(Number.isInteger(con.fixedIncome)?con.fixedIncome:1):(pr.income||0);
+  return (con.projectId==='rare_goods_shop'?(Number.isInteger(con.fixedIncome)?con.fixedIncome:1):(pr.income||0))+herbalPharmacyIncomeBonus(state,con);
 }
 function projectCardRules(p){
 return `<div class="card-rules">
@@ -3702,7 +3722,7 @@ const [dx,dy]=TOKEN_OFFSETS[i]||[0,34+i*12];
 const pl=state.players[con.playerId],pr=projectById(con.projectId),prog=constructionProgress(state,con.id);
 const complete=con.status==='complete',isWarehouse=complete&&isWarehouseConstruction(con);
 const isProducer=complete&&!!INDUSTRIAL_PRODUCTION[con.projectId];
-const isContrabandSource=complete&&con.projectId==='customs_warehouse'&&contrabandInventory(con).length>0;
+const isContrabandSource=complete&&contrabandSourceCapacity(pr)>0&&contrabandInventory(con).length>0;
 const isBeerSource=complete&&((con.projectId==='brewery'&&beerInventory(con).length>0)||(con.projectId===BREAD_FACTORY_ID&&breadInventory(con).length>0));
 const focusClass=focusedConstructionId===con.id?'focus-pulse':'';
 const whSource=deliveryMode?.step==='source'&&isWarehouse&&con.playerId===deliveryMode.playerId&&warehouseInventory(con).length?` data-delivery-warehouse="${con.id}"`:``;
@@ -3717,7 +3737,7 @@ const interactionHit=whSource||plantSource||beerSource||contrabandSource
 let content='';
 if(isWarehouse||isProducer||isBeerSource||isContrabandSource){
 const inv=isWarehouse?warehouseInventory(con):isProducer?industrialInventory(con):isBeerSource?(con.projectId===BREAD_FACTORY_ID?breadInventory(con):beerInventory(con)):contrabandInventory(con),cnt=deliveryCounts(inv);
-const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):isBeerSource&&con.projectId===BREAD_FACTORY_ID?(con.breadProductionQuantity||2):2;
+const capacity=isWarehouse?warehouseStorageCapacity(con):isProducer?industrialProductionCapacity(state,con):isContrabandSource?contrabandSourceCapacity(pr):isBeerSource&&con.projectId===BREAD_FACTORY_ID?(con.breadProductionQuantity||2):2;
 content=`<rect x="-31" y="-19" width="62" height="38" rx="10"/>${projectSvgTypeStripe(pr,{x:-29,y:-18,width:58,height:5})}<text class="warehouse-token-title" y="-4">${isContrabandSource?'КОН':isBeerSource?(con.projectId===BREAD_FACTORY_ID?'ХЛЕБ':'ПИВ'):isWarehouse?'СКЛ':'ЗАВ'} ${inv.length}/${capacity}</text><text class="warehouse-token-stock" y="10">${isContrabandSource?'Ф'+(cnt.Contraband||0):isBeerSource?(con.projectId===BREAD_FACTORY_ID?'Х'+(cnt.Bread||0):'Р'+(cnt.Beer||0)):'Д'+(cnt.Lumber||0)+' К'+(cnt.Masonry||0)+' С'+(cnt.Steel||0)}</text>`;
 }else{
 const label=complete?'✓':`${prog.delivered}/${prog.required}`;
