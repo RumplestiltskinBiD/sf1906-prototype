@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0587-chinese-herbal-pharmacy';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0588-herbal-income-snapshot';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
@@ -293,7 +293,7 @@ export const PROJECTS = [
   {prestige:1,income:1,id:'brewery',types:['Промышленное','Торговое'],risk:{earthquake:0,fire:2},name:'Пивоварня',type:'Промышленность / Торговля',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · Пиво ×2/год · Доставка +$3/кубик',benefit:'2 розовых кубика пива/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Пивная торговля',actionText:'Производит до 2 кубиков Пива. Продажа в любом завершённом здании с местом для розового товара: перевозчик +$3, производитель и получатель по +$1 за кубик.',limits:'Пиво не складируется; нужен завершённый получатель со свободным местом из общего годового лимита. Обычные повозки, маршрут и тарифы.'},
   {prestige:1,income:1,id:'steam_bakery',types:['Промышленное'],risk:{earthquake:0,fire:2},name:'Паровая хлебопекарная фабрика',type:'Промышленность',open:5,materials:['Lumber','Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · Хлеб: выпуск 2 или 4/год · П+2 · риск потери Income',benefit:'2 или 4 розовых кубика Хлеба/год · +$1 производителю и получателю · +$3 перевозчику',actionName:'Хлебное производство',actionText:'При завершении и в начале каждого следующего года обязательно выберите выпуск: 2 или 4 Хлеба. Любой игрок может отвезти кубики любому покупателю розовых товаров в пределах общего лимита. Выплаты $3/$1/$1.',limits:'Весь непроданный Хлеб списывается в конце года: −1 к постоянному Income владельца за каждый остаток, до годовой выплаты. Штраф не восстанавливается; в 1905 также применяется. Хлеб на обычных складах не хранится. Никакого добровольного пропуска производства.'},
   {contrabandStockCapacity:CONTRABAND_STOCK_CAPACITY,prestige:2,income:1,id:'customs_warehouse',types:['Общественное','Торговое'],risk:{earthquake:1,fire:1},name:'Таможенный пакгауз',type:'Коммерция',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Порт в районе',accessAny:['port'],effect:'Доход +$1 навсегда · 2 контрабандных товара/год · владелец +$1 за сбыт',benefit:'2 контрабандных кубика/год · +$1 владельцу за успешную продажу',actionName:'Контрабандный импорт',actionText:'Любой игрок может перевезти 1 фиолетовый кубик за Доставку в любое завершённое здание, принимающее Контрабанду: +$6 перевозчику, +1 ★, по $1 владельцам обоих зданий.',limits:'Только портовый район. В начале года запас до 2; после завершения сразу 2. Только один контрабандный кубик за Доставку, с настоящим маршрутом, обычной вместимостью и стоимостью.'},
-  {prestige:1,income:1,id:'chinese_herbal_pharmacy',types:['Бизнес','Торговое'],risk:{earthquake:0,fire:2},name:'Китайская аптекарская лавка',type:'Коммерция / Аптека',open:4,materials:['Lumber','Lumber','Lumber'],freeLandDistrict:'chinatown',acceptsContraband:true,requires:'Нет дополнительных требований',effect:'Доход +$1/год (+$1 при завершённом медицинском учреждении рядом) · принимает Контрабанду · бесплатная земля в Chinatown',benefit:'Доход +$1/год · +$1 при медицинском учреждении в своём или соседнем районе',actionName:'Тайный сбыт',actionText:'Принимает Контрабанду из любого допустимого источника. Владелец +$1 за успешную продажу, перевозчик +$6 и +1 ★.',limits:'Связи в Chinatown: при начале строительства земля $0 независимо от Land Value, контракт Строительного бюро не расходуется. Частная практика: +1 Income, если в своём/соседнем районе есть хотя бы одна завершённая клиника или амбулатория; не суммируется. Аптека не является медицинской службой.'},
+  {prestige:1,income:1,id:'chinese_herbal_pharmacy',types:['Бизнес','Торговое'],risk:{earthquake:0,fire:2},name:'Китайская аптекарская лавка',type:'Коммерция / Аптека',open:4,materials:['Lumber','Lumber','Lumber'],freeLandDistrict:'chinatown',acceptsContraband:true,requires:'Нет дополнительных требований',effect:'Доход +$1/год (+$1 навсегда, если при завершении рядом есть готовая клиника/амбулатория) · принимает Контрабанду · бесплатная земля в Chinatown',benefit:'Доход +$1/год · +$1/год навсегда при наличии готовой медицины рядом в момент завершения',actionName:'Тайный сбыт',actionText:'Принимает Контрабанду из любого допустимого источника. Владелец +$1 за успешную продажу, перевозчик +$6 и +1 ★.',limits:'Связи в Chinatown: при начале строительства земля $0 независимо от Land Value, контракт Строительного бюро не расходуется. Частная практика: единожды при завершении зафиксируйте +1 Income навсегда, если в своём/соседнем районе уже завершена хотя бы одна клиника или амбулатория (любой владелец). Поздние постройки и закрытия не меняют бонус. Аптека не является медицинской службой.'},
   {acceptsContraband:true,prestige:1,income:0,id:'rare_goods_shop',types:['Торговое'],risk:{earthquake:0,fire:1},name:'Лавка редких товаров',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: доход навсегда max(земля, 1+число готовых Бизнес-зданий), от $1 до $3 · принимает контрабанду',benefit:'Фиксированный доход $1–3 при завершении · +$1 за принятую контрабанду',actionName:'Нелегальный сбыт',actionText:'Принимает: Контрабанда. За каждый успешный рейс владелец получает +$1; подозрение получает только перевозчик.',limits:'Доход вычисляется единожды при завершении по уже существующим зданиям всех игроков в своём районе. Позже не меняется. Подозрение за чужой рейс не начисляется.'},
   {prestige:1,income:0,id:'bakery',types:['Жилое','Торговое'],risk:{earthquake:0,fire:2},name:'Семейная пекарная артель',type:'Жильё / Торговля',open:4,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход $0 · Пекарный сезон: 1 Дерево → $7 или +1 VP (быстрое действие, раз в год)',benefit:'раз в год 1 Lumber → $7 либо +1 VP',actionName:'Пекарный сезон',actionText:'Быстрое действие: израсходуйте 1 Lumber в пекарне или собственном складе этого района, выберите $7 либо +1 VP. Один раз в год.',limits:'Работает только после завершения; свой ресурс, обычная доставка и доступ к своему ходу; пекарня хранит максимум 1 Lumber.'},
   {prestige:3,income:0,id:'orphanage',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Сиротский приют',type:'Жильё / Городская служба',open:4,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Политическое влияние +1 при завершении · +4 VP после катастрофы 1906, если не уничтожен',benefit:'+1 Влияние при завершении · ещё 4 VP при выживании после землетрясения и пожаров',actionName:'Уцелевший приют',actionText:'После всех землетрясений и пожаров 1906 получите +4 VP, если приют цел или повреждён. Разрушенный или сгоревший не получает бонус.',limits:'Не является пожарным, полицейским или медицинским учреждением; бонус 1906 учитывается однократно после Фазы II.'},
@@ -1134,6 +1134,7 @@ export function createInitialState({rng=Math.random}={}){
     residentialQuarterExpansionV1:true,
     polytechnicCampusExpansionV1:true,
     chineseHerbalPharmacyExpansionV1:true,
+    herbalPrivatePracticeSnapshotV1:true,
     // Fresh pools already contain both Bakery and Orphanage; prevent legacy
     // mixed-project migration from refilling a legitimately exhausted deck.
     residentialMixedV1:true,
@@ -1871,6 +1872,11 @@ export function completeConstruction(state,construction){
   construction.materialsDelivered=[...(project.materials||[])];
   construction.status='complete';
   construction.completedRound=state.round;
+  if(project.id==='chinese_herbal_pharmacy'){
+    // One immutable bonus per completed building, frozen now rather than
+    // recalculated when medical institutions appear or disappear later.
+    construction.herbalPrivatePracticeBonus=hasMedicalNeighborAtPharmacyCompletion(state,construction)?1:0;
+  }
   if(project.id==='rare_goods_shop'){
     // Freeze at completion. No end-of-year district recount on the physical board.
     const land=state.districts?.[construction.districtId]?.landValue??districtById(construction.districtId)?.landValue??0;
@@ -2573,12 +2579,33 @@ export function resolvePressCampaign(state,constructionId,choice){
   return {ok:true,choice,playerId:c.playerId};
 }
 
-// Independent private practice: the presence of nearby medicine increases demand.
-export function herbalPharmacyIncomeBonus(state,construction){
-  if(construction?.projectId!=='chinese_herbal_pharmacy'||construction.status!=='complete')return 0;
+// This card counts nearby standard outpatient posts as well as clinics,
+// including other owners, regardless of their general service-access radius.
+export function hasMedicalNeighborAtPharmacyCompletion(state,construction){
+  if(construction?.projectId!=='chinese_herbal_pharmacy'||!districtById(construction.districtId))return false;
   const nearby=new Set([construction.districtId,...districtNeighbors(construction.districtId)]);
-  return (state.constructions||[]).some(c=>c.status==='complete'&&nearby.has(c.districtId)
-    &&serviceFamilyForProject(c.projectId)==='clinic')?1:0;
+  return (state.constructions||[]).some(c=>c.status==='complete'
+    &&nearby.has(c.districtId)&&serviceFamilyForProject(c.projectId)==='clinic');
+}
+// Historical saves from the dynamic-rule version had no completion snapshot.
+// Freeze their currently observable income once. Past clinic positions cannot
+// be reconstructed from an ordinary saved game.
+export function migrateHerbalPrivatePracticeSnapshot(state){
+  if(state.herbalPrivatePracticeSnapshotV1===true)return 0;
+  let updated=0;
+  for(const con of state.constructions||[]){
+    if(con.projectId!=='chinese_herbal_pharmacy'||con.status!=='complete'
+      ||con.herbalPrivatePracticeBonus===0||con.herbalPrivatePracticeBonus===1)continue;
+    con.herbalPrivatePracticeBonus=hasMedicalNeighborAtPharmacyCompletion(state,con)?1:0;
+    updated++;
+  }
+  state.herbalPrivatePracticeSnapshotV1=true;
+  return updated;
+}
+export function herbalPharmacyIncomeBonus(state,construction){
+  return construction?.projectId==='chinese_herbal_pharmacy'
+    &&construction.status==='complete'
+    &&construction.herbalPrivatePracticeBonus===1?1:0;
 }
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
