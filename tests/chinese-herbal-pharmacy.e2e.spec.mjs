@@ -109,17 +109,73 @@ for(const size of sizes){
   expect(reloaded.players[0].bureauContracts).toBe(1);
   await fits(page,size);
  });
- test('completed pharmacy office income follows neighboring clinic, with no false permanent bonus '+size.width+'x'+size.height,async({page})=>{
-  await page.setViewportSize(size);
-  const s=game();
-  s.constructions=[built(id,0,'chinatown',{id:'PHARMACY'}),built('std_clinic',1,'financial',{id:'CLINIC'})];
-  await seed(page,s);
+ test('real completion locks clinic bonus even if clinic later disappears '+size.width+'x'+size.height,async({page})=>{
+  await page.setViewportSize(size);const s=game();
+  s.constructions=[built(id,0,'chinatown',{id:'PHARMACY',status:'under-construction',completedRound:null}),built('std_clinic',1,'financial',{id:'CLINIC'})];
+  await seed(page,s);await page.locator('#officeBtn').click();
+  await expect(page.locator('[data-complete-build="PHARMACY"]')).toBeEnabled();
+  await page.locator('[data-complete-build="PHARMACY"]').dispatchEvent('click');
+  let after=await saved(page);
+  expect(after.constructions.find(c=>c.id==='PHARMACY').status).toBe('complete');
+  expect(after.constructions.find(c=>c.id==='PHARMACY').herbalPrivatePracticeBonus).toBe(1);
+  expect(after.players[0].prestige).toBe(1);
+  await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
+  after.constructions.find(c=>c.id==='CLINIC').status='abandoned';
+  await page.evaluate(([key,val])=>localStorage.setItem(key,JSON.stringify(val)),[KEY,after]);
+  await page.reload();const reload=await saved(page);
+  expect(reload.constructions.find(c=>c.id==='PHARMACY').herbalPrivatePracticeBonus).toBe(1);
   await page.locator('#officeBtn').click();
-  await expect(page.locator('#officeContent')).toContainText('Китайская аптекарская лавка');
   await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
   await fits(page,size);
  });
+ test('completion without medicine stays at base income after later clinic '+size.width+'x'+size.height,async({page})=>{
+  await page.setViewportSize(size);const s=game();
+  s.constructions=[built(id,0,'chinatown',{id:'PHARMACY',status:'under-construction',completedRound:null})];
+  await seed(page,s);await page.locator('#officeBtn').click();
+  await expect(page.locator('[data-complete-build="PHARMACY"]')).toBeEnabled();
+  await page.locator('[data-complete-build="PHARMACY"]').dispatchEvent('click');
+  let after=await saved(page);
+  expect(after.constructions.find(c=>c.id==='PHARMACY').herbalPrivatePracticeBonus).toBe(0);
+  await expect(page.locator('#officeContent')).toContainText('Доход +1 / год');
+  after.constructions.push(built('clinic',1,'financial',{id:'LATER-CLINIC'}));
+  await page.evaluate(([key,val])=>localStorage.setItem(key,JSON.stringify(val)),[KEY,after]);
+  await page.reload();
+  expect((await saved(page)).constructions.find(c=>c.id==='PHARMACY').herbalPrivatePracticeBonus).toBe(0);
+  await page.locator('#officeBtn').click();
+  await expect(page.locator('#officeContent')).toContainText('Доход +1 / год');
+  await fits(page,size);
+ });
 }
+test('migration freezes income visible for a completed old-version pharmacy exactly once',async({page})=>{
+ const s=game();delete s.herbalPrivatePracticeSnapshotV1;
+ s.constructions=[built(id,0,'chinatown',{id:'OLD-PHARMACY'}),built('std_clinic',1,'financial',{id:'OLD-CLINIC'})];
+ await page.setViewportSize({width:1366,height:768});await seed(page,s);
+ let old=await saved(page);
+ expect(old.herbalPrivatePracticeSnapshotV1).toBe(true);
+ expect(old.constructions.find(c=>c.id==='OLD-PHARMACY').herbalPrivatePracticeBonus).toBe(1);
+ await page.locator('#officeBtn').click();
+ await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
+ old.constructions.find(c=>c.id==='OLD-CLINIC').status='abandoned';
+ await page.evaluate(([key,val])=>localStorage.setItem(key,JSON.stringify(val)),[KEY,old]);
+ await page.reload();const current=await saved(page);
+ expect(current.constructions.find(c=>c.id==='OLD-PHARMACY').herbalPrivatePracticeBonus).toBe(1);
+ await page.locator('#officeBtn').click();
+ await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
+});
+test('migration freezes zero when old save has no finished medical neighbor',async({page})=>{
+ const s=game();delete s.herbalPrivatePracticeSnapshotV1;
+ s.constructions=[built(id,0,'chinatown',{id:'OLD-PHARMACY'})];
+ await page.setViewportSize({width:1366,height:768});await seed(page,s);
+ let old=await saved(page);
+ expect(old.herbalPrivatePracticeSnapshotV1).toBe(true);
+ expect(old.constructions.find(c=>c.id==='OLD-PHARMACY').herbalPrivatePracticeBonus).toBe(0);
+ old.constructions.push(built('std_clinic',1,'financial',{id:'NEW-CLINIC'}));
+ await page.evaluate(([key,val])=>localStorage.setItem(key,JSON.stringify(val)),[KEY,old]);
+ await page.reload();const current=await saved(page);
+ expect(current.constructions.find(c=>c.id==='OLD-PHARMACY').herbalPrivatePracticeBonus).toBe(0);
+ await page.locator('#officeBtn').click();
+ await expect(page.locator('#officeContent')).toContainText('Доход +1 / год');
+});
 test('old save gains missing two cards once; preserves market, portfolios, building and other deck order',async({page})=>{
  const s=game();delete s.chineseHerbalPharmacyExpansionV1;
  s.deck=s.deck.filter(c=>c.id!==id);
