@@ -120,7 +120,7 @@ test('all real buyer/source capabilities: existing customs can ship to new pharm
  assert.equal(s.players[2].capital,before[2]+1);
  assert.equal(s.players[0].suspicion,1);
  assert.equal(s.players[1].suspicion,0);assert.equal(s.players[2].suspicion,0);
- assert.equal(source.contrabandStock,1);
+ assert.equal(s.constructions.find(c=>c.id===source.id).contrabandStock,1);
  assert.equal(G.validateDeliveryPlan(s,a).reason,'delivery-once-per-activation');
  assert.equal(G.buildingIncome(s,2),1,'successful trade does not change permanent Income');
 });
@@ -136,7 +136,7 @@ test('properties, not IDs: an entirely new source project may produce purple car
   const a=delivery(source.id,buyer.id);
   assert.equal(G.validateDeliveryPlan(s,a).ok,true);
   assert.equal(G.executeDelivery(s,a).ok,true);
-  assert.equal(source.contrabandStock,2);
+  assert.equal(s.constructions.find(c=>c.id===source.id).contrabandStock,2);
   assert.equal(s.players[1].capital,101);
   assert.equal(s.players[2].capital,101);
  }finally{
@@ -174,5 +174,5 @@ test('old rare-goods buyer stays operational and an already suspicious courier i
  assert.equal(s.players[0].capital,103);assert.equal(s.players[1].capital,101);
  assert.equal(s.players[2].capital,101);assert.equal(s.players[0].prestige,-3);
  assert.equal(s.players[0].workers[1].jailed,true);assert.equal(s.players[0].suspicion,0);
- assert.equal(source.contrabandStock,1);
+ assert.equal(s.constructions.find(c=>c.id===source.id).contrabandStock,1);
 });
