@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0586-polytechnic-campus';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0587-chinese-herbal-pharmacy';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
 export const PLAYER_KEYS = ['blue','red','green'];
