@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import * as G from '../game-core.js';
 
 const id='chinese_herbal_pharmacy';
@@ -177,4 +178,12 @@ test('old rare-goods buyer stays operational and an already suspicious courier i
  assert.equal(s.players[2].capital,101);assert.equal(s.players[0].prestige,-3);
  assert.equal(s.players[0].workers[1].jailed,true);assert.equal(s.players[0].suspicion,0);
  assert.equal(s.constructions.find(c=>c.id===source.id).contrabandStock,1);
+});
+
+// The 2026-11-18 migration initially left one old selector in deliveryPickupSources.
+// That made EVERY browser route fail even though all core unit tests passed.
+test('delivery UI never calls removed contraband selector during route rendering',async()=>{
+  const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
+  assert.doesNotMatch(app,/completedCustomsWarehouses\s*\(/);
+  assert.match(app,/completedContrabandSources\(state\)/);
 });
