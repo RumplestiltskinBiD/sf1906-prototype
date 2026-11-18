@@ -21,5 +21,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Core and static tests
         run: npm run test:core
+      - name: Early browser delivery smoke — existing brewery and new pharmacy
+        run: npx playwright test tests/brewery-goods.e2e.spec.mjs tests/chinese-herbal-pharmacy.e2e.spec.mjs --grep "pink beer from brewery|purple cargo can be delivered"
       - name: Browser end-to-end tests
         run: npm run test:e2e
