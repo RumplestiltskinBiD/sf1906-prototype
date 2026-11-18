@@ -59,15 +59,15 @@ for(const size of sizes){
    built('customs_warehouse',1,'soma',{id:'SOURCE',contrabandStock:2}),
    built(id,2,'soma',{id:'PHARMACY'})];
   await seed(page,s);
-  await page.locator('#actionDelivery').dispatchEvent('click');
+  await page.locator('#mobileActionDock [data-mobile-action="delivery"]').click();
   await expect(page.locator('[data-delivery-contraband="SOURCE"]')).toHaveClass(/source-available/);
-  await page.locator('[data-delivery-contraband="SOURCE"]').dispatchEvent('click');
+  await page.locator('[data-delivery-contraband="SOURCE"]').click();
   await page.locator('[data-hauler="standard"]').click();
   await page.locator('[data-load="Contraband"]').click();
   await page.locator('#deliveryBeginRoute').click();
   await page.locator('#deliveryLockRoute').click();
   await expect(page.locator('[data-construction-token="PHARMACY"]')).toHaveClass(/delivery-drop-available/);
-  await page.locator('[data-construction-token="PHARMACY"][data-delivery-drop-target="PHARMACY"]').dispatchEvent('click');
+  await page.locator('[data-construction-token="PHARMACY"][data-delivery-drop-target="PHARMACY"]').click();
   await expect(page.locator('#deliveryPanel')).toContainText('Китайская аптекарская лавка');
   await expect(page.locator('[data-drop-kind="contraband-sale"][data-drop-id="PHARMACY"][data-drop-type="Contraband"]')).toBeEnabled();
   await page.locator('[data-drop-kind="contraband-sale"][data-drop-id="PHARMACY"][data-drop-type="Contraband"]').click();
@@ -91,12 +91,12 @@ for(const size of sizes){
   s.players[0].workers[0].districtId='chinatown';s.districts.chinatown.landValue=6;
   s.players[0].capital=0;
   await seed(page,s);
-  await page.locator('#officeBtn').dispatchEvent('click');
+  await page.locator('#officeBtn').click();
   await expect(page.locator('[data-start-project="'+id+'"]')).toBeVisible();
-  await page.locator('[data-start-project="'+id+'"]').dispatchEvent('click');
-  await page.locator('[data-district="chinatown"]').dispatchEvent('click');
+  await page.locator('[data-start-project="'+id+'"]').click();
+  await page.locator('[data-district="chinatown"]').click();
   await expect(page.locator('#confirmConstruction')).toBeEnabled();
-  await page.locator('#confirmConstruction').dispatchEvent('click');
+  await page.locator('#confirmConstruction').click();
   const after=await saved(page);
   expect(after.constructions.find(c=>c.projectId===id).status).toBe('under-construction');
   expect(after.constructions.find(c=>c.projectId===id).districtId).toBe('chinatown');
@@ -114,7 +114,7 @@ for(const size of sizes){
   const s=game();
   s.constructions=[built(id,0,'chinatown',{id:'PHARMACY'}),built('std_clinic',1,'financial',{id:'CLINIC'})];
   await seed(page,s);
-  await page.locator('#officeBtn').dispatchEvent('click');
+  await page.locator('#officeBtn').click();
   await expect(page.locator('#officeContent')).toContainText('Китайская аптекарская лавка');
   await expect(page.locator('#officeContent')).toContainText('Доход +2 / год');
   await fits(page,size);
