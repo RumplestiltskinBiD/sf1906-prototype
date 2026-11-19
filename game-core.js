@@ -3340,7 +3340,7 @@ function finishYearTransition(state,{rng=Math.random}={}){
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
       forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':
       forthcoming.id==='C03'?'До обычных заявок City Hall каждый игрок по очереди решает, принимать ли сомнительное разрешение.':'Событие произойдёт в конце года.'),'accent');
-  const incoming=state.researchLogisticsForecast?.round===state.round
+  const plannedArrival=state.researchLogisticsForecast?.round===state.round
     &&fundedLogisticsForecastEffect(state)
     &&validLogisticsManifest(state.researchLogisticsForecast.supply)
     ?copyLogisticsSupply(state.researchLogisticsForecast.supply):null;
@@ -3349,8 +3349,8 @@ function finishYearTransition(state,{rng=Math.random}={}){
   if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
   // Keep a public receipt of the actual arrival before any player purchases it.
   const adjustment=['H03','F03','C02'].includes(state.newsCurrentIds[0])?state.newsCurrentIds[0]:null;
-  state.researchLogisticsArrival=incoming?{
-    round:state.round,planned:incoming,actual:copyLogisticsSupply(state.logisticsSupply),adjustment}:null;
+  state.researchLogisticsArrival=plannedArrival?{
+    round:state.round,planned:plannedArrival,actual:copyLogisticsSupply(state.logisticsSupply),adjustment}:null;
   // Draw only AFTER actual newspaper incidents so future news is not leaked;
   // store the next ordinary manifest once, independent of save/reload.
   state.researchLogisticsForecast=createNextLogisticsForecast(state,rng);
