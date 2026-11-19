@@ -126,7 +126,52 @@ export function generateLogisticsSupply({rng=Math.random,h03=false}={}){
   ]));
 }
 
-export function refreshLogisticsSupply(state,{rng=Math.random}={}){
+// R05 predicts the complete *ordinary* manifest, not a secret future
+// newspaper. H03/F03/C02 modify this same physical cargo on reveal.
+const FORECAST_MATERIALS=new Set(['Lumber','Masonry','Steel']);
+function validLogisticsSupplyShape(supply){
+  return !!supply&&typeof supply==='object'&&
+    Object.keys(supply).length===LOGISTICS_NODES.length&&
+    LOGISTICS_NODES.every(n=>Array.isArray(supply[n.id])&&
+      supply[n.id].every(x=>FORECAST_MATERIALS.has(x)));
+}
+function validLogisticsManifest(supply){
+  return validLogisticsSupplyShape(supply)&&
+    LOGISTICS_NODES.every(n=>supply[n.id].length===n.throughput);
+}
+function copyLogisticsSupply(supply){
+  return Object.fromEntries(LOGISTICS_NODES.map(n=>[n.id,[...supply[n.id]]]));
+}
+function fundedLogisticsForecastEffect(state){
+  return RESEARCH_CARDS.find(c=>c.effect?.type==='reveal-next-year-logistics-supply'&&
+    researchCardState(state,c.id)?.status==='funded')?.effect||null;
+}
+function createNextLogisticsForecast(state,rng){
+  if(!fundedLogisticsForecastEffect(state)||state.round>=MAX_ROUNDS)return null;
+  return {round:state.round+1,supply:generateLogisticsSupply({rng})};
+}
+/** Read-only shared R05 preview; never exposes the undisclosed newsDeck. */
+export function researchLogisticsForecast(state){
+  if(!fundedLogisticsForecastEffect(state)||state.round>=MAX_ROUNDS)return null;
+  const forecast=state.researchLogisticsForecast;
+  if(forecast?.round!==state.round+1||!validLogisticsManifest(forecast.supply))return null;
+  return {round:forecast.round,year:1899+forecast.round,
+    supply:copyLogisticsSupply(forecast.supply),
+    scope:'ordinary-supply-before-newspaper',possibleAdjustments:['H03','F03','C02']};
+}
+/** A post-reveal receipt lets Stage 8 explain a changed forecast after purchases. */
+export function researchLogisticsArrivalReport(state){
+  const arrived=state?.researchLogisticsArrival;
+  if(!fundedLogisticsForecastEffect(state)||!Number.isInteger(arrived?.round)
+    ||arrived.round!==state.round||!validLogisticsManifest(arrived.planned)
+    ||!validLogisticsSupplyShape(arrived.actual))return null;
+  return {round:arrived.round,year:1899+arrived.round,
+    planned:copyLogisticsSupply(arrived.planned),
+    actual:copyLogisticsSupply(arrived.actual),
+    adjustment:['H03','F03','C02'].includes(arrived.adjustment)?arrived.adjustment:null};
+}
+
+export function refreshLogisticsSupply(state,{rng=Math.random,consumeForecast=false}={}){
   // If the current F03 incident has already been drawn, the current year's
   // stocks (including player purchases) must never be regenerated.
   if(f03CurrentPortIncident(state))return state.logisticsSupply;
@@ -134,7 +179,15 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
   if(activeNewspaper(state)?.id==='H03'&&state.newsH03SupplyRound===state.round)
     return state.logisticsSupply;
   const h03=activeNewspaper(state)?.id==='H03'&&state.newsLastResolvedRound!==state.round;
-  state.logisticsSupply=generateLogisticsSupply({rng,h03});
+  const forecast=state.researchLogisticsForecast;
+  const useForecast=consumeForecast&&!!fundedLogisticsForecastEffect(state)&&
+    forecast?.round===state.round&&validLogisticsManifest(forecast.supply);
+  const fresh=useForecast?copyLogisticsSupply(forecast.supply):generateLogisticsSupply({rng,h03});
+  // A quarantine cancels the final planned delivery at each sea port.
+  // Each draw was i.i.d. per port profile; all other planned cargo survives.
+  if(useForecast&&h03)for(const id of H03_SEA_PORT_IDS)fresh[id].pop();
+  state.logisticsSupply=fresh;
+  if(consumeForecast)state.researchLogisticsForecast=null;
   state.newsH03SupplyRound=h03?state.round:null;
   if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round)
     applyF03PortFire(state,{rng});
@@ -1063,17 +1116,21 @@ export function researchFundingPreview(state,playerId,researchId){
     effectType:card.effect?.type||null,landValueChanges:instant.landValueChanges};
 }
 
-export function fundResearch(state,playerId,researchId){
+export function fundResearch(state,playerId,researchId,{rng=Math.random}={}){
   const preview=researchFundingPreview(state,playerId,researchId);
   if(!preview.ok)return preview;
-  // Eligibility is checked before changing any money, cards or Influence.
+  // Prepare R05 before charging; other research never touches supply RNG.
   const player=state.players[playerId],card=researchCardById(researchId);
+  const forecast=card.effect?.type==='reveal-next-year-logistics-supply'&&state.round<MAX_ROUNDS
+    ?{round:state.round+1,supply:generateLogisticsSupply({rng})}:null;
   player.capital-=card.fundingCost;
   player.prestige+=(card.sponsorReward?.vp||0);
   const influence=moveInfluence(state,playerId,card.sponsorReward?.influence||0);
   ensureResearchState(state);
   Object.assign(state.research[researchId],
     {status:'funded',holderId:playerId,fundedRound:state.round});
+  if(card.effect?.type==='reveal-next-year-logistics-supply')
+    state.researchLogisticsForecast=forecast;
   // Every affected district was checked before payment. The canonical land
   // setter preserves the same 0..6 bounds used by construction pricing.
   for(const change of preview.landValueChanges)setLandValue(state,change.districtId,change.to);
@@ -1403,6 +1460,8 @@ export function createInitialState({rng=Math.random}={}){
     players,
     // Stage 1: canonical data-only research state. No acquisition or effects yet.
     research:createResearchState(),
+    researchLogisticsForecast:null,
+    researchLogisticsArrival:null,
     market,
     deck:pool,
     expired:[],
@@ -3281,9 +3340,20 @@ function finishYearTransition(state,{rng=Math.random}={}){
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
       forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':
       forthcoming.id==='C03'?'До обычных заявок City Hall каждый игрок по очереди решает, принимать ли сомнительное разрешение.':'Событие произойдёт в конце года.'),'accent');
-  refreshLogisticsSupply(state,{rng});
+  const plannedArrival=state.researchLogisticsForecast?.round===state.round
+    &&fundedLogisticsForecastEffect(state)
+    &&validLogisticsManifest(state.researchLogisticsForecast.supply)
+    ?copyLogisticsSupply(state.researchLogisticsForecast.supply):null;
+  refreshLogisticsSupply(state,{rng,consumeForecast:true});
   // A new C02 newspaper removes exactly two REAL cubes after annual refill.
   if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
+  // Keep a public receipt of the actual arrival before any player purchases it.
+  const adjustment=['H03','F03','C02'].includes(state.newsCurrentIds[0])?state.newsCurrentIds[0]:null;
+  state.researchLogisticsArrival=plannedArrival?{
+    round:state.round,planned:plannedArrival,actual:copyLogisticsSupply(state.logisticsSupply),adjustment}:null;
+  // Draw only AFTER actual newspaper incidents so future news is not leaked;
+  // store the next ordinary manifest once, independent of save/reload.
+  state.researchLogisticsForecast=createNextLogisticsForecast(state,rng);
   for(const producer of completedContrabandSources(state))producer.contrabandStock=contrabandSourceCapacity(producer.projectId);
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
