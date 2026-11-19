@@ -168,5 +168,6 @@ test('R08 card is available with the shared $2 baseline, future $3 clinic fee, a
  assert.equal(card.effect.phase2.onlyOncePerBuilding,true);
  assert.equal(card.effect.phase2.adjacentDistrictOnly,true);
  assert.deepEqual(card.effect.phase2.neighboringEarthquakeStatuses,['damaged','destroyed']);
- assert.equal(card.implementationStatus,'data-only-not-wired-to-game-engine');
+ // Stage 7B changes the clinic fee; Phase II catastrophe scoring stays pending (7V).
+  assert.equal(card.implementationStatus,'phase1-implemented-in-research-integration-branch-phase2-pending');
 });
