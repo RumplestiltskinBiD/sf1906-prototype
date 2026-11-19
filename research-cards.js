@@ -178,7 +178,7 @@ export const RESEARCH_CARDS = Object.freeze([
       appliesToAllPlayers: true
     },
     historicalBasis: 'Опыт конной скорой помощи Сан-Франциско (с 1895 года) и развитие городской экстренной медицинской службы; конкретная исследовательская программа — альтернативно-историческая игровая реконструкция.',
-    implementationStatus: 'data-only-not-wired-to-game-engine'
+    implementationStatus: 'phase1-implemented-in-research-integration-branch-phase2-pending'
   }
 ]);
 
