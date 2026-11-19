@@ -72,3 +72,16 @@ for(const vp of screens){
   expect(after).toEqual(savedBeforeLab,'Phase II lab must not rewrite Phase I saved game');
  });
 }
+for(const vp of screens){
+ test('R03 finished research updates actual firehouse market risk labels without changing base card '+vp.width+'x'+vp.height,async({page})=>{
+  await page.setViewportSize(vp);
+  const s=game(true);s.phase='declare';s.view='hall';
+  s.market[0].id='firehouse';
+  await seed(page,s);
+  const card=page.locator('#projectMarket .project-card').filter({hasText:'Муниципальная пожарная часть'}).first();
+  await expect(card).toContainText('П -2');
+  const compact=page.locator('.market-overview-item').filter({hasText:'Муниципальная пожарная часть'});
+  if(vp.width<=640||(vp.height<=500&&vp.width<=960))await expect(compact.first()).toContainText('П-2');
+  await fits(page,vp);
+ });
+}
