@@ -925,6 +925,56 @@ export function acquireResearch(state,playerId,researchId,source={kind:'civic'})
     holderId:playerId,ownerReward,worker:consumed.worker};
 }
 
+
+/**
+ * Stage 3 funding is a separate free action, not another worker placement.
+ * Global research effects are attached in later stages before the UI can
+ * expose this transaction to real players.
+ */
+export function researchFundingPreview(state,playerId,researchId){
+  const card=researchCardById(researchId);
+  if(!card)return {ok:false,reason:'research-not-found'};
+  const player=state.players?.[playerId];
+  if(!player)return {ok:false,reason:'invalid-player'};
+  const entry=researchCardState(state,researchId);
+  if(entry?.status==='funded')return {ok:false,reason:'already-funded'};
+  if(entry?.status!=='held'||entry.holderId!==playerId)
+    return {ok:false,reason:'not-research-holder'};
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'free-action-unavailable'};
+  const requirement=card.requirement?.completedCitywide;
+  if(requirement){
+    const projectIds=requirement.projectIds||
+      STANDARD_SERVICE_FAMILIES[requirement.serviceFamily]||[];
+    const count=(state.constructions||[]).filter(c=>c.status==='complete'
+      &&projectIds.includes(c.projectId)).length;
+    if(count<requirement.count)return {ok:false,reason:'research-prerequisite',
+      serviceFamily:requirement.serviceFamily,required:requirement.count,completed:count};
+  }
+  if(player.capital<card.fundingCost)return {ok:false,reason:'capital',
+    cost:card.fundingCost,available:player.capital};
+  return {ok:true,cost:card.fundingCost,reward:{...card.sponsorReward},
+    effectType:card.effect?.type||null};
+}
+
+export function fundResearch(state,playerId,researchId){
+  const preview=researchFundingPreview(state,playerId,researchId);
+  if(!preview.ok)return preview;
+  // Eligibility is checked before changing any money, cards or Influence.
+  const player=state.players[playerId],card=researchCardById(researchId);
+  player.capital-=card.fundingCost;
+  player.prestige+=(card.sponsorReward?.vp||0);
+  const influence=moveInfluence(state,playerId,card.sponsorReward?.influence||0);
+  ensureResearchState(state);
+  Object.assign(state.research[researchId],
+    {status:'funded',holderId:playerId,fundedRound:state.round});
+  logEvent(state,player.name+' финансирует исследование «'+card.name+'» за $'+card.fundingCost+
+    ': +'+(card.sponsorReward?.vp||0)+' VP, +'+(card.sponsorReward?.influence||0)+
+    ' шаг(а) Influence.','good');
+  return {ok:true,researchId,playerId,cost:card.fundingCost,
+    vp:card.sponsorReward?.vp||0,influence,
+    fundedRound:state.round,effectType:card.effect?.type||null};
+}
+
 export function actionSpaceOccupant(state,constructionId){
   const value=state.actionSpaceOccupancy?.[constructionId];
   return value==null?null:value;
