@@ -1,5 +1,6 @@
 import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0590-research-state';
-import {createResearchState} from './research-state.js';
+import {createResearchState,ensureResearchState,researchCardState} from './research-state.js';
+import {researchCardById} from './research-cards.js';
 export {createResearchState,ensureResearchState,researchCardState,listResearchStates,validateResearchState,RESEARCH_STATUSES} from './research-state.js';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
@@ -288,7 +289,7 @@ export function applyF03PortFire(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
-  {prestige:2,income:1,id:'polytechnic_campus',types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Политехнический кампус',type:'Жильё / Городская служба',open:3,materials:['Lumber','Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · при завершении стоимость земли +1 · научная программа ожидает внедрения исследований',benefit:'Доход +$1/год · +1 к стоимости земли района при завершении',actionName:'Научная программа (пока недоступна)',actionText:'Получение и финансирование R01–R08 пока не подключены к игре; в будущем завершённый кампус даст доступ к исследованиям. Сейчас действие не выполняется.',limits:'У +1 / П 0. Земля +1 только при завершении (максимум 6). 4-й материал можно доставить отдельным завершающим рейсом без склада. Не заменяет полицейские, пожарные или медицинские службы.'},
+  {prestige:2,income:1,id:'polytechnic_campus',researchAcquisitionSource:true,researchVisitorOwnerReward:1,types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Политехнический кампус',type:'Жильё / Городская служба',open:3,materials:['Lumber','Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · при завершении стоимость земли +1 · научная программа ожидает внедрения исследований',benefit:'Доход +$1/год · +1 к стоимости земли района при завершении',actionName:'Научная программа (пока недоступна)',actionText:'Получение и финансирование R01–R08 пока не подключены к игре; в будущем завершённый кампус даст доступ к исследованиям. Сейчас действие не выполняется.',limits:'У +1 / П 0. Земля +1 только при завершении (максимум 6). 4-й материал можно доставить отдельным завершающим рейсом без склада. Не заменяет полицейские, пожарные или медицинские службы.'},
   {prestige:2,income:3,id:'residential_quarter',types:['Жилое'],risk:{earthquake:0,fire:1},name:'Жилой квартал',type:'Жилое',open:4,materials:['Lumber','Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$3/год · малоэтажная квартальная застройка',benefit:'Доход +$3/год',actionName:'—',actionText:'Отдельного действия нет.',limits:'Последний материал можно доставить на стройку отдельным рейсом. При полном комплекте материалов строительство завершается без склада.'},
   {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0.',benefit:'Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · регистрация собственности или реорганизация',benefit:'Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
@@ -860,6 +861,68 @@ export function endActivation(state,playerId,{skipRemainingService=false}={}){
     }
   }
   return {ok:false,reason:'no-next-player'};
+}
+
+
+/** Stage 2: reusable main-worker acquisition, no funds/global research effects yet. */
+export function researchAcquisitionSources(state,playerId){
+  const worker=activeWorker(state,playerId),canAct=canTakeMainAction(state,playerId);
+  const civic={kind:'civic',constructionId:null,districtId:'civic',ownerId:null,
+    occupantId:null,available:canAct&&!!worker&&workerCanReachDistrict(state,playerId,'civic',worker.id)};
+  const buildings=(state.constructions||[])
+    .filter(c=>c.status==='complete'&&projectById(c.projectId)?.researchAcquisitionSource)
+    .map(c=>{
+      const occupant=actionSpaceOccupant(state,c.id);
+      return {kind:'building',constructionId:c.id,districtId:c.districtId,ownerId:c.playerId,
+        occupantId:occupant,available:canAct&&!!worker&&occupant==null
+          &&workerCanReachDistrict(state,playerId,c.districtId,worker.id)};
+    });
+  return [civic,...buildings];
+}
+export function acquireResearch(state,playerId,researchId,source={kind:'civic'}){
+  const card=researchCardById(researchId);
+  if(!card)return {ok:false,reason:'research-not-found'};
+  if(researchCardState(state,researchId)?.status!=='available')
+    return {ok:false,reason:'research-unavailable'};
+  if(!canTakeMainAction(state,playerId))return {ok:false,reason:'main-action-unavailable'};
+  if(!source||!['civic','building'].includes(source.kind))
+    return {ok:false,reason:'invalid-research-source'};
+  let point;
+  if(source.kind==='civic'){
+    if(source.constructionId!=null)return {ok:false,reason:'invalid-research-source'};
+    point={kind:'civic',districtId:'civic'};
+  }else{
+    const construction=(state.constructions||[]).find(c=>c.id===source.constructionId);
+    const project=construction&&projectById(construction.projectId);
+    if(!construction||construction.status!=='complete'||!project?.researchAcquisitionSource)
+      return {ok:false,reason:'invalid-research-source'};
+    if(actionSpaceOccupant(state,construction.id)!=null)return {ok:false,reason:'occupied'};
+    point={kind:'building',constructionId:construction.id,districtId:construction.districtId,
+      ownerId:construction.playerId,ownerReward:project.researchVisitorOwnerReward||0,name:project.name};
+  }
+  const worker=activeWorker(state,playerId);
+  if(!worker)return {ok:false,reason:'worker'};
+  if(!workerCanReachDistrict(state,playerId,point.districtId,worker.id))
+    return {ok:false,reason:'worker-range'};
+  // All failure checks precede the irreversible main action.
+  const consumed=consumeMainAction(state,playerId,point.districtId);
+  if(!consumed.ok)return consumed;
+  ensureResearchState(state);
+  Object.assign(state.research[researchId],{status:'held',holderId:playerId,fundedRound:null});
+  let ownerReward=0;
+  if(point.kind==='building'){
+    state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
+    state.actionSpaceOccupancy[point.constructionId]=playerId;
+    if(point.ownerId!==playerId){
+      ownerReward=point.ownerReward;
+      if(ownerReward)state.players[point.ownerId].capital+=ownerReward;
+    }
+  }
+  logEvent(state,state.players[playerId].name+' получает исследование «'+card.name+'» через '+
+    (point.kind==='civic'?'Civic Center':point.name)+'. До финансирования эффект отсутствует.'+
+    (ownerReward?' Владелец получает $'+ownerReward+' из банка.':''),'good');
+  return {ok:true,researchId,source:point.kind,constructionId:point.constructionId||null,
+    holderId:playerId,ownerReward,worker:consumed.worker};
 }
 
 export function actionSpaceOccupant(state,constructionId){
