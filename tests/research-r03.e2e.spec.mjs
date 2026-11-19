@@ -57,6 +57,7 @@ for(const vp of screens){
   await page.setViewportSize(vp);
   const s=game(true);
   await seed(page,s);
+  const savedBeforeLab=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
   await page.goto('/catastrophe.html');
   await expect(page.locator('#mapWindow svg')).toBeVisible();
   await page.locator('#loadSaved').click();
@@ -68,6 +69,6 @@ for(const vp of screens){
   await expect(page.locator('#selectionInfo')).toContainText('защита П −2');
   await expect(page.locator('#selectionInfo')).toContainText('пожарная часть:');
   const after=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
-  expect(after).toEqual(s,'Phase II lab must not rewrite Phase I saved game');
+  expect(after).toEqual(savedBeforeLab,'Phase II lab must not rewrite Phase I saved game');
  });
 }
