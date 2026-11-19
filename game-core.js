@@ -2467,7 +2467,7 @@ export function deliverySourceInfo(state,playerId,source){
     const maxCapacity=Math.max(...DELIVERY_HAULERS.map(h=>h.capacity));
     return {kind:'supplier',id:supplier.id,name:supplier.name,districtId:supplier.districtId,
       inventory:Array.from({length:maxCapacity},()=>supplier.resource),
-      resource:supplier.resource,unitPrice:supplier.unitPrice,unlimited:true};
+      resource:supplier.resource,unitPrice:purchaseMaterialUnitPrice(state,source,supplier.resource),unlimited:true};
   }
   if(source.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id
@@ -2516,6 +2516,36 @@ function multisetEquals(a,b){
   return [...keys].every(k=>(ac[k]||0)===(bc[k]||0));
 }
 
+/**
+ * Source-aware cash price for an ordinary purchased material.
+ * Reuse this for single- and multi-source Delivery and UI estimates.
+ * Research effects use the registry (P22), not hard-coded research IDs.
+ * Industrial output and previously purchased inventories are not purchases
+ * from a node/neutral supplier and therefore do not use this surcharge.
+ */
+export function purchaseMaterialUnitPrice(state,source,resource){
+  const kind=source?.kind;
+  let base=0;
+  if(kind==='node')base=RESOURCE_PRICES[resource]??0;
+  else if(kind==='supplier'){
+    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(s=>s.id===source.id);
+    base=supplier&&resource===supplier.resource?supplier.unitPrice:0;
+  }else return 0;
+  if(base<=0)return 0;
+  const origin=kind==='node'?'logistics-node':'neutral-supplier';
+  const extra=RESEARCH_CARDS.reduce((sum,card)=>{
+    const e=card.effect;
+    return sum+(e?.type==='citywide-lumber-purchase-price-increase'
+      &&e.resource===resource
+      &&e.appliesToAllPlayers===true
+      &&e.appliesToSources?.includes(origin)
+      &&researchCardState(state,card.id)?.status==='funded'
+      &&Number.isSafeInteger(e.unitPriceIncrease)&&e.unitPriceIncrease>0
+        ?e.unitPriceIncrease:0);
+  },0);
+  return base+extra;
+}
+
 export function deliveryMaterialCost(state,source,cargo,playerId=null){
   if(source?.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'
@@ -2538,11 +2568,11 @@ export function deliveryMaterialCost(state,source,cargo,playerId=null){
   if(source?.kind==='supplier'){
     const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
     if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
-    const gross=(cargo||[]).reduce((sum,type)=>sum+(type===supplier.resource?supplier.unitPrice:0),0);
+    const gross=(cargo||[]).reduce((sum,type)=>sum+purchaseMaterialUnitPrice(state,source,type),0);
     return {gross,discount:0,cost:gross,procurementUsed:0};
   }
   if(source?.kind!=='node')return {gross:0,discount:0,cost:0,procurementUsed:0};
-  const prices=(cargo||[]).map(type=>RESOURCE_PRICES[type]??0);
+  const prices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
   const gross=prices.reduce((a,b)=>a+b,0);
   const procurementUsed=Math.min(state.procurementRemaining||0,prices.length);
   const discount=[...prices].sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
@@ -2573,7 +2603,8 @@ export function deliveryPlanCost(state,plan){
   const industryDiscount=costs.reduce((n,c)=>n+(c.ownerId!=null?c.discount:0),0);
   const industrySales=costs.filter(c=>c.ownerId!=null&&c.ownerPayment>0)
     .map(c=>({ownerId:c.ownerId,amount:c.ownerPayment}));
-  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'?(p.cargo||[]).map(t=>RESOURCE_PRICES[t]||0):[]);
+  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'
+    ?(p.cargo||[]).map(t=>purchaseMaterialUnitPrice(state,p.source,t)):[]);
   const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
   const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
   const materialCost=materialGross-procurementDiscount-industryDiscount;
