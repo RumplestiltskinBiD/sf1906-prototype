@@ -424,6 +424,24 @@ export function projectRisk(projectId){
     fire:Number(project?.risk?.fire)||0
   };
 }
+/**
+ * Actual local P reduction of a completed fire-service building.
+ * R03 upgrades existing and future standard posts and market firehouses.
+ * Access-radius is an independent service mechanic and never modified here.
+ * Future protection research uses the same effect.type + project family.
+ */
+export function fireServiceProtection(state,projectId){
+  if(!STANDARD_SERVICE_FAMILIES.firehouse.includes(projectId))return 0;
+  const base=Math.max(0,-projectRisk(projectId).fire);
+  if(!base)return 0;
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='citywide-firehouse-upgrade'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  return effect&&effect.fireProtectionInOwnDistrictBefore===base
+    &&Number.isInteger(effect.fireProtectionInOwnDistrictAfter)
+    &&effect.fireProtectionInOwnDistrictAfter>=base
+    ?effect.fireProtectionInOwnDistrictAfter:base;
+}
 // Effective pre-modernization fire risk can change as modular boarding houses grow.
 export function constructionFireRisk(construction){
   const base=projectRisk(construction?.projectId).fire;
@@ -489,7 +507,8 @@ export function districtRisk(state,districtId){
   for(const construction of state?.constructions||[]){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
     const base=projectRisk(construction.projectId);
-    const fire=constructionFireRisk(construction);
+    const protection=fireServiceProtection(state,construction.projectId);
+    const fire=protection?-protection:constructionFireRisk(construction);
     const reinforcement=construction.earthquakeReinforcement>0&&base.earthquake>0
       ?Math.min(base.earthquake,construction.earthquakeReinforcement):0;
     const delta={earthquake:base.earthquake-reinforcement,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
@@ -507,7 +526,9 @@ export function districtRisk(state,districtId){
 export function districtRiskPreview(state,districtId,projectId){
   const before=districtRisk(state,districtId);
   if(!before)return null;
-  const delta=projectRisk(projectId);
+  const baseDelta=projectRisk(projectId);
+  const protection=fireServiceProtection(state,projectId);
+  const delta={earthquake:baseDelta.earthquake,fire:protection?-protection:baseDelta.fire};
   const earthquakeRaw=Math.max(0,(before.earthquake.net??before.earthquake.raw)+delta.earthquake);
   const fireRaw=Math.max(0,(before.fire.net??before.fire.raw)+delta.fire);
   return {before,delta,after:{earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw)},fire:{raw:fireRaw,level:riskLevel(fireRaw)}}};
