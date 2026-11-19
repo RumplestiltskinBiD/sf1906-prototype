@@ -132,8 +132,23 @@ goalTakenRound:p.goalTakenRound??null,
 prestige:p.prestige??(parsed.constructions||[]).filter(x=>x.playerId===p.id&&x.status==='complete').reduce((sum,x)=>sum+(projectById(x.projectId)?.prestige||0),0)
 };
 });
+// A final Delivery may legally stage all 4–5 materials when that exact
+// shipment finishes the recipe. R02 pauses completion AFTER delivery, so
+// migration must not discard the last cube while awaiting the owner's choice.
+// Incomplete/invalid oversized staging still follows the old 3-cube limit.
+function migratedConstructionMaterials(construction){
+ const delivered=Array.isArray(construction.materialsDelivered)?construction.materialsDelivered:[];
+ if(construction.status!=='under-construction'||delivered.length<=CONSTRUCTION_STAGING_CAPACITY)
+   return delivered;
+ const recipe=projectById(construction.projectId)?.materials||[];
+ const counts=items=>items.reduce((map,type)=>{map[type]=(map[type]||0)+1;return map;},{});
+ const have=counts(delivered),required=counts(recipe);
+ const exact=delivered.length===recipe.length&&Object.keys(have).length===Object.keys(required).length
+   &&Object.entries(required).every(([type,n])=>have[type]===n);
+ return exact?delivered:delivered.slice(0,CONSTRUCTION_STAGING_CAPACITY);
+}
 parsed.constructions=(parsed.constructions||[]).map(x=>({...x,
-materialsDelivered:x.status==='under-construction'?(x.materialsDelivered||[]).slice(0,CONSTRUCTION_STAGING_CAPACITY):(x.materialsDelivered||[]),
+materialsDelivered:migratedConstructionMaterials(x),
 warehouseInventory:Array.isArray(x.warehouseInventory)?x.warehouseInventory:[],
  bakeryInventory:x.projectId==='bakery'&&x.status==='complete'&&Array.isArray(x.bakeryInventory)?x.bakeryInventory.filter(t=>t==='Lumber').slice(0,1):[],
  bakeryUsedRound:Number.isInteger(x.bakeryUsedRound)?x.bakeryUsedRound:null,
