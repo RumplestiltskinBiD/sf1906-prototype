@@ -1,4 +1,4 @@
-import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0588-herbal-income-snapshot';
+import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0590-research-state';
 import {createResearchState} from './research-state.js';
 export {createResearchState,ensureResearchState,researchCardState,listResearchStates,validateResearchState,RESEARCH_STATUSES} from './research-state.js';
 
