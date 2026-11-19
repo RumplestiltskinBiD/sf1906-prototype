@@ -927,6 +927,40 @@ export function acquireResearch(state,playerId,researchId,source={kind:'civic'})
 
 
 /**
+ * One-shot on-funding research effects. P22: new immediate types register a
+ * preparer here; ongoing/conditional effects attach to their own core hooks.
+ * A preparer must validate every change before any sponsor payment is made.
+ */
+const RESEARCH_INSTANT_FUNDING_PREPARERS=Object.freeze({
+  'land-revaluation-once':(state,effect)=>{
+    const min=effect.minLandValue,max=effect.maxLandValue;
+    if(!Number.isInteger(min)||!Number.isInteger(max)||min<0||max>6||min>max)
+      return {ok:false,reason:'research-effect-invalid'};
+    const changes=[],seen=new Set();
+    for(const [ids,delta] of [
+      [effect.poorGroundDistricts,effect.poorGroundDelta],
+      [effect.stableGroundDistricts,effect.stableGroundDelta]
+    ]){
+      if(!Array.isArray(ids)||!Number.isInteger(delta))
+        return {ok:false,reason:'research-effect-invalid'};
+      for(const districtId of ids){
+        const land=state.districts?.[districtId]?.landValue;
+        if(typeof districtId!=='string'||seen.has(districtId)||!districtById(districtId)
+          ||!Number.isInteger(land)||land<0||land>6)
+          return {ok:false,reason:'research-effect-invalid',districtId};
+        seen.add(districtId);
+        changes.push({districtId,from:land,to:Math.max(min,Math.min(max,land+delta))});
+      }
+    }
+    return {ok:true,landValueChanges:changes};
+  }
+});
+function previewResearchInstantFundingEffect(state,card){
+  const prepare=RESEARCH_INSTANT_FUNDING_PREPARERS[card.effect?.type];
+  return prepare?prepare(state,card.effect):{ok:true,landValueChanges:[]};
+}
+
+/**
  * Stage 3 funding is a separate free action, not another worker placement.
  * Global research effects are attached in later stages before the UI can
  * expose this transaction to real players.
@@ -952,8 +986,10 @@ export function researchFundingPreview(state,playerId,researchId){
   }
   if(player.capital<card.fundingCost)return {ok:false,reason:'capital',
     cost:card.fundingCost,available:player.capital};
+  const instant=previewResearchInstantFundingEffect(state,card);
+  if(!instant.ok)return instant;
   return {ok:true,cost:card.fundingCost,reward:{...card.sponsorReward},
-    effectType:card.effect?.type||null};
+    effectType:card.effect?.type||null,landValueChanges:instant.landValueChanges};
 }
 
 export function fundResearch(state,playerId,researchId){
@@ -967,12 +1003,17 @@ export function fundResearch(state,playerId,researchId){
   ensureResearchState(state);
   Object.assign(state.research[researchId],
     {status:'funded',holderId:playerId,fundedRound:state.round});
+  // Every affected district was checked before payment. The canonical land
+  // setter preserves the same 0..6 bounds used by construction pricing.
+  for(const change of preview.landValueChanges)setLandValue(state,change.districtId,change.to);
   logEvent(state,player.name+' финансирует исследование «'+card.name+'» за $'+card.fundingCost+
     ': +'+(card.sponsorReward?.vp||0)+' VP, +'+(card.sponsorReward?.influence||0)+
-    ' шаг(а) Influence.','good');
+    ' шаг(а) Influence.'+(preview.landValueChanges.length
+      ?' Land Value изменён в '+preview.landValueChanges.length+' районах.':'') ,'good');
   return {ok:true,researchId,playerId,cost:card.fundingCost,
     vp:card.sponsorReward?.vp||0,influence,
-    fundedRound:state.round,effectType:card.effect?.type||null};
+    fundedRound:state.round,effectType:card.effect?.type||null,
+    landValueChanges:preview.landValueChanges};
 }
 
 export function actionSpaceOccupant(state,constructionId){
