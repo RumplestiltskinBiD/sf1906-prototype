@@ -1,4 +1,4 @@
-import {DISTRICTS} from './game-core.js';
+import {DISTRICTS,fireServiceProtection} from './game-core.js';
 import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport,registeredPropertyTitleResults} from './catastrophe-core.js';
 const $=id=>document.getElementById(id);
 const known=new Map(DISTRICTS.map(d=>[d.id,d]));
@@ -32,7 +32,7 @@ function draw(){
       title.setAttribute('x',String(x));
       const risk=document.createElementNS('http://www.w3.org/2000/svg','tspan');
       risk.setAttribute('x',String(x));risk.setAttribute('dy','20');risk.setAttribute('class','district-risk');
-      risk.textContent='У'+format(n?.z??r.z)+' П'+format(n?.p??Math.max(0,r.p-(r.firehouse?1:0)));
+      risk.textContent='У'+format(n?.z??r.z)+' П'+format(n?.p??Math.max(0,r.p-(r.firehouse?Math.max(1,r.fireProtection||1):0)));
       t.append(title,risk);labels.append(t);
     }
   }
@@ -50,9 +50,10 @@ function draw(){
       '; состояние: '+({intact:'цел',damaged:'повреждён',destroyed:'разрушен'}[n.quake])+
       (n.burning?'; горит':'')+
       '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.firehouseDestroyed?'УНИЧТОЖЕНА':'работает')+
+      (n.firehouseBuilt?'; защита П −'+n.firehouseProtection:'')+
       '. От соседей: '+(n.received.map(c=>name(c.source)+' +'+c.amount).join(', ')||'нет')
     :'Полные значения: У'+values[selection].z+', П до защиты '+values[selection].p+
-      ', П с пожарной частью '+Math.max(0,values[selection].p-(values[selection].firehouse?1:0))+
+      ', П с пожарной частью '+Math.max(0,values[selection].p-(values[selection].firehouse?Math.max(1,values[selection].fireProtection||1):0))+
       '. На карте III — только индикатор.';
   for(const id of ['z','p','firehouse','zminus','zplus','pminus','pplus','quake','preset','loadSaved','igniteAt','spreadBy'])$(id).disabled=playing||!!sim;
   $('step').disabled=playing||!sim||sim.done;
@@ -96,7 +97,10 @@ $('z').addEventListener('change',()=>setRisk('z',$('z').value));
 $('p').addEventListener('change',()=>setRisk('p',$('p').value));
 $('firehouse').addEventListener('change',()=>{
   if(sim||playing)return;
-  values[selection].firehouse=$('firehouse').checked;draw();
+  values[selection].firehouse=$('firehouse').checked;
+  values[selection].fireProtection=values[selection].firehouse
+    ?(importedGame?fireServiceProtection(importedGame,'std_fire')||1:1):0;
+  draw();
 });
 $('preset').addEventListener('change',()=>{
   values=preset($('preset').value);importedGame=null;scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
