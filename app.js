@@ -4145,7 +4145,7 @@ $$('[data-sell-project-index]').forEach(b=>b.onclick=()=>{
   showToast('Проект перепродан: +$4 · представитель использован');
   render();
 });
-$$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
+$$('[data-complete-build]').forEach(b=>b.onclick=()=>{const r=completeConstructionFromStorage(state,b.dataset.completeBuild);if(!r.ok){if(r.reason==='reinforcement-choice-required'){showToast('R02: выберите укрепление или бесплатное завершение');render();return;}showToast(r.reason==='not-active-player'?'Не ваша активация':'На стройке и Warehouse пока нет полного набора материалов');return;}showToast('Строительство завершено из Warehouse');render();});
 const repay=$('#repayLoanBtn');if(repay)repay.onclick=()=>{const r=repayLoan(state,p.id);if(!r.ok){showToast(r.reason==='not-active-player'?'Погашение доступно только активному игроку':r.reason==='capital'?'Недостаточно денег':r.reason==='not-seasoned'?'Сначала по кредиту должна пройти фаза дохода':'Сейчас нельзя погасить');return;}showToast('Кредит погашен · −$6');render();};
 }
 function renderLog(){const el=$('#gameLog');el.innerHTML=state.log.map(x=>`<div class="${x.cls||''}">${escapeHtml(x.msg)}</div>`).join('');el.scrollTop=el.scrollHeight;}
