@@ -1899,6 +1899,33 @@ export function constructionUpkeepDue(state,playerId){
   return unfinishedConstructions(state,playerId).length*CONSTRUCTION_UPKEEP_COST;
 }
 
+/**
+ * Standard project fee at construction START. No retroactive changes to
+ * already started buildings: all money is paid by beginConstruction.
+ *
+ * P22: all funded research modifiers share the canonical standard-fee
+ * calculation. E05's existing city subsidy takes priority and waives the
+ * whole fee. Phase II research effects deliberately do not belong here.
+ */
+export function standardProjectFee(state,projectId){
+  if(!isStandardProject(projectId))return 0;
+  if(isE05CivicSubsidy(state,projectId))return 0;
+  const surcharge=RESEARCH_CARDS.reduce((total,card)=>{
+    const effect=card.effect;
+    const phase1=effect?.phase1;
+    if(effect?.appliesToAllPlayers!==true
+      ||phase1?.type!=='standard-project-fee-increase'
+      ||phase1.projectId!==projectId
+      ||phase1.feeTiming!=='on-construction-start-after-research'
+      ||phase1.baseStandardProjectFee!==STANDARD_PROJECT_FEE
+      ||phase1.affectsPreviouslyStartedConstruction!==false
+      ||researchCardState(state,card.id)?.status!=='funded'
+      ||!Number.isSafeInteger(phase1.extraFee)||phase1.extraFee<=0)return total;
+    return total+phase1.extraFee;
+  },0);
+  return STANDARD_PROJECT_FEE+surcharge;
+}
+
 export function constructionEligibility(state,playerId,projectId,districtId,{redevelopId=null}={}){
   const reasons=[];
   const former=redevelopId?(state.constructions||[]).find(c=>c.id===redevelopId):null;
@@ -1959,7 +1986,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   const districtLandWaived=!!(project?.freeLandDistrict&&project.freeLandDistrict===districtId&&ds);
   const bureauDiscount=!districtLandWaived&&!e05Subsidy&&!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?(e05Subsidy||replacing||districtLandWaived?0:Math.max(0,ds.landValue-bureauDiscount)):0;
-  const standardFee=e05Subsidy?0:project?.standard?STANDARD_PROJECT_FEE:0;
+  const standardFee=standardProjectFee(state,projectId);
   const totalCost=landCost+standardFee;
   if(player&&ds&&player.capital<totalCost) reasons.push(`Не хватает капитала на землю и проект ($${totalCost}).`);
   return {
