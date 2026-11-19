@@ -5,7 +5,7 @@
  * финансирования и постепенного подключения эффектов. R01 подключается в
  * feature/research-system на этапе 4А, R02 — на этапе 4Б;
  * R03 подключено на этапе 5А, R04 — на этапе 5Б, R05 — на этапе 6А;
- * R06 — на этапе 6Б; R07–R08 — будущие этапы.
+ * R06 — на этапе 6Б, R07 — на этапе 7А; R08 — будущий этап.
  * Публичный UI исследований ещё не открыт, main не получает неполный выпуск.
  * Все цены и награды ниже согласованы для первого игрового теста.
  * Технические нюансы: docs/card-rules-draft.md.
@@ -141,7 +141,7 @@ export const RESEARCH_CARDS = Object.freeze([
       earthquakeRisk: 'unchanged'
     },
     historicalBasis: 'Португальская gaiola pombalina после 1755 года и калабрийская casa baraccata после 1783 года; вымышленная муниципальная программа Сан-Франциско 1900–1905 годов повышает спрос на древесину.',
-    implementationStatus: 'data-only-not-wired-to-game-engine'
+    implementationStatus: 'implemented-in-research-integration-branch-not-published'
   },
   {
     id: 'R08',
