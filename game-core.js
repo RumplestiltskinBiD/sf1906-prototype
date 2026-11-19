@@ -1589,21 +1589,80 @@ export function cityGoalProgress(state,playerId,goalId){
 }
 export function cityGoalTarget(goalId){return goalId==='C05'?3:2;}
 
-export function claimCityGoal(state,slot){
+/**
+ * R06: city-goal advance is a property of the specific goal contract.
+ * The research registry supplies the terms, and only active contracts count
+ * against the player's limit. No global goal-debt ledger or extra worker step.
+ */
+function cityGoalAdvanceTerms(){
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='city-goal-advance-option');
+  const e=card?.effect;
+  if(!e||e.grantTiming!=='when-taking-new-city-goal'
+    ||e.extraWorkerActionRequiredForAdvance!==false
+    ||![e.advanceAmount,e.onSuccessMoneyRewardReduction,e.onFailureAdditionalVpPenalty,
+      e.maxActiveAdvancedGoalsPerPlayer].every(n=>Number.isSafeInteger(n)&&n>0))
+    return null;
+  return {researchId:card.id,advanceAmount:e.advanceAmount,
+    successReduction:e.onSuccessMoneyRewardReduction,
+    failureVpPenalty:e.onFailureAdditionalVpPenalty,
+    maxActive:e.maxActiveAdvancedGoalsPerPlayer};
+}
+// Settling an existing promise must not depend on research still being funded
+// in a legacy or test save; only creating a NEW advance does.
+function cityGoalAdvanceForEntry(entry){
+  const terms=cityGoalAdvanceTerms();
+  return terms&&entry?.advanceAmount===terms.advanceAmount?terms:null;
+}
+/** Pure preview for the future City Hall UI. */
+export function cityGoalAdvanceOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])
+    return {ok:false,reason:'invalid-player'};
+  const terms=cityGoalAdvanceTerms();
+  if(!terms)return {ok:false,reason:'advance-terms'};
+  const player=state.players[playerId];
+  const active=(player.goals||[]).filter(entry=>
+    entry.status==='active'&&!!cityGoalAdvanceForEntry(entry)).length;
+  const funded=researchCardState(state,terms.researchId)?.status==='funded';
+  const turn=state.phase==='declare'&&currentDeclarer(state)===playerId;
+  const available=funded&&active<terms.maxActive&&turn&&player.goalTakenRound!==state.round;
+  const reason=!funded?'research-not-funded'
+    :active>=terms.maxActive?'advance-limit'
+    :!turn?'not-city-hall-turn'
+    :player.goalTakenRound===state.round?'already-taken':null;
+  return {ok:true,available,reason,researchId:terms.researchId,
+    amount:terms.advanceAmount,successReduction:terms.successReduction,
+    failureVpPenalty:terms.failureVpPenalty,active,maxActive:terms.maxActive};
+}
+
+export function claimCityGoal(state,slot,{takeAdvance=false}={}){
   if(state.phase!=='declare')return {ok:false,reason:'wrong-phase'};
   const pid=currentDeclarer(state);if(pid==null)return {ok:false,reason:'no-declarer'};
   const player=state.players[pid];
   if(player.goalTakenRound===state.round)return {ok:false,reason:'already-taken'};
   const card=state.goalMarket?.[slot];if(!card)return {ok:false,reason:'empty-slot'};
   const goal=cityGoalById(card.id);if(!goal)return {ok:false,reason:'goal'};
+  let amount=0;
+  if(takeAdvance){
+    // Validate the optional cash advance BEFORE consuming the goal card.
+    const option=cityGoalAdvanceOptions(state,pid);
+    if(!option.ok||!option.available)return {ok:false,reason:option.reason||'advance-unavailable'};
+    if((goal.reward?.capital||0)<option.successReduction)
+      return {ok:false,reason:'advance-exceeds-reward'};
+    amount=option.amount;
+  }
   player.goals=player.goals||[];
-  player.goals.push({uid:card.uid,id:card.id,status:'active',acquiredRound:state.round});
+  const entry={uid:card.uid,id:card.id,status:'active',acquiredRound:state.round};
+  if(amount)entry.advanceAmount=amount;
+  player.goals.push(entry);
+  if(amount)player.capital+=amount;
   player.goalTakenRound=state.round;
   state.goalMarket[slot]=null;
   state.goalSessionClaims=state.goalSessionClaims||[];
   state.goalSessionClaims.push({playerId:pid,uid:card.uid,id:card.id});
-  logEvent(state,`${player.name} принимает городскую цель «${goal.name}». Отчёт возможен только в следующей City Hall Session.`,'accent');
-  return {ok:true,playerId:pid,goalId:card.id};
+  logEvent(state,`${player.name} принимает городскую цель «${goal.name}»`+
+    (amount?` и получает аванс ${amount} по R06`:'')+
+    '. Отчёт возможен только в следующей City Hall Session.','accent');
+  return {ok:true,playerId:pid,goalId:card.id,advanceAmount:amount};
 }
 
 export function reportCompletedCityGoals(state){
@@ -1613,7 +1672,10 @@ export function reportCompletedCityGoals(state){
       if(entry.status!=='active'||entry.acquiredRound>=state.round)continue;
       const goal=cityGoalById(entry.id),evaluation=cityGoalEvaluation(state,player.id,entry);
       if(!goal||!evaluation.complete)continue;
-      player.capital+=goal.reward.capital||0;
+      const advance=cityGoalAdvanceForEntry(entry);
+      const withheld=advance?advance.successReduction:0;
+      const paid=Math.max(0,(goal.reward.capital||0)-withheld);
+      player.capital+=paid;
       player.prestige=(player.prestige||0)+(goal.reward.prestige||0);
       let influenceMove=null;
       if(goal.reward.influence)influenceMove=moveInfluence(state,player.id,goal.reward.influence);
@@ -1621,9 +1683,12 @@ export function reportCompletedCityGoals(state){
       // Clear legacy metadata after reporting; old buildings are ordinary valid matches.
       delete entry.retroactiveCount;
       delete entry.preExistingConstructionIds;
-      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${goal.reward.capital}, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
-      reports.push({playerId:player.id,goalId:goal.id,capital:goal.reward.capital,prestige:goal.reward.prestige,
-        influence:goal.reward.influence||0,influenceMove});
+      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +${paid}`+
+        (advance?` (аванс ${entry.advanceAmount} получен ранее)`:'')+
+        `, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
+      reports.push({playerId:player.id,goalId:goal.id,capital:paid,prestige:goal.reward.prestige,
+        influence:goal.reward.influence||0,influenceMove,
+        advanceAmount:advance?entry.advanceAmount:0,withheld});
     }
   }
   state.lastGoalReports=reports;
@@ -1664,10 +1729,15 @@ export function failIncompleteCityGoals(state){
     for(const entry of player.goals||[]){
       if(entry.status!=='active')continue;
       const goal=cityGoalById(entry.id);if(!goal)continue;
-      player.prestige=Math.max(0,(player.prestige||0)-goal.failPrestige);
+      const advance=cityGoalAdvanceForEntry(entry);
+      const extra=advance?advance.failureVpPenalty:0;
+      const total=goal.failPrestige+extra;
+      player.prestige=Math.max(0,(player.prestige||0)-total);
       entry.status='failed';entry.failedRound=state.round;
-      logEvent(state,`${player.name} не выполнил цель «${goal.name}»: −${goal.failPrestige} VP.`,'bad');
-      failures.push({playerId:player.id,goalId:goal.id,prestige:-goal.failPrestige});
+      logEvent(state,`${player.name} не выполнил цель «${goal.name}»: −${total} VP`+
+        (extra?` (включая −${extra} VP за аванс R06)`:'')+'.','bad');
+      failures.push({playerId:player.id,goalId:goal.id,prestige:-total,
+        advancePenalty:extra});
     }
   }
   return failures;
