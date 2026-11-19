@@ -724,8 +724,13 @@ if(compact)return level===0?'0':riskRoman(level)+(overflow?`+${overflow}`:'');
 return level===0?'0 · SAFE':`${value} · LEVEL ${riskRoman(level)}${overflow?` +${overflow} OVERFLOW`:''}`;
 }
 function signedRisk(value){const n=Number(value)||0;return n>0?`+${n}`:String(n);}
+function shownProjectRisk(projectOrId){
+const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id;
+const base=projectRisk(id),protection=fireServiceProtection(state,id);
+return {...base,fire:protection?-protection:base.fire};
+}
 function projectRiskChips(projectOrId){
-const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id,r=projectRisk(id);
+const r=shownProjectRisk(projectOrId);
 const chips=[];
 if(r.earthquake)chips.push(`<span class="risk-change quake ${r.earthquake<0?'good':'bad'}">У ${signedRisk(r.earthquake)}</span>`);
 if(r.fire)chips.push(`<span class="risk-change fire ${r.fire<0?'good':'bad'}">П ${signedRisk(r.fire)}</span>`);
@@ -3063,7 +3068,7 @@ const counts=deliveryCounts(project?.materials||[]);
 return RESOURCE_ORDER.filter(t=>counts[t]).map(t=>materialShort(t)+(counts[t]>1?counts[t]:'')).join(' ')||'—';
 }
 function compactMarketRisk(project){
-const r=projectRisk(project?.id);
+const r=shownProjectRisk(project?.id);
 const q=r.earthquake?signedRisk(r.earthquake):'0';
 const f=r.fire?signedRisk(r.fire):'0';
 return 'У'+q+' · П'+f;
