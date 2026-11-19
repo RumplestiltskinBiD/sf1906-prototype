@@ -1660,7 +1660,7 @@ export function claimCityGoal(state,slot,{takeAdvance=false}={}){
   state.goalSessionClaims=state.goalSessionClaims||[];
   state.goalSessionClaims.push({playerId:pid,uid:card.uid,id:card.id});
   logEvent(state,`${player.name} принимает городскую цель «${goal.name}»`+
-    (amount?` и получает аванс ${amount} по R06`:'')+
+    (amount?` и получает аванс $${amount} по R06`:'')+
     '. Отчёт возможен только в следующей City Hall Session.','accent');
   return {ok:true,playerId:pid,goalId:card.id,advanceAmount:amount};
 }
@@ -1683,8 +1683,8 @@ export function reportCompletedCityGoals(state){
       // Clear legacy metadata after reporting; old buildings are ordinary valid matches.
       delete entry.retroactiveCount;
       delete entry.preExistingConstructionIds;
-      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +${paid}`+
-        (advance?` (аванс ${entry.advanceAmount} получен ранее)`:'')+
+      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${paid}`+
+        (advance?` (аванс $${entry.advanceAmount} получен ранее)`:'')+
         `, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
       reports.push({playerId:player.id,goalId:goal.id,capital:paid,prestige:goal.reward.prestige,
         influence:goal.reward.influence||0,influenceMove,
