@@ -5,7 +5,7 @@ isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityG
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,ensureResearchState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
-constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,
+constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,constructionReinforcementOption,currentReinforcementChoice,resolveReinforcementChoice,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,migrateHerbalPrivatePracticeSnapshot,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
@@ -461,6 +461,11 @@ parsed.pendingWorkforceLinks=Array.isArray(parsed.pendingWorkforceLinks)?parsed.
 parsed.pendingPressCampaigns=Array.isArray(parsed.pendingPressCampaigns)?parsed.pendingPressCampaigns.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='press_tower'&&c.status==='complete'&&c.pressCampaignRound!==parsed.round)):[];
 parsed.pressCampaignQueuedRound=Number(parsed.pressCampaignQueuedRound)||0;
 parsed.pendingSailorRecruitments=Array.isArray(parsed.pendingSailorRecruitments)?parsed.pendingSailorRecruitments.filter(id=>parsed.constructions.some(c=>c.id===id&&c.projectId==='sailorlodging'&&c.status==='complete')):[];
+// Pending R02 choices are part of the real game state, not a transient modal.
+parsed.pendingReinforcements=Array.isArray(parsed.pendingReinforcements)
+ ?[...new Set(parsed.pendingReinforcements.filter(id=>parsed.constructions.some(c=>
+   c.id===id&&c.status==='under-construction'&&constructionReinforcementOption(parsed,id).ok)))]
+ :[];
 parsed.expired=parsed.expired||[];
 parsed.nextConstructionId=parsed.nextConstructionId||(parsed.constructions.reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
 parsed.nextLoanId=parsed.nextLoanId||(parsed.players.flatMap(p=>p.loans||[]).reduce((m,x)=>Math.max(m,Number(String(x.id||'').replace(/\D/g,''))||0),0)+1);
@@ -2811,6 +2816,42 @@ function renderSailorRecruitment(){
    render();
  });
 }
+function renderReinforcementChoice(){
+  const sheet=$('#reinforcementSheet'),backdrop=$('#reinforcementBackdrop');
+  if(!sheet||!backdrop)return;
+  const pending=(state.pendingReinforcements||[]).length>0;
+  sheet.hidden=!pending;backdrop.hidden=!pending;
+  if(!pending){sheet.innerHTML='';return;}
+  const id=state.pendingReinforcements[0],choice=currentReinforcementChoice(state);
+  const construction=(state.constructions||[]).find(c=>c.id===id);
+  if(!choice?.ok||!construction){
+    sheet.innerHTML='<div class="recruitment-card"><h2>Завершение строительства</h2><p>Не удалось восстановить вариант укрепления. Сохранённая операция требует проверки.</p></div>';
+    return;
+  }
+  const project=projectById(construction.projectId);
+  const owner=state.players[construction.playerId];
+  sheet.innerHTML='<div class="recruitment-card"><small>R02 · СЕЙСМОСТОЙКОЕ СТРОИТЕЛЬСТВО</small>'+
+    '<h2>Завершить строительство</h2><p><b>'+escapeHtml(project?.name||construction.projectId)+'</b> · '+
+    escapeHtml(districtById(construction.districtId)?.name||construction.districtId)+
+    ' · '+escapeHtml(owner.name)+'</p>'+
+    '<p>Материалы готовы. Можно дополнительно заплатить <b>$'+choice.cost+
+    '</b> и снизить личный прирост У этого здания на <b>'+choice.earthquakeReduction+
+    '</b>. П не меняется. Выбор окончательный, рабочий не требуется.</p>'+
+    '<div class="recruitment-actions">'+
+    '<button class="primary-btn" data-reinforcement-choice="yes" '+(choice.affordable?'':'disabled')+
+    '>Укрепить · −$'+choice.cost+' · У −'+choice.earthquakeReduction+'</button>'+
+    '<button class="secondary-btn" data-reinforcement-choice="no">Завершить без укрепления · $0</button></div>'+
+    (!choice.affordable?'<small>Недостаточно денег на укрепление: обычное завершение бесплатно.</small>':'')+
+    '</div>';
+  $$('[data-reinforcement-choice]').forEach(button=>button.onclick=()=>{
+    const reinforced=button.dataset.reinforcementChoice==='yes';
+    const result=resolveReinforcementChoice(state,id,reinforced);
+    if(!result.ok){showToast(result.reason==='capital'?'Недостаточно денег на укрепление':'Завершение сейчас недоступно: '+result.reason);render();return;}
+    showToast(reinforced?'R02: здание укреплено за $'+result.reinforcementCost+' · У −'+choice.earthquakeReduction:
+      'Строительство завершено без укрепления.');
+    render();
+  });
+}
 function renderNewProjectDecisions(){
  const ws=$('#workforceLinkSheet'),wb=$('#workforceLinkBackdrop');
  const worker=currentWorkforceLink(state);
@@ -2843,7 +2884,7 @@ function renderNewProjectDecisions(){
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();renderReinforcementChoice();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
