@@ -55,9 +55,15 @@ for(const v of viewports){
   await page.locator('[data-load="Lumber"]').click();
   await expect(page.locator('.delivery-cost-preview')).toContainText('Материалы $4');
   await page.locator('#deliveryBeginRoute').click();
-  await page.locator('#deliveryLockRoute').click();
-  await page.locator('[data-construction-token="MAR"]').click();
-  await page.locator('[data-drop-kind="warehouse"][data-drop-type="Lumber"]').click();
+  if(v.width<1000){
+   // On mobile the route must be locked before choosing a map target.
+   await page.locator('#deliveryLockRoute').click();
+   await page.locator('[data-construction-token="MAR"]').click();
+   await page.locator('[data-drop-kind="warehouse"][data-drop-type="Lumber"]').click();
+  }else{
+   // Desktop exposes the warehouse drop directly; there is no route-lock button.
+   await page.locator('[data-drop-kind="warehouse"][data-drop-id="MAR"][data-drop-type="Lumber"]').click();
+  }
   await expect(page.locator('#deliveryConfirm')).toBeEnabled();
   await page.locator('#deliveryConfirm').click();
   let s=await saved(page);
