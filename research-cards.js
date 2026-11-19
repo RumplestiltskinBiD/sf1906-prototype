@@ -4,7 +4,7 @@
  * ЕДИНЫЙ РЕЕСТР КАРТ: используется исследовательским движком для получения,
  * финансирования и постепенного подключения эффектов. R01 подключается в
  * feature/research-system на этапе 4А, R02 — на этапе 4Б;
- * R03–R08 как глобальные эффекты — будущие этапы.
+ * R03 подключается на этапе 5А; R04–R08 — будущие этапы.
  * Публичный UI исследований ещё не открыт, main не получает неполный выпуск.
  * Все цены и награды ниже согласованы для первого игрового теста.
  * Технические нюансы: docs/card-rules-draft.md.
@@ -63,7 +63,8 @@ export const RESEARCH_CARDS = Object.freeze([
       fireProtectionInOwnDistrictAfter: 2,
       extendsProtectionRadius: false,
       appliesToExistingAndFutureStations: true
-    }
+    },
+    implementationStatus: 'implemented-in-research-integration-branch-not-published'
   },
   {
     id: 'R04',

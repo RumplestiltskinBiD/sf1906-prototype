@@ -1,4 +1,4 @@
-import {DISTRICTS,districtNeighbors,districtRisk,createInitialState} from './game-core.js';
+import {DISTRICTS,districtNeighbors,districtRisk,createInitialState,fireServiceProtection} from './game-core.js';
 
 // A separate Phase II laboratory: it does not change Phase I state or saves.
 // Actual risks are nonnegative integers without upper clipping; III is display only.
@@ -20,13 +20,17 @@ export const eastToWest=(a,b)=>(CENTERS[b]?.[0]||0)-(CENTERS[a]?.[0]||0)
 export function fromGame(game=createInitialState({rng:()=>0.5})){
   return Object.fromEntries(DISTRICT_IDS.map(id=>{
     const r=districtRisk(game,id);
-    // Base engine has already applied -1 P for a completed station.
-    // Recover risk before stations so this lab never deducts it twice.
+    // Phase I includes each station's own-district P reduction already.
+    // Restore the pre-protection value, then let Phase II apply the same
+    // researched amount ONCE, after earthquake survival is determined.
+    // Both market firehouse and standard std_fire have a physical station.
     const stations=(game?.constructions||[]).filter(c=>c.districtId===id
-      &&c.status==='complete'&&c.projectId==='firehouse').length;
+      &&c.status==='complete'&&fireServiceProtection(game,c.projectId)>0);
+    const fireProtection=stations.reduce((n,c)=>n+fireServiceProtection(game,c.projectId),0);
     return [id,{z:riskValue(r.earthquake.raw),
-      p:riskValue((r.fire.net??r.fire.raw)+stations),
-      firehouse:stations>0}];
+      p:riskValue((r.fire.net??r.fire.raw)+fireProtection),
+      firehouse:stations.length>0,
+      fireProtection}];
   }));
 }
 export function preset(key='three'){
@@ -52,18 +56,22 @@ export function begin(input,custom={}){
     const quake=z>=config.collapse?'destroyed':z>=config.damage?'damaged':'intact';
     const quakeBurning=quake==='destroyed';
     const firehouseBuilt=!!input[id]?.firehouse;
+    // Legacy/manual presets only have a checkbox. Treat it as P−1;
+    // imported parties specify the actual researched P−2 amount.
+    const firehouseProtection=firehouseBuilt
+      ?Math.max(1,Number.isInteger(input[id]?.fireProtection)?input[id].fireProtection:1):0;
     const survivesQuake=firehouseBuilt&&!quakeBurning;
     const quakeFireBonus=quake==='damaged'?config.damageFire:0;
     // Apply once after quake; +P from each neighbour is NOT blocked.
     // Cap at P0 so there is no invisible negative buffer.
-    const initialAfterQuakeP=Math.max(0,baseP+quakeFireBonus-(survivesQuake?1:0));
+    const initialAfterQuakeP=Math.max(0,baseP+quakeFireBonus-(survivesQuake?firehouseProtection:0));
     const fireRiskBurning=!quakeBurning&&initialAfterQuakeP>=config.ignition;
     const burning=quakeBurning||fireRiskBurning;
     const firehouseDestroyed=firehouseBuilt&&burning;
     const firehouseActive=firehouseBuilt&&!firehouseDestroyed;
     const origin=quakeBurning?'earthquake':fireRiskBurning?'fire-risk':null;
     nodes[id]={id,z,baseP,quake,quakeFireBonus,initialAfterQuakeP,
-      p:initialAfterQuakeP,firehouseBuilt,firehouseActive,firehouseDestroyed,
+      p:initialAfterQuakeP,firehouseBuilt,firehouseProtection,firehouseActive,firehouseDestroyed,
       burning,origin,spreadDone:false,received:[]};
     if(burning)starts.push(id);
   }
@@ -201,7 +209,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
       '; передача очага +'+c.spread+' П соседям.',
     'Реальные У и П без верхнего лимита; III — только индикатор.',
     'Граф: обычные застраиваемые районы; парк, Presidio и Twin Peaks исключены. Каждый источник передаёт огонь один раз.',
-    'Пожарная часть: только свой район, −1 П однократно после землетрясения (не ниже П0); повреждённая работает; разрушенная/сгоревшая уничтожена. Входящий огонь не блокируется.',
+    'Пожарная часть: только свой район, −1 П обычно или −2 П после R03 однократно после землетрясения (не ниже П0); повреждённая работает; разрушенная/сгоревшая уничтожена. Входящий огонь не блокируется.',
     '',
     '=== ИСХОДНЫЕ ЗНАЧЕНИЯ ВСЕХ РАЙОНОВ (до землетрясения) ==='
   ];
@@ -220,7 +228,7 @@ export function formatReport({input,simulation=null,config=RULES,scenario='Не 
     lines.push(name(id)+': '+quakeName[n.quake]+
       '; П'+n.baseP+
       (n.quakeFireBonus?' +'+n.quakeFireBonus+' (повреждение)':'')+
-      (n.firehouseBuilt&&n.quake!=='destroyed'?' −1 (пожарная часть)':'')+
+      (n.firehouseBuilt&&n.quake!=='destroyed'?' −'+n.firehouseProtection+' (пожарная часть)':'')+
       ' → П'+n.initialAfterQuakeP+
       '; пожарная часть: '+(!n.firehouseBuilt?'нет':n.quake==='destroyed'?'уничтожена землетрясением':n.firehouseDestroyed?'уничтожена пожаром':'работает')+
       (n.origin==='earthquake'?'; первоначальный очаг от разрушения':

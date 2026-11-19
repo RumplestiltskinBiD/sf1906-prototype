@@ -1,7 +1,7 @@
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
-isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
+isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,fireServiceProtection,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
 createInitialState,ensureResearchState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,constructionEligibility,beginConstruction,setLandValue,
@@ -724,8 +724,13 @@ if(compact)return level===0?'0':riskRoman(level)+(overflow?`+${overflow}`:'');
 return level===0?'0 · SAFE':`${value} · LEVEL ${riskRoman(level)}${overflow?` +${overflow} OVERFLOW`:''}`;
 }
 function signedRisk(value){const n=Number(value)||0;return n>0?`+${n}`:String(n);}
+function shownProjectRisk(projectOrId){
+const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id;
+const base=projectRisk(id),protection=fireServiceProtection(state,id);
+return {...base,fire:protection?-protection:base.fire};
+}
 function projectRiskChips(projectOrId){
-const id=typeof projectOrId==='string'?projectOrId:projectOrId?.id,r=projectRisk(id);
+const r=shownProjectRisk(projectOrId);
 const chips=[];
 if(r.earthquake)chips.push(`<span class="risk-change quake ${r.earthquake<0?'good':'bad'}">У ${signedRisk(r.earthquake)}</span>`);
 if(r.fire)chips.push(`<span class="risk-change fire ${r.fire<0?'good':'bad'}">П ${signedRisk(r.fire)}</span>`);
@@ -2951,7 +2956,7 @@ function renderStandardProjects(){
  if(!viewing){el.innerHTML='';return;}
  const cards=STANDARD_PROJECTS.map(p=>{
    const note=p.id==='std_warehouse'?'До 3 материалов · склады без лимита':
-    p.id==='std_fire'?'П −1 · служба своего района · земля +1':
+    p.id==='std_fire'?'П −'+fireServiceProtection(state,p.id)+' · служба своего района · земля +1':
     p.id==='std_police'?'Полиция в районе · земля +1':'Медицина в районе · земля +1';
    const selected=state.pendingConstruction?.projectId===p.id;
    const subsidized=isE05CivicSubsidy(state,p.id);
@@ -3063,7 +3068,7 @@ const counts=deliveryCounts(project?.materials||[]);
 return RESOURCE_ORDER.filter(t=>counts[t]).map(t=>materialShort(t)+(counts[t]>1?counts[t]:'')).join(' ')||'—';
 }
 function compactMarketRisk(project){
-const r=projectRisk(project?.id);
+const r=shownProjectRisk(project?.id);
 const q=r.earthquake?signedRisk(r.earthquake):'0';
 const f=r.fire?signedRisk(r.fire):'0';
 return 'У'+q+' · П'+f;
