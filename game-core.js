@@ -1,6 +1,6 @@
 import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0590-research-state';
 import {createResearchState,ensureResearchState,researchCardState} from './research-state.js';
-import {researchCardById} from './research-cards.js';
+import {RESEARCH_CARDS,researchCardById} from './research-cards.js';
 export {createResearchState,ensureResearchState,researchCardState,listResearchStates,validateResearchState,RESEARCH_STATUSES} from './research-state.js';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
@@ -434,6 +434,51 @@ export function riskLevel(value){
   const raw=Math.max(0,Math.floor(Number(value)||0));
   return raw===0?0:raw===1?1:raw===2?2:3;
 }
+// R02 is a funded, citywide, opt-in benefit. No per-player R02 ownership check:
+ // every builder may reinforce a NEW completion. Future cards with this effect
+ // type reuse the existing completion hook and metadata on the building.
+function activeCompletionReinforcement(state){
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='optional-building-earthquake-reinforcement'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  return effect&&Number.isInteger(effect.extraCost)&&effect.extraCost>=0
+    &&Number.isInteger(effect.earthquakeDeltaReduction)&&effect.earthquakeDeltaReduction>0
+    &&effect.fireDeltaReduction===0?effect:null;
+}
+export function constructionReinforcementOption(state,constructionId){
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!construction)return {ok:false,reason:'not-found'};
+  if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
+  const effect=activeCompletionReinforcement(state);
+  if(!effect)return {ok:false,reason:'research-unfunded'};
+  const earthquake=projectRisk(construction.projectId).earthquake;
+  if(earthquake<=0||construction.earthquakeReinforcement)
+    return {ok:false,reason:'not-eligible'};
+  const check=canCompleteConstruction(state,constructionId);
+  if(!check.ok)return check;
+  return {ok:true,constructionId,playerId:construction.playerId,projectId:construction.projectId,
+    districtId:construction.districtId,cost:effect.extraCost,
+    earthquakeReduction:Math.min(earthquake,effect.earthquakeDeltaReduction),
+    affordable:(state.players?.[construction.playerId]?.capital??0)>=effect.extraCost};
+}
+export function currentReinforcementChoice(state){
+  const id=(state.pendingReinforcements||[])[0];
+  return id?constructionReinforcementOption(state,id):null;
+}
+export function resolveReinforcementChoice(state,constructionId,reinforce){
+  const pending=state.pendingReinforcements||[];
+  if(!pending.length||pending[0]!==constructionId)return {ok:false,reason:'not-pending'};
+  if(typeof reinforce!=='boolean')return {ok:false,reason:'choice'};
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!construction)return {ok:false,reason:'not-found'};
+  if(state.phase!=='development'||state.developmentComplete
+    ||state.developmentPlayer!==construction.playerId)return {ok:false,reason:'not-owner-turn'};
+  const result=completeConstruction(state,construction,{reinforce});
+  if(!result.ok)return result;
+  pending.shift();
+  return {...result,constructionId,reinforced:reinforce,remainingChoices:pending.length};
+}
+
 export function districtRisk(state,districtId){
   const district=districtById(districtId);
   if(!district)return null;
@@ -445,10 +490,12 @@ export function districtRisk(state,districtId){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
     const base=projectRisk(construction.projectId);
     const fire=constructionFireRisk(construction);
-    const delta={earthquake:base.earthquake,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
+    const reinforcement=construction.earthquakeReinforcement>0&&base.earthquake>0
+      ?Math.min(base.earthquake,construction.earthquakeReinforcement):0;
+    const delta={earthquake:base.earthquake-reinforcement,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
     if(!delta.earthquake&&!delta.fire)continue;
     const project=projectById(construction.projectId);
-    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':''),earthquake:delta.earthquake,fire:delta.fire});
+    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':'')+(reinforcement?' · Сейсмоукрепление':''),earthquake:delta.earthquake,fire:delta.fire});
   }
   const projectSources=sources.filter(x=>x.kind==='project');
   const earthquakeNet=earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0);
@@ -792,6 +839,7 @@ export function completedActionSpaces(state,projectId){
 }
 export function canTakeMainAction(state,playerId){
   if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
+  if((state.pendingReinforcements||[]).length)return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
@@ -800,6 +848,7 @@ export function canTakeMainAction(state,playerId){
 }
 export function canUseFreeAction(state,playerId){
   if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
+  if((state.pendingReinforcements||[]).length)return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
@@ -820,6 +869,7 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if((state.pendingReinforcements||[]).length)return {ok:false,reason:'reinforcement-choice'};
   if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
@@ -1351,6 +1401,7 @@ export function createInitialState({rng=Math.random}={}){
     selectedProjectId:market[0]?.id||null,
     selectedDistrictId:'civic',
     pendingConstruction:null,
+    pendingReinforcements:[],
     constructions:[],
     nextConstructionId:1,
     nextLoanId:1,
@@ -2005,15 +2056,30 @@ function consumeWarehouseMaterials(state,playerId,districtId,missing){
   return true;
 }
 
-export function completeConstruction(state,construction){
+export function completeConstruction(state,construction,{reinforce=null}={}){
   if(!construction||construction.status!=='under-construction')return {ok:false};
   const project=projectById(construction.projectId);
   const check=canCompleteConstruction(state,construction.id);
   if(!check.ok)return check;
+  const reinforcement=constructionReinforcementOption(state,construction.id);
+  if(reinforcement.ok&&reinforce===null){
+    state.pendingReinforcements=state.pendingReinforcements||[];
+    if(!state.pendingReinforcements.includes(construction.id))
+      state.pendingReinforcements.push(construction.id);
+    return {ok:false,reason:'reinforcement-choice-required',constructionId:construction.id,
+      cost:reinforcement.cost,affordable:reinforcement.affordable,pending:true};
+  }
+  if(reinforce===true&&!reinforcement.ok)return {ok:false,reason:'reinforcement-unavailable'};
+  if(reinforce===true&&!reinforcement.affordable)return {ok:false,reason:'capital',cost:reinforcement.cost};
   if(check.warehouseUse>0&&!consumeWarehouseMaterials(state,construction.playerId,construction.districtId,check.missing)){
     return {ok:false,reason:'warehouse-materials'};
   }
   const riskBefore=districtRisk(state,construction.districtId);
+  if(reinforce===true){
+    state.players[construction.playerId].capital-=reinforcement.cost;
+    construction.earthquakeReinforcement=reinforcement.earthquakeReduction;
+    construction.reinforcementCostPaid=reinforcement.cost;
+  }
   // Count completed buildings BEFORE this project flips to complete. Pending
   // projects do not block cottages' "first completed" district bonus.
   const completedBefore=(state.constructions||[]).filter(c=>
@@ -2129,7 +2195,8 @@ export function completeConstruction(state,construction){
   if(riskBefore&&riskAfter&&(riskBefore.earthquake.raw!==riskAfter.earthquake.raw||riskBefore.fire.raw!==riskAfter.fire.raw)){
     logEvent(state,`Риск ${districtById(construction.districtId).name}: У ${riskBefore.earthquake.raw}→${riskAfter.earthquake.raw} · П ${riskBefore.fire.raw}→${riskAfter.fire.raw}.`,'accent');
   }
-  return {ok:true,prestige:vp,schoolHousingVp,cottageBonus,landChange,roadOpened,warehouseUse:check.warehouseUse||0};
+  return {ok:true,prestige:vp,schoolHousingVp,cottageBonus,landChange,roadOpened,warehouseUse:check.warehouseUse||0,
+    reinforced:reinforce===true,reinforcementCost:reinforce===true?reinforcement.cost:0};
 }
 
 export function completeConstructionFromStorage(state,constructionId){
@@ -2681,7 +2748,8 @@ function executeDeliveryCore(state,plan){
     const con=state.constructions.find(c=>c.id===id);
     if(completeConstruction(state,con).ok)completed.push(id);
   }
-  return {ok:true,cost,completed,hauler,source};
+  return {ok:true,cost,completed,hauler,source,
+    pendingReinforcements:[...(state.pendingReinforcements||[])]};
 }
 
 export function currentSailorRecruitment(state){
@@ -3247,6 +3315,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 }
 
 export function cleanupMarket(state,{rng=Math.random}={}){
+  if((state.pendingReinforcements||[]).length)return {ok:false,reason:'reinforcement-choice'};
   if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
