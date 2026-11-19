@@ -109,3 +109,29 @@ test('R02 unaffordable choice still has a usable normal completion on mobile',as
  expect(after.players[0].capital).toBeLessThan(2);
  await noOverflow(page,vp);
 });
+
+test('R02 completion from Warehouse opens the same choice and holds stock until confirmation',async({page})=>{
+ const vp={width:390,height:844};await page.setViewportSize(vp);
+ const s=game();
+ s.constructions=[
+  {id:'WH',playerId:0,projectId:'warehouse',districtId:'soma',status:'complete',
+   startedRound:1,completedRound:1,materialsDelivered:['Lumber','Masonry','Steel'],warehouseInventory:['Steel','Steel']},
+  {id:'F',playerId:0,projectId:'factory',districtId:'soma',status:'under-construction',
+   startedRound:1,completedRound:null,materialsDelivered:['Lumber','Masonry','Masonry'],warehouseInventory:[]}
+ ];
+ await seed(page,s);
+ await page.locator('#officeBtn').click();
+ await expect(page.locator('[data-complete-build="F"]')).toBeVisible();
+ await page.locator('[data-complete-build="F"]').click();
+ await expect(page.locator('#reinforcementSheet')).toBeVisible();
+ const before=await saved(page);
+ expect(before.pendingReinforcements).toEqual(['F']);
+ expect(before.constructions.find(c=>c.id==='WH').warehouseInventory).toEqual(['Steel','Steel']);
+ expect(before.constructions.find(c=>c.id==='F').status).toBe('under-construction');
+ await page.locator('[data-reinforcement-choice="no"]').click();
+ const after=await saved(page);
+ expect(after.pendingReinforcements).toEqual([]);
+ expect(after.constructions.find(c=>c.id==='WH').warehouseInventory).toEqual([]);
+ expect(after.constructions.find(c=>c.id==='F').status).toBe('complete');
+ await noOverflow(page,vp);
+});
