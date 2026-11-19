@@ -135,3 +135,39 @@ test('R02 completion from Warehouse opens the same choice and holds stock until 
  expect(after.constructions.find(c=>c.id==='F').status).toBe('complete');
  await noOverflow(page,vp);
 });
+
+test('R02 migration preserves exact five-material recipe while waiting for the choice',async({page})=>{
+ const vp={width:932,height:430};await page.setViewportSize(vp);
+ const s=game();
+ s.constructions=[{id:'FIVE',playerId:0,projectId:'factory',districtId:'soma',
+  status:'under-construction',startedRound:1,completedRound:null,
+  materialsDelivered:['Lumber','Masonry','Masonry','Steel','Steel'],warehouseInventory:[]}];
+ s.pendingReinforcements=['FIVE'];
+ await seed(page,s);
+ await expect(page.locator('#reinforcementSheet')).toBeVisible();
+ let loaded=await saved(page);
+ expect(loaded.constructions[0].materialsDelivered).toEqual(s.constructions[0].materialsDelivered);
+ expect(loaded.pendingReinforcements).toEqual(['FIVE']);
+ await page.reload();
+ await expect(page.locator('#reinforcementSheet')).toBeVisible();
+ await page.locator('[data-reinforcement-choice="yes"]').click();
+ loaded=await saved(page);
+ expect(loaded.constructions[0].status).toBe('complete');
+ expect(loaded.constructions[0].earthquakeReinforcement).toBe(1);
+ expect(loaded.pendingReinforcements).toEqual([]);
+ await noOverflow(page,vp);
+});
+test('migration still clips invalid over-capacity incomplete staging, rather than treating it as a finished recipe',async({page})=>{
+ const vp={width:390,height:844};await page.setViewportSize(vp);
+ const s=game();
+ s.constructions=[{id:'INVALID',playerId:0,projectId:'factory',districtId:'soma',
+  status:'under-construction',startedRound:1,completedRound:null,
+  materialsDelivered:['Lumber','Masonry','Steel','Steel'],warehouseInventory:[]}];
+ s.pendingReinforcements=[];
+ await seed(page,s);
+ const loaded=await saved(page);
+ expect(loaded.constructions[0].materialsDelivered).toEqual(['Lumber','Masonry','Steel']);
+ expect(loaded.constructions[0].status).toBe('under-construction');
+ await expect(page.locator('#reinforcementSheet')).toBeHidden();
+ await noOverflow(page,vp);
+});
