@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,fundResearch} from '../game-core.js';
+import {createInitialState,fundResearch,cleanupMarket} from '../game-core.js';
 
 const KEY='sf1906_phase1_ui_v030a';
 const viewports=[{width:390,height:844},{width:932,height:430},{width:1366,height:768}];
@@ -56,6 +56,30 @@ for(const viewport of viewports){
     expect(r.status).toBe('held');
     await page.reload();
     expect((await current(page)).research.R05.status).toBe('held');
+    const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:innerWidth}));
+    expect(sizes.scroll).toBeLessThanOrEqual(viewport.width+3);
+  });
+  test('R05 actual incoming H03 manifest remains auditable after browser save and future purchases '+viewport.width+'x'+viewport.height,async({page})=>{
+    await page.setViewportSize(viewport);
+    const state=game();state.developmentComplete=true;
+    state.newsDeck=['H03','E01'];
+    const planned=JSON.parse(JSON.stringify(state.researchLogisticsForecast.supply));
+    const result=cleanupMarket(state,{rng:()=>0.51});
+    expect(result.ok).toBe(true);
+    expect(state.round).toBe(2);
+    expect(state.researchLogisticsArrival.planned).toEqual(planned);
+    const receipt=JSON.parse(JSON.stringify(state.researchLogisticsArrival));
+    state.logisticsSupply.broadway.shift();
+    await seed(page,state);
+    const visible=await page.evaluate(async key=>{
+      const G=await import('/game-core.js');
+      return G.researchLogisticsArrivalReport(JSON.parse(localStorage.getItem(key)));
+    },KEY);
+    expect(visible.actual).toEqual(receipt.actual);
+    expect(visible.planned).toEqual(planned);
+    expect(visible.adjustment).toBe('H03');
+    await page.reload();
+    expect((await current(page)).researchLogisticsArrival).toEqual(receipt);
     const sizes=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:innerWidth}));
     expect(sizes.scroll).toBeLessThanOrEqual(viewport.width+3);
   });
