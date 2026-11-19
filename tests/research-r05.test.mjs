@@ -97,6 +97,12 @@ test('normal year consumes exact predicted cubes and publishes a fresh forecast 
   year(s,'E01',rngFactory(555));
   assert.deepEqual(s.logisticsSupply,planned);
   assert.equal(stockCount(s.logisticsSupply),17);
+  const arrival=G.researchLogisticsArrivalReport(s);
+  assert.deepEqual(arrival.planned,planned);
+  assert.deepEqual(arrival.actual,planned);
+  assert.equal(arrival.adjustment,null);
+  arrival.actual.broadway[0]='tampered';
+  assert.deepEqual(G.researchLogisticsArrivalReport(s).actual,planned,'arrival getter must copy');
   const next=G.researchLogisticsForecast(s);
   assert.equal(next.round,3);assert.equal(stockCount(next.supply),17);
   assert.equal(s.research.R05.status,'funded');
@@ -108,6 +114,10 @@ test('H03 cancels one planned delivery per SEA PORT only, preserving the other f
   year(s,'H03',rngFactory(29));
   assert.equal(s.newsH03SupplyRound,2);
   assert.equal(stockCount(s.logisticsSupply),13);
+  const receipt=G.researchLogisticsArrivalReport(s);
+  assert.deepEqual(receipt.planned,planned);
+  assert.deepEqual(receipt.actual,s.logisticsSupply);
+  assert.equal(receipt.adjustment,'H03');
   for(const n of G.LOGISTICS_NODES){
     assert.deepEqual(s.logisticsSupply[n.id],
       G.H03_SEA_PORT_IDS.includes(n.id)?planned[n.id].slice(0,-1):planned[n.id],
@@ -126,6 +136,10 @@ test('F03 redistributes exact planned cargo without deleting material or telegra
   assert.equal(stockCount(s.logisticsSupply),17);
   assert.deepEqual(s.logisticsSupply[s.newsF03Incident.portId],[]);
   assert.deepEqual(s.logisticsSupply.southernpacific,planned.southernpacific);
+  const receipt=G.researchLogisticsArrivalReport(s);
+  assert.equal(receipt.adjustment,'F03');
+  assert.deepEqual(receipt.planned,planned);
+  assert.deepEqual(receipt.actual,s.logisticsSupply);
 });
 test('C02 moves exactly two planned physical cubes into its lot, never generates replacements',()=>{
   const s=game();
@@ -136,6 +150,10 @@ test('C02 moves exactly two planned physical cubes into its lot, never generates
   assert.equal(lot.round,2);assert.equal(lot.status,'available');
   assert.equal(lot.materials.length,2);
   assert.equal(stockCount(s.logisticsSupply),15);
+  const receipt=G.researchLogisticsArrivalReport(s);
+  assert.equal(receipt.adjustment,'C02');
+  assert.deepEqual(receipt.planned,planned);
+  assert.deepEqual(receipt.actual,s.logisticsSupply);
   assert.deepEqual([...stockTypes(s.logisticsSupply),...lot.materials].sort(),stockTypes(planned));
   assert.equal(stockCount(G.researchLogisticsForecast(s).supply),17);
 });
@@ -171,6 +189,7 @@ test('unfunded R05 leaves the old annual supply distribution and RNG path unchan
   assert.deepEqual(s.logisticsSupply,expected);
   assert.equal(s.researchLogisticsForecast,null);
   assert.equal(G.researchLogisticsForecast(s),null);
+  assert.equal(G.researchLogisticsArrivalReport(s),null);
 });
 test('bad/legacy forecast is not published, and unrelated state remains unchanged by its preview',()=>{
   const s=game();fund(s);
@@ -181,4 +200,17 @@ test('bad/legacy forecast is not published, and unrelated state remains unchange
   assert.equal(JSON.stringify(damaged),before);
   delete damaged.researchLogisticsForecast;
   assert.equal(G.researchLogisticsForecast(damaged),null);
+});
+
+test('arrival receipt is a persistent pre-purchase snapshot, not a mutable alias of port stock',()=>{
+  const s=game();fund(s,rngFactory(91));
+  const planned=clone(G.researchLogisticsForecast(s).supply);
+  year(s,'H03',rngFactory(27));
+  const arrival=clone(G.researchLogisticsArrivalReport(s));
+  assert.deepEqual(arrival.planned,planned);
+  s.logisticsSupply.broadway.shift();
+  assert.deepEqual(G.researchLogisticsArrivalReport(s),arrival);
+  const saved=clone(s);
+  assert.deepEqual(G.researchLogisticsArrivalReport(saved),arrival);
+  assert.equal(G.researchLogisticsArrivalReport(game()),null);
 });
