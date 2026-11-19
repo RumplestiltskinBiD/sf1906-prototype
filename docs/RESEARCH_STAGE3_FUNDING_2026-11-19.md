@@ -1,6 +1,6 @@
 # R01–R08 — Этап 3: отдельное финансирование исследований
 
-**Статус:** этапы 1–2 уже внедрены в `main` (PR #217 и #218). Этап 3 проверяется в [PR #219](https://github.com/RumplestiltskinBiD/sf1906-prototype/pull/219) и интегрируется **только** в `feature/research-system`, не в `main`. **Эта стадия не означает появления рабочих глобальных эффектов!**
+**Статус:** этапы 1–2 внедрены в `main` (PR #217 и #218). **Этап 3 завершён и объединён в `feature/research-system`** как [PR #219](https://github.com/RumplestiltskinBiD/sf1906-prototype/pull/219), merge commit `8102161bae6bb05186243d269978fa7b749ba4a8`. Не объединён в `main`. **Эта стадия не означает появления рабочих глобальных эффектов!**
 
 ## Утверждённый контракт
 
@@ -25,4 +25,4 @@
 - CI общей ветки `feature/research-system` запускает полный Prototype QA по push и PR; профильная Industrial Regression проверяется при изменении затронутых файлов.
 - Отдельный сквозной core-тест проверяет настоящее получение в Civic Center → финансирование в той же активации → сохранение/загрузка → невозможность повторной награды.
 - При добавлении R09 остаётся универсальный `fundResearch` и каталог `research-cards.js`; карточка может задавать `fundingCost`, `sponsorReward`, `requirement.completedCitywide`, не меняя код транзакции.
-- Окончательный результат этапа фиксируется merge PR #219 в `feature/research-system`, после проверки зелёного CI актуального HEAD. Следом этап 4А: R01. До финального выпуска в `main` потребуется сквозная проверка всех R01–R08 и UI.
+- Результат зафиксирован merge PR #219 в `feature/research-system` после зелёного CI PR-head `98f7d369992ba6e488b3e3d39cbeece6dbb5fa4d`: **783/783 core/static, 492/492 Playwright E2E**, ранние браузерные smoke 4/4; Industrial buildings regression успешна. Следом этап 4А: R01. До финального выпуска в `main` потребуется сквозная проверка всех R01–R08 и UI.
