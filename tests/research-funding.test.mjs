@@ -40,6 +40,28 @@ test('funding is a separate free action: actual cost and sponsor VP/Influence, n
  assert.equal(s.research.R02.status,'available');
 });
 
+test('real acquisition and funding compose in one activation without consuming a second worker',()=>{
+ const s=game();
+ const cash=s.players[0].capital;
+ const acquired=G.acquireResearch(s,0,'R01',{kind:'civic'});
+ assert.equal(acquired.ok,true,JSON.stringify(acquired));
+ assert.equal(s.research.R01.status,'held');
+ assert.equal(s.activationMainActionUsed,true);
+ assert.equal(s.players[0].workersLeft,2);
+ assert.equal(s.players[0].prestige,0,'acquisition is not funding');
+ const funded=G.fundResearch(s,0,'R01');
+ assert.equal(funded.ok,true,JSON.stringify(funded));
+ assert.equal(s.players[0].capital,cash-3);
+ assert.equal(s.players[0].prestige,2);
+ assert.equal(s.players[0].workersLeft,2,'funding does not consume another worker');
+ assert.equal(s.developmentSlotsUsed[0],0);
+ assert.equal(s.research.R01.status,'funded');
+ const reloaded=JSON.parse(snap(s));
+ const before=snap(reloaded);
+ assert.deepEqual(G.fundResearch(reloaded,0,'R01'),{ok:false,reason:'already-funded'});
+ assert.equal(snap(reloaded),before,'reload cannot duplicate sponsorship');
+});
+
 test('funding works after normal main action in same activation, without spending another worker',()=>{
  const s=held(game(),'R05');
  assert.equal(G.moveWorker(s,0,G.workerReachableDistricts(s,0).find(id=>id!=='civic')).ok,true);
