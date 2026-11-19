@@ -2854,9 +2854,34 @@ export function herbalPharmacyIncomeBonus(state,construction){
     &&construction.status==='complete'
     &&construction.herbalPrivatePracticeBonus===1?1:0;
 }
+/**
+ * R04 medical-network Income is a computed building bonus, not a saved grant.
+ * Each completed clinic / standard outpatient earns at most one bonus while
+ * at least one completed residential or mixed-residential building is nearby.
+ * Adding more neighbors never multiplies the bonus. Annual settlement uses
+ * existing buildingIncome -> grossRoundIncome -> roundIncome exactly once.
+ * For future programs register a new effect.type, not another annual payout.
+ */
+export function researchClinicIncomeBonus(state,construction){
+  if(!construction||construction.status!=='complete'
+    ||!STANDARD_SERVICE_FAMILIES.clinic.includes(construction.projectId))return 0;
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='clinic-income-if-near-residential'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  if(!effect||effect.eligibleDistrictScope!=='own-or-adjacent'
+    ||effect.eligibleResidentialStatus!=='complete'
+    ||effect.residenceCanBelongToAnyPlayer!==true)return 0;
+  const nearby=new Set([construction.districtId,...districtNeighbors(construction.districtId)]);
+  const hasResidence=(state.constructions||[]).some(c=>
+    c.status==='complete'&&nearby.has(c.districtId)&&projectTypes(c.projectId).includes('Жилое'));
+  if(!hasResidence)return 0;
+  const amount=effect.annualIncomePerEligibleClinic,cap=effect.maxIncomePerClinicPerYear;
+  return Number.isInteger(amount)&&amount>0&&Number.isInteger(cap)&&cap>0
+    ?Math.min(amount,cap):0;
+}
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+herbalPharmacyIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
+    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+herbalPharmacyIncomeBonus(state,c)+researchClinicIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
 export function advertisingIncomeBonus(state,playerId){
