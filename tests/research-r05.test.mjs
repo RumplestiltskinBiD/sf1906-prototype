@@ -113,7 +113,7 @@ test('H03 cancels one planned delivery per SEA PORT only, preserving the other f
       G.H03_SEA_PORT_IDS.includes(n.id)?planned[n.id].slice(0,-1):planned[n.id],
       'H03 must not redraw or replace the remaining materials in '+n.id);
   }
-  assert.equal(stockCount(G.researchLogisticsForecast(s).supply),17,'next year's baseline returns to normal');
+  assert.equal(stockCount(G.researchLogisticsForecast(s).supply),17,'following-year baseline returns to normal');
 });
 test('F03 redistributes exact planned cargo without deleting material or telegraphing the port in advance',()=>{
   const s=game();
