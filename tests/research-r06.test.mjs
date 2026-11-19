@@ -48,7 +48,7 @@ test('R06 funded by rival is usable by active City Hall player; advance is immed
  assert.equal(s.players[2].capital,30,'research sponsor does not receive advance');
  assert.equal(s.players[0].goals[0].advanceAmount,3);
  assert.equal(s.players[0].goals[0].status,'active');
- assert.match(s.log.at(-1).msg,/аванс \\$3/,'advance log must show dollars');
+ assert.match(s.log.at(-1).msg,/аванс \$3/,'advance log must show dollars');
  assert.equal(s.goalMarket[0],null);
  assert.equal(s.goalSessionClaims.length,1);
  assert.equal(s.declarationIndex,0,'no extra worker or declaration turn');
@@ -132,7 +132,7 @@ test('completed advanced goal pays only remainder, full VP and Influence, once n
  assert.equal(s.players[0].capital,34,'3 advanced earlier + 1 paid later = original $4');
  assert.equal(s.players[0].prestige,16);
  assert.equal(s.players[0].goals[0].status,'completed');
- assert.match(s.log.at(-1).msg,/\\+\\$1/,'report log must show the correct remaining cash amount');
+ assert.match(s.log.at(-1).msg,/\+\$1/,'report log must show the correct remaining cash amount');
  assert.equal(G.reportCompletedCityGoals(s).length,0);
  assert.equal(s.players[0].capital,34);
 });
