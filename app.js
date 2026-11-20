@@ -3353,6 +3353,150 @@ const fit=$('#mapZoomFit'),detail=$('#mapZoomDetail');
 if(fit)fit.classList.toggle('active',!mobileMapDetail);
 if(detail)detail.classList.toggle('active',mobileMapDetail);
 }
+
+/** Research UI is a read-only view of the canonical research registry/state.
+ * Every action below delegates its checks, worker use and payouts to game-core.
+ * A transient chosen source is NOT another saved research market or hand.
+ */
+function researchUiReason(result){
+  switch(result?.reason){
+    case 'research-prerequisite':
+      return 'Нужно завершённых учреждений: '+result.required+' · сейчас '+result.completed;
+    case 'capital':return 'Недостаточно денег: нужно $'+result.cost+', есть $'+result.available;
+    case 'free-action-unavailable':return 'Финансирование только в собственную активацию';
+    case 'main-action-unavailable':return 'Основное действие сейчас недоступно';
+    case 'research-unavailable':return 'Карту уже взяли или профинансировали';
+    case 'occupied':return 'Научная программа кампуса занята в этом году';
+    case 'worker-range':return 'Представитель слишком далеко от источника';
+    case 'worker':return 'Сначала выберите свободного представителя';
+    case 'already-funded':return 'Исследование уже профинансировано';
+    case 'not-research-holder':return 'Исследование удерживает другой игрок';
+    default:return result?.reason?'Действие недоступно: '+result.reason:'Действие доступно';
+  }
+}
+function researchSourceKey(source){
+  return source?.kind==='civic'?'civic':
+    source?.kind==='building'?'building:'+source.constructionId:null;
+}
+function openResearchDrawer(source=null){
+  researchSourceDraft=source&&researchSourceKey(source)?{...source}:null;
+  openDrawer('researchDrawer');
+  renderResearch();
+  $('#researchDrawer .close-btn')?.focus();
+}
+function renderResearch(){
+  const el=$('#researchContent');if(!el)return;
+  const pid=state.phase==='development'&&!state.developmentComplete
+    ?currentDeveloper(state):null;
+  const player=pid==null?null:state.players[pid];
+  const sources=pid==null?[]:researchAcquisitionSources(state,pid);
+  const chosenKey=researchSourceKey(researchSourceDraft);
+  const selected=sources.find(source=>researchSourceKey(source)===chosenKey)||null;
+  const totals={available:0,held:0,funded:0};
+  for(const card of RESEARCH_CARDS){
+    const status=researchCardState(state,card.id)?.status;
+    if(Object.hasOwn(totals,status))totals[status]++;
+  }
+  const sourceName=source=>source.kind==='civic'?'Civic Center':
+    'Политехнический кампус · '+(districtById(source.districtId)?.name||source.districtId);
+  const sourceStatus=source=>{
+    if(source.kind==='building'&&source.occupantId!=null)
+      return 'Занято: '+(state.players[source.occupantId]?.name||'другой игрок');
+    if(state.activationMainActionUsed)return 'Основное действие уже использовано';
+    if(!activeWorker(state,pid))return 'Выберите свободного представителя';
+    if(!source.available)return 'Вне досягаемости представителя';
+    return source.kind==='building'&&source.ownerId!==pid
+      ?'Доступно · владельцу +$1 из банка':'Доступно · 1 представитель';
+  };
+  const sourcesHtml=pid==null
+    ?'<p class="research-note">Получение и финансирование доступны в собственную активацию Development Phase. Каталог можно изучать в любое время.</p>'
+    :'<p class="research-note">Ход: <strong>'+escapeHtml(player.name)+'</strong>. Получение расходует основное действие; финансирование — отдельное быстрое действие, без представителя.</p>'+
+      '<div class="research-sources" aria-label="Выбор места получения исследования">'+
+      sources.map(src=>{
+        const key=researchSourceKey(src),active=key===chosenKey;
+        return '<button type="button" class="research-source-btn '+(active?'selected':'')+
+          '" data-research-pick-source="'+escapeHtml(key)+'" aria-pressed="'+(active?'true':'false')+
+          '" '+(src.available?'':'disabled')+'><b>'+escapeHtml(sourceName(src))+'</b>'+
+          '<small>'+escapeHtml(sourceStatus(src))+'</small></button>';
+      }).join('')+'</div>';
+  const cardHtml=card=>{
+    const entry=researchCardState(state,card.id);
+    const owner=entry.holderId==null?null:state.players[entry.holderId];
+    const owned=entry.status==='held'&&entry.holderId===pid;
+    const funding=owned?researchFundingPreview(state,pid,card.id):null;
+    const action=entry.status==='available'
+      ?'<button type="button" class="secondary-btn full" data-research-acquire="'+card.id+
+        '" '+(selected?.available?'':'disabled')+'>Получить исследование · 1 представитель</button>'+
+        (!selected?.available?'<small class="research-action-hint">Выберите доступный Civic Center или построенный кампус выше.</small>':'<small class="research-action-hint">Источник: '+escapeHtml(sourceName(selected))+'</small>')
+      :owned
+        ?'<button type="button" class="secondary-btn full" data-research-fund="'+card.id+
+          '" '+(funding?.ok?'':'disabled')+'>Финансировать · $'+card.fundingCost+'</button>'+
+          '<small class="research-action-hint">'+escapeHtml(funding?.ok
+            ?'Можно оплатить сейчас. Награда будет выдана один раз.':researchUiReason(funding))+'</small>'
+        :entry.status==='held'
+          ?'<p class="research-action-hint">Зарезервировано другим игроком, финансировать может только владелец.</p>'
+          :'<p class="research-action-hint">Глобальный эффект открыт всем игрокам. Повторное финансирование невозможно.</p>';
+    const who=entry.status==='available'?'Открытая карта':
+      entry.status==='held'?'Удерживает '+(owner?.name||'неизвестный игрок'):
+      'Спонсор '+(owner?.name||'неизвестный игрок')+' · '+(1899+entry.fundedRound)+' год';
+    return '<article class="research-card" data-research-card="'+card.id+'">'+
+      '<div class="research-card-header"><span>'+escapeHtml(card.id)+'</span><small>'+escapeHtml(who)+'</small></div>'+
+      '<h4>'+escapeHtml(card.name)+'</h4>'+
+      '<div class="research-terms"><b>Финансирование $'+card.fundingCost+
+      '</b><span>Спонсору +'+(card.sponsorReward?.vp||0)+' VP · +'+
+      (card.sponsorReward?.influence||0)+' Influence</span></div>'+
+      '<p><b>Требования при финансировании:</b> '+escapeHtml(card.requirementText||'Нет.')+'</p>'+
+      '<p><b>Эффект:</b> '+escapeHtml(card.effectText||'—')+'</p>'+
+      '<div class="research-card-actions">'+action+'</div></article>';
+  };
+  const section=(status,title)=>{
+    const cards=RESEARCH_CARDS.filter(card=>researchCardState(state,card.id)?.status===status);
+    return '<section class="research-group" data-research-status="'+status+'">'+
+      '<h4>'+title+' <small>'+cards.length+'</small></h4>'+
+      (cards.length?cards.map(cardHtml).join(''):'<p class="research-note">Нет карт в этой категории.</p>')+
+      '</section>';
+  };
+  el.innerHTML='<div class="research-overview"><b>Открытые '+totals.available+
+    '</b><span>Удерживаемые '+totals.held+'</span><span>Профинансированные '+totals.funded+
+    '</span></div>'+sourcesHtml+
+    '<p class="research-note">Удерживаемые карты хранятся без лимита и не активируют эффект до финансирования. R02, R05 и R06 получают специализированные элементы выбора и прогноза на этапе 8Б.</p>'+
+    section('available','Открытые исследования')+
+    section('held','Удерживаемые исследования')+
+    section('funded','Профинансированные исследования');
+  $$('[data-research-pick-source]').forEach(button=>button.onclick=()=>{
+    const source=sources.find(src=>researchSourceKey(src)===button.dataset.researchPickSource);
+    if(!source?.available)return;
+    researchSourceDraft=source.kind==='civic'?{kind:'civic'}:
+      {kind:'building',constructionId:source.constructionId};
+    renderResearch();
+  });
+  $$('[data-research-acquire]').forEach(button=>button.onclick=()=>{
+    const source=sources.find(src=>researchSourceKey(src)===researchSourceKey(researchSourceDraft));
+    if(pid==null||!source?.available){
+      showToast('Выберите доступный источник получения');renderResearch();return;
+    }
+    const result=acquireResearch(state,pid,button.dataset.researchAcquire,
+      source.kind==='civic'?{kind:'civic'}:{kind:'building',constructionId:source.constructionId});
+    if(result.ok){
+      researchSourceDraft=null;
+      showToast('Исследование получено. Для эффекта его нужно отдельно финансировать.'+
+        (result.ownerReward?' Владелец кампуса получает $'+result.ownerReward+'.':''));
+      render();
+    }else{
+      showToast(researchUiReason(result));render();
+    }
+  });
+  $$('[data-research-fund]').forEach(button=>button.onclick=()=>{
+    if(pid==null)return;
+    const result=fundResearch(state,pid,button.dataset.researchFund);
+    if(result.ok){
+      showToast('Исследование профинансировано: −$'+result.cost+
+        ', +'+result.vp+' VP · +' +(result.influence?.steps||0)+' Influence');
+      render();
+    }else{showToast(researchUiReason(result));render();}
+  });
+}
+
 function renderCityActions(){
 const el=$('#cityActions');if(!el)return;
 if(state.phase!=='development'){
