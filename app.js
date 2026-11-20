@@ -3,13 +3,13 @@ PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseCon
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
 isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,fireServiceProtection,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
-createInitialState,ensureResearchState,researchCardState,researchAcquisitionSources,acquireResearch,researchFundingPreview,fundResearch,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
+createInitialState,ensureResearchState,researchCardState,researchAcquisitionSources,acquireResearch,researchFundingPreview,fundResearch,researchLogisticsForecast,researchLogisticsArrivalReport,cityGoalAdvanceOptions,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,standardProjectFee,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,constructionReinforcementOption,currentReinforcementChoice,resolveReinforcementChoice,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,purchaseMaterialUnitPrice,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,researchClinicIncomeBonus,migrateHerbalPrivatePracticeSnapshot,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0590-research-ui-8a';
+} from './game-core.js?v=0591-research-stage8b';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0590-research-state';
 import {RESEARCH_CARDS} from './research-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -2856,7 +2856,7 @@ function renderReinforcementChoice(){
     '<h2>Завершить строительство</h2><p><b>'+escapeHtml(project?.name||construction.projectId)+'</b> · '+
     escapeHtml(districtById(construction.districtId)?.name||construction.districtId)+
     ' · '+escapeHtml(owner.name)+'</p>'+
-    '<p>Материалы готовы. Можно дополнительно заплатить <b>$'+choice.cost+
+    '<p>Материалы для завершения уже готовы. Выбор обязателен: можно заплатить <b>$'+choice.cost+
     '</b> и снизить личный прирост У этого здания на <b>'+choice.earthquakeReduction+
     '</b>. П не меняется. Выбор окончательный, рабочий не требуется.</p>'+
     '<div class="recruitment-actions">'+
@@ -3104,7 +3104,16 @@ return '+$'+goal.reward.capital+' · +'+goal.reward.prestige+' VP'+(goal.reward.
 function renderCityGoals(){
 const el=$('#cityGoalMarket');if(!el)return;
 const cd=currentDeclarer(state),player=cd!=null?state.players[cd]:null,already=player?.goalTakenRound===state.round;
-const report=(state.lastGoalReports||[]).length?'<div class="goal-report-banner"><b>ОТЧЁТ НАЧАЛА ГОДА</b><span>'+state.lastGoalReports.map(r=>state.players[r.playerId].name+' · '+cityGoalById(r.goalId)?.name+' → +$'+r.capital+' / +'+r.prestige+' VP').join(' · ')+'</span></div>':'';
+const advance=cd!=null?cityGoalAdvanceOptions(state,cd):null;
+const researchOpened=researchCardState(state,'R06')?.status==='funded';
+const advanceReason=()=>{
+ if(!advance)return 'Нет активной городской сессии';
+ if(advance.reason==='advance-limit')return 'Лимит: уже есть одна активная цель с авансом';
+ if(advance.reason==='already-taken')return 'В этом году цель уже взята';
+ if(advance.reason==='not-city-hall-turn')return 'Только в свою сессию мэрии';
+ return 'Аванс сейчас недоступен';
+};
+const report=(state.lastGoalReports||[]).length?'<div class="goal-report-banner"><b>ОТЧЁТ НАЧАЛА ГОДА</b><span>'+state.lastGoalReports.map(r=>state.players[r.playerId].name+' · '+cityGoalById(r.goalId)?.name+' → +$'+r.capital+' / +'+r.prestige+' VP'+(r.advanceAmount?' (аванс $'+r.advanceAmount+' получен ранее)':'')).join(' · ')+'</span></div>':'';
 const cards=(state.goalMarket||[]).map((card,slot)=>{
 if(!card)return '<div class="city-goal-card empty"><span>Цель взята</span></div>';
 const g=cityGoalById(card.id),ev=player?cityGoalEvaluation(state,player.id,g.id):null,can=state.phase==='declare'&&!!player&&!already;
@@ -3116,14 +3125,29 @@ return '<article class="city-goal-card '+(ev?.complete?'complete-now':'')+'">'
 +'<div class="goal-requirement"><b>ТРЕБОВАНИЕ</b><span>'+g.requirement+'</span></div>'
 +'<div class="goal-progress"><span>Прогресс '+(player?player.name:'')+'</span><strong>'+progress+(ev?.complete?' ✓':'')+'</strong></div>'
 +'<div class="goal-reward"><span>'+goalRewardText(g)+'</span><em>Провал: −'+g.failPrestige+' VP</em></div>'
-+'<button class="goal-take-btn" data-goal-slot="'+slot+'" '+(can?'':'disabled')+'>'+(already?'Цель уже взята':can?'Взять цель':'Только в свою заявку')+'</button>'
++'<button class="goal-take-btn" data-goal-slot="'+slot+'" '+(can?'':'disabled')+'>'+(already?'Цель уже взята':can?(researchOpened?'Взять цель без аванса':'Взять цель'):'Только в свою заявку')+'</button>'
++(researchOpened?'<button type="button" class="goal-take-btn goal-advance-btn" data-goal-advance-slot="'+slot+'" '+
+  (can&&advance?.available&&g.reward.capital>=advance.successReduction?'':'disabled')+
+  '>R06 · Взять с авансом +$'+(advance?.amount||3)+'</button>'+
+  '<small class="goal-advance-note">'+(advance?.available&&can
+    ?'Сейчас +$'+advance.amount+'; при успехе денежная награда −$'+advance.successReduction+
+      ', при провале дополнительно −'+advance.failureVpPenalty+' VP. Лимит: '+advance.maxActive+' активная авансированная цель.'
+    :advanceReason())+'</small>':'')
 +'</article>';
 }).join('');
 el.innerHTML=report+'<div class="city-goal-head"><div><b>ГОРОДСКИЕ ЦЕЛИ</b><span>До 1 новой цели на игрока за City Hall · отчёт в начале следующего года</span></div>'+(player?'<strong>Сейчас: '+player.name+(already?' · цель уже взята':'')+'</strong>':'')+'</div><div class="city-goal-grid">'+cards+'</div>';
-$$('[data-goal-slot]').forEach(b=>b.onclick=()=>{
-const r=claimCityGoal(state,+b.dataset.goalSlot);
-if(!r.ok){showToast(r.reason==='already-taken'?'В этой City Hall Session вы уже взяли цель':'Сейчас цель взять нельзя');return;}
-showToast('Цель принята · проект всё ещё можно заявить');render();
+$$('[data-goal-slot], [data-goal-advance-slot]').forEach(b=>b.onclick=()=>{
+const takeAdvance=b.hasAttribute('data-goal-advance-slot');
+const slot=+(takeAdvance?b.dataset.goalAdvanceSlot:b.dataset.goalSlot);
+const r=claimCityGoal(state,slot,{takeAdvance});
+if(!r.ok){
+  showToast(r.reason==='already-taken'?'В этой City Hall Session вы уже взяли цель':
+    r.reason==='advance-limit'?'R06: уже есть активная цель с авансом':
+    'Сейчас эту цель взять нельзя: '+r.reason);return;
+}
+showToast(takeAdvance?'R06 · аванс +$'+r.advanceAmount+' получен. Обязательство записано на цель.':
+  'Цель принята без аванса · проект всё ещё можно заявить');
+render();
 });
 }
 function renderMarket(){
@@ -3300,7 +3324,10 @@ const h03Reduced=activeNewspaper(state)?.id==='H03'&&state.newsH03SupplyRound===
 const total=LOGISTICS_NODES.reduce((sum,node)=>sum+node.throughput,0)-(h03Reduced?4:0);
 el.innerHTML='<div class="supply-label"><strong>ГОРОДСКИЕ ПОСТАВКИ</strong><span>Порты и ж/д: дешёвый ограниченный запас · 3 исторических поставщика: дорогой ресурс всегда доступен · доставка в обоих случаях обычная</span></div><div class="supply-items">'
 +RESOURCE_ORDER.map(type=>'<span class="supply-resource '+materialClass(type)+'"><b>'+materialShort(type)+'</b><span>'+materialLabel(type)+'</span><strong>'+Math.round((LOGISTICS_RESOURCE_WEIGHTS[type]||0)*100)+'%</strong></span>').join('')
-+'<span class="supply-resource city-throughput"><b>'+total+'</b><span>дешёвых кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов + '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика</strong></span></div>';
++'<span class="supply-resource city-throughput"><b>'+total+'</b><span>дешёвых кубиков / раунд</span><strong>'+LOGISTICS_NODES.length+' узлов + '+NEUTRAL_MATERIAL_SUPPLIERS.length+' поставщика</strong></span></div>'+
+(researchCardState(state,'R05')?.status==='funded'
+ ?'<button type="button" class="secondary-btn research-forecast-shortcut" id="openResearchForecast">R05 · Прогноз и поступления</button>':'');
+$('#openResearchForecast')?.addEventListener('click',()=>openResearchDrawer(null,{focusLogistics:true}));
 }
 function renderSupplyNodes(){
 const layer=$('#supplyNodeLayer');if(!layer)return;const supply=state.logisticsSupply||{},pid=currentDeveloper(state),selecting=deliveryDraft?.step==='source'&&deliveryDraft.playerId===pid;
@@ -3378,12 +3405,48 @@ function researchSourceKey(source){
   return source?.kind==='civic'?'civic':
     source?.kind==='building'?'building:'+source.constructionId:null;
 }
-function openResearchDrawer(source=null){
+function openResearchDrawer(source=null,{focusLogistics=false}={}){
   researchSourceDraft=source&&researchSourceKey(source)?{...source}:null;
   openDrawer('researchDrawer');
   renderResearch();
-  $('#researchDrawer .close-btn')?.focus();
+  if(focusLogistics)requestAnimationFrame(()=>$('#researchLogisticsSection')?.scrollIntoView({block:'start'}));
+  else $('#researchDrawer .close-btn')?.focus();
 }
+
+/** R05 presentation only: the manifest and arrival receipt come from pure core
+ * selectors. Never inspect the still-secret newsDeck or modify the RNG/state. */
+function renderResearchLogistics(){
+  if(researchCardState(state,'R05')?.status!=='funded')return '';
+  const forecast=researchLogisticsForecast(state);
+  const arrival=researchLogisticsArrivalReport(state);
+  const mats=list=>list.length?list.map(type=>escapeHtml(materialShort(type))).join(' · '):'—';
+  const rows=(supply,prefix)=>LOGISTICS_NODES.map(node=>
+    '<div class="research-manifest-row" data-'+prefix+'-node="'+node.id+'">'+
+    '<b>'+escapeHtml(node.shortName||node.name)+'</b><span>'+mats(supply[node.id]||[])+'</span>'+
+    '<small>'+(supply[node.id]||[]).length+' ед.</small></div>').join('');
+  const adjustment=arrival?.adjustment=== 'H03'?'H03 · карантин: отменены последние морские поставки':
+    arrival?.adjustment==='F03'?'F03 · пожар в порту: груз перераспределён':
+    arrival?.adjustment==='C02'?'C02 · похищены две реальные единицы груза':
+    'Без газетных изменений состава';
+  const receipt=arrival?'<section class="research-manifest" data-research-arrival>'+
+      '<h5>Фактическое прибытие · '+arrival.year+'</h5>'+
+      '<p>Зафиксировано до любых покупок игроков; последующие перевозки не изменяют отчёт.</p>'+
+      '<p class="research-adjustment">'+escapeHtml(adjustment)+'</p>'+
+      '<div class="research-manifest-compare"><div><b>Было запланировано</b>'+
+      rows(arrival.planned,'research-planned')+'</div><div><b>Фактически прибыло</b>'+
+      rows(arrival.actual,'research-arrived')+'</div></div></section>':'';
+  const future=forecast?'<section class="research-manifest" data-research-forecast>'+
+      '<h5>План поставок · '+forecast.year+'</h5>'+
+      '<p>Базовый состав грузов на следующий год, до ещё неизвестной газеты. Доступен всем игрокам; это не бронь материалов.</p>'+
+      '<div class="research-manifest-grid">'+rows(forecast.supply,'research-forecast')+'</div>'+
+      '<small>План может измениться из-за карантина (H03), пожара в порту (F03) или кражи (C02). Какая газета появится, прогноз не раскрывает.</small></section>':
+      '<p class="research-note" data-research-no-forecast>'+
+        (state.round>=MAX_ROUNDS?'1905 — последний экономический год. Прогноза на 1906 нет.':
+        'На следующий год пока нет сохранённого корректного прогноза.')+'</p>';
+  return '<section class="research-logistics" id="researchLogisticsSection" aria-label="R05 · прогноз и фактические поставки">'+
+    '<h4>R05 · Телеграфная координация</h4>'+receipt+future+'</section>';
+}
+
 function renderResearch(){
   const el=$('#researchContent');if(!el)return;
   const pid=state.phase==='development'&&!state.developmentComplete
@@ -3459,7 +3522,7 @@ function renderResearch(){
   el.innerHTML='<div class="research-overview"><b>Открытые '+totals.available+
     '</b><span>Удерживаемые '+totals.held+'</span><span>Профинансированные '+totals.funded+
     '</span></div>'+sourcesHtml+
-    '<p class="research-note">Удерживаемые карты хранятся без лимита и не активируют эффект до финансирования. R02, R05 и R06 получают специализированные элементы выбора и прогноза на этапе 8Б.</p>'+
+    '<p class="research-note">Удерживаемые карты хранятся без лимита и не активируют эффект до финансирования. R02 предлагает укрепление при завершении здания; R06 открывает аванс в мэрии.</p>'+renderResearchLogistics()+
     section('available','Открытые исследования')+
     section('held','Удерживаемые исследования')+
     section('funded','Профинансированные исследования');
@@ -4234,7 +4297,13 @@ const activationNote=isActive
 const goalHtml=(p.goals||[]).length?(p.goals||[]).map(entry=>{
 const g=cityGoalById(entry.id),ev=cityGoalEvaluation(state,p.id,entry),target=cityGoalTarget(entry.id);
 const status=entry.status==='completed'?'ВЫПОЛНЕНО':entry.status==='failed'?'ПРОВАЛЕНО':ev.complete?'ГОТОВО К ОТЧЁТУ':'АКТИВНО';
-return '<div class="office-goal '+entry.status+' '+(ev.complete?'ready':'')+'"><div><b>'+g.name+'</b><small>'+g.requirement+'</small></div><strong>'+status+'</strong><span>Прогресс '+ev.progress+'/'+target+' · '+goalRewardText(g)+' · провал −'+g.failPrestige+' VP</span>'+'</div>';
+const advanced=Number.isInteger(entry.advanceAmount)&&entry.advanceAmount>0;
+const advanceTerms=RESEARCH_CARDS.find(card=>card.effect?.type==='city-goal-advance-option')?.effect;
+const reducedReward=advanced?advanceTerms?.onSuccessMoneyRewardReduction??entry.advanceAmount:0;
+const additionalPenalty=advanced?advanceTerms?.onFailureAdditionalVpPenalty??0:0;
+const funds=advanced?' · R06: аванс $'+entry.advanceAmount+' уже выдан; при успехе денежная награда $'+
+  Math.max(0,g.reward.capital-reducedReward)+'; при провале дополнительно −'+additionalPenalty+' VP':'';
+return '<div class="office-goal '+entry.status+' '+(ev.complete?'ready':'')+'"><div><b>'+g.name+'</b><small>'+g.requirement+'</small></div><strong>'+status+'</strong><span>Прогресс '+ev.progress+'/'+target+' · '+goalRewardText(g)+' · провал −'+g.failPrestige+' VP'+funds+'</span>'+'</div>';
 }).join(''):'<div class="empty-state compact">Городских целей пока нет.</div>';
 const wagonActions=active.filter(con=>con.projectId==='wagonboarding'&&con.status==='complete').map(con=>{
  const level=con.wagonLevel||1,done=con.wagonUpgradedRound===state.round,enabled=isActive&&level<3&&!done&&p.capital>=2;
