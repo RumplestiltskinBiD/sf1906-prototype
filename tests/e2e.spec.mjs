@@ -333,11 +333,23 @@ for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366
   await expect(page.locator('[data-delivery-node]')).toHaveCount(5);
   await expect(page.locator('[data-delivery-supplier]')).toHaveCount(3);
   await page.locator('#actionDelivery').click();
-  if(viewport.width<=640||(viewport.width<=960&&viewport.height<=500))
-   await page.locator('#deliveryShowSourceList').click();
+  const mobile=viewport.width<=640||(viewport.width<=960&&viewport.height<=500);
   await expect(page.locator('[data-ds-yard],.freight-yard-source')).toHaveCount(0);
-  await expect(page.locator('[data-ds-node="pacificmail"]')).toBeVisible();
-  await expect(page.locator('[data-ds-supplier="engle-lumber"]')).toBeVisible();
+  if(mobile){
+   // Mobile intentionally uses map-first selection, not the retired source list panel.
+   await expect(page.locator('#deliveryPanel')).toBeHidden();
+   await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
+   await expect(page.locator('[data-delivery-node="pacificmail"]')).toHaveClass(/source-available/);
+   await expect(page.locator('[data-delivery-supplier="engle-lumber"]')).toHaveClass(/source-available/);
+   await page.locator('[data-delivery-node="pacificmail"]').click();
+   await expect(page.locator('[data-hauler="dray2a"]')).toBeVisible();
+  }else{
+   await expect(page.locator('[data-ds-node="pacificmail"]')).toBeVisible();
+   await expect(page.locator('[data-ds-supplier="engle-lumber"]')).toBeVisible();
+   await page.locator('[data-ds-node="pacificmail"]').click();
+   await expect(page.locator('[data-hauler="dray2a"]')).toBeVisible();
+  }
+  await expect(page.locator('[data-delivery-freight-yard],[data-ds-yard]')).toHaveCount(0);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow).toBeLessThanOrEqual(3);
  });
