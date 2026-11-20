@@ -150,7 +150,7 @@ test('legacy active H03 saves are not retroactively depleted or rerolled',()=>{
  const s=setup({legacy:true});
  delete s.newsH03SupplyRound;
  s.logisticsSupply.pacificmail=['Steel']; // previously bought cargo
- s.freightYardInventories[0]=['Masonry'];
+ s.freightYardInventories=[['Masonry'],[],[]]; // explicit archival save, not a new-game field
  const before=snapshot(s.logisticsSupply),beforeYard=snapshot(s.freightYardInventories);
  G.ensureNewspaper(s,{rng:()=>{throw Error('legacy draws cannot be undone')}});
  assert.equal(snapshot(s.logisticsSupply),before);
