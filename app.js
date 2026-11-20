@@ -3469,6 +3469,7 @@ function renderResearch(){
     researchSourceDraft=source.kind==='civic'?{kind:'civic'}:
       {kind:'building',constructionId:source.constructionId};
     renderResearch();
+    $$('[data-research-pick-source]').find(b=>b.dataset.researchPickSource===researchSourceKey(researchSourceDraft))?.focus();
   });
   $$('[data-research-acquire]').forEach(button=>button.onclick=()=>{
     const source=sources.find(src=>researchSourceKey(src)===researchSourceKey(researchSourceDraft));
@@ -3482,6 +3483,8 @@ function renderResearch(){
       showToast('Исследование получено. Для эффекта его нужно отдельно финансировать.'+
         (result.ownerReward?' Владелец кампуса получает $'+result.ownerReward+'.':''));
       render();
+      const next=$$('[data-research-fund]').find(b=>b.dataset.researchFund===result.researchId);
+      (next&&!next.disabled?next:$('#researchDrawer .close-btn'))?.focus();
     }else{
       showToast(researchUiReason(result));render();
     }
@@ -3493,6 +3496,7 @@ function renderResearch(){
       showToast('Исследование профинансировано: −$'+result.cost+
         ', +'+result.vp+' VP · +' +(result.influence?.steps||0)+' Influence');
       render();
+      $('#researchDrawer .close-btn')?.focus();
     }else{showToast(researchUiReason(result));render();}
   });
 }
@@ -4356,7 +4360,7 @@ $$('[data-b2-jail-all]').forEach(b=>b.onclick=()=>{const pid=+b.dataset.b2JailAl
 $$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue(state,id,state.districts[id].landValue+(+b.dataset.delta));render();});
 }
 function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
-function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
+function closeDrawers(){const researchWasOpen=$('#researchDrawer')?.classList.contains('open');document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));if(researchWasOpen)$('#researchBtn')?.focus();}
 function newGame(){if(!confirm('Начать новую тестовую партию?'))return;researchSourceDraft=null;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;newsMapVisible=false;newsEmergencyMode=false;newsSheetOpen=false;newsArchiveIndex=null;upkeepSelectedConstructionId=null;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
