@@ -488,65 +488,62 @@ test('limited haulers are shared once per round; Standard Hauler is reusable',()
 });
 
 
-test('Public Freight Yard has private 2-slot sections and charges $2 only when an empty section is occupied',()=>{
-  const s=devState();
-  assert.equal(G.FREIGHT_YARD.districtId,'western');
-  assert.equal(G.FREIGHT_YARD.capacityPerPlayer,2);
-  assert.equal(G.FREIGHT_YARD.rentCost,2);
-  assert.deepEqual(G.freightYardInventory(s,0),[]);
-  assert.deepEqual(G.freightYardInventory(s,1),[]);
-
-  s.logisticsSupply.broadway=['Lumber','Masonry','Steel'];
-  const first={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2a',cargo:['Lumber'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
-  let v=G.validateDeliveryPlan(s,first);
-  assert.equal(v.ok,true,JSON.stringify(v));
-  assert.equal(v.cost.materialCost,1);
-  assert.equal(v.cost.routeCost,2);
-  assert.equal(v.cost.yardRentCost,2);
-  assert.equal(v.cost.total,5);
-  assert.equal(G.executeDelivery(s,first).ok,true);
-  assert.deepEqual(G.freightYardInventory(s,0),['Lumber']);
-  assert.deepEqual(G.freightYardInventory(s,1),[]);
-  s.developmentSlotsUsed[0]=1; // following annual activation
-
-  const second={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'dray2b',cargo:['Masonry'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Masonry']}]};
-  v=G.validateDeliveryPlan(s,second);
-  assert.equal(v.ok,true,JSON.stringify(v));
-  assert.equal(v.cost.yardRentCost,0);
-  assert.equal(v.cost.total,3);
-  assert.equal(G.executeDelivery(s,second).ok,true);
-  assert.deepEqual(G.freightYardInventory(s,0),['Lumber','Masonry']);
-
-  s.developmentSlotsUsed[0]=2; // third annual activation, check full-yard failure
-  const overflow={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Steel'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Steel']}]};
-  assert.equal(G.validateDeliveryPlan(s,overflow).reason,'target-capacity');
+test('retired Freight Yard cannot be selected as a pickup or drop and rejection is atomic',()=>{
+ const s=devState();
+ s.logisticsSupply.broadway=['Lumber'];
+ const oldPickup={playerId:0,source:{kind:'freight-yard',id:'freightyard'},
+   haulerId:'standard',cargo:['Lumber'],route:['western'],
+   drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
+ assert.equal(G.deliverySourceInfo(s,0,oldPickup.source),null);
+ const before=JSON.stringify(s);
+ assert.equal(G.validateDeliveryPlan(s,oldPickup).reason,'source');
+ assert.equal(JSON.stringify(s),before,'former yard source must not change game state');
+ const oldDrop={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',
+   cargo:['Lumber'],route:['northbeach','pacific','western'],
+   drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
+ assert.equal(G.validateDeliveryPlan(s,oldDrop).reason,'target-route');
+ assert.equal(G.executeDelivery(s,oldDrop).ok,false);
+ assert.equal(JSON.stringify(s),before,'retired yard cannot spend materials, haulage or capital');
+ assert.equal(G.deliveryPlanCost(s,oldDrop).yardRentCost,undefined);
 });
 
-test('Freight Yard is a paid-storage source; emptying it resets the next $2 occupancy fee',()=>{
-  const s=devState();
-  s.freightYardInventories=[['Lumber','Masonry'],[],[]];
-  s.constructions=[
-    construction('C1',0,'tenement','western'),
-    construction('C2',0,'shops','western')
-  ];
-  const first={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Lumber'],route:['western'],drops:[{kind:'construction',id:'C1',materials:['Lumber']}]};
-  let v=G.validateDeliveryPlan(s,first);
-  assert.equal(v.ok,true,JSON.stringify(v));
-  assert.equal(v.cost.materialCost,0);
-  assert.equal(v.cost.yardRentCost,0);
-  assert.equal(G.executeDelivery(s,first).ok,true);
+test('retired Freight Yard refunds original paid resources and rent once to each owning player, without legacy storage',()=>{
+ const s=devState();
+ const original=s.players.map(p=>p.capital);
+ s.freightYardInventories=[['Lumber','Steel'],['Masonry'],[]];
+ const beforeSupply=JSON.stringify(s.logisticsSupply);
+ const converted=G.migrateRetiredFreightYard(s);
+ assert.equal(converted.migrated,true);
+ assert.deepEqual(converted.refunds,[
+  {playerId:0,materials:['Lumber','Steel'],resources:3,rent:2,amount:5},
+  {playerId:1,materials:['Masonry'],resources:1,rent:2,amount:3}
+ ]);
+ assert.deepEqual(s.players.map((p,i)=>p.capital-original[i]),[5,3,0]);
+ assert.equal(Object.hasOwn(s,'freightYardInventories'),false);
+ assert.equal(JSON.stringify(s.logisticsSupply),beforeSupply);
+ assert.ok(s.log.some(entry=>entry.msg.includes('отменена аренда старого Грузового двора')));
+ const frozen=JSON.stringify(s);
+ assert.deepEqual(G.migrateRetiredFreightYard(s),{migrated:false,refunds:[]});
+ assert.equal(JSON.stringify(s),frozen,'reload cannot repeat any refund or append duplicate logs');
+});
 
-  s.developmentSlotsUsed[0]=1; // next activation
-  const second={playerId:0,source:{kind:'freight-yard',id:'freightyard'},haulerId:'standard',cargo:['Masonry'],route:['western'],drops:[{kind:'construction',id:'C2',materials:['Masonry']}]};
-  assert.equal(G.executeDelivery(s,second).ok,true);
-  assert.deepEqual(G.freightYardInventory(s,0),[]);
-
-  s.logisticsSupply.broadway=['Lumber'];
-  s.developmentSlotsUsed[0]=2; // third annual activation, check renewed rent
-  const reoccupy={playerId:0,source:{kind:'node',id:'broadway'},haulerId:'standard',cargo:['Lumber'],route:['northbeach','pacific','western'],drops:[{kind:'freight-yard',id:'freightyard',materials:['Lumber']}]};
-  v=G.validateDeliveryPlan(s,reoccupy);
-  assert.equal(v.ok,true,JSON.stringify(v));
-  assert.equal(v.cost.yardRentCost,2);
+test('retired Freight Yard migration tolerates empty/malformed legacy storage without touching standard warehouses',()=>{
+ const s=devState();
+ s.constructions=[
+  construction('W1',0,'std_warehouse','western','complete',['Lumber','Masonry','Steel'],['Steel']),
+  construction('W2',1,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Masonry'])
+ ];
+ s.freightYardInventories=[['Lumber','invalid','Masonry'],null,[]];
+ const stock=s.constructions.map(w=>[...w.warehouseInventory]);
+ const cash=s.players.map(p=>p.capital);
+ const out=G.migrateRetiredFreightYard(s);
+ assert.deepEqual(out.refunds.map(p=>p.amount),[4]); // 1+1 resources +$2 rent
+ assert.equal(s.players[0].capital,cash[0]+4);
+ assert.equal(s.players[1].capital,cash[1]);
+ assert.deepEqual(s.constructions.map(w=>w.warehouseInventory),stock);
+ assert.equal(G.warehouseStorageCapacity(s.constructions[0]),3);
+ assert.equal(G.warehouseStorageCapacity(s.constructions[1]),5);
+ assert.equal(Object.hasOwn(s,'freightYardInventories'),false);
 });
 
 test('Warehouse stores max 5 and can supply missing resources in same district',()=>{
@@ -602,7 +599,6 @@ test('round cleanup refreshes city supply and haulers but preserves staged and W
   const s=devState();
   s.developmentComplete=true;
   s.haulersUsed=['dray2a','freight5'];
-  s.freightYardInventories=[['Masonry'],[],[]];
   s.constructions=[
     construction('W1',0,'warehouse','soma','complete',['Lumber','Masonry','Steel'],['Steel','Lumber']),
     construction('C1',0,'insurance','soma','under-construction',['Masonry'])
@@ -612,7 +608,6 @@ test('round cleanup refreshes city supply and haulers but preserves staged and W
   assert.deepEqual(s.haulersUsed,[]);
   assert.ok(Object.values(s.logisticsSupply).flat().every(x=>x==='Steel'));
   assert.deepEqual(G.warehouseInventory(s.constructions[0]),['Steel','Lumber']);
-  assert.deepEqual(G.freightYardInventory(s,0),['Masonry']);
   assert.deepEqual(s.constructions[1].materialsDelivered,['Masonry']);
   assert.equal(s.firstPlayer,1);
   assert.ok(s.players.every(p=>p.workersLeft===3));
