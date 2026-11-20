@@ -1,4 +1,5 @@
-import {DISTRICTS,districtNeighbors,districtRisk,createInitialState,fireServiceProtection} from './game-core.js';
+import {DISTRICTS,districtNeighbors,districtRisk,createInitialState,fireServiceProtection,researchCardState} from './game-core.js';
+import {RESEARCH_CARDS} from './research-cards.js';
 
 // A separate Phase II laboratory: it does not change Phase I state or saves.
 // Actual risks are nonnegative integers without upper clipping; III is display only.
@@ -178,6 +179,83 @@ export function awardRegisteredPropertyTitleVp(game,simulation){
     awards.push(item);
   }
   return {ok:true,awards,prestige:awards.length};
+}
+
+/**
+ * Phase II laboratory scoring adapter: research-funded medical survivors.
+ * This reads the actual settled earthquake state AND the final fire result.
+ * Quake damage to a strictly ADJACENT district qualifies even if that district
+ * subsequently burns. Fire alone NEVER qualifies, and the medical district
+ * itself never satisfies its own adjacency requirement.
+ *
+ * The scorer is pure: passing a live Phase I save cannot change that save.
+ * Research effects are selected by registry type, not by R08 hard-coded here.
+ * The separate award function may be invoked on a COPY for laboratory tests
+ * or on the final game state when the Phase II finish is integrated later.
+ */
+export function medicalResearchSurvivalResults(game,simulation){
+  if(!simulation?.done)return {ok:false,reason:'simulation-incomplete',entries:[]};
+  if(!simulation.nodes||DISTRICT_IDS.some(id=>!simulation.nodes[id]||
+    !['intact','damaged','destroyed'].includes(simulation.nodes[id].quake)
+    ||typeof simulation.nodes[id].burning!=='boolean'))
+    return {ok:false,reason:'invalid-simulation',entries:[]};
+  const card=RESEARCH_CARDS.find(c=>c.effect?.appliesToAllPlayers===true
+    &&c.effect?.phase2?.type==='medical-survivor-neighbor-earthquake-award');
+  const e=card?.effect?.phase2;
+  if(!e||e.onlyOncePerBuilding!==true||e.requiresCompletedBuilding!==true
+    ||e.requiresSurvivingBuilding!==true||e.adjacentDistrictOnly!==true
+    ||e.fireOnlyDamageDoesNotQualify!==true
+    ||!Number.isSafeInteger(e.pointsPerEligibleBuilding)||e.pointsPerEligibleBuilding<1
+    ||!Array.isArray(e.eligibleMedicalProjects)||!Array.isArray(e.neighboringEarthquakeStatuses))
+    return {ok:false,reason:'research-terms',entries:[]};
+  if(researchCardState(game,card.id)?.status!=='funded')
+    return {ok:false,reason:'research-not-funded',entries:[]};
+  const allowed=new Set(e.eligibleMedicalProjects),damage=new Set(e.neighboringEarthquakeStatuses);
+  const seen=new Set();
+  const entries=(game?.constructions||[]).filter(c=>{
+    if(c.id==null||seen.has(c.id)||c.status!=='complete'||!allowed.has(c.projectId))return false;
+    seen.add(c.id);return true;
+  }).map(c=>{
+    const own=simulation.nodes[c.districtId];
+    const survived=!!own&&own.quake!=='destroyed'&&!own.burning;
+    const damagedNeighbors=districtNeighbors(c.districtId).filter(id=>
+      id!==c.districtId&&DISTRICT_IDS.includes(id)&&damage.has(simulation.nodes[id]?.quake));
+    const owner=game?.players?.[c.playerId];
+    const alreadyAwarded=!!c.catastropheResearchVpAwarded?.[card.id];
+    const qualified=!!owner&&survived&&damagedNeighbors.length>0;
+    const bonus=qualified?e.pointsPerEligibleBuilding:0;
+    return {constructionId:c.id,projectId:c.projectId,playerId:c.playerId,
+      districtId:c.districtId,survived,quake:own?.quake||null,burned:!!own?.burning,
+      damagedNeighbors,qualified,alreadyAwarded,bonus,
+      payable:bonus&&!alreadyAwarded?bonus:0};
+  });
+  return {ok:true,researchId:card.id,entries,
+    eligibleBuildings:entries.filter(x=>x.qualified).length,
+    pendingVp:entries.reduce((sum,x)=>sum+x.payable,0)};
+}
+
+/** One-time research VP award on the caller's game object.
+ * Laboratory callers MUST pass a dedicated in-memory copy of the imported
+ * party. It does not write localStorage or finish the Phase I game.
+ */
+export function awardMedicalResearchSurvivalVp(game,simulation){
+  const preview=medicalResearchSurvivalResults(game,simulation);
+  if(!preview.ok)return preview;
+  const awards=[];
+  for(const item of preview.entries){
+    if(!item.payable)continue;
+    const c=(game.constructions||[]).find(x=>x.id===item.constructionId);
+    const player=game.players?.[item.playerId];
+    if(!c||!player||c.catastropheResearchVpAwarded?.[preview.researchId])continue;
+    c.catastropheResearchVpAwarded??={};
+    c.catastropheResearchVpAwarded[preview.researchId]=true;
+    player.prestige=(player.prestige||0)+item.payable;
+    if(Array.isArray(game.log))game.log.push({cls:'good',msg:
+      `${player.name}: ${c.projectId==='std_clinic'?'Районная амбулатория':'Клиника'} пережила катастрофу 1906, рядом район пострадал от землетрясения — +${item.payable} VP по ${preview.researchId}.`});
+    awards.push({...item,bonus:item.payable});
+  }
+  return {ok:true,researchId:preview.researchId,awards,
+    prestige:awards.reduce((sum,x)=>sum+x.bonus,0)};
 }
 
 export function stats(sim){
