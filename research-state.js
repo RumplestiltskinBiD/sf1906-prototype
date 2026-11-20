@@ -1,11 +1,11 @@
 /**
  * SF1906 research state foundation (R01–R08).
  *
- * One canonical record per research ID. This module deliberately performs
- * no acquisition, funding, payouts or citywide effects until the subsequent
- * implementation stages have passed their own QA gates.
+ * One canonical record per research ID. This module owns migration and
+ * selectors; acquisition, financing and global effects are implemented by
+ * the shared game-core research transactions, not duplicated here.
  *
- * Future R09 is registered in research-cards.js, not in this module.
+ * Future R09 is registered in research-cards.js, not hard-coded in this module.
  */
 import {RESEARCH_CARDS,researchCardById} from './research-cards.js';
 
