@@ -3527,6 +3527,24 @@ const clubs=completedActionSpaces(state,'club');
 const commissionHouses=completedActionSpaces(state,'commission_house');
 const firehouses=completedActionSpaces(state,'firehouse');
 const justiceHalls=completedActionSpaces(state,'hall_of_justice');
+const researchSources=researchAcquisitionSources(state,pid);
+const researchSourceButtons=researchSources.map(source=>{
+ const civic=source.kind==='civic',owner=source.ownerId==null?null:state.players[source.ownerId];
+ const label=civic?'Civic Center · Получить исследование':'Научная программа · '+(districtById(source.districtId)?.name||source.districtId);
+ const where=civic?'Общее городское пространство':
+   (owner?.name||'Владелец')+(source.ownerId===pid?' · ваш кампус':' · чужой кампус: владельцу +$1');
+ const occupier=source.occupantId==null?'':state.players[source.occupantId]?.name||'Игрок';
+ const hint=source.kind==='building'&&source.occupantId!=null?'ЗАНЯТО · '+occupier:
+   mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО':
+   !selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ':
+   !source.available?'СЛИШКОМ ДАЛЕКО':'ВЫБРАТЬ ИССЛЕДОВАНИЕ';
+ const disabled=!source.available;
+ return '<button type="button" class="action-space-btn research-source-action '+
+   (source.available?'available-action':'')+'" data-research-open-source="'+source.kind+'"'+
+   (civic?'':' data-campus-research="'+escapeHtml(source.constructionId)+'"')+
+   ' '+(disabled?'disabled':'')+'><b>'+escapeHtml(label)+'</b><span>'+
+   escapeHtml(where)+'</span><strong>'+escapeHtml(hint)+'</strong></button>';
+}).join('');
 const availableProjects=(p.portfolio||[]).length;
 const debt=(p.loans||[]).length;
 const contract=(p.bureauContracts||0)>0;
@@ -3662,7 +3680,8 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
 <button class="city-action-card build ${buildDisabled?'':'action-available'}" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
 <button class="city-action-card movement ${moveDisabled?'':'action-available'}" id="actionMoveWorker" ${moveDisabled?'disabled':''}><b>Перемещение</b><span>Основное действие: перейти ровно в 1 соседний район, без дохода</span><strong>${moveDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ СОСЕДНИЙ РАЙОН'}</strong></button>
 <button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Несколько источников по пути (+$1 за дополнительную погрузку)</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
-<div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
+<div class="city-action-card research-action-card"><b>Исследования · Civic Center / кампус</b><span>Получение — основное действие представителя. Финансирование — быстрое действие в собственную активацию.</span><div class="action-space-list">${researchSourceButtons}</div><button type="button" class="secondary-btn full" id="openResearchCatalog">Каталог и финансирование R01–R08</button></div>
+ <div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
 <div class="city-action-card ${advertisingAvailable?'action-available':''}"><b>Рекламное агентство</b><span>$2 → +2 Income</span><div class="action-space-list">${advertisingButtons}</div></div>
  <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
@@ -3676,6 +3695,14 @@ const r=selectWorker(state,pid,b.dataset.selectWorker);
 if(!r.ok){showToast(r.reason==='used'?'Этот представитель уже использован':'Нельзя выбрать этого представителя');return;}
 state.pendingConstruction=null;state.pendingWorkerAction=null;fireActionDraft=null;justiceDraft=null;render();
 });
+$$('[data-research-open-source]').forEach(button=>button.onclick=()=>{
+ const source=researchSources.find(s=>s.kind===button.dataset.researchOpenSource&&
+   (s.kind==='civic'||String(s.constructionId)===button.dataset.campusResearch));
+ if(!source?.available){showToast('Это исследовательское пространство сейчас недоступно');return;}
+ openResearchDrawer(source.kind==='civic'?{kind:'civic'}:
+   {kind:'building',constructionId:source.constructionId});
+});
+$('#openResearchCatalog')?.addEventListener('click',()=>openResearchDrawer());
 const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
 const commissionBtn=$('#actionCommission');if(commissionBtn&&!commissionBtn.disabled)commissionBtn.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
