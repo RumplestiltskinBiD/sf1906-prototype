@@ -94,11 +94,13 @@ test('campus availability clears across new round, not when closing an office or
  assert.equal(snap(s),now);
  // After the main action, the player passes but this campus remains occupied this year.
  assert.equal(G.endActivation(s,0).ok,true);
- s.activeWorkerId=s.players[1].workers[0].id;
- assert.equal(G.researchAcquisitionSources(s,1)[1].available,false);
+ const nextPlayer=s.developmentPlayer;
+ assert.ok(Number.isInteger(nextPlayer)&&nextPlayer!==0);
+ s.activeWorkerId=s.players[nextPlayer].workers[0].id;
+ assert.equal(G.researchAcquisitionSources(s,nextPlayer)[1].available,false);
  // New year's canonical occupancy reset reopens the physical campus.
  s.round=2;s.actionSpaceOccupancy={};s.activationMainActionUsed=false;
- assert.equal(G.researchAcquisitionSources(s,1)[1].available,true);
+ assert.equal(G.researchAcquisitionSources(s,nextPlayer)[1].available,true);
 });
 test('old saves without research field render canonical available cards, without mutating state',()=>{
  const s=fixture();delete s.research;
