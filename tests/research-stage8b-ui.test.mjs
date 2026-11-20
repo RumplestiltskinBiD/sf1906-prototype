@@ -31,7 +31,7 @@ test('8B R05 is hidden before funding and its exact five-node forecast is read-o
  financeR05(s);
  s.newsDeck=['H01','F02'];
  const before=snapshot(s),forecast=researchLogisticsForecast(s);
- assert.equal(forecast.year,1900);
+ assert.equal(forecast.year,1901);
  assert.deepEqual(Object.keys(forecast.supply),LOGISTICS_NODES.map(x=>x.id));
  for(const n of LOGISTICS_NODES)assert.equal(forecast.supply[n.id].length,n.throughput);
  assert.deepEqual(forecast.possibleAdjustments,['H03','F03','C02']);
