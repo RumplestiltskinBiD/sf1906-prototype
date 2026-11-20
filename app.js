@@ -3,7 +3,7 @@ PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseCon
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
 isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,fireServiceProtection,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
-createInitialState,ensureResearchState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
+createInitialState,ensureResearchState,RESEARCH_CARDS,researchCardState,researchAcquisitionSources,acquireResearch,researchFundingPreview,fundResearch,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,standardProjectFee,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,constructionReinforcementOption,currentReinforcementChoice,resolveReinforcementChoice,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,purchaseMaterialUnitPrice,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
@@ -15,6 +15,8 @@ const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
 let inspectedOffice=0;
+let researchViewerId=null;
+let researchSourceChoice={kind:'civic'};
 let pendingBidReveal=false;
 let mobileContextOpen=false;
 let mobileMapDetail=false;
@@ -2904,7 +2906,7 @@ function renderNewProjectDecisions(){
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();renderReinforcementChoice();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderResearchBoard();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();renderReinforcementChoice();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
@@ -3381,6 +3383,7 @@ const clubs=completedActionSpaces(state,'club');
 const commissionHouses=completedActionSpaces(state,'commission_house');
 const firehouses=completedActionSpaces(state,'firehouse');
 const justiceHalls=completedActionSpaces(state,'hall_of_justice');
+ const researchSources=researchAcquisitionSources(state,pid);
 const availableProjects=(p.portfolio||[]).length;
 const debt=(p.loans||[]).length;
 const contract=(p.bureauContracts||0)>0;
@@ -3503,6 +3506,22 @@ if(fireActionDraft){
   fireTargetPanel=`<div class="fire-target-panel" id="fireTargetPanel"><div class="fire-target-head"><b>${fireActionDraft.kind==='upgrade'?'Добровольная модернизация':'Принудительная инспекция'}</b><button class="secondary-btn" id="cancelFireAction">Отмена</button></div>`
     +`<div class="fire-target-options">${choices.map(c=>`<button class="action-space-btn ${c.disabled?'':'available-action'}" data-fire-target="${c.id}" ${c.disabled?'disabled':''}><b>${c.label}</b><span>${c.detail}</span></button>`).join('')||'<span>Подходящих объектов нет</span>'}</div></div>`;
 }
+const researchButtons=researchSources.map(source=>{
+ const isCivic=source.kind==='civic',owner=source.ownerId!=null?state.players[source.ownerId]?.name:'Город';
+ const loc=districtById(source.districtId)?.name||source.districtId;
+ const occupant=source.occupantId==null?null:state.players[source.occupantId]?.name;
+ const reachable=!!selected&&workerCanReachDistrict(state,pid,source.districtId,selected.id);
+ const why=source.available
+   ?(isCivic?'Получить свободную карту':'Научная программа'+(source.ownerId===pid?' · своё здание':' · владельцу +$1'))
+   :occupant?'ЗАНЯТО: '+occupant
+   :mainUsed?'ОСНОВНОЕ ДЕЙСТВИЕ ИСПОЛЬЗОВАНО'
+   :!selected?'ВЫБЕРИТЕ ПРЕДСТАВИТЕЛЯ'
+   :!reachable?'ВНЕ РАДИУСА ПРЕДСТАВИТЕЛЯ':'НЕДОСТУПНО';
+ return '<button type="button" class="action-space-btn '+(source.available?'available-action':'')+'" data-research-open-kind="'+source.kind+'"'+
+   (isCivic?'':' data-research-open-id="'+escapeHtml(source.constructionId)+'"')+
+   (source.available?'':' disabled')+'><b>'+(isCivic?'Civic Center · Получить исследование':'Научная программа · '+owner)+
+   '</b><span>'+escapeHtml(loc)+(isCivic?' · общий доступ':' · экземпляр '+escapeHtml(source.constructionId))+'</span><strong>'+why+'</strong></button>';
+ }).join('');
 const buildDisabled=availableProjects===0||mainUsed||!selected;
 const moveDisabled=mainUsed||!selected;
 const deliveryDisabled=!canUseFreeAction(state,pid)||state.lastDeliveryKey===currentDeliveryKey(state,pid);
@@ -3514,6 +3533,7 @@ ${serviceOnly?'<div class="service-turn-hint">Работников нет. Вы 
 ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Завершить активацию → следующий игрок</button>':serviceOnly?'<div class="service-turn-actions"><button class="end-activation-btn" id="actionEndActivation">Пас · следующий игрок</button><button class="secondary-btn" id="actionPassRemaining">'+(hireReady?'Пропустить найм · завершить ходы':'Завершить мои ходы этого года')+'</button></div>':''}
 <div class="city-action-grid ${mainUsed?'main-action-used':''} ${serviceOnly?'service-only':''}">
 <button class="city-action-card build ${buildDisabled?'':'action-available'}" id="actionBuild" ${buildDisabled?'disabled':''}><b>Начать строительство</b><span>${availableProjects===0?'Нет доступного проекта':mainUsed?'Основное действие уже использовано':!selected?'Сначала выберите представителя':'Выбрать проект в офисе'}</span><strong>${buildDisabled?'НЕДОСТУПНО':'переход ≤ 1 район · 1 представитель'}</strong></button>
+<div class="city-action-card research-action"><b>⚗ Исследования · Civic Center / кампус</b><span>Получить карту — основное действие; финансировать свою карту — быстрое действие.</span><div class="action-space-list" id="researchActionSources">${researchButtons}</div><button type="button" class="secondary-btn full" id="showResearchFromCity">Все R01–R08 · финансирование</button></div>
 <button class="city-action-card movement ${moveDisabled?'':'action-available'}" id="actionMoveWorker" ${moveDisabled?'disabled':''}><b>Перемещение</b><span>Основное действие: перейти ровно в 1 соседний район, без дохода</span><strong>${moveDisabled?'НЕДОСТУПНО':'ВЫБРАТЬ СОСЕДНИЙ РАЙОН'}</strong></button>
 <button class="city-action-card delivery ${deliveryDisabled?'':'free-action-available'}" id="actionDelivery" ${deliveryDisabled?'disabled':''}><b>Доставка · СВОБОДНОЕ ДЕЙСТВИЕ</b><span>Несколько источников по пути (+$1 за дополнительную погрузку)</span><strong>${deliveryDisabled?'НЕДОСТУПНО':'НАЧАТЬ'}</strong></button>
 <div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
@@ -3530,6 +3550,11 @@ const r=selectWorker(state,pid,b.dataset.selectWorker);
 if(!r.ok){showToast(r.reason==='used'?'Этот представитель уже использован':'Нельзя выбрать этого представителя');return;}
 state.pendingConstruction=null;state.pendingWorkerAction=null;fireActionDraft=null;justiceDraft=null;render();
 });
+$$('[data-research-open-kind]').forEach(button=>button.onclick=()=>{
+  openResearchBoard({kind:button.dataset.researchOpenKind,
+    ...(button.dataset.researchOpenKind==='building'?{constructionId:button.dataset.researchOpenId}:{})},pid);
+});
+$('#showResearchFromCity')?.addEventListener('click',()=>openResearchBoard(null,pid));
 const build=$('#actionBuild');if(build&&!buildDisabled)build.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
 const deliveryBtn=$('#actionDelivery');if(deliveryBtn&&!deliveryDisabled)deliveryBtn.onclick=()=>startDeliveryFlow(pid);
 const commissionBtn=$('#actionCommission');if(commissionBtn&&!commissionBtn.disabled)commissionBtn.onclick=()=>{inspectedOffice=pid;openDrawer('officeDrawer');renderOffice();};
@@ -3992,6 +4017,125 @@ $$('[data-open-construction]').forEach(b=>b.onclick=()=>{const con=state.constru
 wireContextClose();
 }
 function wireContextClose(){const b=$('#contextClose');if(b)b.onclick=closeMobileContext;}
+function researchSourceLabel(source){
+ if(source.kind==='civic')return 'Civic Center · городской научный приём';
+ const con=(state.constructions||[]).find(c=>c.id===source.constructionId);
+ return (projectById(con?.projectId)?.name||'Научная программа')+' · '+
+   (districtById(source.districtId)?.name||source.districtId)+
+   ' · '+(state.players[source.ownerId]?.name||'Город');
+}
+function researchActionError(preview){
+ if(!preview)return 'Действие недоступно';
+ switch(preview.reason){
+ case 'research-unavailable':return 'Карту уже удерживают или профинансировали';
+ case 'main-action-unavailable':return 'Нужно свободное основное действие в свой ход';
+ case 'invalid-research-source':return 'Источник исследований недоступен';
+ case 'occupied':return 'Этот экземпляр кампуса уже занят в текущем году';
+ case 'worker':return 'Выберите свободного представителя';
+ case 'worker-range':return 'Представитель должен быть в этом или соседнем районе';
+ case 'not-research-holder':return 'Финансировать может только владелец удерживаемой карты';
+ case 'already-funded':return 'Исследование уже профинансировано';
+ case 'free-action-unavailable':return 'Быстрое действие доступно только в свою активацию';
+ case 'research-prerequisite':return 'Завершённых учреждений: '+(preview.completed??0)+' из '+(preview.required??'?');
+ case 'capital':return 'Недостаточно капитала: нужно $'+(preview.cost??'?')+
+   ', доступно $'+(preview.available??'?');
+ case 'research-not-found':return 'Карта не найдена';
+ default:return 'Действие недоступно: '+(preview.reason||'условия');
+ }
+}
+function openResearchBoard(source=null,viewerId=null){
+ if(state.phase==='draft'){showToast('Исследования откроются после стартового драфта');return;}
+ if(Number.isInteger(viewerId)&&state.players[viewerId])researchViewerId=viewerId;
+ else researchViewerId=currentDeveloper(state)??inspectedOffice;
+ if(source)researchSourceChoice={kind:source.kind,...(source.kind==='building'?{constructionId:source.constructionId}:{})};
+ else researchSourceChoice={kind:'civic'};
+ openDrawer('researchDrawer');
+ renderResearchBoard();
+}
+function renderResearchBoard(){
+ const el=$('#researchContent');if(!el)return;
+ const previousScroll=el.scrollTop;
+ const pid=state.players[researchViewerId]?researchViewerId:(currentDeveloper(state)??0);
+ const p=state.players[pid];
+ const sources=researchAcquisitionSources(state,pid);
+ const activeSource=sources.find(x=>x.kind===researchSourceChoice.kind&&
+   (x.kind==='civic'||x.constructionId===researchSourceChoice.constructionId))||sources[0];
+ if(!activeSource)return;
+ const takePossible=!!activeSource.available&&currentDeveloper(state)===pid;
+ const available=RESEARCH_CARDS.filter(c=>researchCardState(state,c.id)?.status==='available').length;
+ const held=RESEARCH_CARDS.filter(c=>researchCardState(state,c.id)?.status==='held');
+ const funded=RESEARCH_CARDS.filter(c=>researchCardState(state,c.id)?.status==='funded');
+ const personal=held.filter(c=>researchCardState(state,c.id)?.holderId===pid);
+ const isActive=state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===pid;
+ const tabs='<div class="research-viewers" role="group" aria-label="Посмотреть исследования игроков">'+
+  state.players.map(q=>'<button type="button" class="secondary-btn '+(pid===q.id?'research-current':'')+
+    '" data-research-viewer="'+q.id+'" aria-pressed="'+(pid===q.id)+'">'+escapeHtml(q.name)+'</button>').join('')+'</div>';
+ const options='<div class="research-sources" role="group" aria-label="Выбрать источник получения">'+sources.map(x=>{
+   const selected=x.kind===activeSource.kind&&(x.kind==='civic'||x.constructionId===activeSource.constructionId);
+   const owner=x.ownerId!=null&&x.ownerId!==pid?' · чужой +$1':'';
+   return '<button type="button" class="research-source '+(selected?'selected':'')+
+     '" data-research-source-kind="'+x.kind+'"'+(x.kind==='building'?' data-research-source-id="'+escapeHtml(x.constructionId)+'"':'')+
+     ' aria-pressed="'+selected+'"><b>'+escapeHtml(researchSourceLabel(x))+owner+'</b><small>'+
+     (x.available?'ДОСТУПНО · 1 представитель':x.occupantId!=null?'Занято игроком '+escapeHtml(state.players[x.occupantId]?.name||''):
+       !isActive?'Не ваша активация':!activeWorker(state,pid)?'Нужен представитель':'Требуется доступ за 1 район / свободное основное действие')+
+     '</small></button>';
+ }).join('')+'</div>';
+ const cards=RESEARCH_CARDS.map(card=>{
+   const entry=researchCardState(state,card.id);
+   const owner=entry.holderId!=null?state.players[entry.holderId]?.name||'Игрок':'';
+   const ownership=entry.status==='available'?'ОТКРЫТО':
+     entry.status==='held'?'УДЕРЖИВАЕТ · '+owner:'ПРОФИНАНСИРОВАНО · '+owner;
+   const ownHeld=entry.status==='held'&&entry.holderId===pid;
+   const funding=ownHeld?researchFundingPreview(state,pid,card.id):null;
+   const canFund=isActive&&ownHeld&&funding?.ok===true;
+   const canTake=entry.status==='available'&&takePossible;
+   const action=entry.status==='available'
+     ?'<button type="button" class="research-take primary-btn" data-research-take="'+card.id+'" '+(canTake?'':'disabled')+'>Получить исследование · 1 представитель</button>'+
+       (canTake?'':'<small class="research-reason">'+(activeSource.occupantId!=null?'Кампус занят':!isActive?'Нужна ваша активация':!activeSource.available?'Выбранный источник недоступен':'Основное действие недоступно')+'</small>')
+     :ownHeld
+       ?'<button type="button" class="research-fund primary-btn" data-research-fund="'+card.id+'" '+(canFund?'':'disabled')+
+         '>Финансировать · $'+card.fundingCost+' · быстрое действие</button>'+
+         (canFund?'':'<small class="research-reason">'+escapeHtml(researchActionError(funding))+'</small>')
+       :'<small class="research-reason">'+(entry.status==='funded'?'Общий эффект действует для всех игроков':'Карта недоступна для получения другим игроком')+'</small>';
+   return '<article class="research-card" data-research-card="'+card.id+'">'+
+     '<div class="research-card-top"><b>'+card.id+' · '+escapeHtml(card.name)+'</b><small class="research-status research-'+entry.status+'">'+escapeHtml(ownership)+'</small></div>'+
+     '<div class="research-card-prices"><span>Финансирование <b>$'+card.fundingCost+'</b></span><span>Награда спонсора <b>+'+(card.sponsorReward?.vp||0)+' VP · +'+(card.sponsorReward?.influence||0)+' Influence</b></span></div>'+
+     '<p><strong>Требование для финансирования:</strong> '+escapeHtml(card.requirementText||'Нет.')+'</p>'+
+     '<p><strong>Эффект:</strong> '+escapeHtml(card.effectText||'')+'</p>'+
+     '<div class="research-card-action">'+action+'</div></article>';
+ }).join('');
+ el.innerHTML='<div class="research-explainer"><b>Городская научная программа</b><p>Открыто '+available+' · удерживается '+held.length+
+   ' · профинансировано '+funded.length+'. У '+escapeHtml(p.name)+' удерживается '+personal.length+
+   ' карт (лимита нет). Получение тратит главное действие представителя; финансирование — быстрое действие в свою активацию, без дополнительного работника.</p></div>'+
+   tabs+'<h4>Получение · выберите место научной программы</h4>'+options+
+   '<p class="research-source-info">Выбран: <b>'+escapeHtml(researchSourceLabel(activeSource))+
+   '</b>. '+(activeSource.available?'Можно получить одну из открытых карт.':'Для получения потребуется доступный источник и свободное основное действие.')+'</p>'+
+   '<h4>Исследования · общий реестр R01–R08</h4><div class="research-cards">'+cards+'</div>';
+ $$('[data-research-viewer]').forEach(b=>b.onclick=()=>{researchViewerId=Number(b.dataset.researchViewer);renderResearchBoard();});
+ $$('[data-research-source-kind]').forEach(b=>b.onclick=()=>{
+   researchSourceChoice={kind:b.dataset.researchSourceKind,
+     ...(b.dataset.researchSourceKind==='building'?{constructionId:b.dataset.researchSourceId}:{})};
+   renderResearchBoard();
+ });
+ $$('[data-research-take]').forEach(b=>b.onclick=()=>{
+   const s=researchAcquisitionSources(state,pid).find(x=>x.kind===activeSource.kind&&
+     (x.kind==='civic'||x.constructionId===activeSource.constructionId));
+   if(!s?.available){showToast('Получение недоступно: проверьте рабочего, район и занятость');render();return;}
+   const r=acquireResearch(state,pid,b.dataset.researchTake,
+     s.kind==='building'?{kind:'building',constructionId:s.constructionId}:{kind:'civic'});
+   if(!r.ok){showToast(researchActionError(r));render();return;}
+   showToast('Исследование '+r.researchId+' получено. '+(r.ownerReward?'Владельцу кампуса +$'+r.ownerReward+'. ':'')+
+     'Финансирование доступно в вашу активацию.');
+   render();
+ });
+ $$('[data-research-fund]').forEach(b=>b.onclick=()=>{
+   const r=fundResearch(state,pid,b.dataset.researchFund);
+   if(!r.ok){showToast(researchActionError(r));render();return;}
+   showToast('Исследование '+r.researchId+' профинансировано · −$'+r.cost+' · +'+r.vp+' VP');
+   render();
+ });
+ el.scrollTop=previousScroll;
+}
 function renderOffice(){
 const p=state.players[inspectedOffice]||state.players[0];$('#officeTitle').textContent=`Офис · ${p.name}`;
 const activePlayerId=currentDeveloper(state);
@@ -4122,10 +4266,18 @@ const hireInfo=hireOptions.ok&&hireOptions.jailed.length
       +'<button type="button" class="secondary-btn" data-hire-worker="'+escapeHtml(w.id)+'" '+(ready?'':'disabled')+'>Нанять · $7</button></div>';
   }).join('')+'</section>'
  :'';
+const researchOwned=RESEARCH_CARDS.filter(c=>{
+  const e=researchCardState(state,c.id);return e?.holderId===p.id;
+});
+const researchSummary='<div class="office-research-summary"><b>⚗ Исследования · '+researchOwned.length+'</b>'+
+ '<small>Удерживаются '+researchOwned.filter(c=>researchCardState(state,c.id).status==='held').length+
+ ' · профинансированы '+researchOwned.filter(c=>researchCardState(state,c.id).status==='funded').length+
+ '. Лимита удержания нет.</small>'+
+ '<button type="button" class="secondary-btn" id="officeResearchOpen">Открыть исследования и финансирование</button></div>';
 const mapObjectsBtn=active.length
 ?`<button class="secondary-btn full office-map-objects" id="showOfficeObjectsMap">Показать объекты ${p.name} на карте</button>`
 :`<button class="secondary-btn full office-map-objects" disabled>Объектов на карте пока нет</button>`;
-$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${rosterHtml}${caseInfo}${hireInfo}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>VP</span><strong>${p.prestige||0}</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}${breadFine?' · порча хлеба: постоянный Income −'+breadFine:''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.${suspicionInfo}</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead" id="officeConstructionsTitle">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
+$('#officeContent').innerHTML=`<div class="office-tabs">${state.players.map((x,i)=>`<button class="office-tab ${i===inspectedOffice?'active':''}" data-office-tab="${i}">${x.name}</button>`).join('')}</div>${activationNote}${rosterHtml}${caseInfo}${hireInfo}${researchSummary}${mapObjectsBtn}${wagonQuick}${bakeryQuick}<div class="office-summary four"><div class="office-stat"><span>Капитал</span><strong>$${p.capital}</strong></div><div class="office-stat"><span>VP</span><strong>${p.prestige||0}</strong></div><div class="office-stat"><span>Влияние / порядок</span><strong>${p.influence} · #${Math.max(0,turnOrder(state).indexOf(p.id))+1}</strong></div><div class="office-stat"><span>Income / простой</span><strong>+$${roundIncome(state,p.id)} / −$${upkeep}${fireFine?' · пожарный штраф −$'+fireFine+'/год':''}${breadFine?' · порча хлеба: постоянный Income −'+breadFine:''}</strong></div></div><div class="office-mini-note">Представители: <b>${p.workersLeft??0}/3</b> · Рука: <b>${p.portfolio.length}/${HAND_LIMIT}</b> · Доставка / завершение со склада / погашение кредита = свободные действия только во время собственной активации.${suspicionInfo}</div><div class="loan-panel"><div class="loan-head"><span><b>КРЕДИТЫ ${loans.length}/${MAX_ACTIVE_LOANS}</b><small>Долг $${debt} · Процент −$${interest} к следующему доходу</small></span><button class="mini-repay" id="repayLoanBtn" ${canRepay?'':'disabled'}>Погасить $6</button></div>${loanHtml}</div><div class="contract-line">${contract}${procurementChip}</div><div class="detail-label">Городские цели</div><div class="office-goals">${goalHtml}</div><div class="detail-label office-subhead">Доступные проекты</div><div style="margin-top:7px">${available||'<div class="empty-state">Нет доступных проектов. Получите их на сессии мэрии.</div>'}</div><div class="detail-label office-subhead" id="officeConstructionsTitle">Стройки и здания</div><div style="margin-top:7px">${activeHtml||'<div class="empty-state compact">Объектов пока нет.</div>'}</div><div class="district-placeholder"><b>v0.44:</b> City Hall Goals учитывают все построенные здания, включая завершённые до получения цели, без доплаты. Отчёт и награда — в следующей City Hall Session.</div>`;
 $$('[data-office-tab]').forEach(b=>b.onclick=()=>{inspectedOffice=+b.dataset.officeTab;renderOffice();});
 $$('[data-hire-worker]').forEach(b=>b.onclick=()=>{
  const result=hireReplacementWorker(state,p.id,b.dataset.hireWorker);
@@ -4147,7 +4299,8 @@ $$('[data-legal-case]').forEach(b=>b.onclick=()=>{
  }
  showToast('Дело улажено · подозрение −1');render();
 });
-$('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
+$('#officeResearchOpen')?.addEventListener('click',()=>openResearchBoard(null,p.id));
+ $('#showOfficeObjectsMap')?.addEventListener('click',()=>showObjectsOnMap(p.id));
 $$('[data-start-project]').forEach(b=>b.onclick=()=>startConstructionFlow(+b.dataset.player,b.dataset.startProject));
 document.querySelectorAll('[data-bakery-choice]').forEach(b=>b.onclick=()=>{
  const r=activateBakery(state,p.id,b.dataset.bakeryId,b.dataset.bakeryChoice);
@@ -4182,10 +4335,11 @@ $$('[data-land]').forEach(b=>b.onclick=()=>{const id=b.dataset.land;setLandValue
 }
 function openDrawer(id){closeMobileContext();closeDrawers();document.body.classList.add('drawer-open');$('#drawerBackdrop').classList.add('open');$('#'+id).classList.add('open');}
 function closeDrawers(){document.body.classList.remove('drawer-open');$('#drawerBackdrop').classList.remove('open');$$('.drawer').forEach(d=>d.classList.remove('open'));}
-function newGame(){if(!confirm('Начать новую тестовую партию?'))return;deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;newsMapVisible=false;newsEmergencyMode=false;newsSheetOpen=false;newsArchiveIndex=null;upkeepSelectedConstructionId=null;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
+function newGame(){if(!confirm('Начать новую тестовую партию?'))return;researchViewerId=null;researchSourceChoice={kind:'civic'};deliveryDraft=null;overviewPlayerId=null;focusedConstructionId=null;riskViewActive=false;newsMapVisible=false;newsEmergencyMode=false;newsSheetOpen=false;newsArchiveIndex=null;upkeepSelectedConstructionId=null;state=createInitialState();inspectedOffice=0;undoHistory=[];lastSavedSnapshot=JSON.stringify(state);lastSavedFingerprint=gameplayFingerprint(state);localStorage.removeItem(STORAGE_KEY);LEGACY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));closeDrawers();closeMobileContext();render();}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 $$('.nav-btn[data-view]').forEach(b=>b.onclick=()=>{mobileContextOpen=false;state.view=b.dataset.view;render();});
 $('#officeBtn').onclick=()=>{if(state.phase==='draft'){showToast('Офисы откроются после стартового драфта');return;}inspectedOffice=preferredOfficePlayer();openDrawer('officeDrawer');renderOffice();};
+$('#researchBtn').onclick=()=>openResearchBoard();
 $('#logBtn').onclick=()=>openDrawer('logDrawer');
 $('#settingsBtn').onclick=()=>openDrawer('settingsDrawer');
 $('#newsOpenBtn').onclick=()=>openNewspaper();
