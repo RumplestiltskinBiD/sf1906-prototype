@@ -14,7 +14,7 @@ test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
   assert.match(html,/app\.js\?v=0590-research-state/);
-  assert.match(html,/styles\.css\?v=0590-research-state/);
+  assert.match(html,/styles\.css\?v=0591-research-ui/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
   assert.match(app,/game-core\.js\?v=0590-research-state/);
   assert.match(app,/newspaper-cards\.js\?v=0590-research-state/);
