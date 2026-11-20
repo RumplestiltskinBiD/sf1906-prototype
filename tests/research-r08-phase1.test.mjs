@@ -21,7 +21,7 @@ function game({funded=false,round=1,issue='E02'}={}){
 const fee=(s,id='std_clinic')=>G.standardProjectFee(s,id);
 const eligible=(s,id='std_clinic',playerId=0)=>G.constructionEligibility(s,playerId,id,'civic');
 
-test('R08 approved phase1 fee and untouched pending phase2 are recorded in registry',()=>{
+test('R08 approved phase1 fee and standalone phase2 laboratory effect are recorded in registry',()=>{
   const card=researchCardById('R08');
   assert.equal(card.fundingCost,4);assert.deepEqual(card.sponsorReward,{vp:2,influence:1});
   assert.equal(card.effect.type,'citywide-ambulance-service-modernization');
