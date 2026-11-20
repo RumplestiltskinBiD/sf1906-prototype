@@ -51,6 +51,7 @@
       <button class="nav-btn" data-view="city"><span class="nav-icon">◫</span><span>Город</span></button>
       <div class="nav-spacer"></div>
       <button class="nav-btn" id="officeBtn"><span class="nav-icon">▣</span><span>Офис</span></button>
+      <button class="nav-btn" id="researchBtn"><span class="nav-icon">✧</span><span>Наука</span></button>
       <button class="nav-btn" id="logBtn"><span class="nav-icon">≡</span><span>Лог</span></button>
     </nav>
 
@@ -157,6 +158,10 @@
 <aside class="drawer" id="officeDrawer" aria-label="Офис игрока">
   <div class="drawer-head"><div><div class="eyebrow">ОФИС ИГРОКА</div><h3 id="officeTitle">Офис</h3></div><button class="close-btn" data-close-drawer>×</button></div>
   <div class="drawer-body" id="officeContent"></div>
+</aside>
+<aside class="drawer" id="researchDrawer" role="dialog" aria-modal="true" aria-labelledby="researchTitle" aria-label="Исследования">
+  <div class="drawer-head"><div><div class="eyebrow">НАУЧНЫЕ ПРОГРАММЫ · 1900–1905</div><h3 id="researchTitle">Исследования R01–R08</h3></div><button type="button" class="close-btn" data-close-drawer aria-label="Закрыть исследования">×</button></div>
+  <div class="drawer-body" id="researchContent" aria-live="polite"></div>
 </aside>
 <aside class="drawer" id="logDrawer" aria-label="Журнал партии">
   <div class="drawer-head"><div><div class="eyebrow">ЖУРНАЛ ПАРТИИ</div><h3>Журнал партии</h3></div><button class="close-btn" data-close-drawer>×</button></div>
