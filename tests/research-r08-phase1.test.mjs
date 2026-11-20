@@ -35,7 +35,7 @@ test('R08 approved phase1 fee and untouched pending phase2 are recorded in regis
   assert.equal(card.effect.phase1.affectsOtherStandardProjects,false);
   assert.equal(card.effect.appliesToAllPlayers,true);
   assert.equal(card.effect.phase2.type,'medical-survivor-neighbor-earthquake-award');
-  assert.equal(card.implementationStatus,'phase1-implemented-in-research-integration-branch-phase2-pending');
+  assert.equal(card.implementationStatus,'implemented-in-research-integration-branch-not-published');
 });
 test('before funding R08 the four standard projects remain $2 and market projects have zero standard fee',()=>{
   const s=game();
