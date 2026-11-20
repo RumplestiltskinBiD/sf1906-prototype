@@ -111,10 +111,11 @@ test('validation rejects invalid IDs, statuses, owners, future funding and dupli
   assert.equal(s.research.R01.holderId,99,'diagnostics must not rewrite corrupted history');
 });
 
-test('stage 1 never enables acquisition, funding, public effects or the campus science action',()=>{
+test('research foundation keeps cards unpaid before acquisition and campus science is now active',()=>{
   const s=fresh();
   const p=G.projectById('polytechnic_campus');
-  assert.match(p.actionName,/пока недоступна/);
+  assert.match(p.actionName,/Научная программа/);
+  assert.equal(p.researchAcquisitionSource,true);
   assert.equal(s.players[0].prestige,0);
   assert.equal(s.research.R01.status,'available');
   assert.equal(s.research.R07.status,'available');
