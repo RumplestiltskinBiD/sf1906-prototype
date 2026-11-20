@@ -108,11 +108,20 @@ test('v0.30A-UX3.1 construction-needs and drawer-peek hooks are present',async()
   for(const needle of ['function compactConstructionNeed(','function deliveryConstructionNeedsHtml(','construction-need-text','drawer-open','НУЖНО НА СТРОЙКАХ'])assert.ok(app.includes(needle),needle);
 });
 
-test('v0.30A-L1 logistics fallback hooks are present',async()=>{
+test('retired Freight Yard hooks are gone while ordinary Delivery and saved-game migration remain',async()=>{
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
   const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
-  for(const needle of ['FREIGHT_YARD','freightYardInventory','freight-yard','Грузовой двор'])assert.ok(app.includes(needle),needle);
-  for(const needle of ['export const FREIGHT_YARD','export function freightYardInventory','yardRentCost','completesProject'])assert.ok(core.includes(needle),needle);
+  const styles=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  for(const needle of ['FREIGHT_YARD','freightYardInventory','freight-yard','data-ds-yard','data-delivery-freight-yard','Грузовой двор'])
+    assert.equal(app.includes(needle),false,'obsolete UI action: '+needle);
+  for(const needle of ['export const FREIGHT_YARD','export function freightYardInventory','yardRentCost',"'freight-yard'"])
+    assert.equal(core.includes(needle),false,'obsolete game-core action: '+needle);
+  for(const needle of ['freight-yard-node','freight-yard-pin','yard-count'])
+    assert.equal(styles.includes(needle),false,'obsolete map style: '+needle);
+  for(const needle of ['migrateRetiredFreightYard(parsed)','completedWarehouses','data-ds-wh'])
+    assert.ok(app.includes(needle),'existing warehouse UI or migration missing: '+needle);
+  for(const needle of ['export function migrateRetiredFreightYard','export function validateDeliveryPlan','completesProject'])
+    assert.ok(core.includes(needle),'existing Delivery or migration missing: '+needle);
 });
 
 
