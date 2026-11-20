@@ -121,7 +121,7 @@ test('portrait mobile object strip keeps building type color accents',async({pag
 
 test('fresh game UI can complete draft handoff and reach Development without dead controls',async({page})=>{
   await page.goto('/');
-  await expect(page.locator('.version-badge')).toHaveText('v0.54.0');
+  await expect(page.locator('.version-badge')).toHaveText('v0.54.1');
   for(let i=0;i<3;i++){
     await page.locator('#revealStarterDraft').click();
     const cards=page.locator('[data-draft-card]');
@@ -324,60 +324,75 @@ test('mobile map-only source selection exposes all three historical suppliers wi
   await page.locator('#mobileActionDock [data-mobile-action="cancel-delivery"]').click();
   await expect(page.locator('#mobileActionDock [data-mobile-action="delivery"]')).toBeVisible();
 });
-test('Freight Yard marker is inside Western Addition and exposes three private section counts',async({page})=>{
-  const s=makeDevState();
-  s.freightYardInventories=[['Lumber'],[],['Steel','Masonry']];
-  await seed(page,s);await page.goto('/');
-  const yard=page.locator('[data-delivery-freight-yard="freightyard"]');
-  await expect(yard).toBeVisible();
-  await expect(yard.locator('.yard-count')).toHaveCount(3);
-  await expect(yard.locator('.yard-count').nth(0)).toHaveText('1');
-  await expect(yard.locator('.yard-count').nth(2)).toHaveText('2');
-  const inside=await page.evaluate(()=>{
-    const path=document.querySelector('[data-district="western"] path');
-    return path.isPointInFill(new DOMPoint(570,375));
-  });
-  expect(inside).toBe(true);
-});
-
-test('mobile Delivery can rent the Western Freight Yard and shows the $2 fee before confirmation',async({page})=>{
-  await page.setViewportSize({width:390,height:844});
+for(const viewport of [{width:390,height:844},{width:932,height:430},{width:1366,height:768}]){
+ test('retired Freight Yard is absent from map and source UI, normal city nodes remain '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
   const s=makeDevState();
   await seed(page,s);await page.goto('/');
+  await expect(page.locator('[data-delivery-freight-yard]')).toHaveCount(0);
+  await expect(page.locator('[data-delivery-node]')).toHaveCount(5);
+  await expect(page.locator('[data-delivery-supplier]')).toHaveCount(3);
   await page.locator('#actionDelivery').click();
-  await page.locator('[data-delivery-node="pacificmail"]').click();
-  await page.locator('[data-hauler="dray2a"]').click();
-  await page.locator('[data-load="Masonry"]').click();
-  await page.locator('#deliveryBeginRoute').click();
-  await page.locator('[data-district="civic"]').click();
-  await page.locator('[data-district="western"]').click();
-  await expect(page.locator('#deliveryLockRoute')).toBeEnabled();
-  await page.locator('#deliveryLockRoute').click();
-
-  const yard=page.locator('[data-delivery-freight-yard="freightyard"]');
-  await expect(yard).toHaveClass(/delivery-drop-available/);
-  await yard.click();
-  await expect(page.locator('.ux3-unload-target')).toContainText('Городской грузовой двор');
-  await expect(page.locator('.ux3-unload-target')).toContainText('занять +$2');
-  await page.locator('[data-drop-kind="freight-yard"][data-drop-type="Masonry"]').click();
-  await expect(page.locator('#deliveryConfirm')).toContainText('$5');
-  await page.locator('#deliveryConfirm').click();
-
-  const saved=await stored(page);
-  expect(saved.freightYardInventories[0]).toEqual(['Masonry']);
-  expect(saved.players[0].capital).toBe(45);
+  const mobile=viewport.width<=640||(viewport.width<=960&&viewport.height<=500);
+  await expect(page.locator('[data-ds-yard],.freight-yard-source')).toHaveCount(0);
+  if(mobile){
+   // Mobile intentionally uses map-first selection, not the retired source list panel.
+   await expect(page.locator('#deliveryPanel')).toBeHidden();
+   await expect(page.locator('#deliveryShowSourceList')).toHaveCount(0);
+   await expect(page.locator('[data-delivery-node="pacificmail"]')).toHaveClass(/source-available/);
+   await expect(page.locator('[data-delivery-supplier="engle-lumber"]')).toHaveClass(/source-available/);
+   await page.locator('[data-delivery-node="pacificmail"]').click();
+   await expect(page.locator('[data-hauler="dray2a"]')).toBeVisible();
+  }else{
+   await expect(page.locator('[data-ds-node="pacificmail"]')).toBeVisible();
+   await expect(page.locator('[data-ds-supplier="engle-lumber"]')).toBeVisible();
+   await page.locator('[data-ds-node="pacificmail"]').click();
+   await expect(page.locator('[data-hauler="dray2a"]')).toBeVisible();
+  }
+  await expect(page.locator('[data-delivery-freight-yard],[data-ds-yard]')).toHaveCount(0);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(3);
+ });
+}
+test('old save cash-converts retired Freight Yard cargo once and persists conversion across page reloads',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const s=makeDevState();
+ s.freightYardInventories=[['Lumber','Steel'],['Masonry'],[]];
+ const capital=s.players.map(p=>p.capital);
+ await seed(page,s);await page.goto('/');
+ let saved=await stored(page);
+ expect(saved.players.map((p,i)=>p.capital-capital[i])).toEqual([5,3,0]);
+ expect(Object.hasOwn(saved,'freightYardInventories')).toBe(false);
+ const refunds=saved.log.filter(x=>x.msg.includes('отменена аренда старого Грузового двора'));
+ expect(refunds).toHaveLength(2);
+ await expect(page.locator('[data-delivery-freight-yard]')).toHaveCount(0);
+ await page.reload();
+ saved=await stored(page);
+ expect(saved.players.map((p,i)=>p.capital-capital[i])).toEqual([5,3,0]);
+ expect(saved.log.filter(x=>x.msg.includes('отменена аренда старого Грузового двора'))).toHaveLength(2);
+ await page.locator('#actionDelivery').click();
+ await expect(page.locator('[data-delivery-freight-yard],[data-ds-yard]')).toHaveCount(0);
 });
-
-test('stored Freight Yard materials are selectable as an already-paid Delivery source',async({page})=>{
-  await page.setViewportSize({width:390,height:844});
-  const s=makeDevState();s.freightYardInventories=[['Masonry'],[],[]];
-  await seed(page,s);await page.goto('/');
-  await page.locator('#actionDelivery').click();
-  await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toHaveClass(/source-available/);
-  await expect(page.locator('#deliveryPanel')).toBeHidden();
-  await page.locator('[data-delivery-freight-yard="freightyard"]').click();
-  await page.locator('[data-hauler="dray2a"]').click();
-  await expect(page.locator('[data-load="Masonry"]')).toContainText('ОПЛАЧЕНО');
+test('retired yard does not displace a standard Warehouse as a real Delivery target',async({page})=>{
+ const s=makeDevState();
+ s.constructions=[con('W1',0,'std_warehouse','northbeach','complete',['Lumber','Masonry','Steel'],[])];
+ s.logisticsSupply.broadway=['Lumber'];
+ await seed(page,s);await page.goto('/');
+ await page.locator('#actionDelivery').click();
+ await page.locator('[data-ds-node="broadway"]').click();
+ await page.locator('[data-hauler="standard"]').click();
+ await page.locator('[data-load="Lumber"]').click();
+ await page.locator('#deliveryBeginRoute').click();
+ await expect(page.locator('[data-drop-id="W1"][data-drop-type="Lumber"]')).toBeEnabled();
+ await page.locator('[data-drop-id="W1"][data-drop-type="Lumber"]').click();
+ await expect(page.locator('.delivery-total')).toContainText('Материалы $1');
+ await expect(page.locator('.delivery-total')).not.toContainText('Аренда');
+ await page.locator('#deliveryConfirm').click();
+ const saved=await stored(page);
+ expect(saved.constructions[0].warehouseInventory).toEqual(['Lumber']);
+ expect(saved.log.at(-1).msg).not.toContain('аренда');
+ await page.reload();
+ expect((await stored(page)).constructions[0].warehouseInventory).toEqual(['Lumber']);
 });
 
 test('mobile final Delivery completes a five-resource Factory from staging 3 without a Warehouse',async({page})=>{
@@ -406,7 +421,7 @@ test('mobile final Delivery completes a five-resource Factory from staging 3 wit
   expect(saved.constructions.find(c=>c.id==='F1').status).toBe('complete');
 });
 
-test('mobile strip contains unfinished constructions only, no Freight Yard or owned warehouses',async({page})=>{
+test('mobile strip contains only unfinished constructions, no retired yard or owned warehouses',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const s=makeDevState();s.freightYardInventories=[['Steel'],[],[]];
   await seed(page,s);await page.goto('/');

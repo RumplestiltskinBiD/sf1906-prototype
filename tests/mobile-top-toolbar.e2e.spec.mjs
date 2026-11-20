@@ -75,10 +75,11 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(2);
   });
 }
-test('mobile empty construction strip stays hidden even while the freight yard exists on the map',async({page})=>{
+test('mobile empty construction strip stays hidden with retired yard marker absent',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await load(page,cityScenario());
   await expect(page.locator('#mobileObjectStrip')).toBeHidden();
   await expect(page.locator('#mobileObjectStrip .freight-yard')).toHaveCount(0);
-  await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toBeVisible();
+  await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toHaveCount(0);
+  await expect(page.locator('[data-delivery-node]')).toHaveCount(5);
 });

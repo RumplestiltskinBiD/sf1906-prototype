@@ -135,7 +135,7 @@ test('H02 double road tariff and E04 fixed marine surcharge are ADDITIVE',()=>{
  assert.ok(road.length>1);
  assert.equal(c.routeCost,2*(road.length-1));
  assert.equal(c.marineSurcharge,2);
- assert.equal(c.total,c.materialCost+c.haulerCost+c.routeCost+c.loadingCost+c.yardRentCost+c.stolenLotCost+2);
+ assert.equal(c.total,c.materialCost+c.haulerCost+c.routeCost+c.loadingCost+c.stolenLotCost+2);
  assert.equal(G.executeDelivery(s,p).ok,true);
  assert.equal(s.newsE04Strike.surchargePaid,2);
 });

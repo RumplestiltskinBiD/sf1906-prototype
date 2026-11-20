@@ -50,7 +50,9 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
    const s=fixture();s.freightYardInventories=[['Steel'],[],[]];
    await mount(page,s);
    await expect(page.locator('#mobileObjectStrip')).toBeHidden();
-   await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toBeVisible();
+   await expect(page.locator('[data-delivery-freight-yard="freightyard"]')).toHaveCount(0);
+   await expect(page.locator('[data-delivery-node]')).toHaveCount(5);
+   await expect(page.locator('[data-delivery-supplier]')).toHaveCount(3);
    await page.locator('#mobileActionDock [data-mobile-action="delivery"]').click();
    await expect(page.locator('#mobileObjectStrip')).toBeHidden();
    await expect(page.locator('#deliveryPanel')).toBeHidden();
