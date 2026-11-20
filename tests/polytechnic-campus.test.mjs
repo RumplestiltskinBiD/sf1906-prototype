@@ -32,7 +32,9 @@ test('Issue #207: exact approved hybrid card, market price, recipe, risk and two
  assert.equal(G.LAND_VALUE_COMPLETION_CHANGE[id],1);
  assert.equal(project.landMin,undefined);assert.equal(project.accessAll,undefined);
  assert.equal(project.accessAny,undefined);assert.equal(project.standard,undefined);
- assert.match(project.actionText,/пока не подключены/);
+ assert.match(project.actionText,/один посетитель на экземпляр в год/i);
+  assert.match(project.actionText,/владелец получает \$1 из банка/i);
+  assert.equal(project.researchAcquisitionSource,true);
  assert.equal(G.PROJECTS.length,43);
  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,13);
  assert.equal(G.PROJECT_COPIES,2);
