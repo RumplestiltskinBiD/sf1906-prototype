@@ -166,6 +166,7 @@ for(const viewport of screens){
   await expect(page.locator('[data-research-acquire="R01"]')).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(page.locator('#researchDrawer')).not.toHaveClass(/open/);
+  await expect(page.locator('#researchBtn')).toBeFocused();
   await page.locator('#officeBtn').click();
   await page.locator('#officeResearchBtn').click();
   await expect(page.locator('#researchDrawer')).toHaveClass(/open/);
