@@ -1,5 +1,5 @@
 import {DISTRICTS,fireServiceProtection} from './game-core.js';
-import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport,registeredPropertyTitleResults} from './catastrophe-core.js';
+import {DISTRICT_IDS,CENTERS,indicator,riskValue,fromGame,preset,begin,next,stats,formatReport,registeredPropertyTitleResults,medicalResearchSurvivalResults,awardMedicalResearchSurvivalVp} from './catastrophe-core.js';
 const $=id=>document.getElementById(id);
 const known=new Map(DISTRICTS.map(d=>[d.id,d]));
 const savedKey='sf1906_phase1_ui_v030a';
@@ -7,6 +7,9 @@ const name=id=>known.get(id)?.name||id;
 let values=preset('three'),sim=null,selection='soma',playing=false,svg=null,labels=null;
 let scenarioLabel='3 очага: SoMa, Mission, Chinatown';
 let importedGame=null;
+// A laboratory copy, never the original Phase I save.
+let scoringCopy=null;
+function resetScoringCopy(){scoringCopy=importedGame?JSON.parse(JSON.stringify(importedGame)):null;}
 const format=r=>{const x=indicator(r);return x.raw>3?'III('+x.raw+')':String(x.raw);};
 const safeText=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function draw(){
@@ -63,6 +66,28 @@ function draw(){
   $('titleProtectionPreview').textContent=titles?.ok&&titles.entries.length
     ?'⚖ Зарегистрировано зданий: '+titles.entries.length+'. Гарантированные VP: '+titles.entries.length+'. Предпросмотр без изменения сохранения.'
     :'';
+  const medical=scoringCopy&&sim?.done?medicalResearchSurvivalResults(scoringCopy,sim):null;
+  const original=importedGame&&sim?.done?medicalResearchSurvivalResults(importedGame,sim):null;
+  const score=$('medicalResearchPreview'),apply=$('applyR08MedicalAward');
+  if(!sim?.done){
+    score.textContent=importedGame?'R08: расчёт доступен после завершения распространения пожаров.':'R08: сначала загрузите партию, затем завершите катастрофу.';
+  }else if(!medical?.ok){
+    score.textContent=medical?.reason==='research-not-funded'
+      ?'R08 ещё не профинансировано: дополнительной награды за медучреждения нет.'
+      :'R08: для проверки нужна загруженная партия с R08 и завершённая катастрофа.';
+  }else{
+    const qualified=medical.entries.filter(e=>e.qualified);
+    const detail=qualified.map(e=>{
+      const owner=scoringCopy.players[e.playerId]?.name||'Игрок';
+      return owner+' · '+(e.projectId==='std_clinic'?'Амбулатория':'Клиника')+
+        ' ('+name(e.districtId)+') · сосед '+e.damagedNeighbors.map(name).join(', ')+
+        ' · +'+e.bonus+' VP';
+    }).join('; ');
+    score.textContent='R08: выжившие медучреждения '+qualified.length+
+      '; право на '+(original?.pendingVp||0)+' VP; ещё не начислено в тестовой копии '+
+      medical.pendingVp+' VP.'+(detail?' '+detail:' Подходящих учреждений нет.');
+  }
+  apply.disabled=!medical?.ok||medical.pendingVp<=0;
   $('queue').textContent=sim
     ?'Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+(sim.starts.map(name).join(', ')||'нет')+'. В очереди: '+(sim.queue.map(name).join(' → ')||'пусто')+'. Обработано: '+sim.events.length+'.'
     :'Сначала запустите землетрясение.';
@@ -103,12 +128,12 @@ $('firehouse').addEventListener('change',()=>{
   draw();
 });
 $('preset').addEventListener('change',()=>{
-  values=preset($('preset').value);importedGame=null;scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
+  values=preset($('preset').value);importedGame=null;scoringCopy=null;scenarioLabel=$('preset').selectedOptions[0].textContent;sim=null;$('history').replaceChildren();
   $('message').textContent='Риски загружены. Запустите землетрясение.';draw();
 });
 $('reset').addEventListener('click',()=>{
-  if(sim){sim=null;$('history').replaceChildren();$('message').textContent='Расчёт сброшен, значения рисков сохранены.';}
-  else{values=preset($('preset').value);importedGame=null;scenarioLabel=$('preset').selectedOptions[0].textContent;$('message').textContent='Сценарий восстановлен.';}
+  if(sim){sim=null;resetScoringCopy();$('history').replaceChildren();$('message').textContent='Расчёт сброшен, значения рисков сохранены.';}
+  else{values=preset($('preset').value);importedGame=null;scoringCopy=null;scenarioLabel=$('preset').selectedOptions[0].textContent;$('message').textContent='Сценарий восстановлен.';}
   draw();
 });
 $('loadSaved').addEventListener('click',()=>{
@@ -117,7 +142,7 @@ $('loadSaved').addEventListener('click',()=>{
     if(!raw)throw Error('Нет сохранённой партии.');
     const game=JSON.parse(raw);
     if(!game||!Array.isArray(game.constructions)||!game.districts)throw Error('Неизвестный формат.');
-    values=fromGame(game);importedGame=game;sim=null;scenarioLabel='Риски из сохранённой партии';
+    values=fromGame(game);importedGame=game;resetScoringCopy();sim=null;scenarioLabel='Риски из сохранённой партии';
     $('preset').value='base';$('history').replaceChildren();
     $('message').textContent='Загружены реальные риски партии. Сохранение не изменено.';
     draw();
@@ -125,6 +150,8 @@ $('loadSaved').addEventListener('click',()=>{
 });
 $('quake').addEventListener('click',()=>{
   if(sim||playing)return;
+  resetScoringCopy();
+  $('medicalResearchFeedback').textContent='Начисления не выполнялись.';
   sim=begin(values,{ignition:Math.max(1,riskValue($('igniteAt').value)),spread:Math.max(1,riskValue($('spreadBy').value))});$('history').replaceChildren();
   $('message').textContent=sim.starts.length
     ?'Катастрофа началась. Начальные очаги (У3+ или П'+sim.config.ignition+'+): '+sim.starts.map(name).join(', ')+'.'
@@ -148,6 +175,15 @@ function oneStep(){
   draw();
 }
 $('step').addEventListener('click',oneStep);
+$('applyR08MedicalAward').addEventListener('click',()=>{
+  if(!sim?.done||!scoringCopy)return;
+  const result=awardMedicalResearchSurvivalVp(scoringCopy,sim);
+  if(!result.ok)return;
+  $('medicalResearchFeedback').textContent=result.awards.length
+    ?'Только тестовая копия: начислено '+result.prestige+' VP; исходная партия не изменена.'
+    :'Повторная выплата запрещена: подходящих неначисленных VP нет.';
+  draw();
+});
 $('all').addEventListener('click',async()=>{
   if(!sim||sim.done||playing)return;
   playing=true;draw();
