@@ -12,7 +12,9 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/v0\.53\.1 Desktop HUD Fix/);
+  assert.match(html,/<title>San Francisco 1906 — v0\.54\.0 · Исследования R01–R08<\/title>/);
+  assert.match(html,/<span class="version-badge">v0\.54\.0<\/span>/);
+  assert.match(html,/<button class="nav-btn" id="researchBtn">/);
   assert.match(html,/app\.js\?v=0593-research-release-54/);
   assert.match(html,/styles\.css\?v=0593-research-release-54/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
