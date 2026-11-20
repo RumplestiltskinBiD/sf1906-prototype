@@ -50,7 +50,6 @@ export const CONSTRUCTION_STAGING_CAPACITY = 3;
 export const WAGON_UPGRADE_PRICE = 2;
 export const WAGON_MAX_LEVEL = 3;
 export const WAREHOUSE_STORAGE_CAPACITY = 5;
-export const FREIGHT_YARD = {id:'freightyard',name:'Городской грузовой двор',shortName:'Грузовой двор',districtId:'western',capacityPerPlayer:2,rentCost:2,x:570,y:375};
 export const DELIVERY_EDGE_COST = 1;
 export const DELIVERY_EXTRA_LOADING_COST = 1;
 export const DELIVERY_HAULERS = [
@@ -1508,7 +1507,6 @@ export function createInitialState({rng=Math.random}={}){
     bureauOwnerRewarded:{},
     districts:Object.fromEntries(DISTRICTS.map(d=>[d.id,{landValue:d.landValue,sites:d.sites,roadAccess:d.buildable!==false}])),
     logisticsSupply:generateLogisticsSupply({rng,h03:newsCurrentIds[0]==='H03'}),
-    freightYardInventories:[[],[],[]],
     haulersUsed:[],
     log:[{msg:'Началась тестовая партия v0.44 City Hall Goals. В City Hall каждый игрок может взять до 1 городской цели; выполненные цели отчитываются в начале следующего года.','cls':'accent'}],
     finished:false
@@ -2158,11 +2156,28 @@ export function warehouseInventory(construction){
   return construction.warehouseInventory;
 }
 
-export function freightYardInventory(state,playerId){
-  if(!Array.isArray(state.freightYardInventories))state.freightYardInventories=[[],[],[]];
-  while(state.freightYardInventories.length<PLAYER_NAMES.length)state.freightYardInventories.push([]);
-  if(!Array.isArray(state.freightYardInventories[playerId]))state.freightYardInventories[playerId]=[];
-  return state.freightYardInventories[playerId];
+// One-time save migration ONLY. The retired yard is not a source, destination,
+// warehouse or worker action. Refund already-paid resources at the ordinary
+// logistics-node price plus $2 paid rent per occupied player section.
+// Removing the legacy field is the idempotency marker; no new game subsystem.
+export function migrateRetiredFreightYard(state){
+  if(!Object.prototype.hasOwnProperty.call(state,'freightYardInventories'))
+    return {migrated:false,refunds:[]};
+  const old=state.freightYardInventories,refunds=[];
+  if(Array.isArray(old))for(let playerId=0;playerId<(state.players||[]).length;playerId++){
+    const player=state.players[playerId],stock=old[playerId];
+    if(!player||!Array.isArray(stock))continue;
+    const materials=stock.filter(type=>Object.prototype.hasOwnProperty.call(RESOURCE_PRICES,type));
+    if(!materials.length)continue;
+    const resources=materials.reduce((sum,type)=>sum+RESOURCE_PRICES[type],0);
+    const rent=2,amount=resources+rent;
+    player.capital+=amount;
+    refunds.push({playerId,materials:[...materials],resources,rent,amount});
+    if(!Array.isArray(state.log))state.log=[];
+    logEvent(state,`${player.name}: отменена аренда старого Грузового двора. Возврат ${materials.length} материалов по базовой цене (${resources}) и аренды (${rent}) = +${amount}. Используйте стандартные склады.`,'good');
+  }
+  delete state.freightYardInventories;
+  return {migrated:true,refunds};
 }
 
 export function warehouseCapacityBonus(){return 0;}
@@ -2515,11 +2530,6 @@ export function deliverySourceInfo(state,playerId,source){
     if(!wh)return null;
     return {kind:'warehouse',id:wh.id,name:`Warehouse · ${districtById(wh.districtId)?.name||wh.districtId}`,districtId:wh.districtId,inventory:warehouseInventory(wh)};
   }
-  if(source.kind==='freight-yard'&&source.id===FREIGHT_YARD.id){
-    const inventory=freightYardInventory(state,playerId);
-    if(!inventory.length)return null;
-    return {kind:'freight-yard',id:FREIGHT_YARD.id,name:FREIGHT_YARD.name,districtId:FREIGHT_YARD.districtId,inventory};
-  }
   return null;
 }
 
@@ -2611,12 +2621,6 @@ export function deliveryMaterialCost(state,source,cargo,playerId=null){
   return {gross,discount,cost:gross-discount,procurementUsed};
 }
 
-export function freightYardRentCost(state,plan){
-  const deposits=(plan?.drops||[]).filter(d=>d?.kind==='freight-yard'&&Array.isArray(d.materials)&&d.materials.length);
-  if(!deposits.length)return 0;
-  return freightYardInventory(state,plan.playerId).length===0?FREIGHT_YARD.rentCost:0;
-}
-
 // The original source remains the first visit at routeIndex 0. Additional
 // records represent one new pickup from a source at a specific route stop.
 export function deliveryPickups(plan){
@@ -2642,12 +2646,11 @@ export function deliveryPlanCost(state,plan){
   const materialCost=materialGross-procurementDiscount-industryDiscount;
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
-  const yardRentCost=freightYardRentCost(state,plan);
   const stolenLotCost=deliveryPickups(plan).some(p=>p?.source?.kind==='stolen')?1:0;
   const marineSurcharge=e04DeliverySurcharge(state,plan);
   return {materialGross,procurementDiscount,industryDiscount,industrySales,procurementUsed,materialCost,
-    haulerCost:hauler.baseCost,routeCost,loadingCost,yardRentCost,stolenLotCost,marineSurcharge,
-    total:materialCost+hauler.baseCost+routeCost+loadingCost+yardRentCost+stolenLotCost+marineSurcharge};
+    haulerCost:hauler.baseCost,routeCost,loadingCost,stolenLotCost,marineSurcharge,
+    total:materialCost+hauler.baseCost+routeCost+loadingCost+stolenLotCost+marineSurcharge};
 }
 
 function validateRoute(route,sourceDistrictId){
@@ -2673,7 +2676,6 @@ function targetDistrictId(state,target){
   if(target.kind==='warehouse'||target.kind==='bakery'){
     return (state.constructions||[]).find(c=>c.id===target.id)?.districtId||null;
   }
-  if(target.kind==='freight-yard'&&target.id===FREIGHT_YARD.id)return FREIGHT_YARD.districtId;
   return null;
 }
 
@@ -2734,7 +2736,6 @@ export function validateDeliveryPlan(state,plan){
   const aidDrops=drops.filter(d=>d?.kind==='e03-aid');
   if(aidDrops.length>1)return {ok:false,reason:'aid-limit'};
   const dropsByStop=new Map(),constructionDraft=new Map(),warehouseDraft=new Map(),goodsBuyerDraft=new Map();
-  let freightYardDraft=[...freightYardInventory(state,plan.playerId)];
   for(const drop of drops){
     if(!drop||!Array.isArray(drop.materials)||!drop.materials.length)continue;
     const districtId=targetDistrictId(state,drop);
@@ -2784,11 +2785,6 @@ export function validateDeliveryPlan(state,plan){
       if(drop.materials.some(t=>!(t in RESOURCE_PRICES)))return {ok:false,reason:'target-material'};
       if(stored.length>warehouseStorageCapacity(wh))return {ok:false,reason:'target-capacity'};
       warehouseDraft.set(wh.id,stored);
-    }else if(drop.kind==='freight-yard'){
-      if(drop.id!==FREIGHT_YARD.id||pickups.some(p=>p.source.kind==='freight-yard'))return {ok:false,reason:'same-freight-yard'};
-      if(drop.materials.some(t=>!(t in RESOURCE_PRICES)))return {ok:false,reason:'target-material'};
-      freightYardDraft.push(...drop.materials);
-      if(freightYardDraft.length>FREIGHT_YARD.capacityPerPlayer)return {ok:false,reason:'target-capacity'};
     }else return {ok:false,reason:'target'};
   }
   // At each stop, unload existing cargo before loading more; this allows a full
@@ -2850,8 +2846,7 @@ function executeDeliveryCore(state,plan){
     const inv=src.kind==='node'?state.logisticsSupply[src.id]:
       src.kind==='contraband'||src.kind==='goods'?null:
       src.kind==='warehouse'?warehouseInventory(state.constructions.find(c=>c.id===src.id)):
-      src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):
-        freightYardInventory(state,plan.playerId);
+      src.kind==='industry'?industrialInventory(state.constructions.find(c=>c.id===src.id)):null;
     if(src.kind==='goods'){
       const producer=state.constructions.find(c=>c.id===src.id);
       if(producer.projectId==='brewery')producer.beerStock=Math.max(0,(producer.beerStock||0)-pickup.cargo.length);
@@ -2930,22 +2925,20 @@ function executeDeliveryCore(state,plan){
       bakeryInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
     }else if(drop.kind==='warehouse'){
       warehouseInventory(state.constructions.find(c=>c.id===drop.id)).push(...drop.materials);
-    }else if(drop.kind==='freight-yard'){
-      freightYardInventory(state,plan.playerId).push(...drop.materials);
     }
   }
   state.lastDeliveryKey=currentDeliveryKey(state,plan.playerId);
   const routeText=(plan.route||[]).map(id=>districtById(id)?.name||id).join(' → ');
   const pickupText=pickups.map(p=>p.source.kind==='stolen'?('Похищенная партия · '+(LOGISTICS_NODES.find(n=>n.id===p.source.id)?.name||p.source.id)):(deliverySourceInfo(state,plan.playerId,p.source)?.name||p.source.id)).join(' + ');
   const dropText=(plan.drops||[]).map(d=>{
-    const con=['freight-yard','e03-aid'].includes(d.kind)?null:state.constructions.find(c=>c.id===d.id);
-    const districtName=d.kind==='e03-aid'?districtById(d.id)?.name:d.kind==='freight-yard'?districtById(FREIGHT_YARD.districtId)?.name:districtById(con?.districtId)?.name;
-    const dest=d.kind==='e03-aid'?'Фонд помощи E03':d.kind==='freight-yard'?FREIGHT_YARD.name:
+    const con=d.kind==='e03-aid'?null:state.constructions.find(c=>c.id===d.id);
+    const districtName=d.kind==='e03-aid'?districtById(d.id)?.name:districtById(con?.districtId)?.name;
+    const dest=d.kind==='e03-aid'?'Фонд помощи E03':
       d.kind==='warehouse'?'Warehouse':d.kind==='bakery'?'Пекарня':'«'+(projectById(con?.projectId)?.name||'стройка')+'»';
     const count=materialCounts(d.materials);
     return dest+' ('+districtName+'): '+Object.entries(count).map(([t,n])=>materialNameRu(t)+' ×'+n).join(', ');
   }).join('; ');
-  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + аренда $${cost.yardRentCost} + забастовка E04 $${cost.marineSurcharge||0} = $${cost.total}.`,'accent');
+  logEvent(state,`${player.name} выполняет Delivery: ${pickupText}; ${hauler.name}; маршрут ${routeText}; разгрузка: ${dropText}; закупка $${cost.materialCost} + перевозчик $${cost.haulerCost} + дорога $${cost.routeCost} + доп. погрузки $${cost.loadingCost} + выкуп $${cost.stolenLotCost||0} + забастовка E04 $${cost.marineSurcharge||0} = $${cost.total}.`,'accent');
   // A real supply port loads freight; export-only Gas House Cove is not a trigger.
   const portDistricts=new Set(pickups.map(p=>['node','stolen'].includes(p.source.kind)?LOGISTICS_NODES.find(n=>n.id===p.source.id):null)
     .filter(n=>n?.kind.includes('port')).map(n=>n.districtId));
