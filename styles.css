@@ -3446,3 +3446,59 @@ body.delivery-route-build #deliveryRouteLayer *{
   .news-e06-options{grid-template-columns:repeat(2,minmax(0,1fr))}
   .news-e06-panel{padding:8px;gap:6px}
 }
+
+/* Stage 8A: research is a persistent navigation destination and a regular drawer,
+   not a map-blocking modal. All colors align with existing City Hall palette. */
+.research-explainer{border:1px solid #b5bea9;background:#eaf1e8;border-radius:11px;padding:12px;color:#344f44}
+.research-explainer p{font-size:12px;line-height:1.5;margin:5px 0 0}
+.research-viewers{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.research-viewers>button{flex:1 1 90px;min-width:0}
+.research-current{background:#355d59!important;color:#fff!important;border-color:#355d59!important}
+#researchContent h4{color:#4a514c;font-size:13px;margin:16px 0 9px}
+.research-sources{display:grid;gap:7px}
+.research-source{display:block;width:100%;text-align:left;border:1px solid #c4b5a1;border-radius:9px;
+  background:#fffaf1;padding:10px 11px;color:#403b34;min-height:53px;cursor:pointer}
+.research-source.selected{border:2px solid #3d6e68;background:#ecf5ef;padding:9px 10px}
+.research-source b,.research-source small{display:block;overflow-wrap:anywhere}
+.research-source b{font-size:12px}
+.research-source small{font-size:10px;color:#706959;margin-top:4px;line-height:1.4}
+.research-source-info{font-size:11px;line-height:1.45;color:#62594e;margin:9px 0 12px}
+.research-cards{display:grid;gap:10px}
+.research-card{min-width:0;border:1px solid #cbbda7;border-radius:11px;background:#fff9ef;padding:11px;
+  box-shadow:0 2px 5px #59472b12;overflow-wrap:anywhere}
+.research-card-top{display:flex;flex-direction:column;gap:5px}
+.research-card-top>b{font-size:14px;line-height:1.35;color:#333b38}
+.research-status{font-size:9px;font-weight:800;letter-spacing:.03em}
+.research-status.research-available{color:#35675d}
+.research-status.research-held{color:#875e29}
+.research-status.research-funded{color:#426c39}
+.research-card-prices{display:grid;gap:4px;background:#eee9de;border-radius:7px;padding:8px;margin:10px 0}
+.research-card-prices span{display:block;font-size:10px;color:#5c5549}
+.research-card p{font-size:11px;line-height:1.55;margin:7px 0;color:#4e493f}
+.research-card-action{display:grid;gap:6px;margin-top:10px}
+.research-card-action button{min-height:43px;text-align:center;white-space:normal;line-height:1.4}
+.research-card-action button:disabled{opacity:.57;cursor:not-allowed}
+.research-reason{font-size:10px;line-height:1.5;color:#81664d}
+.office-research-summary{margin:8px 0 12px;padding:11px;border:1px solid #b5bea9;background:#eaf1e8;
+  border-radius:10px;display:grid;gap:5px}
+.office-research-summary>b{color:#355f55;font-size:12px}
+.office-research-summary small{color:#5d6b5e;font-size:10px}
+.office-research-summary button{min-height:42px;white-space:normal}
+.city-action-card.research-action{background:#eaf2ed;border-color:#92b2a5}
+.city-action-card.research-action>.secondary-btn{min-height:43px;margin-top:9px;white-space:normal}
+.city-action-card.research-action .action-space-list{margin-top:9px;display:grid;gap:6px}
+.city-action-card.research-action .action-space-btn{width:100%;min-height:58px;text-align:left}
+#researchContent button:focus-visible,.city-action-card.research-action button:focus-visible{
+  outline:3px solid #177f76;outline-offset:2px}
+@media(max-width:640px){
+  .nav-rail{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  #researchDrawer .drawer-body{padding:12px 12px max(16px,env(safe-area-inset-bottom));overflow-y:auto}
+  .research-card{padding:10px}
+  .research-card-prices{grid-template-columns:1fr}
+}
+@media(orientation:landscape) and (max-height:500px) and (max-width:960px){
+  .nav-rail{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  #researchDrawer{max-height:94dvh;overflow:hidden}
+  #researchDrawer .drawer-body{max-height:calc(94dvh - 58px);overflow-y:auto}
+  #researchContent .research-card-action button{min-height:38px}
+}
