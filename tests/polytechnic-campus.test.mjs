@@ -32,7 +32,10 @@ test('Issue #207: exact approved hybrid card, market price, recipe, risk and two
  assert.equal(G.LAND_VALUE_COMPLETION_CHANGE[id],1);
  assert.equal(project.landMin,undefined);assert.equal(project.accessAll,undefined);
  assert.equal(project.accessAny,undefined);assert.equal(project.standard,undefined);
- assert.match(project.actionText,/пока не подключены/);
+ assert.equal(project.actionName,'Научная программа');
+  assert.match(project.actionText,/1 раз на здание в год/);
+  assert.match(project.actionText,/чужой визит приносит владельцу \+\$1 из банка/);
+  assert.match(project.actionText,/отдельное быстрое действие/);
  assert.equal(G.PROJECTS.length,43);
  assert.equal(G.PROJECTS.filter(p=>G.projectTypes(p).length===2).length,13);
  assert.equal(G.PROJECT_COPIES,2);
