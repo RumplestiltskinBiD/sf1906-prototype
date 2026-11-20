@@ -5,7 +5,7 @@
  * финансирования и постепенного подключения эффектов. R01 подключается в
  * feature/research-system на этапе 4А, R02 — на этапе 4Б;
  * R03 подключено на этапе 5А, R04 — на этапе 5Б, R05 — на этапе 6А;
- * R06 — на этапе 6Б, R07 — на этапе 7А; R08 Фаза I — этап 7Б, Фаза II — этап 7В.
+ * R06 — на этапе 6Б, R07 — на этапе 7А; R08 Фаза I — этап 7Б, Фаза II — этап 7В (лаборатория).
  * Публичный UI исследований ещё не открыт, main не получает неполный выпуск.
  * Все цены и награды ниже согласованы для первого игрового теста.
  * Технические нюансы: docs/card-rules-draft.md.
@@ -178,7 +178,7 @@ export const RESEARCH_CARDS = Object.freeze([
       appliesToAllPlayers: true
     },
     historicalBasis: 'Опыт конной скорой помощи Сан-Франциско (с 1895 года) и развитие городской экстренной медицинской службы; конкретная исследовательская программа — альтернативно-историческая игровая реконструкция.',
-    implementationStatus: 'phase1-implemented-in-research-integration-branch-phase2-pending'
+    implementationStatus: 'implemented-in-research-integration-branch-not-published'
   }
 ]);
 
