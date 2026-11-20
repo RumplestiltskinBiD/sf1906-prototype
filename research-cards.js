@@ -1,12 +1,12 @@
 /**
- * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R08), обновлено 2026-11-19.
- *
- * ТОЛЬКО ДАННЫЕ КАРТ: файл не подключён к игровому движку и ничего не меняет
- * в действующих сохранениях, балансе, интерфейсе или логике игры.
- * Все цены и награды ниже согласованы для первого игрового теста.
- * Технические нюансы: docs/card-rules-draft.md.
- *
- * VP = победные очки (в интерфейсе не использовать термин «престиж»).
+ * SAN FRANCISCO 1906 — R01–R08, первый публичный исследовательский релиз 20.11.2026.
+ * Один реестр для общего движка получения, финансирования, профинансированных
+ * эффектов Фазы I и специальных интерфейсов. Результаты этапов 1–9 проверены.
+ * R08: бонус Фазы II работает ТОЛЬКО в отдельной лаборатории катастрофы;
+ * автоматический финал землетрясения 1906 из Phase I ещё не интегрирован.
+ * Нормативные карты и цены ниже утверждены для первой тестовой партии.
+ * P22: новая R09 добавляется сюда и в соответствующий обработчик effect.type.
+ * VP = победные очки (в UI не писать «престиж»).
  */
 export const RESEARCH_CARDS = Object.freeze([
   {
@@ -44,7 +44,7 @@ export const RESEARCH_CARDS = Object.freeze([
       repeatableForSameBuilding: false,
       paymentTiming: 'on-construction-completion-before-risk-applies'
     },
-    implementationStatus: 'approved-data-only-not-wired-to-game-engine'
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R03',
@@ -60,7 +60,8 @@ export const RESEARCH_CARDS = Object.freeze([
       fireProtectionInOwnDistrictAfter: 2,
       extendsProtectionRadius: false,
       appliesToExistingAndFutureStations: true
-    }
+    },
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R04',
@@ -78,6 +79,7 @@ export const RESEARCH_CARDS = Object.freeze([
       eligibleDistrictScope: 'own-or-adjacent',
       eligibleResidentialStatus: 'complete'
     },
+    implementationStatus: 'implemented-in-main',
     note: 'Существующая защита клиник от газетных событий «Болезнь» сохраняется; исследование её не дублирует.'
   },
   {
@@ -135,7 +137,7 @@ export const RESEARCH_CARDS = Object.freeze([
       earthquakeRisk: 'unchanged'
     },
     historicalBasis: 'Португальская gaiola pombalina после 1755 года и калабрийская casa baraccata после 1783 года; вымышленная муниципальная программа Сан-Франциско 1900–1905 годов повышает спрос на древесину.',
-    implementationStatus: 'data-only-not-wired-to-game-engine'
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R08',
@@ -172,7 +174,7 @@ export const RESEARCH_CARDS = Object.freeze([
       appliesToAllPlayers: true
     },
     historicalBasis: 'Опыт конной скорой помощи Сан-Франциско (с 1895 года) и развитие городской экстренной медицинской службы; конкретная исследовательская программа — альтернативно-историческая игровая реконструкция.',
-    implementationStatus: 'data-only-not-wired-to-game-engine'
+    implementationStatus: 'implemented-in-main'
   }
 ]);
 

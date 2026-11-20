@@ -34,7 +34,7 @@ test.beforeEach(async({page})=>{
  page.on('console',e=>{if(e.type()==='error')throw Error(e.text());});
 });
 for(const vp of sizes){
- test('Campus market card renders real dual types, 4 materials, correct price and not-yet-active science '+vp.width+'x'+vp.height,async({page})=>{
+ test('Campus market card renders real dual types, 4 materials and available-after-construction science '+vp.width+'x'+vp.height,async({page})=>{
   await page.setViewportSize(vp);const s=game();s.phase='declare';s.view='hall';
   s.market[0].id=id;s.declarationIndex=0;
   await seed(page,s);
@@ -42,7 +42,7 @@ for(const vp of sizes){
   await expect(card).toBeVisible();
   await expect(card).toContainText('Жилое');
   await expect(card).toContainText('Общественное');
-  await expect(card).toContainText('Научная программа (пока недоступна)');
+  await expect(card).toContainText('Научная программа');
   await expect(card).toContainText('Доход +$1/год');
   await expect(card.locator('.prestige-chip')).toHaveText('VP 2');
   await expect(card.locator('.opening-price')).toContainText('$3');
@@ -50,7 +50,8 @@ for(const vp of sizes){
   await expect(card.locator('.resource-pip.masonry')).toHaveCount(2);
   await expect(card.locator('.resource-pip.steel')).toHaveCount(0);
   await expect(card.locator('.risk-change.quake')).toContainText('У +1');
-  await expect(page.locator('[data-campus-research]')).toHaveCount(0);
+  await expect(card).toContainText('владельцу +$1 из банка');
+   await expect(page.locator('[data-campus-research]')).toHaveCount(0,'unbuilt campus cannot be used as science source');
   await fits(page,vp);
  });
  test('Campus actual fourth-brick delivery finishes building and persists land/value/VP '+vp.width+'x'+vp.height,async({page})=>{

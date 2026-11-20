@@ -1,6 +1,6 @@
 import {NEWS_CARDS,newsCard,newsYear} from './newspaper-cards.js?v=0590-research-state';
 import {createResearchState,ensureResearchState,researchCardState} from './research-state.js';
-import {researchCardById} from './research-cards.js';
+import {RESEARCH_CARDS,researchCardById} from './research-cards.js';
 export {createResearchState,ensureResearchState,researchCardState,listResearchStates,validateResearchState,RESEARCH_STATUSES} from './research-state.js';
 
 export const PLAYER_NAMES = ['Синий','Красный','Зелёный'];
@@ -126,7 +126,52 @@ export function generateLogisticsSupply({rng=Math.random,h03=false}={}){
   ]));
 }
 
-export function refreshLogisticsSupply(state,{rng=Math.random}={}){
+// R05 predicts the complete *ordinary* manifest, not a secret future
+// newspaper. H03/F03/C02 modify this same physical cargo on reveal.
+const FORECAST_MATERIALS=new Set(['Lumber','Masonry','Steel']);
+function validLogisticsSupplyShape(supply){
+  return !!supply&&typeof supply==='object'&&
+    Object.keys(supply).length===LOGISTICS_NODES.length&&
+    LOGISTICS_NODES.every(n=>Array.isArray(supply[n.id])&&
+      supply[n.id].every(x=>FORECAST_MATERIALS.has(x)));
+}
+function validLogisticsManifest(supply){
+  return validLogisticsSupplyShape(supply)&&
+    LOGISTICS_NODES.every(n=>supply[n.id].length===n.throughput);
+}
+function copyLogisticsSupply(supply){
+  return Object.fromEntries(LOGISTICS_NODES.map(n=>[n.id,[...supply[n.id]]]));
+}
+function fundedLogisticsForecastEffect(state){
+  return RESEARCH_CARDS.find(c=>c.effect?.type==='reveal-next-year-logistics-supply'&&
+    researchCardState(state,c.id)?.status==='funded')?.effect||null;
+}
+function createNextLogisticsForecast(state,rng){
+  if(!fundedLogisticsForecastEffect(state)||state.round>=MAX_ROUNDS)return null;
+  return {round:state.round+1,supply:generateLogisticsSupply({rng})};
+}
+/** Read-only shared R05 preview; never exposes the undisclosed newsDeck. */
+export function researchLogisticsForecast(state){
+  if(!fundedLogisticsForecastEffect(state)||state.round>=MAX_ROUNDS)return null;
+  const forecast=state.researchLogisticsForecast;
+  if(forecast?.round!==state.round+1||!validLogisticsManifest(forecast.supply))return null;
+  return {round:forecast.round,year:1899+forecast.round,
+    supply:copyLogisticsSupply(forecast.supply),
+    scope:'ordinary-supply-before-newspaper',possibleAdjustments:['H03','F03','C02']};
+}
+/** A post-reveal receipt lets Stage 8 explain a changed forecast after purchases. */
+export function researchLogisticsArrivalReport(state){
+  const arrived=state?.researchLogisticsArrival;
+  if(!fundedLogisticsForecastEffect(state)||!Number.isInteger(arrived?.round)
+    ||arrived.round!==state.round||!validLogisticsManifest(arrived.planned)
+    ||!validLogisticsSupplyShape(arrived.actual))return null;
+  return {round:arrived.round,year:1899+arrived.round,
+    planned:copyLogisticsSupply(arrived.planned),
+    actual:copyLogisticsSupply(arrived.actual),
+    adjustment:['H03','F03','C02'].includes(arrived.adjustment)?arrived.adjustment:null};
+}
+
+export function refreshLogisticsSupply(state,{rng=Math.random,consumeForecast=false}={}){
   // If the current F03 incident has already been drawn, the current year's
   // stocks (including player purchases) must never be regenerated.
   if(f03CurrentPortIncident(state))return state.logisticsSupply;
@@ -134,7 +179,15 @@ export function refreshLogisticsSupply(state,{rng=Math.random}={}){
   if(activeNewspaper(state)?.id==='H03'&&state.newsH03SupplyRound===state.round)
     return state.logisticsSupply;
   const h03=activeNewspaper(state)?.id==='H03'&&state.newsLastResolvedRound!==state.round;
-  state.logisticsSupply=generateLogisticsSupply({rng,h03});
+  const forecast=state.researchLogisticsForecast;
+  const useForecast=consumeForecast&&!!fundedLogisticsForecastEffect(state)&&
+    forecast?.round===state.round&&validLogisticsManifest(forecast.supply);
+  const fresh=useForecast?copyLogisticsSupply(forecast.supply):generateLogisticsSupply({rng,h03});
+  // A quarantine cancels the final planned delivery at each sea port.
+  // Each draw was i.i.d. per port profile; all other planned cargo survives.
+  if(useForecast&&h03)for(const id of H03_SEA_PORT_IDS)fresh[id].pop();
+  state.logisticsSupply=fresh;
+  if(consumeForecast)state.researchLogisticsForecast=null;
   state.newsH03SupplyRound=h03?state.round:null;
   if(activeNewspaper(state)?.id==='F03'&&state.newsLastResolvedRound!==state.round)
     applyF03PortFire(state,{rng});
@@ -289,7 +342,7 @@ export function applyF03PortFire(state,{rng=Math.random}={}){
 }
 
 export const PROJECTS = [
-  {prestige:2,income:1,id:'polytechnic_campus',researchAcquisitionSource:true,researchVisitorOwnerReward:1,types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Политехнический кампус',type:'Жильё / Городская служба',open:3,materials:['Lumber','Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · при завершении стоимость земли +1 · научная программа ожидает внедрения исследований',benefit:'Доход +$1/год · +1 к стоимости земли района при завершении',actionName:'Научная программа (пока недоступна)',actionText:'Получение и финансирование R01–R08 пока не подключены к игре; в будущем завершённый кампус даст доступ к исследованиям. Сейчас действие не выполняется.',limits:'У +1 / П 0. Земля +1 только при завершении (максимум 6). 4-й материал можно доставить отдельным завершающим рейсом без склада. Не заменяет полицейские, пожарные или медицинские службы.'},
+  {prestige:2,income:1,id:'polytechnic_campus',researchAcquisitionSource:true,researchVisitorOwnerReward:1,types:['Жилое','Общественное'],risk:{earthquake:1,fire:0},name:'Политехнический кампус',type:'Жильё / Городская служба',open:3,materials:['Lumber','Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1/год · при завершении стоимость земли +1 · научная программа: получение R01–R08 через основное действие',benefit:'Доход +$1/год · +1 к стоимости земли района при завершении',actionName:'Научная программа',actionText:'Завершённый кампус: 1 основное действие представителя, чтобы взять одну открытую карту R01–R08. Использование 1 раз на здание в год; чужой визит приносит владельцу +$1 из банка. Финансирование взятой карты — отдельное быстрое действие в собственную активацию.',limits:'У +1 / П 0. Земля +1 только при завершении (максимум 6). 4-й материал можно доставить отдельным завершающим рейсом без склада. Не заменяет полицейские, пожарные или медицинские службы.'},
   {prestige:2,income:3,id:'residential_quarter',types:['Жилое'],risk:{earthquake:0,fire:1},name:'Жилой квартал',type:'Жилое',open:4,materials:['Lumber','Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$3/год · малоэтажная квартальная застройка',benefit:'Доход +$3/год',actionName:'—',actionText:'Отдельного действия нет.',limits:'Последний материал можно доставить на стройку отдельным рейсом. При полном комплекте материалов строительство завершается без склада.'},
   {prestige:2,income:0,id:'grand_city_square',types:['Общественное'],risk:{earthquake:0,fire:0},name:'Большой городской сквер',type:'Городская служба',open:3,materials:['Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'При завершении: +2 к стоимости земли района (макс. 6). Доход 0.',benefit:'Стоимость земли района +2 при завершении',actionName:'—',actionText:'Отдельного действия нет.',limits:'Изменение стоимости земли применяется однократно при завершении, к своему району; максимум 6.'},
   {prestige:2,income:1,id:'hall_of_justice',types:['Бизнес','Общественное'],risk:{earthquake:1,fire:0},name:'Дворец правосудия',type:'Бизнес / Городская служба',open:5,materials:['Lumber','Masonry','Masonry','Steel'],landMin:3,requires:'Стоимость земли 3+',effect:'Доход +$1/год · регистрация собственности или реорганизация',benefit:'Доход +$1/год',actionName:'Судебные услуги (выберите одно)',actionText:'Право собственности ($1): отметьте своё готовое здание с П≤0; 1 VP после катастрофы даже при уничтожении. Реорганизация ($2): замените свой недострой, сбросив его карту, другим своим ещё не начатым проектом. Участок и нужные материалы остаются.',limits:'Земля 3+. При реорганизации лишние материалы теряются, требования нового проекта обязательны. '},
@@ -424,6 +477,24 @@ export function projectRisk(projectId){
     fire:Number(project?.risk?.fire)||0
   };
 }
+/**
+ * Actual local P reduction of a completed fire-service building.
+ * R03 upgrades existing and future standard posts and market firehouses.
+ * Access-radius is an independent service mechanic and never modified here.
+ * Future protection research uses the same effect.type + project family.
+ */
+export function fireServiceProtection(state,projectId){
+  if(!STANDARD_SERVICE_FAMILIES.firehouse.includes(projectId))return 0;
+  const base=Math.max(0,-projectRisk(projectId).fire);
+  if(!base)return 0;
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='citywide-firehouse-upgrade'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  return effect&&effect.fireProtectionInOwnDistrictBefore===base
+    &&Number.isInteger(effect.fireProtectionInOwnDistrictAfter)
+    &&effect.fireProtectionInOwnDistrictAfter>=base
+    ?effect.fireProtectionInOwnDistrictAfter:base;
+}
 // Effective pre-modernization fire risk can change as modular boarding houses grow.
 export function constructionFireRisk(construction){
   const base=projectRisk(construction?.projectId).fire;
@@ -434,6 +505,51 @@ export function riskLevel(value){
   const raw=Math.max(0,Math.floor(Number(value)||0));
   return raw===0?0:raw===1?1:raw===2?2:3;
 }
+// R02 is a funded, citywide, opt-in benefit. No per-player R02 ownership check:
+ // every builder may reinforce a NEW completion. Future cards with this effect
+ // type reuse the existing completion hook and metadata on the building.
+function activeCompletionReinforcement(state){
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='optional-building-earthquake-reinforcement'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  return effect&&Number.isInteger(effect.extraCost)&&effect.extraCost>=0
+    &&Number.isInteger(effect.earthquakeDeltaReduction)&&effect.earthquakeDeltaReduction>0
+    &&effect.fireDeltaReduction===0?effect:null;
+}
+export function constructionReinforcementOption(state,constructionId){
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!construction)return {ok:false,reason:'not-found'};
+  if(construction.status!=='under-construction')return {ok:false,reason:'complete'};
+  const effect=activeCompletionReinforcement(state);
+  if(!effect)return {ok:false,reason:'research-unfunded'};
+  const earthquake=projectRisk(construction.projectId).earthquake;
+  if(earthquake<=0||construction.earthquakeReinforcement)
+    return {ok:false,reason:'not-eligible'};
+  const check=canCompleteConstruction(state,constructionId);
+  if(!check.ok)return check;
+  return {ok:true,constructionId,playerId:construction.playerId,projectId:construction.projectId,
+    districtId:construction.districtId,cost:effect.extraCost,
+    earthquakeReduction:Math.min(earthquake,effect.earthquakeDeltaReduction),
+    affordable:(state.players?.[construction.playerId]?.capital??0)>=effect.extraCost};
+}
+export function currentReinforcementChoice(state){
+  const id=(state.pendingReinforcements||[])[0];
+  return id?constructionReinforcementOption(state,id):null;
+}
+export function resolveReinforcementChoice(state,constructionId,reinforce){
+  const pending=state.pendingReinforcements||[];
+  if(!pending.length||pending[0]!==constructionId)return {ok:false,reason:'not-pending'};
+  if(typeof reinforce!=='boolean')return {ok:false,reason:'choice'};
+  const construction=(state.constructions||[]).find(c=>c.id===constructionId);
+  if(!construction)return {ok:false,reason:'not-found'};
+  if(state.phase!=='development'||state.developmentComplete
+    ||state.developmentPlayer!==construction.playerId)return {ok:false,reason:'not-owner-turn'};
+  const result=completeConstruction(state,construction,{reinforce});
+  if(!result.ok)return result;
+  pending.shift();
+  return {...result,constructionId,reinforced:reinforce,remainingChoices:pending.length};
+}
+
 export function districtRisk(state,districtId){
   const district=districtById(districtId);
   if(!district)return null;
@@ -444,11 +560,14 @@ export function districtRisk(state,districtId){
   for(const construction of state?.constructions||[]){
     if(construction.districtId!==districtId||construction.status!=='complete')continue;
     const base=projectRisk(construction.projectId);
-    const fire=constructionFireRisk(construction);
-    const delta={earthquake:base.earthquake,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
+    const protection=fireServiceProtection(state,construction.projectId);
+    const fire=protection?-protection:constructionFireRisk(construction);
+    const reinforcement=construction.earthquakeReinforcement>0&&base.earthquake>0
+      ?Math.min(base.earthquake,construction.earthquakeReinforcement):0;
+    const delta={earthquake:base.earthquake-reinforcement,fire:fire-(construction.fireSafetyModernized&&fire>0?1:0)};
     if(!delta.earthquake&&!delta.fire)continue;
     const project=projectById(construction.projectId);
-    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':''),earthquake:delta.earthquake,fire:delta.fire});
+    sources.push({kind:'project',constructionId:construction.id,projectId:construction.projectId,ownerId:construction.playerId,label:(project?.name||construction.projectId)+(construction.fireSafetyModernized?' · 🛡 Модернизировано':'')+(reinforcement?' · Сейсмоукрепление':''),earthquake:delta.earthquake,fire:delta.fire});
   }
   const projectSources=sources.filter(x=>x.kind==='project');
   const earthquakeNet=earthquakeBase+projectSources.reduce((sum,x)=>sum+x.earthquake,0);
@@ -460,7 +579,9 @@ export function districtRisk(state,districtId){
 export function districtRiskPreview(state,districtId,projectId){
   const before=districtRisk(state,districtId);
   if(!before)return null;
-  const delta=projectRisk(projectId);
+  const baseDelta=projectRisk(projectId);
+  const protection=fireServiceProtection(state,projectId);
+  const delta={earthquake:baseDelta.earthquake,fire:protection?-protection:baseDelta.fire};
   const earthquakeRaw=Math.max(0,(before.earthquake.net??before.earthquake.raw)+delta.earthquake);
   const fireRaw=Math.max(0,(before.fire.net??before.fire.raw)+delta.fire);
   return {before,delta,after:{earthquake:{raw:earthquakeRaw,level:riskLevel(earthquakeRaw)},fire:{raw:fireRaw,level:riskLevel(fireRaw)}}};
@@ -792,6 +913,7 @@ export function completedActionSpaces(state,projectId){
 }
 export function canTakeMainAction(state,playerId){
   if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
+  if((state.pendingReinforcements||[]).length)return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   const worker=activeWorker(state,playerId);
@@ -800,6 +922,7 @@ export function canTakeMainAction(state,playerId){
 }
 export function canUseFreeAction(state,playerId){
   if(f04PendingSelections(state)||currentE01PendingContract(state))return false;
+  if((state.pendingReinforcements||[]).length)return false;
   if((state.pendingBreadProduction||[]).length)return false;
   if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length||(state.pendingPressCampaigns||[]).length)return false;
   return state.phase==='development'&&!state.developmentComplete&&currentDeveloper(state)===playerId&&developmentSlotsRemaining(state,playerId)>0;
@@ -820,6 +943,12 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 }
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
+  if((state.pendingReinforcements||[]).length)return {ok:false,reason:'reinforcement-choice'};
+  // A completed building's mandatory choice must be resolved before handing
+  // the activation to another player; otherwise no one owns its modal turn.
+  if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length
+    ||(state.pendingPressCampaigns||[]).length)
+    return {ok:false,reason:'pending-building-choice'};
   if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};
@@ -923,6 +1052,101 @@ export function acquireResearch(state,playerId,researchId,source={kind:'civic'})
     (ownerReward?' Владелец получает $'+ownerReward+' из банка.':''),'good');
   return {ok:true,researchId,source:point.kind,constructionId:point.constructionId||null,
     holderId:playerId,ownerReward,worker:consumed.worker};
+}
+
+
+/**
+ * One-shot on-funding research effects. P22: new immediate types register a
+ * preparer here; ongoing/conditional effects attach to their own core hooks.
+ * A preparer must validate every change before any sponsor payment is made.
+ */
+const RESEARCH_INSTANT_FUNDING_PREPARERS=Object.freeze({
+  'land-revaluation-once':(state,effect)=>{
+    const min=effect.minLandValue,max=effect.maxLandValue;
+    if(!Number.isInteger(min)||!Number.isInteger(max)||min<0||max>6||min>max)
+      return {ok:false,reason:'research-effect-invalid'};
+    const changes=[],seen=new Set();
+    for(const [ids,delta] of [
+      [effect.poorGroundDistricts,effect.poorGroundDelta],
+      [effect.stableGroundDistricts,effect.stableGroundDelta]
+    ]){
+      if(!Array.isArray(ids)||!Number.isInteger(delta))
+        return {ok:false,reason:'research-effect-invalid'};
+      for(const districtId of ids){
+        const land=state.districts?.[districtId]?.landValue;
+        if(typeof districtId!=='string'||seen.has(districtId)||!districtById(districtId)
+          ||!Number.isInteger(land)||land<0||land>6)
+          return {ok:false,reason:'research-effect-invalid',districtId};
+        seen.add(districtId);
+        changes.push({districtId,from:land,to:Math.max(min,Math.min(max,land+delta))});
+      }
+    }
+    return {ok:true,landValueChanges:changes};
+  }
+});
+function previewResearchInstantFundingEffect(state,card){
+  const prepare=RESEARCH_INSTANT_FUNDING_PREPARERS[card.effect?.type];
+  return prepare?prepare(state,card.effect):{ok:true,landValueChanges:[]};
+}
+
+/**
+ * Stage 3 funding is a separate free action, not another worker placement.
+ * Global research effects are attached in later stages before the UI can
+ * expose this transaction to real players.
+ */
+export function researchFundingPreview(state,playerId,researchId){
+  const card=researchCardById(researchId);
+  if(!card)return {ok:false,reason:'research-not-found'};
+  const player=state.players?.[playerId];
+  if(!player)return {ok:false,reason:'invalid-player'};
+  const entry=researchCardState(state,researchId);
+  if(entry?.status==='funded')return {ok:false,reason:'already-funded'};
+  if(entry?.status!=='held'||entry.holderId!==playerId)
+    return {ok:false,reason:'not-research-holder'};
+  if(!canUseFreeAction(state,playerId))return {ok:false,reason:'free-action-unavailable'};
+  const requirement=card.requirement?.completedCitywide;
+  if(requirement){
+    const projectIds=requirement.projectIds||
+      STANDARD_SERVICE_FAMILIES[requirement.serviceFamily]||[];
+    const count=(state.constructions||[]).filter(c=>c.status==='complete'
+      &&projectIds.includes(c.projectId)).length;
+    if(count<requirement.count)return {ok:false,reason:'research-prerequisite',
+      serviceFamily:requirement.serviceFamily,required:requirement.count,completed:count};
+  }
+  if(player.capital<card.fundingCost)return {ok:false,reason:'capital',
+    cost:card.fundingCost,available:player.capital};
+  const instant=previewResearchInstantFundingEffect(state,card);
+  if(!instant.ok)return instant;
+  return {ok:true,cost:card.fundingCost,reward:{...card.sponsorReward},
+    effectType:card.effect?.type||null,landValueChanges:instant.landValueChanges};
+}
+
+export function fundResearch(state,playerId,researchId,{rng=Math.random}={}){
+  const preview=researchFundingPreview(state,playerId,researchId);
+  if(!preview.ok)return preview;
+  // Prepare R05 before charging; other research never touches supply RNG.
+  const player=state.players[playerId],card=researchCardById(researchId);
+  const forecast=card.effect?.type==='reveal-next-year-logistics-supply'&&state.round<MAX_ROUNDS
+    ?{round:state.round+1,supply:generateLogisticsSupply({rng})}:null;
+  player.capital-=card.fundingCost;
+  player.prestige+=(card.sponsorReward?.vp||0);
+  const influence=moveInfluence(state,playerId,card.sponsorReward?.influence||0);
+  ensureResearchState(state);
+  Object.assign(state.research[researchId],
+    {status:'funded',holderId:playerId,fundedRound:state.round});
+  if(card.effect?.type==='reveal-next-year-logistics-supply')
+    state.researchLogisticsForecast=forecast;
+  // Every affected district was checked before payment. The canonical land
+  // setter preserves the same 0..6 bounds used by construction pricing.
+  for(const change of preview.landValueChanges)setLandValue(state,change.districtId,change.to);
+  logEvent(state,player.name+' финансирует исследование «'+card.name+'» за $'+card.fundingCost+
+    ': +'+(card.sponsorReward?.vp||0)+' VP, +'+(card.sponsorReward?.influence||0)+
+    ' шаг(а) Influence.'+(preview.landValueChanges.length
+      ?' Land Value изменён в '+preview.landValueChanges.length+' районах.':'') ,'good');
+  return {ok:true,researchId,playerId,cost:card.fundingCost,
+    vp:card.sponsorReward?.vp||0,influence,
+    fundedRound:state.round,effectType:card.effect?.type||null,
+    landValueChanges:preview.landValueChanges};
 }
 
 export function actionSpaceOccupant(state,constructionId){
@@ -1241,6 +1465,8 @@ export function createInitialState({rng=Math.random}={}){
     players,
     // Stage 1: canonical data-only research state. No acquisition or effects yet.
     research:createResearchState(),
+    researchLogisticsForecast:null,
+    researchLogisticsArrival:null,
     market,
     deck:pool,
     expired:[],
@@ -1260,6 +1486,7 @@ export function createInitialState({rng=Math.random}={}){
     selectedProjectId:market[0]?.id||null,
     selectedDistrictId:'civic',
     pendingConstruction:null,
+    pendingReinforcements:[],
     constructions:[],
     nextConstructionId:1,
     nextLoanId:1,
@@ -1367,21 +1594,80 @@ export function cityGoalProgress(state,playerId,goalId){
 }
 export function cityGoalTarget(goalId){return goalId==='C05'?3:2;}
 
-export function claimCityGoal(state,slot){
+/**
+ * R06: city-goal advance is a property of the specific goal contract.
+ * The research registry supplies the terms, and only active contracts count
+ * against the player's limit. No global goal-debt ledger or extra worker step.
+ */
+function cityGoalAdvanceTerms(){
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='city-goal-advance-option');
+  const e=card?.effect;
+  if(!e||e.grantTiming!=='when-taking-new-city-goal'
+    ||e.extraWorkerActionRequiredForAdvance!==false
+    ||![e.advanceAmount,e.onSuccessMoneyRewardReduction,e.onFailureAdditionalVpPenalty,
+      e.maxActiveAdvancedGoalsPerPlayer].every(n=>Number.isSafeInteger(n)&&n>0))
+    return null;
+  return {researchId:card.id,advanceAmount:e.advanceAmount,
+    successReduction:e.onSuccessMoneyRewardReduction,
+    failureVpPenalty:e.onFailureAdditionalVpPenalty,
+    maxActive:e.maxActiveAdvancedGoalsPerPlayer};
+}
+// Settling an existing promise must not depend on research still being funded
+// in a legacy or test save; only creating a NEW advance does.
+function cityGoalAdvanceForEntry(entry){
+  const terms=cityGoalAdvanceTerms();
+  return terms&&entry?.advanceAmount===terms.advanceAmount?terms:null;
+}
+/** Pure preview for the future City Hall UI. */
+export function cityGoalAdvanceOptions(state,playerId){
+  if(!Number.isInteger(playerId)||!state.players?.[playerId])
+    return {ok:false,reason:'invalid-player'};
+  const terms=cityGoalAdvanceTerms();
+  if(!terms)return {ok:false,reason:'advance-terms'};
+  const player=state.players[playerId];
+  const active=(player.goals||[]).filter(entry=>
+    entry.status==='active'&&!!cityGoalAdvanceForEntry(entry)).length;
+  const funded=researchCardState(state,terms.researchId)?.status==='funded';
+  const turn=state.phase==='declare'&&currentDeclarer(state)===playerId;
+  const available=funded&&active<terms.maxActive&&turn&&player.goalTakenRound!==state.round;
+  const reason=!funded?'research-not-funded'
+    :active>=terms.maxActive?'advance-limit'
+    :!turn?'not-city-hall-turn'
+    :player.goalTakenRound===state.round?'already-taken':null;
+  return {ok:true,available,reason,researchId:terms.researchId,
+    amount:terms.advanceAmount,successReduction:terms.successReduction,
+    failureVpPenalty:terms.failureVpPenalty,active,maxActive:terms.maxActive};
+}
+
+export function claimCityGoal(state,slot,{takeAdvance=false}={}){
   if(state.phase!=='declare')return {ok:false,reason:'wrong-phase'};
   const pid=currentDeclarer(state);if(pid==null)return {ok:false,reason:'no-declarer'};
   const player=state.players[pid];
   if(player.goalTakenRound===state.round)return {ok:false,reason:'already-taken'};
   const card=state.goalMarket?.[slot];if(!card)return {ok:false,reason:'empty-slot'};
   const goal=cityGoalById(card.id);if(!goal)return {ok:false,reason:'goal'};
+  let amount=0;
+  if(takeAdvance){
+    // Validate the optional cash advance BEFORE consuming the goal card.
+    const option=cityGoalAdvanceOptions(state,pid);
+    if(!option.ok||!option.available)return {ok:false,reason:option.reason||'advance-unavailable'};
+    if((goal.reward?.capital||0)<option.successReduction)
+      return {ok:false,reason:'advance-exceeds-reward'};
+    amount=option.amount;
+  }
   player.goals=player.goals||[];
-  player.goals.push({uid:card.uid,id:card.id,status:'active',acquiredRound:state.round});
+  const entry={uid:card.uid,id:card.id,status:'active',acquiredRound:state.round};
+  if(amount)entry.advanceAmount=amount;
+  player.goals.push(entry);
+  if(amount)player.capital+=amount;
   player.goalTakenRound=state.round;
   state.goalMarket[slot]=null;
   state.goalSessionClaims=state.goalSessionClaims||[];
   state.goalSessionClaims.push({playerId:pid,uid:card.uid,id:card.id});
-  logEvent(state,`${player.name} принимает городскую цель «${goal.name}». Отчёт возможен только в следующей City Hall Session.`,'accent');
-  return {ok:true,playerId:pid,goalId:card.id};
+  logEvent(state,`${player.name} принимает городскую цель «${goal.name}»`+
+    (amount?` и получает аванс $${amount} по R06`:'')+
+    '. Отчёт возможен только в следующей City Hall Session.','accent');
+  return {ok:true,playerId:pid,goalId:card.id,advanceAmount:amount};
 }
 
 export function reportCompletedCityGoals(state){
@@ -1391,7 +1677,10 @@ export function reportCompletedCityGoals(state){
       if(entry.status!=='active'||entry.acquiredRound>=state.round)continue;
       const goal=cityGoalById(entry.id),evaluation=cityGoalEvaluation(state,player.id,entry);
       if(!goal||!evaluation.complete)continue;
-      player.capital+=goal.reward.capital||0;
+      const advance=cityGoalAdvanceForEntry(entry);
+      const withheld=advance?advance.successReduction:0;
+      const paid=Math.max(0,(goal.reward.capital||0)-withheld);
+      player.capital+=paid;
       player.prestige=(player.prestige||0)+(goal.reward.prestige||0);
       let influenceMove=null;
       if(goal.reward.influence)influenceMove=moveInfluence(state,player.id,goal.reward.influence);
@@ -1399,9 +1688,12 @@ export function reportCompletedCityGoals(state){
       // Clear legacy metadata after reporting; old buildings are ordinary valid matches.
       delete entry.retroactiveCount;
       delete entry.preExistingConstructionIds;
-      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${goal.reward.capital}, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
-      reports.push({playerId:player.id,goalId:goal.id,capital:goal.reward.capital,prestige:goal.reward.prestige,
-        influence:goal.reward.influence||0,influenceMove});
+      logEvent(state,`${player.name} отчитывает цель «${goal.name}»: +$${paid}`+
+        (advance?` (аванс $${entry.advanceAmount} получен ранее)`:'')+
+        `, +${goal.reward.prestige} VP${goal.reward.influence?`, +${goal.reward.influence} Influence`:''}.`,'good');
+      reports.push({playerId:player.id,goalId:goal.id,capital:paid,prestige:goal.reward.prestige,
+        influence:goal.reward.influence||0,influenceMove,
+        advanceAmount:advance?entry.advanceAmount:0,withheld});
     }
   }
   state.lastGoalReports=reports;
@@ -1442,10 +1734,15 @@ export function failIncompleteCityGoals(state){
     for(const entry of player.goals||[]){
       if(entry.status!=='active')continue;
       const goal=cityGoalById(entry.id);if(!goal)continue;
-      player.prestige=Math.max(0,(player.prestige||0)-goal.failPrestige);
+      const advance=cityGoalAdvanceForEntry(entry);
+      const extra=advance?advance.failureVpPenalty:0;
+      const total=goal.failPrestige+extra;
+      player.prestige=Math.max(0,(player.prestige||0)-total);
       entry.status='failed';entry.failedRound=state.round;
-      logEvent(state,`${player.name} не выполнил цель «${goal.name}»: −${goal.failPrestige} VP.`,'bad');
-      failures.push({playerId:player.id,goalId:goal.id,prestige:-goal.failPrestige});
+      logEvent(state,`${player.name} не выполнил цель «${goal.name}»: −${total} VP`+
+        (extra?` (включая −${extra} VP за аванс R06)`:'')+'.','bad');
+      failures.push({playerId:player.id,goalId:goal.id,prestige:-total,
+        advancePenalty:extra});
     }
   }
   return failures;
@@ -1607,6 +1904,33 @@ export function constructionUpkeepDue(state,playerId){
   return unfinishedConstructions(state,playerId).length*CONSTRUCTION_UPKEEP_COST;
 }
 
+/**
+ * Standard project fee at construction START. No retroactive changes to
+ * already started buildings: all money is paid by beginConstruction.
+ *
+ * P22: all funded research modifiers share the canonical standard-fee
+ * calculation. E05's existing city subsidy takes priority and waives the
+ * whole fee. Phase II research effects deliberately do not belong here.
+ */
+export function standardProjectFee(state,projectId){
+  if(!isStandardProject(projectId))return 0;
+  if(isE05CivicSubsidy(state,projectId))return 0;
+  const surcharge=RESEARCH_CARDS.reduce((total,card)=>{
+    const effect=card.effect;
+    const phase1=effect?.phase1;
+    if(effect?.appliesToAllPlayers!==true
+      ||phase1?.type!=='standard-project-fee-increase'
+      ||phase1.projectId!==projectId
+      ||phase1.feeTiming!=='on-construction-start-after-research'
+      ||phase1.baseStandardProjectFee!==STANDARD_PROJECT_FEE
+      ||phase1.affectsPreviouslyStartedConstruction!==false
+      ||researchCardState(state,card.id)?.status!=='funded'
+      ||!Number.isSafeInteger(phase1.extraFee)||phase1.extraFee<=0)return total;
+    return total+phase1.extraFee;
+  },0);
+  return STANDARD_PROJECT_FEE+surcharge;
+}
+
 export function constructionEligibility(state,playerId,projectId,districtId,{redevelopId=null}={}){
   const reasons=[];
   const former=redevelopId?(state.constructions||[]).find(c=>c.id===redevelopId):null;
@@ -1667,7 +1991,7 @@ export function constructionEligibility(state,playerId,projectId,districtId,{red
   const districtLandWaived=!!(project?.freeLandDistrict&&project.freeLandDistrict===districtId&&ds);
   const bureauDiscount=!districtLandWaived&&!e05Subsidy&&!replacing&&player&&ds&&(player.bureauContracts||0)>0&&ds.landValue>0?Math.min(BUREAU_LAND_DISCOUNT,ds.landValue):0;
   const landCost=ds?(e05Subsidy||replacing||districtLandWaived?0:Math.max(0,ds.landValue-bureauDiscount)):0;
-  const standardFee=e05Subsidy?0:project?.standard?STANDARD_PROJECT_FEE:0;
+  const standardFee=standardProjectFee(state,projectId);
   const totalCost=landCost+standardFee;
   if(player&&ds&&player.capital<totalCost) reasons.push(`Не хватает капитала на землю и проект ($${totalCost}).`);
   return {
@@ -1914,15 +2238,30 @@ function consumeWarehouseMaterials(state,playerId,districtId,missing){
   return true;
 }
 
-export function completeConstruction(state,construction){
+export function completeConstruction(state,construction,{reinforce=null}={}){
   if(!construction||construction.status!=='under-construction')return {ok:false};
   const project=projectById(construction.projectId);
   const check=canCompleteConstruction(state,construction.id);
   if(!check.ok)return check;
+  const reinforcement=constructionReinforcementOption(state,construction.id);
+  if(reinforcement.ok&&reinforce===null){
+    state.pendingReinforcements=state.pendingReinforcements||[];
+    if(!state.pendingReinforcements.includes(construction.id))
+      state.pendingReinforcements.push(construction.id);
+    return {ok:false,reason:'reinforcement-choice-required',constructionId:construction.id,
+      cost:reinforcement.cost,affordable:reinforcement.affordable,pending:true};
+  }
+  if(reinforce===true&&!reinforcement.ok)return {ok:false,reason:'reinforcement-unavailable'};
+  if(reinforce===true&&!reinforcement.affordable)return {ok:false,reason:'capital',cost:reinforcement.cost};
   if(check.warehouseUse>0&&!consumeWarehouseMaterials(state,construction.playerId,construction.districtId,check.missing)){
     return {ok:false,reason:'warehouse-materials'};
   }
   const riskBefore=districtRisk(state,construction.districtId);
+  if(reinforce===true){
+    state.players[construction.playerId].capital-=reinforcement.cost;
+    construction.earthquakeReinforcement=reinforcement.earthquakeReduction;
+    construction.reinforcementCostPaid=reinforcement.cost;
+  }
   // Count completed buildings BEFORE this project flips to complete. Pending
   // projects do not block cottages' "first completed" district bonus.
   const completedBefore=(state.constructions||[]).filter(c=>
@@ -2038,7 +2377,8 @@ export function completeConstruction(state,construction){
   if(riskBefore&&riskAfter&&(riskBefore.earthquake.raw!==riskAfter.earthquake.raw||riskBefore.fire.raw!==riskAfter.fire.raw)){
     logEvent(state,`Риск ${districtById(construction.districtId).name}: У ${riskBefore.earthquake.raw}→${riskAfter.earthquake.raw} · П ${riskBefore.fire.raw}→${riskAfter.fire.raw}.`,'accent');
   }
-  return {ok:true,prestige:vp,schoolHousingVp,cottageBonus,landChange,roadOpened,warehouseUse:check.warehouseUse||0};
+  return {ok:true,prestige:vp,schoolHousingVp,cottageBonus,landChange,roadOpened,warehouseUse:check.warehouseUse||0,
+    reinforced:reinforce===true,reinforcementCost:reinforce===true?reinforcement.cost:0};
 }
 
 export function completeConstructionFromStorage(state,constructionId){
@@ -2159,7 +2499,7 @@ export function deliverySourceInfo(state,playerId,source){
     const maxCapacity=Math.max(...DELIVERY_HAULERS.map(h=>h.capacity));
     return {kind:'supplier',id:supplier.id,name:supplier.name,districtId:supplier.districtId,
       inventory:Array.from({length:maxCapacity},()=>supplier.resource),
-      resource:supplier.resource,unitPrice:supplier.unitPrice,unlimited:true};
+      resource:supplier.resource,unitPrice:purchaseMaterialUnitPrice(state,source,supplier.resource),unlimited:true};
   }
   if(source.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id
@@ -2208,6 +2548,36 @@ function multisetEquals(a,b){
   return [...keys].every(k=>(ac[k]||0)===(bc[k]||0));
 }
 
+/**
+ * Source-aware cash price for an ordinary purchased material.
+ * Reuse this for single- and multi-source Delivery and UI estimates.
+ * Research effects use the registry (P22), not hard-coded research IDs.
+ * Industrial output and previously purchased inventories are not purchases
+ * from a node/neutral supplier and therefore do not use this surcharge.
+ */
+export function purchaseMaterialUnitPrice(state,source,resource){
+  const kind=source?.kind;
+  let base=0;
+  if(kind==='node')base=RESOURCE_PRICES[resource]??0;
+  else if(kind==='supplier'){
+    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(s=>s.id===source.id);
+    base=supplier&&resource===supplier.resource?supplier.unitPrice:0;
+  }else return 0;
+  if(base<=0)return 0;
+  const origin=kind==='node'?'logistics-node':'neutral-supplier';
+  const extra=RESEARCH_CARDS.reduce((sum,card)=>{
+    const e=card.effect;
+    return sum+(e?.type==='citywide-lumber-purchase-price-increase'
+      &&e.resource===resource
+      &&e.appliesToAllPlayers===true
+      &&e.appliesToSources?.includes(origin)
+      &&researchCardState(state,card.id)?.status==='funded'
+      &&Number.isSafeInteger(e.unitPriceIncrease)&&e.unitPriceIncrease>0
+        ?e.unitPriceIncrease:0);
+  },0);
+  return base+extra;
+}
+
 export function deliveryMaterialCost(state,source,cargo,playerId=null){
   if(source?.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'
@@ -2230,11 +2600,11 @@ export function deliveryMaterialCost(state,source,cargo,playerId=null){
   if(source?.kind==='supplier'){
     const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
     if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
-    const gross=(cargo||[]).reduce((sum,type)=>sum+(type===supplier.resource?supplier.unitPrice:0),0);
+    const gross=(cargo||[]).reduce((sum,type)=>sum+purchaseMaterialUnitPrice(state,source,type),0);
     return {gross,discount:0,cost:gross,procurementUsed:0};
   }
   if(source?.kind!=='node')return {gross:0,discount:0,cost:0,procurementUsed:0};
-  const prices=(cargo||[]).map(type=>RESOURCE_PRICES[type]??0);
+  const prices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
   const gross=prices.reduce((a,b)=>a+b,0);
   const procurementUsed=Math.min(state.procurementRemaining||0,prices.length);
   const discount=[...prices].sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
@@ -2265,7 +2635,8 @@ export function deliveryPlanCost(state,plan){
   const industryDiscount=costs.reduce((n,c)=>n+(c.ownerId!=null?c.discount:0),0);
   const industrySales=costs.filter(c=>c.ownerId!=null&&c.ownerPayment>0)
     .map(c=>({ownerId:c.ownerId,amount:c.ownerPayment}));
-  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'?(p.cargo||[]).map(t=>RESOURCE_PRICES[t]||0):[]);
+  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'
+    ?(p.cargo||[]).map(t=>purchaseMaterialUnitPrice(state,p.source,t)):[]);
   const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
   const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
   const materialCost=materialGross-procurementDiscount-industryDiscount;
@@ -2590,7 +2961,8 @@ function executeDeliveryCore(state,plan){
     const con=state.constructions.find(c=>c.id===id);
     if(completeConstruction(state,con).ok)completed.push(id);
   }
-  return {ok:true,cost,completed,hauler,source};
+  return {ok:true,cost,completed,hauler,source,
+    pendingReinforcements:[...(state.pendingReinforcements||[])]};
 }
 
 export function currentSailorRecruitment(state){
@@ -2674,9 +3046,34 @@ export function herbalPharmacyIncomeBonus(state,construction){
     &&construction.status==='complete'
     &&construction.herbalPrivatePracticeBonus===1?1:0;
 }
+/**
+ * R04 medical-network Income is a computed building bonus, not a saved grant.
+ * Each completed clinic / standard outpatient earns at most one bonus while
+ * at least one completed residential or mixed-residential building is nearby.
+ * Adding more neighbors never multiplies the bonus. Annual settlement uses
+ * existing buildingIncome -> grossRoundIncome -> roundIncome exactly once.
+ * For future programs register a new effect.type, not another annual payout.
+ */
+export function researchClinicIncomeBonus(state,construction){
+  if(!construction||construction.status!=='complete'
+    ||!STANDARD_SERVICE_FAMILIES.clinic.includes(construction.projectId))return 0;
+  const card=RESEARCH_CARDS.find(c=>c.effect?.type==='clinic-income-if-near-residential'
+    &&researchCardState(state,c.id)?.status==='funded');
+  const effect=card?.effect;
+  if(!effect||effect.eligibleDistrictScope!=='own-or-adjacent'
+    ||effect.eligibleResidentialStatus!=='complete'
+    ||effect.residenceCanBelongToAnyPlayer!==true)return 0;
+  const nearby=new Set([construction.districtId,...districtNeighbors(construction.districtId)]);
+  const hasResidence=(state.constructions||[]).some(c=>
+    c.status==='complete'&&nearby.has(c.districtId)&&projectTypes(c.projectId).includes('Жилое'));
+  if(!hasResidence)return 0;
+  const amount=effect.annualIncomePerEligibleClinic,cap=effect.maxIncomePerClinicPerYear;
+  return Number.isInteger(amount)&&amount>0&&Number.isInteger(cap)&&cap>0
+    ?Math.min(amount,cap):0;
+}
 export function buildingIncome(state,playerId){
   return (state.constructions||[]).filter(c=>c.playerId===playerId&&c.status==='complete')
-    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+herbalPharmacyIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
+    .reduce((sum,c)=>sum+(c.projectId==='rare_goods_shop'?(Number.isInteger(c.fixedIncome)?c.fixedIncome:1):(projectById(c.projectId)?.income||0))+canneryIncomeBonus(state,c)+herbalPharmacyIncomeBonus(state,c)+researchClinicIncomeBonus(state,c)+(c.projectId==='wagonboarding'?Math.max(0,Math.min(WAGON_MAX_LEVEL,c.wagonLevel||1)-1):0)+workforceIncomeBonus(state,c),0);
 }
 
 export function advertisingIncomeBonus(state,playerId){
@@ -3076,9 +3473,20 @@ function finishYearTransition(state,{rng=Math.random}={}){
     (['F03','H03'].includes(forthcoming.id)?'Портовые поставки меняются сразу при выходе газеты.':
       forthcoming.id==='H02'?'Тариф $2 за переход действует немедленно до санитарной операции.':
       forthcoming.id==='C03'?'До обычных заявок City Hall каждый игрок по очереди решает, принимать ли сомнительное разрешение.':'Событие произойдёт в конце года.'),'accent');
-  refreshLogisticsSupply(state,{rng});
+  const plannedArrival=state.researchLogisticsForecast?.round===state.round
+    &&fundedLogisticsForecastEffect(state)
+    &&validLogisticsManifest(state.researchLogisticsForecast.supply)
+    ?copyLogisticsSupply(state.researchLogisticsForecast.supply):null;
+  refreshLogisticsSupply(state,{rng,consumeForecast:true});
   // A new C02 newspaper removes exactly two REAL cubes after annual refill.
   if(state.newsCurrentIds[0]==='C02')applyC02Theft(state,{rng});
+  // Keep a public receipt of the actual arrival before any player purchases it.
+  const adjustment=['H03','F03','C02'].includes(state.newsCurrentIds[0])?state.newsCurrentIds[0]:null;
+  state.researchLogisticsArrival=plannedArrival?{
+    round:state.round,planned:plannedArrival,actual:copyLogisticsSupply(state.logisticsSupply),adjustment}:null;
+  // Draw only AFTER actual newspaper incidents so future news is not leaked;
+  // store the next ordinary manifest once, independent of save/reload.
+  state.researchLogisticsForecast=createNextLogisticsForecast(state,rng);
   for(const producer of completedContrabandSources(state))producer.contrabandStock=contrabandSourceCapacity(producer.projectId);
   for(const brewery of completedBreweries(state))brewery.beerStock=BREWERY_STOCK_CAPACITY;
   state.pendingBreadProduction=completedBreadFactories(state).map(c=>c.id);
@@ -3156,6 +3564,7 @@ export function closeConstructionForUpkeep(state,playerId,constructionId,{rng=Ma
 }
 
 export function cleanupMarket(state,{rng=Math.random}={}){
+  if((state.pendingReinforcements||[]).length)return {ok:false,reason:'reinforcement-choice'};
   if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(state.phase==='crime-assessment')return {ok:false,reason:'crime-choice',options:currentAnnualCrimeAssessment(state)};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};

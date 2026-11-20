@@ -24,7 +24,7 @@ async function seed(page){
 for(const viewport of [{width:1440,height:900},{width:1280,height:800},{width:863,height:768}]){
   test('desktop HUD is readable, construction details accessible, and map not covered '+viewport.width,async({page})=>{
     await page.setViewportSize(viewport);await seed(page);
-    await expect(page.locator('.version-badge')).toHaveText('v0.53.1');
+    await expect(page.locator('.version-badge')).toHaveText('v0.54.0');
     const pill=page.locator('.player-pill.dev-active').first();
     await expect(pill).toBeVisible();
     await expect(pill.locator('.player-stats')).toBeVisible();

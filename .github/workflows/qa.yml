@@ -2,9 +2,9 @@ name: Prototype QA
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/research-system]
   pull_request:
-    branches: [main]
+    branches: [main, feature/research-system]
 
 jobs:
   qa:
