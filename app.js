@@ -3,7 +3,7 @@ PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseCon
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,FREIGHT_YARD,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
 isE05CivicSubsidy,projectById,projectTypes,cityGoalById,cityGoalEvaluation,cityGoalTarget,createCityGoalPool,districtById,districtAccess,districtNeighbors,districtHasMarketStreet,districtSoilClass,projectRisk,riskLevel,districtRisk,districtRiskPreview,fireServiceProtection,turnOrder,normalizeInfluenceTrack,moveInfluence,normalizeSuspicion,legalCaseOptions,settleLegalCase,changeSuspicion,arrestSanctionPreview,paidReplacementOptions,hireReplacementWorker,workerRosterPreview,annualCrimeOptions,currentAnnualCrimeAssessment,resolveAnnualCrimeAssessment,currentDeclarer,currentDeveloper,openingPrice,
 createWorkers,playerWorkers,activeWorker,jailWorker,ensureDevelopmentSlots,developmentSlotsRemaining,workerCanReachDistrict,workerReachableDistricts,selectWorker,
-createInitialState,ensureResearchState,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
+createInitialState,ensureResearchState,researchCardState,researchAcquisitionSources,acquireResearch,researchFundingPreview,fundResearch,claimProject,claimCityGoal,passDeclaration,beginBidding,currentBidTask,submitBid,
 resolveTenders,cleanupMarket,closeConstructionForUpkeep,ensureNewspaper,activeNewspaper,newsPreview,takeNewspaperEmergency,c03CurrentOffer,c03OfferPlayer,c03OfferOptions,acceptC03Offer,declineC03Offer,f01NoticeOptions,fileF01Notice,f02OperationOptions,completeF02Operation,h02Preview,h02ExpeditionOptions,completeH02Expedition,paidRoadEdgeCost,c01Preview,c01RaidOptions,completeC01Raid,c02Preview,c02ReturnOptions,returnC02Lot,h01Preview,h01ActiveIncident,h01ExpeditionOptions,completeH01Expedition,f04NoticeOptions,chooseF04Notice,resolveF04Notice,districtConstructionCount,unfinishedConstructions,constructionUpkeepDue,standardProjectFee,constructionEligibility,beginConstruction,setLandValue,
 constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bakeryFuelSources,activateBakery,completedIndustrialProducers,industrialInventory,INDUSTRIAL_PRODUCTION,industrialProductionCapacity,canneryIncomeBonus,freightYardInventory,canCompleteConstruction,completeConstructionFromStorage,constructionReinforcementOption,currentReinforcementChoice,resolveReinforcementChoice,
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,purchaseMaterialUnitPrice,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
@@ -11,6 +11,7 @@ roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,researchCl
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
 } from './game-core.js?v=0590-research-state';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0590-research-state';
+import {RESEARCH_CARDS} from './research-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
 const LEGACY_STORAGE_KEYS=['sf1906_phase1_ui_v028','sf1906_phase1_ui_v027','sf1906_phase1_ui_v026','sf1906_phase1_ui_v025','sf1906_phase1_ui_v024','sf1906_phase1_ui_v023','sf1906_phase1_ui_v022','sf1906_phase1_ui_v021','sf1906_phase1_ui_v020','sf1906_phase1_ui_v0192','sf1906_phase1_ui_v0191','sf1906_phase1_ui_v019','sf1906_phase1_ui_v018','sf1906_phase1_ui_v017','sf1906_phase1_ui_v0166','sf1906_phase1_ui_v0165'];
 let state=loadState();
@@ -21,6 +22,7 @@ let mobileMapDetail=false;
 let deliveryDraft=null;
 let fireActionDraft=null;
 let justiceDraft=null;
+let researchSourceDraft=null;
 let overviewPlayerId=null;
 let focusedConstructionId=null;
 let riskViewActive=false;
@@ -2904,7 +2906,7 @@ function renderNewProjectDecisions(){
 function render(){
 if(newsEmergencyMode&&(state.phase!=='development'||state.developmentComplete||state.activationMainActionUsed))newsEmergencyMode=false;
 saveState();
-renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();renderReinforcementChoice();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
+renderTop();renderPlayers();renderViews();renderMarket();renderCityGoals();renderMarketOverview();renderStarterDraft();renderSupply();renderSupplyNodes();renderWorkerDock();renderStandardProjects();renderCityActions();renderMobileActionDock();renderDeliveryPanel();renderCity();renderCityOverview();renderMobileObjectStrip();renderContext();renderOffice();renderResearch();renderLog();renderDebug();renderActionBar();renderTenderSteps();renderNewspaper();renderYearTransition();renderSailorRecruitment();renderNewProjectDecisions();renderReinforcementChoice();syncMobileContext();syncMapZoom();syncUndoButton();requestAnimationFrame(syncStickyLayout);
 if(state.phase==='bids'&&!$('#privacyModal').classList.contains('open')&&!pendingBidReveal)openBidCurtain();
 }
 function renderTop(){
