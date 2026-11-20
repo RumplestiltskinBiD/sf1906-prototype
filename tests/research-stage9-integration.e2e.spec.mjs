@@ -6,6 +6,7 @@ const screens=[{width:390,height:844},{width:932,height:430},{width:1366,height:
 function setup(){
   const s=createInitialState({rng:()=>0.31});
   s.phase='development';s.view='city';s.developmentPlayer=0;
+  s.yearTurnOrder=[0,1,2];s.firstPlayer=0;
   s.developmentComplete=false;s.developmentSlotsUsed=[0,0,0];
   s.activationMainActionUsed=false;s.actionSpaceOccupancy={};
   s.pendingBreadProduction=[];s.pendingPressCampaigns=[];s.pendingWorkforceLinks=[];s.pendingSailorRecruitments=[];
