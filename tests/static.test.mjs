@@ -12,13 +12,13 @@ test('app.js has no querySelector(...).forEach regression',async()=>{
 
 test('browser entrypoints and displayed version are in sync',async()=>{
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-  assert.match(html,/<title>San Francisco 1906 — v0\.54\.0 · Исследования R01–R08<\/title>/);
-  assert.match(html,/<span class="version-badge">v0\.54\.0<\/span>/);
+  assert.match(html,/<title>San Francisco 1906 — v0\.54\.1 · Исследования R01–R08<\/title>/);
+  assert.match(html,/<span class="version-badge">v0\.54\.1<\/span>/);
   assert.match(html,/<button class="nav-btn" id="researchBtn">/);
-  assert.match(html,/app\.js\?v=0593-research-release-54/);
-  assert.match(html,/styles\.css\?v=0593-research-release-54/);
+  assert.match(html,/app\.js\?v=0594-retired-freight-yard/);
+  assert.match(html,/styles\.css\?v=0594-retired-freight-yard/);
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.match(app,/game-core\.js\?v=0593-research-release-54/);
+  assert.match(app,/game-core\.js\?v=0594-retired-freight-yard/);
   assert.match(app,/newspaper-cards\.js\?v=0590-research-state/);
   const core=await readFile(new URL('../game-core.js',import.meta.url),'utf8');
   assert.match(core,/newspaper-cards\.js\?v=0590-research-state/);

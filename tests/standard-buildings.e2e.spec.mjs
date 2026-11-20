@@ -8,9 +8,9 @@ function state(){
 }
 function built(id,projectId,districtId='civic',playerId=0,more={}){return {id,projectId,districtId,playerId,status:'complete',materialsDelivered:[...projectById(projectId).materials],warehouseInventory:[],completedRound:1,startedRound:1,...more};}
 for(const viewport of [{width:390,height:844},{width:932,height:430}]){
- test('v0.54 standard projects are accessible and interactive '+viewport.width+'x'+viewport.height,async({page})=>{
+ test('v0.54.1 standard projects are accessible and interactive '+viewport.width+'x'+viewport.height,async({page})=>{
   await page.setViewportSize(viewport);const s=state();await seed(page,s);
-  await expect(page.locator('.version-badge')).toHaveText('v0.54.0');
+  await expect(page.locator('.version-badge')).toHaveText('v0.54.1');
   const panel=page.locator('#standardProjects');await expect(panel).toBeVisible();
   await expect(panel.locator('[data-standard-build]')).toHaveCount(4);
   await expect(panel.locator('.standard-project-card')).toHaveCount(4);
