@@ -103,7 +103,8 @@ test('8B UI delegates transactions and previews to canonical core, not a second 
   'claimCityGoal(state,slot,{takeAdvance})',
   'resolveReinforcementChoice(state,id,reinforced)',
   'data-goal-advance-slot',
-  'data-research-forecast-node',
-  'data-research-arrived-node'
+  "rows(forecast.supply,'research-forecast')",
+  "rows(arrival.actual,'research-arrived')",
+  "rows(arrival.planned,'research-planned')"
  ])assert.ok(app.includes(token),token);
 });
