@@ -43,7 +43,7 @@ test('R08 retains the approved phase II contract in its research registry',()=>{
   assert.equal(e.adjacentDistrictOnly,true);
   assert.equal(e.fireOnlyDamageDoesNotQualify,true);
   assert.equal(e.appliesToBuildingsCompletedBeforeResearch,true);
-  assert.equal(c.implementationStatus,'implemented-in-research-integration-branch-not-published');
+  assert.equal(c.implementationStatus,'implemented-in-main');
 });
 test('strictly adjacent earthquake DAMAGE qualifies a living standard ambulance for +2 VP',()=>{
   const s=game();clinic(s,'A');
