@@ -185,7 +185,7 @@ test('Stage 9 combined global effects: R02, R03, R04, R07, R08 coexist without d
     {materialsDelivered:['Lumber','Lumber','Masonry','Masonry']})
  ];
  assert.equal(G.fireServiceProtection(s,'std_fire'),2);
- assert.equal(G.researchClinicIncomeBonus(s,2),1);
+ assert.equal(G.researchClinicIncomeBonus(s,s.constructions.find(c=>c.id==='MED')),1);
  assert.equal(G.purchaseMaterialUnitPrice(s,{kind:'node',id:'broadway'},'Lumber'),2);
  assert.equal(G.purchaseMaterialUnitPrice(s,{kind:'supplier',id:'engle-lumber'},'Lumber'),4);
  assert.equal(G.purchaseMaterialUnitPrice(s,{kind:'node',id:'broadway'},'Masonry'),1);
@@ -203,7 +203,7 @@ test('Stage 9 combined global effects: R02, R03, R04, R07, R08 coexist without d
  assert.equal(G.districtRisk(s,'civic').earthquake.raw,riskBefore.earthquake.raw,
    'R02 cancels +1 U from campus while fire & medical effects remain independent');
  assert.equal(G.fireServiceProtection(s,'std_fire'),2);
- assert.equal(G.researchClinicIncomeBonus(s,2),1);
+ assert.equal(G.researchClinicIncomeBonus(s,s.constructions.find(c=>c.id==='MED')),1);
  assert.equal(G.standardProjectFee(s,'std_clinic'),3);
  assert.deepEqual(s.pendingReinforcements,[]);
  const before=json(s);
