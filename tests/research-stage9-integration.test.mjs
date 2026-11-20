@@ -296,3 +296,20 @@ test('Stage 9 missing R03/R04 prerequisites and insufficient funds remain atomic
  assert.equal(json(s),before,'no payout, grant or worker when cash is missing');
  assert.equal(G.fireServiceProtection(s,'std_fire'),1,'held R03 never upgrades real fire services');
 });
+
+
+test('Stage 9 pending building decisions cannot be skipped by ending an activation',()=>{
+ for(const field of ['pendingSailorRecruitments','pendingWorkforceLinks','pendingPressCampaigns']){
+  const s=active();
+  s.players[0].workers[0].used=true;
+  s.players[0].workersLeft=2;
+  s.activationMainActionUsed=true;
+  s[field]=['MANDATORY-CONSTRUCTION'];
+  const before=json(s);
+  const denied=G.endActivation(s,0);
+  assert.equal(denied.reason,'pending-building-choice',field);
+  assert.equal(json(s),before,'illegal handoff does not consume the slot or abandon a mandatory reward');
+  s[field]=[];
+  assert.equal(G.endActivation(s,0).ok,true,'after resolving mandatory choice, normal handoff resumes');
+ }
+});
