@@ -6,6 +6,7 @@ function fixture(){
  const s=createInitialState({rng:()=>0.22});
  s.phase='development';s.view='city';s.developmentPlayer=0;s.developmentComplete=false;
  s.developmentSlotsUsed=[0,0,0];s.activationMainActionUsed=false;
+ s.yearTurnOrder=[0,1,2];s.firstPlayer=0;
  s.activeWorkerId=s.players[0].workers[0].id;
  s.newsCurrentIds=['H03'];s.newsLastResolvedRound=0;
  s.newsF04Notices=null;s.newsE01Contracts=null;s.newsC03Offer=null;
@@ -103,6 +104,8 @@ for(const v of viewports){
   await page.locator('#researchDrawer [data-close-drawer]').click();
   await expect(page.locator('[data-research-open-id="CAMP-A"]')).toBeDisabled();
   await page.locator('#actionEndActivation').click();
+  await page.locator('[data-select-worker="'+s.players[1].workers[0].id+'"]').click();
+  await expect(page.locator('[data-research-open-id="CAMP-A"]')).toBeDisabled();
   await expect(page.locator('[data-research-open-id="CAMP-B"]')).toBeEnabled();
   await page.locator('[data-research-open-id="CAMP-B"]').click();
   await page.locator('[data-research-card="R03"] .research-take').click();
