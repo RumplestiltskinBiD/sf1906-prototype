@@ -1,16 +1,12 @@
 /**
- * SAN FRANCISCO 1906 — утверждённые карты исследований (R01–R08), обновлено 2026-11-19.
- *
- * ЕДИНЫЙ РЕЕСТР КАРТ: используется исследовательским движком для получения,
- * финансирования и постепенного подключения эффектов. R01 подключается в
- * feature/research-system на этапе 4А, R02 — на этапе 4Б;
- * R03 подключено на этапе 5А, R04 — на этапе 5Б, R05 — на этапе 6А;
- * R06 — на этапе 6Б, R07 — на этапе 7А; R08 Фаза I — этап 7Б, Фаза II — этап 7В (лаборатория).
- * Основной UI получения/финансирования — этап 8А в интеграционной ветке; специальные элементы R02/R05/R06 — этап 8Б. main не получает неполный выпуск.
- * Все цены и награды ниже согласованы для первого игрового теста.
- * Технические нюансы: docs/card-rules-draft.md.
- *
- * VP = победные очки (в интерфейсе не использовать термин «престиж»).
+ * SAN FRANCISCO 1906 — R01–R08, первый публичный исследовательский релиз 20.11.2026.
+ * Один реестр для общего движка получения, финансирования, профинансированных
+ * эффектов Фазы I и специальных интерфейсов. Результаты этапов 1–9 проверены.
+ * R08: бонус Фазы II работает ТОЛЬКО в отдельной лаборатории катастрофы;
+ * автоматический финал землетрясения 1906 из Phase I ещё не интегрирован.
+ * Нормативные карты и цены ниже утверждены для первой тестовой партии.
+ * P22: новая R09 добавляется сюда и в соответствующий обработчик effect.type.
+ * VP = победные очки (в UI не писать «престиж»).
  */
 export const RESEARCH_CARDS = Object.freeze([
   {
@@ -48,7 +44,7 @@ export const RESEARCH_CARDS = Object.freeze([
       repeatableForSameBuilding: false,
       paymentTiming: 'on-construction-completion-before-risk-applies'
     },
-    implementationStatus: 'implemented-in-research-integration-branch-not-published'
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R03',
@@ -65,7 +61,7 @@ export const RESEARCH_CARDS = Object.freeze([
       extendsProtectionRadius: false,
       appliesToExistingAndFutureStations: true
     },
-    implementationStatus: 'implemented-in-research-integration-branch-not-published'
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R04',
@@ -83,7 +79,7 @@ export const RESEARCH_CARDS = Object.freeze([
       eligibleDistrictScope: 'own-or-adjacent',
       eligibleResidentialStatus: 'complete'
     },
-    implementationStatus: 'implemented-in-research-integration-branch-not-published',
+    implementationStatus: 'implemented-in-main',
     note: 'Существующая защита клиник от газетных событий «Болезнь» сохраняется; исследование её не дублирует.'
   },
   {
@@ -141,7 +137,7 @@ export const RESEARCH_CARDS = Object.freeze([
       earthquakeRisk: 'unchanged'
     },
     historicalBasis: 'Португальская gaiola pombalina после 1755 года и калабрийская casa baraccata после 1783 года; вымышленная муниципальная программа Сан-Франциско 1900–1905 годов повышает спрос на древесину.',
-    implementationStatus: 'implemented-in-research-integration-branch-not-published'
+    implementationStatus: 'implemented-in-main'
   },
   {
     id: 'R08',
@@ -178,7 +174,7 @@ export const RESEARCH_CARDS = Object.freeze([
       appliesToAllPlayers: true
     },
     historicalBasis: 'Опыт конной скорой помощи Сан-Франциско (с 1895 года) и развитие городской экстренной медицинской службы; конкретная исследовательская программа — альтернативно-историческая игровая реконструкция.',
-    implementationStatus: 'implemented-in-research-integration-branch-not-published'
+    implementationStatus: 'implemented-in-main'
   }
 ]);
 
