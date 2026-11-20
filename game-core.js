@@ -944,6 +944,11 @@ export function consumeMainAction(state,playerId,targetDistrictId=null){
 
 export function endActivation(state,playerId,{skipRemainingService=false}={}){
   if((state.pendingReinforcements||[]).length)return {ok:false,reason:'reinforcement-choice'};
+  // A completed building's mandatory choice must be resolved before handing
+  // the activation to another player; otherwise no one owns its modal turn.
+  if((state.pendingSailorRecruitments||[]).length||(state.pendingWorkforceLinks||[]).length
+    ||(state.pendingPressCampaigns||[]).length)
+    return {ok:false,reason:'pending-building-choice'};
   if(currentE01PendingContract(state))return {ok:false,reason:'e01-choice'};
   if(f04PendingSelections(state))return {ok:false,reason:'f04-choice'};
   if((state.pendingBreadProduction||[]).length)return {ok:false,reason:'bread-production-choice'};

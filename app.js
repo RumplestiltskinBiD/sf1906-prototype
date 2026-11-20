@@ -9,7 +9,7 @@ constructionProgress,completedWarehouses,warehouseInventory,bakeryInventory,bake
 availableDeliveryHaulers,deliveryNeighbors,deliverySourceInfo,purchaseMaterialUnitPrice,deliveryMaterialCost,deliveryPlanCost,deliveryAllCargo,validateDeliveryPlan,executeDelivery,completedContrabandSources,contrabandSourceCapacity,acceptsContraband,contrabandInventory,CONTRABAND_CARGO,completedBreweries,beerInventory,BEER_CARGO,BREAD_CARGO,BREAD_FACTORY_ID,PINK_GOODS,completedBreadFactories,breadInventory,currentBreadProductionChoice,chooseBreadProduction,goodsBuyerCapacity,goodsBuyerUsed,goodsBuyerRemaining,currentDeliveryKey,
 roundIncome,grossRoundIncome,buildingIncome,herbalPharmacyIncomeBonus,researchClinicIncomeBonus,migrateHerbalPrivatePracticeSnapshot,hallOfJusticeOptions,useHallOfJustice,
 activeLoans,loanInterest,completedActionSpaces,canTakeMainAction,canUseFreeAction,endActivation,actionSpaceOccupant,moveWorker,useAdvertisingAgency,takeBankLoan,repayLoan,takeBureauContract,useShoppingProcurement,useSocialClub,useCommissionHouse,firehouseHasWorkshop,firehouseInspectionDistricts,firehouseUpgradeCandidates,firehouseInspectionTargets,useFirehouseAction,constructionFireRisk,upgradeWagonBoarding,currentSailorRecruitment,resolveSailorRecruitment,availableWorkforceTargets,currentWorkforceLink,resolveWorkforceLink,workforceIncomeBonus,currentPressCampaign,resolvePressCampaign,currentDraftPlayer,toggleStarterDraftCard,revealStarterDraft,confirmStarterDraft
-} from './game-core.js?v=0591-research-stage8b';
+} from './game-core.js?v=0592-research-stage9-qa';
 import {NEWS_CARDS,newsCard} from './newspaper-cards.js?v=0590-research-state';
 import {RESEARCH_CARDS} from './research-cards.js';
 const STORAGE_KEY='sf1906_phase1_ui_v030a';
@@ -3785,7 +3785,10 @@ showToast('Перемещение: выберите соседний район 
 const finishActivation=(skipRemainingService=false)=>{
 deliveryDraft=null;fireActionDraft=null;justiceDraft=null;
 const r=endActivation(state,pid,{skipRemainingService});
-if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте main action':'Нельзя завершить активацию');return;}
+if(!r.ok){showToast(r.reason==='main-action-required'?'Сначала сделайте основное действие':
+  r.reason==='pending-building-choice'?'Сначала разрешите обязательный выбор завершённого здания':
+  r.reason==='reinforcement-choice'?'Сначала выберите укрепление R02 или завершите стройку без него':
+  'Нельзя завершить активацию');return;}
 overviewPlayerId=null;focusedConstructionId=null;
 closeDrawers();closeMobileContext();
 showToast(r.complete?'Все окна активации завершены':`Ход: ${state.players[r.nextPlayer].name}`);
