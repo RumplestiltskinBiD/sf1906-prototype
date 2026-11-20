@@ -3438,7 +3438,7 @@ function renderResearch(){
           :'<p class="research-action-hint">Глобальный эффект открыт всем игрокам. Повторное финансирование невозможно.</p>';
     const who=entry.status==='available'?'Открытая карта':
       entry.status==='held'?'Удерживает '+(owner?.name||'неизвестный игрок'):
-      'Спонсор '+(owner?.name||'неизвестный игрок')+' · '+(1899+entry.fundedRound)+' год';
+      'Профинансировано · спонсор '+(owner?.name||'неизвестный игрок')+' · '+(1899+entry.fundedRound)+' год';
     return '<article class="research-card" data-research-card="'+card.id+'">'+
       '<div class="research-card-header"><span>'+escapeHtml(card.id)+'</span><small>'+escapeHtml(who)+'</small></div>'+
       '<h4>'+escapeHtml(card.name)+'</h4>'+
