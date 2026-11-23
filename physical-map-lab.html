@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SF1906 — Physical Map Lab · 40 мм</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#e9eff4;background:#0a111c;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0}
+header{padding:16px 22px;border-bottom:1px solid #344456;background:#111e2c}
+h1{font-size:19px;margin:0 0 4px}
+header p{margin:0;color:#bdcad5;font-size:13px}
+a{color:#95d7e8}
+.workspace{display:grid;grid-template-columns:320px minmax(0,1fr);min-height:calc(100vh - 80px)}
+aside{padding:16px 16px 32px;border-right:1px solid #344456;overflow-y:auto;max-height:calc(100vh - 80px)}
+section{margin-bottom:18px}
+h2{font-size:15px;margin:0 0 9px;color:#fafafa}
+small,.sub{font-size:12px;color:#b7c6d2}
+button,select,input{font:inherit}
+button,select{color:#f0f6fa;background:#203447;border:1px solid #4c6373;border-radius:8px;padding:9px 10px;cursor:pointer}
+button:hover{background:#2d5164}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #b0d9e5;outline-offset:1px}
+button.primary{background:#137c93;border-color:#4ba8bc}
+button.danger{background:#51313c}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.controls>*{flex:1 1 auto}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0}
+.field label{font-size:13px}
+.field select,.field input[type="number"]{max-width:150px}
+#districtList{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#districtList button{text-align:left;padding:7px;font-size:11px;display:flex;justify-content:space-between;gap:5px}
+#districtList button.current{border-color:#ffd486;box-shadow:inset 0 0 0 1px #ffd486}
+#districtList button.problem{color:#ffc0b8}
+#stats{padding:10px 12px;background:#192b3c;border-radius:9px;font-size:13px;line-height:1.6}
+#stats strong{font-size:16px}
+#notice{min-height:19px;color:#9be2c6;font-size:12px}
+#jsonArea{width:100%;min-height:90px;resize:vertical;font-family:ui-monospace,monospace;color:#dce8ee;background:#081521;border:1px solid #526475;border-radius:8px;padding:8px;font-size:11px}
+.map-panel{min-width:0;background:#182736;display:flex;flex-direction:column}
+.map-toolbar{padding:10px 15px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;background:#152230;border-bottom:1px solid #344456;font-size:13px}
+.map-scroll{overflow:auto;flex:1;min-height:500px}
+#mapSvg{display:block;max-width:none;background:#90b5b7;touch-action:none}
+#regionLayer .region path{fill:rgba(255,255,255,.001);stroke:#688a88;stroke-opacity:.15;stroke-width:3;pointer-events:visiblePainted;vector-effect:non-scaling-stroke}
+#regionLayer .region.current path{fill:rgba(255,216,126,.12);stroke:#ffd486;stroke-width:5;stroke-opacity:1}
+#regionLayer .region:hover path{stroke:#9bdef0;stroke-opacity:1}
+.slot{cursor:grab;touch-action:none}
+.slot:active{cursor:grabbing}
+.slot .tile{fill:rgba(224,234,236,.56);stroke:#43616a;stroke-width:2;stroke-dasharray:8 5}
+.slot .tile-under{fill:#cba767;stroke:#58432e;stroke-width:2.5;stroke-dasharray:none}
+.slot .tile-done{fill:#f0dfbd;stroke:#725d48;stroke-width:2.5;stroke-dasharray:none}
+.slot text{font-weight:700;fill:#1d3342;text-anchor:middle;pointer-events:none;user-select:none}
+.slot.problem .tile{stroke:#ee5446;stroke-width:5;stroke-dasharray:7 4}
+.slot.selected .tile{stroke:#137c93;stroke-width:5}
+.slot.selected.problem .tile{stroke:#ee5446}
+.slot .owner-mark{stroke:#fff;stroke-width:1.3}
+.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#cbd5df}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.instructions{background:#172b3b;border:1px solid #425568;border-radius:9px;padding:12px;line-height:1.5;font-size:12px}
+.instructions p{margin:0 0 8px}
+#selectedInfo{padding:10px;background:#233647;border-radius:8px;font-size:12px;line-height:1.5}
+.file-label{display:inline-block;color:#f0f6fa;background:#203447;border:1px solid #4c6373;border-radius:8px;padding:9px 10px;cursor:pointer}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid #344456}.map-scroll{min-height:520px}}
+</style>
+</head>
+<body>
+<header>
+<h1>San Francisco 1906 · лаборатория физических строительных мест</h1>
+<p>Отдельный редактор. Оригинальная карта V8 и точные SVG-контуры районов. На основную игру и её сохранения не влияет.</p>
+</header>
+<div class="workspace">
+<aside>
+<section class="instructions">
+<p><b>Как работать:</b> выбери район и перетаскивай квадраты мышкой или пальцем. Двигать можно свободно — выход за границу и наложения подсвечиваются красным, но не блокируются.</p>
+<p><b>Передать расстановку:</b> нажми «Скачать JSON» и прикрепи полученный файл в чат. Файл содержит координаты всех мест, не только снимок экрана.</p>
+<p><b>Важно:</b> масштаб карты — гипотеза физической печати; на экране 40 мм не означает 40 экранных миллиметров.</p>
+</section>
+<section>
+<h2>Масштаб настольной карты</h2>
+<div class="field"><label for="boardWidth">Ширина поля, см</label><select id="boardWidth"><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option></select></div>
+<div class="field"><label for="zoom">Зум просмотра</label><input id="zoom" type="range" min="50" max="210" step="10" value="80"><output id="zoomValue">80%</output></div>
+<p class="sub" id="dimensions">80 × 53,3 см · тайлы 40 × 40 мм · зазор 2 мм</p>
+</section>
+<section>
+<h2>Проверка расположения</h2>
+<div id="stats"></div>
+<p id="notice" role="status" aria-live="polite"></p>
+<div class="legend"><span><i class="swatch" style="background:#d6dfdf"></i>пусто</span><span><i class="swatch" style="background:#cba767"></i>стройка</span><span><i class="swatch" style="background:#f0dfbd"></i>готово</span><span><i class="swatch" style="background:#ee5446"></i>ошибка</span></div>
+</section>
+<section>
+<h2>Редактирование</h2>
+<div class="field"><label for="focusDistrict">Район</label><select id="focusDistrict"></select></div>
+<div id="selectedInfo">Выбери квадрат на карте.</div>
+<div class="controls">
+<button id="markBuilding">Начать стройку</button><button id="markComplete">Готово</button><button id="markEmpty">Освободить</button>
+</div>
+<p class="sub">Стрелки клавиатуры передвигают выбранный слот на 1 мм; Shift + стрелка — на 5 мм. Сдвиг не меняет действующую игровую механику.</p>
+<div class="controls"><button id="seedDistrict">Авторазместить район</button><button id="seedAll" class="danger">Сбросить все места</button></div>
+<div class="controls"><button id="fillAll">Показать полную застройку</button><button id="emptyAll">Показать пустые</button></div>
+</section>
+<section>
+<h2>Районы · количество мест</h2>
+<div id="districtList"></div>
+</section>
+<section>
+<h2>Передача и восстановление координат</h2>
+<div class="controls"><button id="download" class="primary">Скачать JSON</button><button id="copyJson">Копировать JSON</button></div>
+<div class="controls"><label class="file-label">Загрузить JSON <input id="loadFile" type="file" accept="application/json,.json" hidden></label><button id="applyJson">Применить JSON ниже</button></div>
+<textarea id="jsonArea" aria-label="Импорт и экспорт JSON" placeholder="Сюда можно вставить сохранённый JSON, затем нажать «Применить»."></textarea>
+<p class="sub">Координаты сохраняются автоматически только в этом браузере, отдельным ключом лаборатории. Экспортируй JSON перед сменой устройства или браузера.</p>
+</section>
+</aside>
+<main class="map-panel">
+<div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков · выделены текущие границы</div><div id="selectedDistrictLabel">Inner Sunset</div></div>
+<div class="map-scroll" id="mapScroll">
+<svg id="mapSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" aria-label="Интерактивный редактор расположения квадратных строительных мест Сан-Франциско" role="img">
+<image href="./assets/v8-map.webp?v=028" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"/>
+<g transform="translate(0 -11)">
+<g id="regionLayer"><g class="region" data-region="presidio"><path d="M 464 57 L 501 88 L 520 93 L 557 108 L 572 104 L 621 88 L 645 138 L 648 153 L 661 165 L 657 185 L 643 197 L 618 212 L 609 228 L 610 276 L 588 263 L 535 261 L 457 265 L 433 262 L 375 271 L 299 268 L 278 248 L 324 217 L 333 185 L 355 164 L 368 133 L 383 54 L 409 61 L 429 68 L 464 57 Z"/></g>
+<g class="region" data-region="marina"><path d="M 657 110 L 660 125 L 644 138 L 645 152 L 659 163 L 711 163 L 744 167 L 820 155 L 797 86 L 753 89 L 687 102 L 657 110 Z"/></g>
+<g class="region" data-region="northbeach"><path d="M 984 158 L 891 179 L 888 192 L 857 195 L 840 157 L 819 156 L 798 83 L 831 74 L 859 73 L 881 77 L 906 86 L 936 101 L 961 118 L 993 140 L 1039 174 L 1066 215 L 1038 234 L 984 158 Z"/></g>
+<g class="region" data-region="chinatown"><path d="M 1019 254 L 1035 233 L 984 161 L 889 178 L 889 194 L 855 197 L 862 226 L 884 266 L 1019 254 Z"/></g>
+<g class="region" data-region="pacific"><path d="M 661 166 L 662 180 L 653 185 L 656 194 L 642 197 L 638 206 L 617 213 L 609 234 L 611 278 L 650 296 L 890 287 L 840 154 L 747 167 L 710 161 L 661 166 Z"/></g>
+<g class="region" data-region="financial"><path d="M 1154 343 L 1122 285 L 1070 214 L 1036 234 L 1020 254 L 885 268 L 891 295 L 926 293 L 932 304 L 963 324 L 1009 378 L 1028 381 L 1154 343 Z"/></g>
+<g class="region" data-region="soma"><path d="M 868 472 L 985 354 L 1008 377 L 1030 381 L 1154 344 L 1167 377 L 1175 401 L 1179 444 L 1188 499 L 1203 545 L 1089 572 L 960 628 L 897 505 L 868 472 Z"/></g>
+<g class="region" data-region="civic"><path d="M 736 464 L 734 554 L 759 561 L 975 343 L 955 317 L 929 305 L 924 291 L 892 293 L 883 286 L 789 293 L 790 317 L 736 464 Z"/></g>
+<g class="region" data-region="western"><path d="M 530 423 L 525 265 L 581 264 L 607 279 L 648 299 L 789 293 L 792 318 L 753 422 L 607 429 L 604 418 L 530 423 Z"/></g>
+<g class="region" data-region="innerrichmond"><path d="M 523 262 L 351 275 L 345 407 L 525 392 L 523 262 Z"/></g>
+<g class="region" data-region="outerrichmond"><path d="M 348 274 L 348 405 L 177 427 L 143 441 L 143 409 L 131 391 L 135 375 L 129 363 L 117 350 L 125 333 L 138 323 L 163 315 L 171 301 L 180 295 L 190 266 L 210 264 L 214 273 L 246 268 L 262 249 L 279 248 L 300 267 L 348 274 Z"/></g>
+<g class="region" data-region="haight"><path d="M 594 586 L 732 553 L 735 468 L 752 420 L 606 429 L 604 475 L 582 482 L 563 495 L 542 512 L 541 575 L 594 586 Z"/></g>
+<g class="region" data-region="innersunset"><path d="M 394 577 L 542 576 L 593 583 L 593 653 L 569 660 L 485 660 L 473 664 L 462 674 L 460 685 L 444 693 L 446 709 L 432 719 L 416 716 L 408 731 L 393 738 L 392 719 L 394 577 Z"/></g>
+<g class="region" data-region="sunset"><path d="M 320 856 L 340 845 L 378 747 L 390 740 L 393 576 L 184 574 L 146 602 L 152 629 L 151 649 L 159 659 L 159 677 L 163 710 L 173 802 L 196 818 L 209 842 L 287 840 L 320 856 Z"/></g>
+<g class="region" data-region="mission"><path d="M 768 567 L 867 474 L 899 506 L 927 556 L 959 622 L 945 683 L 946 763 L 825 769 L 781 767 L 678 737 L 649 715 L 633 678 L 616 658 L 593 655 L 592 586 L 732 551 L 761 559 L 768 567 Z"/></g>
+<g class="region" data-region="missionbay"><path d="M 1237 706 L 1232 607 L 1202 543 L 1090 571 L 964 629 L 951 687 L 951 704 L 1076 734 L 1083 711 L 1200 707 L 1218 717 L 1237 706 Z"/></g>
+<g class="region" data-region="potrero"><path d="M 1177 980 L 1235 924 L 1233 778 L 1224 744 L 1240 734 L 1237 706 L 1221 718 L 1193 707 L 1082 712 L 1078 733 L 952 702 L 946 764 L 952 824 L 1002 909 L 1042 931 L 1068 929 L 1107 920 L 1177 980 Z"/></g>
+<g class="region" data-region="noe"><path d="M 585 877 L 598 852 L 601 816 L 613 811 L 615 772 L 598 744 L 543 740 L 524 712 L 512 703 L 509 682 L 491 662 L 566 663 L 593 654 L 634 679 L 641 702 L 647 716 L 668 727 L 684 741 L 731 753 L 736 845 L 742 865 L 740 907 L 703 901 L 665 907 L 659 898 L 637 899 L 620 886 L 585 877 Z"/></g>
+<g class="region" data-region="bernal"><path d="M 740 909 L 743 866 L 736 848 L 732 752 L 779 766 L 826 770 L 944 767 L 949 920 L 868 959 L 841 965 L 815 958 L 791 938 L 762 928 L 740 909 Z"/></g>
+<g class="region" data-region="park"><path d="M 130 454 L 117 500 L 138 545 L 146 602 L 183 574 L 540 580 L 546 512 L 582 483 L 606 474 L 604 415 L 529 420 L 525 388 L 445 401 L 405 396 L 179 424 L 142 439 L 130 454 Z"/></g>
+<g class="region" data-region="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g></g>
+<g id="slotLayer"></g>
+</g>
+</svg>
+</div>
+</main>
+</div>
+<script>
+'use strict';
+const DISTRICTS=[{"id":"presidio","name":"Presidio","slots":0},{"id":"marina","name":"Marina","slots":2},{"id":"northbeach","name":"North Beach","slots":3},{"id":"chinatown","name":"Chinatown","slots":2},{"id":"pacific","name":"Pacific Heights","slots":5},{"id":"financial","name":"Financial District","slots":5},{"id":"soma","name":"SoMa","slots":5},{"id":"civic","name":"Civic Center","slots":5},{"id":"western","name":"Western Addition","slots":5},{"id":"innerrichmond","name":"Inner Richmond","slots":4},{"id":"outerrichmond","name":"Outer Richmond","slots":5},{"id":"haight","name":"Haight-Ashbury","slots":5},{"id":"innersunset","name":"Inner Sunset","slots":3},{"id":"sunset","name":"Outer Sunset","slots":6},{"id":"mission","name":"Mission","slots":5},{"id":"missionbay","name":"Mission Bay","slots":5},{"id":"potrero","name":"Potrero","slots":5},{"id":"noe","name":"Noe Valley","slots":5},{"id":"bernal","name":"Bernal Heights","slots":4},{"id":"park","name":"Golden Gate Park","slots":0},{"id":"twinpeaks","name":"Twin Peaks","slots":0}];
+const TOTAL=DISTRICTS.reduce((sum,d)=>sum+d.slots,0);
+const TILE_MM=40,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
+const SVG_NS='http://www.w3.org/2000/svg';
+const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45'];
+const $=id=>document.getElementById(id);
+const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
+const round=x=>Math.round(x*1000)/1000;
+let boardWidthMm=800,zoom=80,selectedDistrict='innersunset',selectedId='innersunset-1',slots=[],drag=null,busy=false;
+const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
+function sizeSvg(){return VB_WIDTH*TILE_MM/boardWidthMm}
+function gapSvg(){return VB_WIDTH*GAP_MM/boardWidthMm}
+function variantLayouts(n){
+ const G=(...cells)=>cells;
+ if(n===2)return [G([0,0],[1,0]),G([0,0],[0,1])];
+ if(n===3)return [G([0,0],[1,0],[0,1]),G([0,0],[1,0],[1,1]),G([0,0],[0,1],[1,1]),G([1,0],[0,1],[1,1]),G([0,0],[1,0],[2,0]),G([0,0],[0,1],[0,2])];
+ if(n===4)return [G([0,0],[1,0],[0,1],[1,1]),G([0,0],[1,0],[2,0],[3,0]),G([0,0],[0,1],[0,2],[0,3])];
+ if(n===5)return [G([0,0],[1,0],[2,0],[0,1],[1,1]),G([0,0],[1,0],[2,0],[1,1],[2,1]),G([0,0],[1,0],[0,1],[1,1],[0,2]),G([0,0],[1,0],[0,1],[1,1],[1,2])];
+ if(n===6)return [G([0,0],[1,0],[2,0],[0,1],[1,1],[2,1]),G([0,0],[1,0],[0,1],[1,1],[0,2],[1,2])];
+ return [Array.from({length:n},(_,i)=>[i,0])];
+}
+function inside(id,x,y,s){
+ const path=pathById[id];
+ if(!path)return false;
+ const inset=Math.max(.9,s*.035);
+ const coords=[[inset,inset],[s-inset,inset],[inset,s-inset],[s-inset,s-inset],[s/2,s/2],[s/2,inset],[s/2,s-inset],[inset,s/2],[s-inset,s/2]];
+ let good=0;
+ for(const p of coords){
+   const pt={x:x+p[0],y:y+p[1]};
+   if(typeof path.isPointInFill==='function'?path.isPointInFill(pt):pointInBBox(path,pt))good++;
+ }
+ return good===coords.length;
+}
+function pointInBBox(path,p){const b=path.getBBox();return p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height}
+function placementScore(id,coords,s){
+ const path=pathById[id],b=path.getBBox();
+ let misses=0,centerX=0,centerY=0;
+ for(const [x,y] of coords){if(!inside(id,x,y,s))misses++;centerX+=x+s/2;centerY+=y+s/2;}
+ centerX/=coords.length;centerY/=coords.length;
+ return misses*100000+Math.hypot(centerX-(b.x+b.width/2),centerY-(b.y+b.height/2));
+}
+function autoDistrict(id){
+ const d=DISTRICTS.find(d=>d.id===id);if(!d||!d.slots)return;
+ const s=sizeSvg(),step=s+gapSvg(),bbox=pathById[id].getBBox();
+ let best=null,bestScore=Infinity;
+ for(const form of variantLayouts(d.slots)){
+  const maxX=Math.max(...form.map(c=>c[0])),maxY=Math.max(...form.map(c=>c[1]));
+  const w=s+maxX*step,h=s+maxY*step;
+  const baseX=bbox.x+(bbox.width-w)/2,baseY=bbox.y+(bbox.height-h)/2;
+  const candidatesX=new Set([baseX,bbox.x,bbox.x+bbox.width-w]);
+  const candidatesY=new Set([baseY,bbox.y,bbox.y+bbox.height-h]);
+  for(let k=-8;k<=8;k++){candidatesX.add(baseX+k*step/5);candidatesY.add(baseY+k*step/5)}
+  for(const x of candidatesX)for(const y of candidatesY){
+    const placed=form.map(([cx,cy])=>[x+cx*step,y+cy*step]);
+    const score=placementScore(id,placed,s);
+    if(score<bestScore){bestScore=score;best=placed;}
+  }
+ }
+ slots=slots.filter(t=>t.districtId!==id);
+ (best||[]).forEach(([x,y],i)=>slots.push({id:id+'-'+(i+1),districtId:id,n:i+1,x:round(x),y:round(y),status:'empty',owner:i%COLORS.length}));
+}
+function autoAll(){
+ slots=[];for(const d of DISTRICTS)if(d.slots)autoDistrict(d.id);
+}
+function validation(){
+ const s=sizeSvg(),gap=gapSvg(),flag=new Set(),outside=new Set(),pairs=new Set();
+ for(const t of slots){
+   if(!inside(t.districtId,t.x,t.y,s)){flag.add(t.id);outside.add(t.id)}
+ }
+ for(let i=0;i<slots.length;i++)for(let j=i+1;j<slots.length;j++){
+  const a=slots[i],b=slots[j];
+  if(Math.abs(a.x-b.x)<s+gap-.12&&Math.abs(a.y-b.y)<s+gap-.12){
+    flag.add(a.id);flag.add(b.id);pairs.add(a.id+'|'+b.id);
+  }
+ }
+ return {flag,outside,pairs};
+}
+function element(tag,attrs={},text){
+ const el=document.createElementNS(SVG_NS,tag);
+ for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));
+ if(text!==undefined)el.textContent=String(text);
+ return el;
+}
+function render(){
+ const s=sizeSvg(),problem=validation(),layer=$('slotLayer');
+ const frag=document.createDocumentFragment();
+ for(const t of slots){
+  const bad=problem.flag.has(t.id),sel=t.id===selectedId;
+  const g=element('g',{transform:'translate('+t.x+' '+t.y+')','data-slot-id':t.id,class:'slot'+(bad?' problem':'')+(sel?' selected':'')});
+  const rect=element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')});
+  const label=t.districtId==='innersunset'||t.districtId==='civic'?t.n:String(t.n);
+  g.append(rect,element('text',{x:s/2,y:s*.52,'font-size':s*.28},label));
+  if(t.status!=='empty'){
+   g.append(element('rect',{x:s*.77,y:s*.055,width:s*.16,height:s*.16,rx:s*.02,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
+   if(t.status==='under'){g.append(element('text',{x:s*.5,y:s*.77,'font-size':s*.16},'СТР'))}
+   if(t.status==='complete'){g.append(element('text',{x:s*.5,y:s*.77,'font-size':s*.16},'✓'))}
+  }
+  const desc=element('title',{},t.districtId+' · место '+t.n+' · '+({empty:'свободно',under:'стройка',complete:'готово'}[t.status])+(bad?' · проблема размещения':''));
+  g.append(desc);frag.append(g);
+ }
+ layer.replaceChildren(frag);
+ for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
+ const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
+ $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardWidthMm/15)+' см<br>'+
+   '<b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
+ $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardWidthMm/15)+' см · тайл '+TILE_MM+' мм · зазор '+GAP_MM+' мм';
+ $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
+ for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
+ $('focusDistrict').value=selectedDistrict;
+ const selected=slots.find(t=>t.id===selectedId);
+ $('selectedInfo').textContent=selected?('Участок '+selected.id+' · '+({empty:'свободен',under:'строится',complete:'готов'}[selected.status])+' · позиция '+round(selected.x/VB_WIDTH*boardWidthMm)+' × '+round(selected.y/VB_WIDTH*boardWidthMm)+' мм · '+(problem.flag.has(selected.id)?'⚠ конфликт/граница':'без выявленных проблем')):'Выбери слот';
+}
+function persist(){
+ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(snapshot()))}catch(e){notice('Не удалось сохранить в браузере: '+e.message)}
+}
+function notice(msg){$('notice').textContent=msg}
+function snapshot(){
+ const districts={};
+ for(const d of DISTRICTS)if(d.slots)districts[d.id]=slots.filter(x=>x.districtId===d.id).sort((a,b)=>a.n-b.n).map(t=>({slot:t.n,x:round(t.x),y:round(t.y),status:t.status,owner:t.owner}));
+ return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,districts};
+}
+function applySnapshot(data){
+ if(!data||data.schema!=='sf1906-physical-slot-layout-v1'||data.tileMm!==TILE_MM||!Number.isFinite(data.boardWidthMm)||data.boardWidthMm<600||data.boardWidthMm>1500)throw Error('Неверная версия, размер или масштаб файла');
+ const next=[];
+ for(const d of DISTRICTS)if(d.slots){
+  const array=data.districts?.[d.id];
+  if(!Array.isArray(array)||array.length!==d.slots)throw Error('Количество мест в '+d.id+' не совпадает с согласованным набором');
+  const unique=new Set();
+  for(const item of array){
+   if(!Number.isInteger(item.slot)||item.slot<1||item.slot>d.slots||unique.has(item.slot)||!Number.isFinite(item.x)||!Number.isFinite(item.y)||Math.abs(item.x)>10000||Math.abs(item.y)>10000)throw Error('Некорректные координаты или дубли в '+d.id);
+   unique.add(item.slot);
+   next.push({id:d.id+'-'+item.slot,districtId:d.id,n:item.slot,x:item.x,y:item.y,status:['empty','under','complete'].includes(item.status)?item.status:'empty',owner:Number.isInteger(item.owner)?clamp(item.owner,0,4):0});
+  }
+ }
+ boardWidthMm=data.boardWidthMm;slots=next;
+ if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
+ $('boardWidth').value=String(boardWidthMm/10);
+ updateScale();persist();render();notice('Координаты загружены. Проверь красные предупреждения.');
+}
+function updateScale(){
+ $('mapSvg').style.width=(VB_WIDTH*zoom/100)+'px';
+ $('mapSvg').style.height=(VB_HEIGHT*zoom/100)+'px';
+ $('zoomValue').textContent=zoom+'%';
+}
+function activeSlot(){return slots.find(s=>s.id===selectedId)}
+function mapPoint(event){
+ const svg=$('mapSvg'),pt=svg.createSVGPoint();
+ pt.x=event.clientX;pt.y=event.clientY;
+ const m=svg.getScreenCTM();
+ if(!m)return null;
+ const p=pt.matrixTransform(m.inverse());
+ return {x:p.x,y:p.y+11};
+}
+function selectDistrict(id){
+ if(!DISTRICTS.some(d=>d.id===id&&d.slots))return;
+ selectedDistrict=id;selectedId=slots.find(s=>s.districtId===id)?.id||null;render();
+}
+function initList(){
+ const active=DISTRICTS.filter(d=>d.slots);
+ $('districtList').innerHTML='';
+ $('focusDistrict').innerHTML='';
+ for(const d of active){
+  const option=new Option(d.name+' ('+d.slots+')',d.id);$('focusDistrict').add(option);
+  const btn=document.createElement('button');btn.dataset.districtId=d.id;btn.textContent=d.name+' · '+d.slots;
+  btn.addEventListener('click',()=>selectDistrict(d.id));$('districtList').append(btn);
+ }
+ $('focusDistrict').addEventListener('change',e=>selectDistrict(e.target.value));
+}
+function init(){
+ initList();
+ let restored=false;
+ try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){applySnapshot(JSON.parse(raw));restored=true}}catch(e){notice('Старое сохранение не загружено: '+e.message)}
+ if(!restored){autoAll();persist();render()}
+ updateScale();
+ $('boardWidth').addEventListener('change',e=>{
+   const n=Number(e.target.value)*10;if(!Number.isFinite(n))return;
+   boardWidthMm=n;persist();render();
+ });
+ $('zoom').addEventListener('input',e=>{zoom=Number(e.target.value);updateScale()});
+ const svg=$('mapSvg');
+ svg.addEventListener('pointerdown',e=>{
+   const g=e.target.closest?.('[data-slot-id]');
+   if(!g){
+     const region=e.target.closest?.('[data-region]');
+     if(region)selectDistrict(region.dataset.region);
+     return;
+   }
+   const t=slots.find(s=>s.id===g.dataset.slotId),point=mapPoint(e);
+   if(!t||!point)return;
+   selectedId=t.id;selectedDistrict=t.districtId;
+   drag={pointerId:e.pointerId,id:t.id,offsetX:t.x-point.x,offsetY:t.y-point.y};
+   svg.setPointerCapture(e.pointerId);svg.style.cursor='grabbing';render();e.preventDefault();
+ });
+ svg.addEventListener('pointermove',e=>{
+  if(!drag||drag.pointerId!==e.pointerId)return;
+  const point=mapPoint(e),t=slots.find(s=>s.id===drag.id);
+  if(!point||!t)return;
+  t.x=round(point.x+drag.offsetX);t.y=round(point.y+drag.offsetY);
+  render();e.preventDefault();
+ });
+ function finish(e){if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
+ svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
+ window.addEventListener('keydown',e=>{
+  if(['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement?.tagName))return;
+  const dir={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  const t=activeSlot();if(!dir||!t)return;
+  const mm=e.shiftKey?5:1,delta=VB_WIDTH*mm/boardWidthMm;
+  t.x=round(t.x+dir[0]*delta);t.y=round(t.y+dir[1]*delta);
+  persist();render();e.preventDefault();
+ });
+ const status=(mode)=>{const t=activeSlot();if(!t)return;t.status=mode;persist();render()};
+ $('markBuilding').onclick=()=>status('under');$('markComplete').onclick=()=>status('complete');$('markEmpty').onclick=()=>status('empty');
+ $('seedDistrict').onclick=()=>{if(confirm('Заменить вручную выбранные координаты в районе '+selectedDistrict+'?')){autoDistrict(selectedDistrict);persist();render();notice('Район авторазмещён как черновик')}};
+ $('seedAll').onclick=()=>{if(confirm('Сбросить все 79 позиций? Все ручные перемещения в браузере будут потеряны. Сначала скачай JSON, если они нужны.')){autoAll();persist();render();notice('Все районы авторазмещены заново')}};
+ $('fillAll').onclick=()=>{for(const t of slots)t.status='complete';persist();render();notice('Показана тестовая полная застройка — реальная игра не менялась')};
+ $('emptyAll').onclick=()=>{for(const t of slots)t.status='empty';persist();render()};
+ $('download').onclick=()=>{
+   const json=JSON.stringify(snapshot(),null,2),blob=new Blob([json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='sf1906-slot-layout-40mm.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+   notice('JSON сохранён. Прикрепи файл в чат.');
+ };
+ $('copyJson').onclick=async()=>{
+  const txt=JSON.stringify(snapshot(),null,2);
+  $('jsonArea').value=txt;
+  try{await navigator.clipboard.writeText(txt);notice('JSON скопирован')}catch(e){$('jsonArea').focus();$('jsonArea').select();notice('JSON подготовлен в поле ниже — скопируй вручную')}
+ };
+ $('applyJson').onclick=()=>{try{applySnapshot(JSON.parse($('jsonArea').value))}catch(e){notice('Ошибка JSON: '+e.message)}};
+ $('loadFile').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
+  e.target.value='';
+ });
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),selectDistrict,slots:()=>slots.map(x=>({...x}))};
+}
+init();
+</script>
+</body>
+</html>
