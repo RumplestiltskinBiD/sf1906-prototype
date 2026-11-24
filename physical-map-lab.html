@@ -611,7 +611,7 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs]}),
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,sizeSvg()):null},
  placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
