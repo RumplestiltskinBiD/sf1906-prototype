@@ -64,7 +64,8 @@ button.danger{background:#51313c}
 .slot .owner-seat{stroke:#fff;stroke-width:1.2;pointer-events:none}
 .slot .owner-seat.corner-seat{stroke:none}
 .slot text.owner-symbol{font-weight:800;fill:#14232d;stroke:none}
-.slot .corner-face .tile{stroke-width:0}
+#mapSvg .slot .corner-face .tile{stroke:none}
+#mapSvg .slot.selected .slot-hole:not(.slot-hole-conflict){stroke:#137c93;stroke-width:3}
 #ownershipPreview{width:100%;max-height:220px;background:#142533;border-radius:8px}
 #ownerGeometryStatus{white-space:pre-line}
 #ownerGeometryStatus.warning{color:#ffc0b8}
