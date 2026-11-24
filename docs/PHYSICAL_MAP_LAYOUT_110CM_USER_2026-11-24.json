@@ -1,0 +1,601 @@
+{
+  "schema": "sf1906-physical-slot-layout-v1",
+  "boardViewBox": [
+    1536,
+    1024
+  ],
+  "boardWidthMm": 1100,
+  "tileMm": 40,
+  "gapMm": 2,
+  "districts": {
+    "marina": [
+      {
+        "slot": 1,
+        "x": 677.51,
+        "y": 105.408,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 739.016,
+        "y": 97.235,
+        "status": "empty",
+        "owner": 1
+      }
+    ],
+    "northbeach": [
+      {
+        "slot": 1,
+        "x": 811.165,
+        "y": 80.303,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 873.114,
+        "y": 114.222,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 935.349,
+        "y": 99.984,
+        "status": "empty",
+        "owner": 2
+      }
+    ],
+    "chinatown": [
+      {
+        "slot": 1,
+        "x": 877.774,
+        "y": 193.851,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 947.165,
+        "y": 191.35,
+        "status": "empty",
+        "owner": 1
+      }
+    ],
+    "pacific": [
+      {
+        "slot": 1,
+        "x": 664.627,
+        "y": 168.339,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 774.209,
+        "y": 162.377,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 621.067,
+        "y": 229.171,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 726.612,
+        "y": 221.959,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 807.032,
+        "y": 227.983,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "financial": [
+      {
+        "slot": 1,
+        "x": 928.47,
+        "y": 257.763,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 992.481,
+        "y": 252.57,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 1059.629,
+        "y": 233.016,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 998.727,
+        "y": 319.073,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 1069.629,
+        "y": 297.887,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "soma": [
+      {
+        "slot": 1,
+        "x": 932.588,
+        "y": 407.28,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 1013.228,
+        "y": 407.28,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 1097.522,
+        "y": 406.126,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 932.588,
+        "y": 487.92,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 1013.228,
+        "y": 487.92,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "civic": [
+      {
+        "slot": 1,
+        "x": 799.557,
+        "y": 296.838,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 868.946,
+        "y": 300.973,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 767.344,
+        "y": 384.593,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 833.369,
+        "y": 368.44,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 747.406,
+        "y": 448.887,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "western": [
+      {
+        "slot": 1,
+        "x": 529.78,
+        "y": 269.838,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 600.323,
+        "y": 299.07,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 718.531,
+        "y": 294.227,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 534.168,
+        "y": 350.478,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 661.319,
+        "y": 360.444,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "innerrichmond": [
+      {
+        "slot": 1,
+        "x": 363.141,
+        "y": 272.349,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 453.781,
+        "y": 266.099,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 358.169,
+        "y": 336.1,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 441.309,
+        "y": 338.601,
+        "status": "empty",
+        "owner": 3
+      }
+    ],
+    "outerrichmond": [
+      {
+        "slot": 1,
+        "x": 190.031,
+        "y": 271.588,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 276.921,
+        "y": 271.588,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 213.781,
+        "y": 345.978,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 286.921,
+        "y": 348.478,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 146.28,
+        "y": 355.367,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "haight": [
+      {
+        "slot": 1,
+        "x": 611.089,
+        "y": 431.06,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 676.729,
+        "y": 430.002,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 544.865,
+        "y": 509.811,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 606.089,
+        "y": 500.45,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 667.691,
+        "y": 497.854,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "innersunset": [
+      {
+        "slot": 1,
+        "x": 462.217,
+        "y": 579.022,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 528.241,
+        "y": 580.56,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 395.964,
+        "y": 625.238,
+        "status": "empty",
+        "owner": 2
+      }
+    ],
+    "sunset": [
+      {
+        "slot": 1,
+        "x": 190.78,
+        "y": 579.832,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 271.42,
+        "y": 579.832,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 190.78,
+        "y": 660.472,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 271.42,
+        "y": 660.472,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 190.78,
+        "y": 741.112,
+        "status": "empty",
+        "owner": 4
+      },
+      {
+        "slot": 6,
+        "x": 271.42,
+        "y": 741.112,
+        "status": "empty",
+        "owner": 0
+      }
+    ],
+    "mission": [
+      {
+        "slot": 1,
+        "x": 672.588,
+        "y": 575.036,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 753.228,
+        "y": 575.036,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 833.868,
+        "y": 575.036,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 672.588,
+        "y": 655.676,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 753.228,
+        "y": 655.676,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "missionbay": [
+      {
+        "slot": 1,
+        "x": 973.588,
+        "y": 624.292,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 1081.632,
+        "y": 572.368,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 1156.599,
+        "y": 575.541,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 1056.089,
+        "y": 638.681,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 1144.229,
+        "y": 646.181,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "potrero": [
+      {
+        "slot": 1,
+        "x": 999.083,
+        "y": 767.28,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 1082.415,
+        "y": 771.03,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 1153.728,
+        "y": 769.107,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 1072.799,
+        "y": 844.651,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 1143.728,
+        "y": 841.383,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "noe": [
+      {
+        "slot": 1,
+        "x": 533.16,
+        "y": 663.895,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 613.607,
+        "y": 738.512,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 676.169,
+        "y": 751.109,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 601.01,
+        "y": 821.363,
+        "status": "empty",
+        "owner": 3
+      },
+      {
+        "slot": 5,
+        "x": 673.67,
+        "y": 825.113,
+        "status": "empty",
+        "owner": 4
+      }
+    ],
+    "bernal": [
+      {
+        "slot": 1,
+        "x": 761.78,
+        "y": 779.78,
+        "status": "empty",
+        "owner": 0
+      },
+      {
+        "slot": 2,
+        "x": 842.42,
+        "y": 779.78,
+        "status": "empty",
+        "owner": 1
+      },
+      {
+        "slot": 3,
+        "x": 761.78,
+        "y": 860.42,
+        "status": "empty",
+        "owner": 2
+      },
+      {
+        "slot": 4,
+        "x": 842.42,
+        "y": 860.42,
+        "status": "empty",
+        "owner": 3
+      }
+    ]
+  }
+}
