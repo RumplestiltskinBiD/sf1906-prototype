@@ -385,3 +385,163 @@ test('physical map lab: size persists on author-layout reset and mobile controls
  const fullWidth=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
  expect(fullWidth.content).toBeLessThanOrEqual(fullWidth.viewport+2);
 });
+
+test('physical board editor: independent physical dimensions, scale, crop warnings and legacy JSON',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const original=await snap();
+ await page.locator('#presetScythe').click();
+ const sized=await snap();
+ expect(sized.boardWidthMm).toBe(800);
+ expect(sized.boardFrame.heightMm).toBe(600);
+ expect(sized.districts).toEqual(original.districts);
+ const board=await page.evaluate(()=>window.__physicalMapLab.board());
+ expect(board.viewport.w/board.viewport.h).toBeCloseTo(4/3,6);
+ await page.locator('#boardWidthExact').fill('83');
+ await page.locator('#boardWidthExact').press('Tab');
+ expect((await snap()).boardWidthMm).toBe(830);
+ expect((await snap()).boardFrame.heightMm).toBe(600);
+ await page.locator('#mapMagnification').fill('120');
+ await page.locator('#mapMagnification').press('Tab');
+ const scale=await page.evaluate(()=>window.__physicalMapLab.board());
+ expect(scale.unitsPerMm).toBeCloseTo(1536/830/1.2,6);
+ await page.locator('#frameX').fill('500');
+ await page.locator('#frameX').press('Tab');
+ expect((await page.evaluate(()=>window.__physicalMapLab.validation())).edge.length).toBeGreaterThan(0);
+ await page.reload();
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ expect((await snap()).boardFrame.xMm).toBe(500);
+ const old=structuredClone(original);delete old.boardFrame;
+ await page.locator('#jsonArea').fill(JSON.stringify(old));
+ await page.locator('#applyJson').click();
+ expect((await snap()).boardFrame.heightMm).toBeNull();
+ expect((await snap()).boardFrame.magnification).toBe(100);
+ expect((await snap()).districts).toEqual(original.districts);
+ const invalid=await snap();invalid.boardFrame.magnification=0;
+ await page.locator('#jsonArea').fill(JSON.stringify(invalid));
+ await page.locator('#applyJson').click();
+ await expect(page.locator('#notice')).toContainText('Некорректная композиция');
+ expect((await snap()).boardFrame.magnification).toBe(100);
+});
+
+test('physical board editor: move district and slots, edit closed districts, export/import',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const initial=await snap();
+ await page.locator('#mapBackground').selectOption('schematic');
+ await expect(page.locator('#originalMapImage')).toBeHidden();
+ await expect(page.locator('#districtLabels text')).toHaveCount(21);
+ await page.locator('#editDistrict').selectOption('civic');
+ await page.locator('#districtRight').click();
+ const moved=await snap();
+ expect(moved.districts.civic[0].x).toBeCloseTo(initial.districts.civic[0].x+1536*5/1100,2);
+ expect(moved.districts.mission).toEqual(initial.districts.mission);
+ expect(moved.boardFrame.contours.civic.length).toBeGreaterThan(3);
+ await page.locator('#moveDistrictSlots').uncheck();
+ await page.locator('#districtNarrow').click();
+ expect((await snap()).districts.civic).toEqual(moved.districts.civic);
+ await page.locator('#editDistrict').selectOption('presidio');
+ await page.locator('#editVertices').check();
+ const vertex=page.locator('#vertexLayer [data-vertex="0"]');
+ await vertex.scrollIntoViewIfNeeded();
+ const b=await vertex.boundingBox();
+ expect(b).not.toBeNull();
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2);
+ await page.mouse.down();
+ await page.mouse.move(b.x+b.width/2+20,b.y+b.height/2+12,{steps:3});
+ await page.mouse.up();
+ const changed=await snap();
+ expect(changed.boardFrame.contours.presidio.length).toBeGreaterThan(3);
+ expect(changed.districts).toEqual(moved.districts);
+ await page.locator('#jsonArea').fill(JSON.stringify(changed));
+ await page.locator('#applyJson').click();
+ expect((await snap()).boardFrame).toEqual(changed.boardFrame);
+ await page.locator('#resetDistrict').click();
+ expect((await snap()).boardFrame.contours.presidio).toBeUndefined();
+ expect((await snap()).boardFrame.contours.civic).toBeDefined();
+});
+
+test('physical board editor: hex reference, fit frame, zones and corner window on mobile',async({page})=>{
+ for(const size of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(size);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  page.once('dialog',d=>d.accept());
+  await page.locator('#loadHexLayout').click();
+  await expect(page.locator('#notice')).toContainText('HEX 50 мм восстановлена');
+  await expect(page.locator('#tileSize')).toHaveValue('50');
+  await page.locator('#zoneTop').fill('25');
+  await page.locator('#zoneTop').press('Tab');
+  await page.locator('#fitBuildings').click();
+  const v=await page.evaluate(()=>window.__physicalMapLab.validation());
+  expect(v.edge).toEqual([]);
+  expect(v.reserved).toEqual([]);
+  await page.locator('#ownershipCut').selectOption('corner');
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#projectSelect').selectOption('polytechnic_campus');
+  await page.locator('#markBuilding').click();
+  const tile=page.locator('[data-slot-id="civic-1"]');
+  await expect(tile.locator('circle.owner-seat')).toHaveCount(6);
+  const path=await tile.locator('path.tile').getAttribute('d');
+  expect((path.match(/ L /g)||[]).length).toBe(6);
+  await page.locator('#cornerCutMm').fill('5');
+  await page.locator('#cornerCutMm').press('Tab');
+  expect(await tile.locator('path.tile').getAttribute('d')).not.toBe(path);
+  const htmlWidth=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(htmlWidth.content).toBeLessThanOrEqual(htmlWidth.viewport+2);
+ }
+});
+
+test('physical board editor: logistics footprints use current catalog, are editable and validated',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ await page.locator('#mapBackground').selectOption('schematic');
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(8);
+ await page.locator('#editNode').selectOption('broadway');
+ await page.locator('#nodeW').fill('45');await page.locator('#nodeW').press('Tab');
+ await page.locator('#nodeH').fill('24');await page.locator('#nodeH').press('Tab');
+ await page.locator('#nodeX').fill('1300');await page.locator('#nodeX').press('Tab');
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const edited=await snap();
+ expect(edited.boardFrame.nodes.broadway.w).toBe(45);
+ expect(edited.boardFrame.nodes.broadway.h).toBe(24);
+ expect((await page.evaluate(()=>window.__physicalMapLab.validation())).nodes.edge).toContain('broadway');
+ await page.reload();
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(8);
+ expect((await snap()).boardFrame.nodes.broadway).toEqual(edited.boardFrame.nodes.broadway);
+ await page.locator('#editNode').selectOption('broadway');
+ await page.locator('#resetNode').click();
+ expect((await snap()).boardFrame.nodes.broadway).toBeUndefined();
+ await page.locator('#showNodes').uncheck();
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(0);
+});
+
+test('physical board editor: external dimension rulers show physical cm independently of zoom',async({page})=>{
+ for(const size of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(size);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#presetScythe').click();
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 60 см');
+  await expect(page.locator('#boardWidthRuler')).toHaveText('80 см');
+  await expect(page.locator('#boardHeightRuler')).toHaveText('60 см');
+  await page.locator('#boardHeightExact').fill('57');
+  await page.locator('#boardHeightExact').press('Tab');
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  await page.locator('#zoom').evaluate(el=>{el.value='150';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  const aligned=await page.evaluate(()=>{
+   const svg=document.querySelector('#mapSvg').getBoundingClientRect();
+   const w=document.querySelector('.measure-width').getBoundingClientRect();
+   const h=document.querySelector('.measure-height').getBoundingClientRect();
+   return Math.abs(w.left-svg.left)<1&&Math.abs(w.width-svg.width)<1&&Math.abs(h.top-svg.top)<1&&Math.abs(h.height-svg.height)<1;
+  });
+  expect(aligned).toBe(true);
+  await page.reload();
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  const viewport=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
+  expect(viewport.scroll).toBeLessThanOrEqual(viewport.width+2);
+ }
+});

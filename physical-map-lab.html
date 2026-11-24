@@ -38,7 +38,18 @@ button.danger{background:#51313c}
 #jsonArea{width:100%;min-height:90px;resize:vertical;font-family:ui-monospace,monospace;color:#dce8ee;background:#081521;border:1px solid #526475;border-radius:8px;padding:8px;font-size:11px}
 .map-panel{min-width:0;background:#182736;display:flex;flex-direction:column}
 .map-toolbar{padding:10px 15px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;background:#152230;border-bottom:1px solid #344456;font-size:13px}
-.map-scroll{overflow:auto;flex:1;min-height:500px}
+.map-scroll{overflow:auto;flex:1;min-height:500px;min-width:0}
+#boardSizeBadge{font-size:18px;font-weight:750;color:#f7dfab;font-variant-numeric:tabular-nums;white-space:nowrap}
+.board-measure{display:grid;grid-template-columns:46px max-content;grid-template-rows:34px max-content;width:max-content;padding:8px 14px 14px 4px;gap:0}
+.measure-width,.measure-height{position:relative;color:#f7dfab;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;pointer-events:none}
+.measure-width{grid-column:2;grid-row:1;display:flex;justify-content:center;align-items:flex-start;padding-top:1px}
+.measure-height{grid-column:1;grid-row:2;display:flex;justify-content:flex-start;align-items:center}
+.measure-height span{writing-mode:vertical-rl;transform:rotate(180deg)}
+.measure-width::before{content:"";position:absolute;left:0;right:0;bottom:6px;height:1px;background:currentColor}
+.measure-width::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:9px;border-left:1px solid currentColor;border-right:1px solid currentColor}
+.measure-height::before{content:"";position:absolute;top:0;bottom:0;right:6px;width:1px;background:currentColor}
+.measure-height::after{content:"";position:absolute;top:0;bottom:0;right:2px;width:9px;border-top:1px solid currentColor;border-bottom:1px solid currentColor}
+.board-measure #mapSvg{grid-column:2;grid-row:2}
 #mapSvg{display:block;max-width:none;background:#90b5b7;touch-action:none}
 #regionLayer .region path{fill:rgba(255,255,255,.001);stroke:#688a88;stroke-opacity:.15;stroke-width:3;pointer-events:visiblePainted;vector-effect:non-scaling-stroke}
 #regionLayer .region.current path{fill:rgba(255,216,126,.12);stroke:#ffd486;stroke-width:5;stroke-opacity:1}
@@ -74,12 +85,23 @@ button.danger{background:#51313c}
 #mapSvg .slot .tile-chip{stroke:#6c5941;stroke-width:.5}
 
 @media(max-width:900px){.workspace{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid #344456}.map-scroll{min-height:520px}}
+#boardEditor input[type=number]{width:100px;background:#081521;color:#e9eff4;border:1px solid #526475;border-radius:5px;padding:6px}
+#boardEditor select{max-width:165px}
+#mapSvg.schematic #regionLayer .region path{fill:#d4dfcf;stroke:#526d6a;stroke-width:1.5;stroke-opacity:1}
+#mapSvg.schematic #regionLayer .region.current path{fill:#e9d9a8;stroke:#997b32}
+#districtLabels text{fill:#233e43;font-size:14px;font-weight:700;text-anchor:middle;paint-order:stroke;stroke:#e3e9dc;stroke-width:3px;pointer-events:none}
+#vertexLayer circle{fill:#fff;stroke:#137c93;stroke-width:2;cursor:move;vector-effect:non-scaling-stroke}
+#frameZones{pointer-events:none}
+#nodeLayer .node{cursor:grab}
+#nodeLayer .node rect{fill:#f1e5be;stroke:#6c5632;stroke-width:1.5;vector-effect:non-scaling-stroke}
+#nodeLayer .node.problem rect{stroke:#e64e3e;stroke-width:3}
+#nodeLayer text{font-weight:700;fill:#42351f;text-anchor:middle;pointer-events:none}
 </style>
 </head>
 <body>
 <header>
 <h1>San Francisco 1906 · лаборатория физических строительных мест</h1>
-<p>Отдельный редактор. Оригинальная карта V8 и точные SVG-контуры районов. На основную игру и её сохранения не влияет.</p>
+<p>Отдельный редактор. Оригинальная карта V8 и редактируемая схема районов. На основную игру и её сохранения не влияет.</p>
 </header>
 <div class="workspace">
 <aside>
@@ -91,6 +113,9 @@ button.danger{background:#51313c}
 <section>
 <h2>Масштаб настольной карты</h2>
 <div class="field"><label for="boardWidth">Ширина поля, см</label><select id="boardWidth"><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option></select></div>
+<div class="field"><label for="boardWidthExact">Точная ширина, см</label><input id="boardWidthExact" type="number" min="50" max="150" step="1" value="110"></div>
+<div class="field"><label for="boardHeightExact">Высота поля, см</label><input id="boardHeightExact" type="number" min="35" max="120" step="1" value="73.333"></div>
+<div class="controls"><button id="autoHeight">Высота 2:3</button><button id="presetScythe">80 × 60 см</button><button id="preset90">90 × 60 см</button></div>
 <div class="field"><label for="zoom">Зум просмотра</label><input id="zoom" type="range" min="50" max="210" step="10" value="80"><output id="zoomValue">80%</output></div>
 <p class="sub" id="dimensions">110 × 73,3 см · габарит 40 × 40 мм · зазор 2 мм</p>
 <div class="field"><label for="tileShape">Форма всех мест</label><select id="tileShape"><option value="square">Квадрат</option><option value="hex">Шестиугольник</option><option value="oct">Восьмиугольник</option></select></div>
@@ -98,6 +123,43 @@ button.danger{background:#51313c}
 <div class="controls"><button id="tileSizeDown" type="button" aria-label="Уменьшить размер на 1 мм">− 1 мм</button><button id="tileSizeUp" type="button" aria-label="Увеличить размер на 1 мм">+ 1 мм</button></div>
 <input id="tileSizeRange" type="range" min="25" max="70" step="1" value="40" aria-label="Размер всех тайлов выбранной формы в миллиметрах" style="width:100%;accent-color:#55c3d4">
 <p class="sub">Размер общий для всех мест выбранной формы, от 25 до 70 мм, шаг 1 мм. У квадрата это сторона, у многоугольника — расстояние между противоположными вершинами (диаметр описанной окружности). Для каждой формы размер запоминается отдельно. Центры всех 79 мест остаются неподвижными; при увеличении фигуры возможны красные предупреждения о пересечениях.</p>
+</section>
+<section id="boardEditor">
+<h2>Композиция поля</h2>
+<p class="sub">Масштаб города и рамка независимы от размера тайлов. Обрезка не удаляет участки. При редактировании контуров лучше включить чистую схему: оригинальная иллюстрация не деформируется.</p>
+<div class="field"><label for="mapMagnification">Масштаб города, %</label><input id="mapMagnification" type="number" min="60" max="220" step="1" value="100"></div>
+<div class="field"><label for="frameX">Сдвиг рамки X, мм</label><input id="frameX" type="number" min="-500" max="1500" step="1" value="0"></div>
+<div class="field"><label for="frameY">Сдвиг рамки Y, мм</label><input id="frameY" type="number" min="-500" max="1500" step="1" value="0"></div>
+<div class="controls"><button id="fitBuildings">Обрамить все участки</button><button id="resetFrame">Сброс рамки</button></div>
+<div class="field"><label for="mapBackground">Фон</label><select id="mapBackground"><option value="original">Историческая карта</option><option value="schematic">Чистая схема</option></select></div>
+<div class="field"><label for="showLabels">Названия на чистой схеме</label><input id="showLabels" type="checkbox" checked></div>
+<div class="field"><label for="zoneTop">Резерв сверху, мм</label><input id="zoneTop" type="number" min="0" max="150" step="1" value="0"></div>
+<div class="field"><label for="zoneRight">Резерв справа, мм</label><input id="zoneRight" type="number" min="0" max="150" step="1" value="0"></div>
+<div class="field"><label for="zoneBottom">Резерв снизу, мм</label><input id="zoneBottom" type="number" min="0" max="150" step="1" value="0"></div>
+<div class="field"><label for="zoneLeft">Резерв слева, мм</label><input id="zoneLeft" type="number" min="0" max="150" step="1" value="0"></div>
+<p class="sub">Полосы — только резерв для треков, легенды и служебных зон. Оранжевая разметка не является готовой шкалой.</p>
+<h2>Контуры районов</h2>
+<div class="field"><label for="editDistrict">Район (все 21)</label><select id="editDistrict"></select></div>
+<div class="field"><label for="editVertices">Править вершины мышью</label><input type="checkbox" id="editVertices"></div>
+<div class="field"><label for="moveDistrictSlots">Перемещать участки и логистику района</label><input type="checkbox" id="moveDistrictSlots" checked></div>
+<div class="field"><label for="districtStep">Шаг перемещения, мм</label><input id="districtStep" type="number" min="1" max="50" value="5"></div>
+<div class="controls"><button id="districtLeft">←</button><button id="districtUp">↑</button><button id="districtDown">↓</button><button id="districtRight">→</button></div>
+<div class="controls"><button id="districtNarrow">Уже −5%</button><button id="districtWider">Шире +5%</button><button id="districtShorter">Ниже −5%</button><button id="districtTaller">Выше +5%</button></div>
+<div class="controls"><button id="resetDistrict">Сброс контура района</button><button id="resetContours">Сброс всех контуров</button></div>
+<p class="sub">Редактируются только визуальные полигоны. Соседство игры неизменно; общие границы соседей автоматически не сшиваются. Сброс контура не возвращает передвинутые тайлы.</p>
+<h2>Логистика и служебные объекты</h2>
+<div class="field"><label for="showNodes">Показать площадки логистики</label><input id="showNodes" type="checkbox"></div>
+<div class="field"><label for="editNode">Объект</label><select id="editNode"></select></div>
+<div class="field"><label for="nodeX">Центр X, мм карты</label><input id="nodeX" type="number" step="1"></div>
+<div class="field"><label for="nodeY">Центр Y, мм карты</label><input id="nodeY" type="number" step="1"></div>
+<div class="field"><label for="nodeW">Ширина, мм</label><input id="nodeW" type="number" min="10" max="120" step="1"></div>
+<div class="field"><label for="nodeH">Высота, мм</label><input id="nodeH" type="number" min="10" max="120" step="1"></div>
+<div class="controls"><button id="resetNode">Сброс объекта</button></div>
+<p class="sub">Пять узлов и три нейтральных поставщика из игрового реестра. Прямоугольники — черновые зоны под компоненты; перетаскивай их или меняй размеры. Идентичность и район в правилах не меняются. Координаты отсчитываются от исходной карты, не рамки.</p>
+<h2>Обозначение владельца</h2>
+<div class="field"><label for="ownershipCut">Форма выемки</label><select id="ownershipCut"><option value="notch">V-выемка</option><option value="corner">Срез вершины</option></select></div>
+<div class="field"><label for="cornerCutMm">Срез вдоль грани, мм</label><input id="cornerCutMm" type="number" min="3" max="12" step="1" value="8"></div>
+<p class="sub" id="effectiveCut"></p><div class="controls"><button id="loadHexLayout">Открыть исходные HEX 50 мм / 110 см</button></div>
 </section>
 <section>
 <h2>Проверка расположения</h2>
@@ -140,14 +202,15 @@ button.danger{background:#51313c}
 <div class="controls"><button id="download" class="primary">Скачать JSON</button><button id="copyJson">Копировать JSON</button></div>
 <div class="controls"><label class="file-label">Загрузить JSON <input id="loadFile" type="file" accept="application/json,.json" hidden></label><button id="applyJson">Применить JSON ниже</button></div>
 <textarea id="jsonArea" aria-label="Импорт и экспорт JSON" placeholder="Сюда можно вставить сохранённый JSON, затем нажать «Применить»."></textarea>
-<p class="sub">JSON сохраняет 79 координат, форму, размеры всех трёх форм, индивидуальные повороты и тестовые здания. Старые файлы без размеров открываются с исходными 40 мм. Для переноса на другое устройство экспортируй JSON.</p>
+<p class="sub">JSON сохраняет 79 координат, форму, размеры всех трёх форм, индивидуальные повороты, тестовые здания и необязательный boardFrame (рамка, контуры, площадки логистики и резервы). Старые файлы без размеров открываются с исходными 40 мм. Для переноса на другое устройство экспортируй JSON.</p>
 </section>
 </aside>
 <main class="map-panel">
-<div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков · выделены текущие границы</div><div id="selectedDistrictLabel">Inner Sunset</div></div>
+<div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков</div><div><span class="sub">Физический размер поля</span> <strong id="boardSizeBadge">110 × 73,3 см</strong></div><div id="selectedDistrictLabel">Inner Sunset</div></div>
 <div class="map-scroll" id="mapScroll">
+<div class="board-measure"><div class="measure-width" aria-hidden="true"><span id="boardWidthRuler">110 см</span></div><div class="measure-height" aria-hidden="true"><span id="boardHeightRuler">73,3 см</span></div>
 <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" aria-label="Редактор 79 квадратных, шестиугольных или восьмиугольных строительных мест Сан-Франциско" role="img">
-<image href="./assets/v8-map.webp?v=028" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"/>
+<image id="originalMapImage" href="./assets/v8-map.webp?v=028" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"/>
 <g transform="translate(0 -11)">
 <g id="regionLayer"><g class="region" data-region="presidio"><path d="M 464 57 L 501 88 L 520 93 L 557 108 L 572 104 L 621 88 L 645 138 L 648 153 L 661 165 L 657 185 L 643 197 L 618 212 L 609 228 L 610 276 L 588 263 L 535 261 L 457 265 L 433 262 L 375 271 L 299 268 L 278 248 L 324 217 L 333 185 L 355 164 L 368 133 L 383 54 L 409 61 L 429 68 L 464 57 Z"/></g>
 <g class="region" data-region="marina"><path d="M 657 110 L 660 125 L 644 138 L 645 152 L 659 163 L 711 163 L 744 167 L 820 155 L 797 86 L 753 89 L 687 102 L 657 110 Z"/></g>
@@ -170,9 +233,11 @@ button.danger{background:#51313c}
 <g class="region" data-region="bernal"><path d="M 740 909 L 743 866 L 736 848 L 732 752 L 779 766 L 826 770 L 944 767 L 949 920 L 868 959 L 841 965 L 815 958 L 791 938 L 762 928 L 740 909 Z"/></g>
 <g class="region" data-region="park"><path d="M 130 454 L 117 500 L 138 545 L 146 602 L 183 574 L 540 580 L 546 512 L 582 483 L 606 474 L 604 415 L 529 420 L 525 388 L 445 401 L 405 396 L 179 424 L 142 439 L 130 454 Z"/></g>
 <g class="region" data-region="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g></g>
-<g id="slotLayer"></g>
+<g id="districtLabels"></g><g id="slotLayer"></g><g id="nodeLayer"></g><g id="vertexLayer"></g>
 </g>
+<g id="frameZones"></g>
 </svg>
+</div>
 </div>
 </main>
 </div>
@@ -182,6 +247,7 @@ const DISTRICTS=[{"id":"presidio","name":"Presidio","slots":0},{"id":"marina","n
 const TOTAL=DISTRICTS.reduce((sum,d)=>sum+d.slots,0);
 const TILE_MM=40,MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
+const HEX_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json';
 const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
 let projectCatalog=[],projectById=new Map(),mode='layout',tileShape='square',tileSizesMm={square:TILE_MM,hex:TILE_MM,oct:TILE_MM};
 const SHAPE_SIDES=Object.freeze({square:4,hex:6,oct:8});
@@ -192,13 +258,128 @@ const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const round=x=>Math.round(x*1000)/1000;
 let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersunset-1',slots=[],drag=null;
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
+const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
+const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'notch',cornerMm:8});
+let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
+function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
+function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
+function viewport(){const u=unitsPerMm();return {x:frame.xMm*u,y:frame.yMm*u,w:boardWidthMm*u,h:boardHeight()*u}}
+function contourPoints(id){return frame.contours[id]??originalPoints[id]}
+function applyContours(){
+ for(const [id,path] of Object.entries(pathById)){const p=frame.contours[id];path.setAttribute('d',p?'M '+p.map(v=>v.join(' ')).join(' L ')+' Z':originalContours[id]);}
+}
+function readFrame(data){
+ const f=defaultFrame();if(data===undefined)return f;
+ if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Некорректная композиция поля');
+ const num=(key,lo,hi,fallback)=>{const v=data[key]??fallback;if(!Number.isFinite(v)||v<lo||v>hi)throw Error('Некорректная композиция: '+key);return v};
+ f.heightMm=data.heightMm==null?null:num('heightMm',350,1200,0);
+ f.magnification=num('magnification',60,220,100);f.xMm=num('xMm',-500,1500,0);f.yMm=num('yMm',-500,1500,0);
+ if(data.background!==undefined&&!['original','schematic'].includes(data.background))throw Error('Неизвестный фон');
+ f.background=data.background??'original';f.labels=data.labels!==false;
+ for(const k of Object.keys(f.zones)){const v=data.zones?.[k]??0;if(!Number.isFinite(v)||v<0||v>150)throw Error('Некорректная зона: '+k);f.zones[k]=v}
+ for(const [id,p] of Object.entries(data.contours??{})){
+  if(!Object.hasOwn(originalPoints,id)||!Array.isArray(p)||p.length!==originalPoints[id].length||p.some(v=>!Array.isArray(v)||v.length!==2||v.some(n=>!Number.isFinite(n)||Math.abs(n)>10000)))throw Error('Некорректный контур '+id);
+  f.contours[id]=p.map(v=>[...v]);
+ }
+ f.showNodes=data.showNodes===true;
+ for(const [id,p] of Object.entries(data.nodes??{})){
+  if(!nodeCatalog.some(n=>n.id===id)||!p||typeof p!=='object'||!['x','y','w','h'].every(k=>Number.isFinite(p[k]))||Math.abs(p.x)>10000||Math.abs(p.y)>10000||p.w<10||p.w>120||p.h<10||p.h>120)throw Error('Некорректная площадка '+id);
+  f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
+ }
+ if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
+ f.cut=data.cut??'notch';f.cornerMm=num('cornerMm',3,12,8);return f;
+}
+function syncFrame(){
+ $('boardWidthExact').value=round(boardWidthMm/10);$('boardHeightExact').value=round(boardHeight()/10);
+ $('mapMagnification').value=frame.magnification;$('frameX').value=round(frame.xMm);$('frameY').value=round(frame.yMm);
+ $('mapBackground').value=frame.background;$('showLabels').checked=frame.labels;
+ for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).value=frame.zones[k];
+ $('showNodes').checked=frame.showNodes;syncNode();
+ $('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
+}
+function updateBoardView(){
+ const v=viewport();$('mapSvg').setAttribute('viewBox',[v.x,v.y,v.w,v.h].join(' '));
+ $('mapSvg').classList.toggle('schematic',frame.background==='schematic');
+ $('originalMapImage').style.display=frame.background==='original'?'':'none';
+ updateScale();
+}
+function nodeValue(n){return frame.nodes[n.id]??{x:n.x,y:n.y,w:32,h:18}}
+function nodePoly(n){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u/2,h=p.h*u/2;return [{x:p.x-w,y:p.y-h-11},{x:p.x+w,y:p.y-h-11},{x:p.x+w,y:p.y+h-11},{x:p.x-w,y:p.y+h-11}]}
+function syncNode(){const n=nodeCatalog.find(n=>n.id===editNodeId);if(!n)return;const p=nodeValue(n),u=unitsPerMm();$('nodeX').value=round(p.x/u);$('nodeY').value=round(p.y/u);$('nodeW').value=p.w;$('nodeH').value=p.h}
+function nodeProblems(){if(!frame.showNodes)return {edge:[],reserved:[],collisions:[]};
+ const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[],reserved=[],collisions=new Set(),polys=nodeCatalog.map(nodePoly),buildings=slots.map(worldVertices);
+ for(let i=0;i<polys.length;i++){const p=polys[i],id=nodeCatalog[i].id;
+  if(p.some(q=>q.x<v.x||q.y<v.y||q.x>v.x+v.w||q.y>v.y+v.h))edge.push(id);
+  else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(id);
+  if(buildings.some(b=>polygonOverlap(p,b)))collisions.add(id);
+  for(let j=0;j<i;j++)if(polygonOverlap(p,polys[j])){collisions.add(id);collisions.add(nodeCatalog[j].id)}
+ }return {edge,reserved,collisions:[...collisions]};
+}
+function renderNodes(){
+ const layer=$('nodeLayer');layer.replaceChildren();layer.style.pointerEvents=mode==='layout'?'':'none';if(!frame.showNodes)return;
+ const issues=nodeProblems(),bad=new Set([...issues.edge,...issues.reserved,...issues.collisions]);
+ for(const n of nodeCatalog){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u,h=p.h*u;
+  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')});
+  g.append(element('rect',{x:p.x-w/2,y:p.y-h/2,width:w,height:h,rx:2}));
+  g.append(element('text',{x:p.x,y:p.y,'font-size':Math.min(u*3.4,w/Math.max(5,n.shortName.length)*1.4)},n.shortName));
+  g.append(element('title',{},n.name+' · '+n.districtId));layer.append(g);
+ }
+}
+function renderBoardParts(){
+ const labelLayer=$('districtLabels'),vertices=$('vertexLayer'),zones=$('frameZones');
+ labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes();
+ if(frame.background==='schematic'&&frame.labels)for(const d of DISTRICTS){const b=pathById[d.id].getBBox();labelLayer.append(element('text',{x:b.x+b.width/2,y:b.y+15},d.name))}
+ if($('editVertices').checked)contourPoints(editId).forEach(([x,y],i)=>vertices.append(element('circle',{cx:x,cy:y,r:5,'data-vertex':i})));
+ const v=viewport(),u=unitsPerMm(),z=frame.zones;
+ for(const [x,y,w,h] of [[v.x,v.y,v.w,z.top*u],[v.x+v.w-z.right*u,v.y,z.right*u,v.h],[v.x,v.y+v.h-z.bottom*u,v.w,z.bottom*u],[v.x,v.y,z.left*u,v.h]])if(w>0&&h>0)zones.append(element('rect',{x,y,width:w,height:h,fill:'#d6a352','fill-opacity':.23,stroke:'#b37626','stroke-dasharray':'5 4'}));
+}
+function commitFrame(){applyContours();syncFrame();updateBoardView();persist();render()}
+function setBoardSize(w,h){boardWidthMm=clamp(w,500,1500);frame.heightMm=h==null?null:clamp(h,350,1200);
+ if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
+ $('boardWidth').value=String(boardWidthMm/10);commitFrame();
+}
+function changeDistrict(dx,dy,sx=1,sy=1){
+ const p=contourPoints(editId),xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
+ const transform=(x,y)=>[round(cx+(x-cx)*sx+dx),round(cy+(y-cy)*sy+dy)];
+ frame.contours[editId]=p.map(([x,y])=>transform(x,y));
+ if($('moveDistrictSlots').checked){
+  for(const t of slots.filter(t=>t.districtId===editId)){const a=sizeSvg()/2;const [x,y]=transform(t.x+a,t.y+a);t.x=round(x-a);t.y=round(y-a)}
+  for(const n of nodeCatalog.filter(n=>n.districtId===editId)){const p=nodeValue(n),[x,y]=transform(p.x,p.y);frame.nodes[n.id]={...p,x,y}}
+ }
+ commitFrame();
+}
+function worldVertices(t){const o=actualSlotOrigin(t);return tileVertices(t,currentSizeSvg()).map(p=>({x:p.x+o.x,y:p.y+o.y-11}))}
+function frameProblems(){const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[],reserved=[];
+ for(const t of slots){const p=worldVertices(t);if(p.some(q=>q.x<v.x||q.y<v.y||q.x>v.x+v.w||q.y>v.y+v.h))edge.push(t.id);
+ else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(t.id)}
+ return {edge,reserved};
+}
+function fitBuildings(){const u=unitsPerMm(),p=[...slots.flatMap(worldVertices),...(frame.showNodes?nodeCatalog.flatMap(nodePoly):[])],pad=5;
+ const minX=Math.min(...p.map(q=>q.x))/u-pad-frame.zones.left,minY=Math.min(...p.map(q=>q.y))/u-pad-frame.zones.top;
+ const maxX=Math.max(...p.map(q=>q.x))/u+pad+frame.zones.right,maxY=Math.max(...p.map(q=>q.y))/u+pad+frame.zones.bottom;
+ // Preserve physical scale while changing the frame, including the legacy anchor.
+ const newW=clamp(Math.ceil(maxX-minX),500,1500),newH=clamp(Math.ceil(maxY-minY),350,1200),newMag=VB_WIDTH/newW/u*100;
+ if(newMag<60||newMag>220||maxX-minX>1500||maxY-minY>1200){notice('Невозможно обрамить в пределах настроек');return}
+ frame.magnification=newMag;frame.xMm=clamp(minX,-500,1500);frame.yMm=clamp(minY,-500,1500);setBoardSize(newW,newH);
+ notice('Рамка охватывает строительные места с резервами. Проверь отдельно логистику и контуры районов.');
+}
+function effectiveCornerMm(){const n=SHAPE_SIDES[tileShape];return Math.min(frame.cornerMm,.9*tileSizesMm[tileShape]*Math.sin(Math.PI/n))}
+function cornerPath(n,s){
+ const v=regularVertices(n,s),a=v[0],prev=v[n-1],next=v[1],edge=Math.hypot(a.x-next.x,a.y-next.y),ratio=Math.min(.9,frame.cornerMm*unitsPerMm()/edge);
+ const p=b=>({x:a.x+(b.x-a.x)*ratio,y:a.y+(b.y-a.y)*ratio});
+ return 'M '+[p(next),...v.slice(1),p(prev)].map(q=>round(q.x)+' '+round(q.y)).join(' L ')+' Z';
+}
+function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min(.9,frame.cornerMm*unitsPerMm()/edge)*edge*Math.sin(Math.PI/regularVertices(SHAPE_SIDES[tileShape],s).length);const len=Math.hypot(s/2-a.x,s/2-a.y);
+ return {x:a.x+(s/2-a.x)/len*depth*.42,y:a.y+(s/2-a.y)/len*depth*.42}}
+
 // Canonical saved x/y are the upper-left of the ORIGINAL 40 mm square.
  // Display every new size around the same historical center, without moving any saved coordinate.
-function sizeSvg(){return VB_WIDTH*TILE_MM/boardWidthMm}
-function currentSizeSvg(){return VB_WIDTH*tileSizesMm[tileShape]/boardWidthMm}
+function sizeSvg(){return unitsPerMm()*TILE_MM}
+function currentSizeSvg(){return unitsPerMm()*tileSizesMm[tileShape]}
 function sizeOffsetSvg(){return (sizeSvg()-currentSizeSvg())/2}
 function actualSlotOrigin(t){const offset=sizeOffsetSvg();return {x:t.x+offset,y:t.y+offset}}
-function gapSvg(){return VB_WIDTH*GAP_MM/boardWidthMm}
+function gapSvg(){return unitsPerMm()*GAP_MM}
 function normalizeAngle(value){return ((Math.round(value)%360)+360)%360}
 function regularVertices(n,s,angle=0){
  return Array.from({length:n},(_,i)=>{
@@ -368,10 +549,10 @@ function drawTile(g,t,s){
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
- const s=currentSizeSvg(),problem=validation(),layer=$('slotLayer'),frag=document.createDocumentFragment();
+ const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),layer=$('slotLayer'),frag=document.createDocumentFragment();
  const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
-  const bad=problem.flag.has(t.id),sel=t.id===selectedId;
+  const bad=problem.flag.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
   const origin=actualSlotOrigin(t);
   const g=element('g',{transform:'translate('+round(origin.x)+' '+round(origin.y)+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
    class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
@@ -379,20 +560,20 @@ function render(){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
   }else{
-   const frame=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
+   const guide=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
    const vertex=regularVertices(n,s);
-   frame.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
+   guide.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
    vertex.forEach((a,i)=>{
-    const b=vertex[(i+1)%n],p=seatCenter(a,b,s);
-    frame.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(s*.035),
+    const b=vertex[(i+1)%n],p=frame.cut==='corner'?cornerSeat(a,b,s):seatCenter(a,b,s);
+    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,effectiveCornerMm()*unitsPerMm()*.12):s*.035),
       fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
    });
-   g.append(frame);
+   g.append(guide);
    if(t.status==='empty')drawTile(g,t,s);
    else{
     const face=element('g',{transform:'rotate('+((t.rotation||0)+t.owner*360/n)+' '+s/2+' '+s/2+')',
       'data-notch-owner':t.owner});
-    face.append(element('path',{d:notchPath(n,s),class:'tile'+(t.status==='under'?' tile-under':' tile-done')}));
+    face.append(element('path',{d:frame.cut==='corner'?cornerPath(n,s):notchPath(n,s),class:'tile'+(t.status==='under'?' tile-under':' tile-done')}));
     drawTile(face,t,s);g.append(face);
    }
   }
@@ -401,27 +582,28 @@ function render(){
     ' · '+t.status+' · '+(t.rotation||0)+'°'+(bad?' · пересечение/граница':'')));
   frag.append(g);
  }
- layer.replaceChildren(frag);
+ layer.replaceChildren(frag);renderBoardParts();
  $('mapSvg').classList.toggle('build-mode',mode==='build');
  for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
- $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardWidthMm/15)+' см<br>'+
-  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
- $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardWidthMm/15)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
+ $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
+ $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
   ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
  $('tileShape').value=tileShape;
  $('tileSize').value=String(tileSizesMm[tileShape]);
  $('tileSizeRange').value=String(tileSizesMm[tileShape]);
  $('tileSizeDown').disabled=tileSizesMm[tileShape]===MIN_TILE_MM;
  $('tileSizeUp').disabled=tileSizesMm[tileShape]===MAX_TILE_MM;
+ $('effectiveCut').textContent=frame.cut==='corner'&&poly?'Фактический срез: '+round(effectiveCornerMm())+' мм вдоль грани (ограничен длиной грани). Для квадрата не применяется.':'';
  $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
  for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
  $('focusDistrict').value=selectedDistrict;
  const t=slots.find(x=>x.id===selectedId),p=projectById.get(t?.projectId);
  $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[t.status])+
   (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
-  '\nКоординаты: '+round(t.x/VB_WIDTH*boardWidthMm)+' × '+round(t.y/VB_WIDTH*boardWidthMm)+' мм'+
+  '\nКоординаты: '+round(t.x/unitsPerMm())+' × '+round(t.y/unitsPerMm())+' мм'+
   '\nПоворот места: '+(t.rotation||0)+'°'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери место';
  const allowRotate=!!t&&poly&&mode==='layout';
  $('slotRotation').value=String(t?.rotation||0);$('slotRotation').disabled=!allowRotate;
@@ -439,10 +621,11 @@ function snapshot(){
  ...(t.projectId?{projectId:t.projectId}:{}),
  ...(t.delivered?.length?{delivered:[...t.delivered]}:{})
 }));
- return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,tileShape,tileSizesMm:{...tileSizesMm},districts};
+ return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,tileShape,tileSizesMm:{...tileSizesMm},boardFrame:structuredClone(frame),districts};
 }
 function applySnapshot(data){
- if(!data||data.schema!=='sf1906-physical-slot-layout-v1'||data.tileMm!==TILE_MM||!Number.isFinite(data.boardWidthMm)||data.boardWidthMm<600||data.boardWidthMm>1500)throw Error('Неверная версия, размер или масштаб файла');
+ if(!data||data.schema!=='sf1906-physical-slot-layout-v1'||data.tileMm!==TILE_MM||!Number.isFinite(data.boardWidthMm)||data.boardWidthMm<500||data.boardWidthMm>1500)throw Error('Неверная версия, размер или масштаб файла');
+ const importedFrame=readFrame(data.boardFrame);
  const importedShape=data.tileShape??'square';
  if(!Object.prototype.hasOwnProperty.call(SHAPE_SIDES,importedShape))throw Error('Неизвестная форма тайла');
  const importedSizes={square:TILE_MM,hex:TILE_MM,oct:TILE_MM};
@@ -472,14 +655,19 @@ function applySnapshot(data){
       projectId:project?.id||null,delivered});
   }
  }
- boardWidthMm=data.boardWidthMm;tileShape=importedShape;tileSizesMm=importedSizes;slots=next;
+ boardWidthMm=data.boardWidthMm;tileShape=importedShape;tileSizesMm=importedSizes;slots=next;frame=importedFrame;applyContours();syncFrame();
  if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
  $('boardWidth').value=String(boardWidthMm/10);
- updateScale();persist();render();notice('Координаты загружены. Проверь красные предупреждения.');
+ updateBoardView();persist();render();notice('Координаты загружены. Проверь красные предупреждения.');
 }
 function updateScale(){
- $('mapSvg').style.width=(VB_WIDTH*zoom/100)+'px';
- $('mapSvg').style.height=(VB_HEIGHT*zoom/100)+'px';
+ $('mapSvg').style.width=(boardWidthMm/1100*VB_WIDTH*zoom/100)+'px';
+ $('mapSvg').style.height=(boardHeight()/1100*VB_WIDTH*zoom/100)+'px';
+ const formatCm=mm=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(mm/10);
+ const w=formatCm(boardWidthMm),h=formatCm(boardHeight());
+ $('boardWidthRuler').textContent=w+' см';
+ $('boardHeightRuler').textContent=h+' см';
+ $('boardSizeBadge').textContent=w+' × '+h+' см';
  $('zoomValue').textContent=zoom+'%';
 }
 function activeSlot(){return slots.find(s=>s.id===selectedId)}
@@ -528,6 +716,8 @@ async function loadAuthorLayout(){
 }
 async function initCatalog(){
  const data=await import('./game-core.js');
+ nodeCatalog=[...data.LOGISTICS_NODES,...data.NEUTRAL_MATERIAL_SUPPLIERS];editNodeId=nodeCatalog[0]?.id;
+ for(const n of nodeCatalog)$('editNode').add(new Option(n.shortName,n.id));
  projectCatalog=[...data.PROJECTS,...data.STANDARD_PROJECTS];
  projectById=new Map(projectCatalog.map(p=>[p.id,p]));
  const market=document.createElement('optgroup');market.label='Рыночные проекты';
@@ -565,16 +755,38 @@ function supplyMaterial(all=false){
  persist();render();return true;
 }
 async function init(){
- initList();await initCatalog();
+ initList();for(const d of DISTRICTS)$('editDistrict').add(new Option(d.name,d.id));$('editDistrict').value=editId;await initCatalog();
  let restored=false;
  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){applySnapshot(JSON.parse(raw));restored=true}}catch(e){notice('Старое сохранение не загружено: '+e.message)}
  if(!restored){try{await loadAuthorLayout();notice('Открыта авторская расстановка 110 см')}
   catch(e){autoAll();persist();render();notice('Авторская схема недоступна: показан черновой автогрид')}}
- updateScale();
+ syncFrame();updateBoardView();
  $('boardWidth').addEventListener('change',e=>{
    const n=Number(e.target.value)*10;if(!Number.isFinite(n))return;
-   boardWidthMm=n;persist();render();
+   setBoardSize(n,frame.heightMm);
  });
+ $('boardWidthExact').onchange=e=>{const v=Number(e.target.value);if(v>=50&&v<=150)setBoardSize(v*10,frame.heightMm);else syncFrame()};
+ $('boardHeightExact').onchange=e=>{const v=Number(e.target.value);if(v>=35&&v<=120)setBoardSize(boardWidthMm,v*10);else syncFrame()};
+ $('autoHeight').onclick=()=>setBoardSize(boardWidthMm,null);
+ $('presetScythe').onclick=()=>setBoardSize(800,600);$('preset90').onclick=()=>setBoardSize(900,600);
+ for(const [id,k,lo,hi] of [['mapMagnification','magnification',60,220],['frameX','xMm',-500,1500],['frameY','yMm',-500,1500],['cornerCutMm','cornerMm',3,12]])$(id).onchange=e=>{const v=Number(e.target.value);if(v>=lo&&v<=hi){frame[k]=v;commitFrame()}else syncFrame()};
+ for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).onchange=e=>{const v=Number(e.target.value);if(v>=0&&v<=150){frame.zones[k]=v;commitFrame()}else syncFrame()};
+ $('mapBackground').onchange=e=>{frame.background=e.target.value;if(frame.background==='schematic')frame.showNodes=true;commitFrame()};
+ $('showLabels').onchange=e=>{frame.labels=e.target.checked;commitFrame()};
+ $('showNodes').onchange=e=>{frame.showNodes=e.target.checked;commitFrame()};
+ $('editNode').onchange=e=>{editNodeId=e.target.value;syncNode()};
+ for(const [id,k] of [['nodeX','x'],['nodeY','y'],['nodeW','w'],['nodeH','h']])$(id).onchange=e=>{const n=nodeCatalog.find(n=>n.id===editNodeId),v=Number(e.target.value);if(!n||!Number.isFinite(v)){syncNode();return}const p={...nodeValue(n)};p[k]=k==='x'||k==='y'?clamp(v*unitsPerMm(),-10000,10000):clamp(v,10,120);frame.nodes[n.id]=p;commitFrame()};
+ $('resetNode').onclick=()=>{delete frame.nodes[editNodeId];commitFrame()};
+ $('ownershipCut').onchange=e=>{frame.cut=e.target.value;commitFrame()};
+ $('resetFrame').onclick=()=>{frame.heightMm=null;frame.magnification=100;frame.xMm=0;frame.yMm=0;frame.zones=defaultFrame().zones;commitFrame()};
+ $('fitBuildings').onclick=fitBuildings;
+ $('editDistrict').onchange=e=>{editId=e.target.value;render()};
+ $('editVertices').onchange=e=>{if(e.target.checked){frame.background='schematic';frame.showNodes=true;commitFrame()}else render()};
+ for(const [id,x,y] of [['districtLeft',-1,0],['districtRight',1,0],['districtUp',0,-1],['districtDown',0,1]])$(id).onclick=()=>{const d=clamp(Number($('districtStep').value)||5,1,50)*unitsPerMm();changeDistrict(x*d,y*d)};
+ for(const [id,x,y] of [['districtNarrow',.95,1],['districtWider',1.05,1],['districtShorter',1,.95],['districtTaller',1,1.05]])$(id).onclick=()=>changeDistrict(0,0,x,y);
+ $('resetDistrict').onclick=()=>{delete frame.contours[editId];commitFrame()};
+ $('resetContours').onclick=()=>{if(confirm('Сбросить изменённые контуры? Позиции тайлов сохранятся.')){frame.contours={};commitFrame()}};
+ $('loadHexLayout').onclick=async()=>{if(!confirm('Заменить текущий черновик исходным HEX 50 мм? Сначала сохрани JSON.'))return;try{const res=await fetch(HEX_LAYOUT_URL,{cache:'no-store'});if(!res.ok)throw Error('Ошибка '+res.status);applySnapshot(await res.json());notice('Исходная схема HEX 50 мм восстановлена')}catch(e){notice(e.message)}};
  $('zoom').addEventListener('input',e=>{zoom=Number(e.target.value);updateScale()});
  $('tileShape').onchange=e=>{tileShape=e.target.value;drag=null;persist();render();
   notice('Форма изменена для всех 79 мест. Координаты, индивидуальные размеры и углы сохранены.')};
@@ -588,6 +800,10 @@ async function init(){
  $('rotateReset').onclick=()=>rotateSelected(0,true);
  const svg=$('mapSvg');
  svg.addEventListener('pointerdown',e=>{
+   const vertex=e.target.closest?.('[data-vertex]');
+   if(vertex&&$('editVertices').checked){vertexDrag={pointerId:e.pointerId,id:editId,index:Number(vertex.dataset.vertex)};svg.setPointerCapture(e.pointerId);e.preventDefault();return}
+   const node=e.target.closest?.('[data-node-id]');
+   if(node&&mode==='layout'){const n=nodeCatalog.find(n=>n.id===node.dataset.nodeId),p=mapPoint(e);if(n&&p){const q=nodeValue(n);editNodeId=n.id;$('editNode').value=n.id;nodeDrag={pointerId:e.pointerId,id:n.id,dx:q.x-p.x,dy:q.y-p.y};svg.setPointerCapture(e.pointerId);e.preventDefault();return}}
    const g=e.target.closest?.('[data-slot-id]');
    if(!g){
      const region=e.target.closest?.('[data-region]');
@@ -602,19 +818,21 @@ async function init(){
    svg.setPointerCapture(e.pointerId);svg.style.cursor='grabbing';render();e.preventDefault();
  });
  svg.addEventListener('pointermove',e=>{
+  if(nodeDrag&&nodeDrag.pointerId===e.pointerId){const p=mapPoint(e),n=nodeCatalog.find(n=>n.id===nodeDrag.id);if(p&&n){frame.nodes[n.id]={...nodeValue(n),x:round(p.x+nodeDrag.dx),y:round(p.y+nodeDrag.dy)};syncNode();render();e.preventDefault()}return}
+  if(vertexDrag&&vertexDrag.pointerId===e.pointerId){const p=mapPoint(e);if(!p)return;const pts=contourPoints(vertexDrag.id).map(v=>[...v]);const old=pts[vertexDrag.index];for(let i=0;i<pts.length;i++)if(pts[i][0]===old[0]&&pts[i][1]===old[1])pts[i]=[round(p.x),round(p.y)];frame.contours[vertexDrag.id]=pts;applyContours();render();e.preventDefault();return}
   if(!drag||drag.pointerId!==e.pointerId)return;
   const point=mapPoint(e),t=slots.find(s=>s.id===drag.id);
   if(!point||!t)return;
   t.x=round(point.x+drag.offsetX);t.y=round(point.y+drag.offsetY);
   render();e.preventDefault();
  });
- function finish(e){if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
+ function finish(e){if(nodeDrag&&nodeDrag.pointerId===e.pointerId){nodeDrag=null;persist();render();return}if(vertexDrag&&vertexDrag.pointerId===e.pointerId){vertexDrag=null;persist();render();return}if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
  svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
  window.addEventListener('keydown',e=>{
   if(mode!=='layout'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement?.tagName))return;
   const dir={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
   const t=activeSlot();if(!dir||!t)return;
-  const mm=e.shiftKey?5:1,delta=VB_WIDTH*mm/boardWidthMm;
+  const mm=e.shiftKey?5:1,delta=unitsPerMm()*mm;
   t.x=round(t.x+dir[0]*delta);t.y=round(t.y+dir[1]*delta);
   persist();render();e.preventDefault();
  });
@@ -647,8 +865,9 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs]}),
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems()}),
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
+ board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
  placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }
