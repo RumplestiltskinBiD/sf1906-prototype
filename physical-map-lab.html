@@ -585,7 +585,7 @@ async function init(){
  $('labMode').onchange=e=>{mode=e.target.value;drag=null;render();notice(mode==='build'?'Нажми на свободное место, чтобы начать стройку':'Места можно перемещать и поворачивать')};
  $('loadAuthorLayout').onclick=async()=>{if(!confirm('Восстановить авторскую схему? Текущая расстановка и тестовые здания заменятся — сначала экспортируй JSON.'))return;
   try{const savedShape=tileShape;await loadAuthorLayout();tileShape=savedShape;persist();render();
-    notice('Авторские координаты восстановлены; текущая форма сохранена, углы сброшены')}catch(e){notice(e.message)}};
+    notice('Авторская геометрия восстановлена; текущая форма сохранена, углы сброшены')}catch(e){notice(e.message)}};
  $('markBuilding').onclick=()=>placeProject();
  $('deliverOne').onclick=()=>supplyMaterial(false);
  $('deliverAll').onclick=()=>supplyMaterial(true);
