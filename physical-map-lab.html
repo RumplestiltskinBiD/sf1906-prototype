@@ -38,7 +38,18 @@ button.danger{background:#51313c}
 #jsonArea{width:100%;min-height:90px;resize:vertical;font-family:ui-monospace,monospace;color:#dce8ee;background:#081521;border:1px solid #526475;border-radius:8px;padding:8px;font-size:11px}
 .map-panel{min-width:0;background:#182736;display:flex;flex-direction:column}
 .map-toolbar{padding:10px 15px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;background:#152230;border-bottom:1px solid #344456;font-size:13px}
-.map-scroll{overflow:auto;flex:1;min-height:500px}
+.map-scroll{overflow:auto;flex:1;min-height:500px;min-width:0}
+#boardSizeBadge{font-size:18px;font-weight:750;color:#f7dfab;font-variant-numeric:tabular-nums;white-space:nowrap}
+.board-measure{display:grid;grid-template-columns:46px max-content;grid-template-rows:34px max-content;width:max-content;padding:8px 14px 14px 4px;gap:0}
+.measure-width,.measure-height{position:relative;color:#f7dfab;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;pointer-events:none}
+.measure-width{grid-column:2;grid-row:1;display:flex;justify-content:center;align-items:flex-start;padding-top:1px}
+.measure-height{grid-column:1;grid-row:2;display:flex;justify-content:flex-start;align-items:center}
+.measure-height span{writing-mode:vertical-rl;transform:rotate(180deg)}
+.measure-width::before{content:"";position:absolute;left:0;right:0;bottom:6px;height:1px;background:currentColor}
+.measure-width::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:9px;border-left:1px solid currentColor;border-right:1px solid currentColor}
+.measure-height::before{content:"";position:absolute;top:0;bottom:0;right:6px;width:1px;background:currentColor}
+.measure-height::after{content:"";position:absolute;top:0;bottom:0;right:2px;width:9px;border-top:1px solid currentColor;border-bottom:1px solid currentColor}
+.board-measure #mapSvg{grid-column:2;grid-row:2}
 #mapSvg{display:block;max-width:none;background:#90b5b7;touch-action:none}
 #regionLayer .region path{fill:rgba(255,255,255,.001);stroke:#688a88;stroke-opacity:.15;stroke-width:3;pointer-events:visiblePainted;vector-effect:non-scaling-stroke}
 #regionLayer .region.current path{fill:rgba(255,216,126,.12);stroke:#ffd486;stroke-width:5;stroke-opacity:1}
@@ -195,8 +206,9 @@ button.danger{background:#51313c}
 </section>
 </aside>
 <main class="map-panel">
-<div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков · выделены текущие границы</div><div id="selectedDistrictLabel">Inner Sunset</div></div>
+<div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков</div><div><span class="sub">Физический размер поля</span> <strong id="boardSizeBadge">110 × 73,3 см</strong></div><div id="selectedDistrictLabel">Inner Sunset</div></div>
 <div class="map-scroll" id="mapScroll">
+<div class="board-measure"><div class="measure-width" aria-hidden="true"><span id="boardWidthRuler">110 см</span></div><div class="measure-height" aria-hidden="true"><span id="boardHeightRuler">73,3 см</span></div>
 <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" aria-label="Редактор 79 квадратных, шестиугольных или восьмиугольных строительных мест Сан-Франциско" role="img">
 <image id="originalMapImage" href="./assets/v8-map.webp?v=028" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"/>
 <g transform="translate(0 -11)">
@@ -225,6 +237,7 @@ button.danger{background:#51313c}
 </g>
 <g id="frameZones"></g>
 </svg>
+</div>
 </div>
 </main>
 </div>
@@ -650,6 +663,11 @@ function applySnapshot(data){
 function updateScale(){
  $('mapSvg').style.width=(boardWidthMm/1100*VB_WIDTH*zoom/100)+'px';
  $('mapSvg').style.height=(boardHeight()/1100*VB_WIDTH*zoom/100)+'px';
+ const formatCm=mm=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(mm/10);
+ const w=formatCm(boardWidthMm),h=formatCm(boardHeight());
+ $('boardWidthRuler').textContent=w+' см';
+ $('boardHeightRuler').textContent=h+' см';
+ $('boardSizeBadge').textContent=w+' × '+h+' см';
  $('zoomValue').textContent=zoom+'%';
 }
 function activeSlot(){return slots.find(s=>s.id===selectedId)}
