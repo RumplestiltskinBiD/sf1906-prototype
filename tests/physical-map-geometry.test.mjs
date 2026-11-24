@@ -162,3 +162,65 @@ test('reference 79-slot HEX50 geometry has thirteen conflicts at 110cm / 3x2 wit
  const entries=readSlotRegistry(hex.districts,u).map(e=>({id:e.id,kind:'slot',polygon:slotGeometry({record:e.record,shape:'hex',sizeMm:50,clearanceMm:.5,unitsPerMm:u,angle:e.record.rotation}).hole.map(p=>({x:p.x/u,y:(p.y-11)/u}))}));
  assert.equal(foldConflicts(layout,entries).length,13);
 });
+
+import {readManufacturing,polygonArea,clipToRect,rectMargin,manufacturingDiagnostics,tileMaterial} from '../physical-map-manufacturing.js';
+const mfgRect=(x,y,w,h)=>[{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+const mfgEntry=(id,x,y,w,h)=>({id,polygon:mfgRect(x,y,w,h)});
+test('manufacturing thresholds distinguish actual web, edge, reserve and logistics proximity',()=>{
+ const layout=foldLayout(100,100,defaultFold());
+ const entries=[mfgEntry('a',5,20,10,10),mfgEntry('b',20,20,10,10),mfgEntry('c',36,20,10,10)];
+ const nodes=[mfgEntry('node',31,20,3,3),mfgEntry('node2',34.5,20,1,3)];
+ const r=manufacturingDiagnostics({width:100,height:100,entries,nodes,layout,zones:{left:7},config:{webMm:6,edgeMm:6,nodeGapMm:2}});
+ assert.deepEqual(r.pairs.map(p=>p.ids),[['a','b']]);close(r.minimumWebMm,5);
+ assert.deepEqual(r.edges,[{id:'a',distanceMm:5}]);assert.deepEqual(r.reserves,['a']);
+ assert.deepEqual(r.logistics.map(p=>p.ids),[['b','node'],['c','node2']]);
+ assert.deepEqual(r.nodePairs.map(p=>p.ids),[['node','node2']]);
+ assert.deepEqual(r.badSlots.sort(),['a','b','c']);assert.equal(r.overlapCount,0);
+});
+test('manufacturing overlay edges include fold guard, and clipping subtracts only material actually present',()=>{
+ const f={...defaultFold('2x2'),enabled:true,guardMm:8};
+ const layout=foldLayout(100,100,f);
+ const entries=[mfgEntry('inside',5,5,10,10),mfgEntry('cross',38,10,24,10)];
+ const r=manufacturingDiagnostics({width:100,height:100,entries,layout,config:{edgeMm:6}});
+ assert.equal(r.boardMaterial.panelCount,4);
+ close(r.boardMaterial.grossTopMm2,4*42*42);
+ close(r.boardMaterial.holesRemovedMm2,100+80);
+ close(r.boardMaterial.topNetMm2,4*42*42-180);
+ assert.equal(r.panelEdges.find(p=>p.id==='cross').distanceMm,-20);
+ assert.equal(r.panelEdges.find(p=>p.id==='inside').distanceMm,5);
+ close(polygonArea(clipToRect(mfgRect(-5,-5,10,10),{x:0,y:0,w:100,h:100})),25);
+ assert.equal(polygonArea(clipToRect(mfgRect(200,200,5,5),{x:0,y:0,w:100,h:100})),0);
+ assert.equal(rectMargin(mfgRect(-5,0,10,10),{x:0,y:0,w:100,h:100}),-5);
+});
+test('material estimates withhold overlapping-hole net weight but handle touching and out-of-board holes',()=>{
+ const layout=foldLayout(100,100,defaultFold());
+ const args={width:100,height:100,layout,config:{webMm:0}};
+ const overlap=manufacturingDiagnostics({...args,entries:[mfgEntry('a',10,10,10,10),mfgEntry('b',15,10,10,10)]});
+ assert.equal(overlap.overlapCount,1);assert.equal(overlap.boardMaterial.netG,null);
+ assert.equal(overlap.boardMaterial.topNetMm2,null);close(overlap.boardMaterial.grossG,20);
+ const touch=manufacturingDiagnostics({...args,entries:[mfgEntry('a',10,10,10,10),mfgEntry('b',20,10,10,10),mfgEntry('edge',-5,30,10,10)]});
+ assert.equal(touch.overlapCount,0);assert.equal(touch.pairs.length,1);
+ close(touch.boardMaterial.holesRemovedMm2,250);close(touch.boardMaterial.netG,19.8);
+});
+test('manufacturing reference gap counts match exact HEX50 openings for multiple sizes',()=>{
+ const u=1536/1100,layout=foldLayout(1100,1100*2/3,defaultFold());
+ const rows=readSlotRegistry(hex.districts,u);
+ for(const [sizeMm,count,min] of [[50,46,1.2234042899447672],[48,23,2.955455097513737],[45,2,5.5535313088669325],[42,0,8.15160752022029]]){
+  const entries=rows.map(e=>({id:e.id,polygon:slotGeometry({record:e.record,shape:'hex',sizeMm,clearanceMm:.5,unitsPerMm:u,angle:e.record.rotation}).hole.map(p=>({x:p.x/u,y:(p.y-11)/u}))}));
+  const r=manufacturingDiagnostics({width:1100,height:1100*2/3,entries,layout});
+  assert.equal(r.pairs.length,count);close(r.minimumWebMm,min,1e-6);
+  if(sizeMm===50){assert.equal(r.badSlots.length,58);close(r.boardMaterial.netG,1505.9145901793581,1e-6)}
+ }
+});
+test('punchboard estimator uses real clipped area, conservative cells, independent sheet gap and BOM',()=>{
+ const t=tileMaterial({shape:'hex',sizeMm:50,cut:'corner',cutMm:8});
+ close(t.areaMm2,3*Math.sqrt(3)*50**2/8-8**2*Math.sqrt(3)/4);
+ assert.equal(t.perSheet,25);assert.equal(t.sheets,5);close(t.netG,280.9109281747508,1e-6);
+ close(t.grossMm2,5*285*285);assert.ok(t.utilization<1);
+ const tiny=tileMaterial({shape:'hex',sizeMm:70,cut:'corner',cutMm:8,config:{sheetW:100,sheetH:100,sheetEdgeMm:25}});
+ assert.equal(tiny.perSheet,0);assert.equal(tiny.sheets,null);assert.equal(tiny.grossG,null);
+ assert.equal(tileMaterial({shape:'hex',sizeMm:50,cut:'notch',cutMm:8}).exact,false);
+ const f=readManufacturing({tileCount:120,webMm:4,sheetWebMm:7,highlight:true});
+ assert.deepEqual(readManufacturing(JSON.parse(JSON.stringify(f))),f);
+ for(const invalid of [{webMm:-1},{tileCount:1.5},{density:0},{highlight:'yes'},{sheetW:0}])assert.throws(()=>readManufacturing(invalid));
+});
