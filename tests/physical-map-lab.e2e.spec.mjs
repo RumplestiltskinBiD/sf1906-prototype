@@ -630,3 +630,70 @@ test('hex seating openings: touching and overlapping holes, mobile controls and 
   expect(w.content).toBeLessThanOrEqual(w.viewport+2);
  }
 });
+
+test('corner ownership: every owner, physical flip, unchanged hole and restored demo on mobile',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#tileShape').selectOption('hex');
+  await page.locator('#tileSize').fill('50');await page.locator('#tileSize').press('Tab');
+  await page.locator('#holeClearance').fill('0.5');await page.locator('#holeClearance').press('Tab');
+  await page.locator('#ownershipCut').selectOption('corner');
+  await page.locator('#cornerCutMm').fill('8');await page.locator('#cornerCutMm').press('Tab');
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#markEmpty').click();
+  await page.locator('#projectSelect').selectOption('std_warehouse');
+  await page.locator('#rotateReset').click();
+  await page.locator('#rotateRight').click();
+  const tile=page.locator('[data-slot-id="civic-1"]');
+  const hole=await tile.locator('[data-hole]').getAttribute('points');
+  const geometry=()=>page.evaluate(()=>window.__physicalMapLab.ownership('civic-1'));
+  for(let owner=0;owner<6;owner++){
+   await page.locator('#ownerSelect').selectOption(String(owner));
+   await page.locator('#markBuilding').click();
+   const face=tile.locator('[data-notch-owner="'+owner+'"]');
+   await expect(face).toHaveAttribute('data-face','front');
+   await expect(tile.locator('circle.owner-seat')).toHaveCount(6);
+   expect(await face.getAttribute('transform')).toMatch(new RegExp('^rotate\\('+(5+owner*60)+' '));
+   const g=await geometry();expect(g.safe).toBe(true);
+   const path=await face.locator('path.tile').getAttribute('d');
+   expect((path.match(/ L /g)||[]).length).toBe(6);
+   await page.locator('#deliverAll').click();
+   await expect(face).toHaveAttribute('data-face','back');
+   expect(await face.locator('path.tile').getAttribute('d')).toBe(path);
+   expect(await tile.locator('[data-hole]').getAttribute('points')).toBe(hole);
+   expect(await geometry()).toEqual(g);
+   if(owner!==5)await page.locator('#markEmpty').click();
+  }
+  await page.locator('#ownerSelect').selectOption('2');
+  await page.locator('#changeDemoOwner').click();
+  await expect(tile.locator('[data-notch-owner="2"]')).toHaveAttribute('data-face','back');
+  expect(await tile.locator('[data-hole]').getAttribute('points')).toBe(hole);
+  await page.reload();
+  await expect(tile.locator('[data-notch-owner="2"]')).toHaveAttribute('data-face','back');
+  await expect(page.locator('#ownershipPreview [data-preview-side]')).toHaveCount(2);
+  await page.locator('#cornerCutMm').fill('3');await page.locator('#cornerCutMm').press('Tab');
+  await page.locator('#holeClearance').fill('1');await page.locator('#holeClearance').press('Tab');
+  await expect(page.locator('#ownerGeometryStatus')).toHaveClass(/warning/);
+  expect((await geometry()).safe).toBe(false);
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
+
+test('corner mode defaults for old geometry but explicit archived notch remains importable',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ const initial=await page.evaluate(()=>window.__physicalMapLab.snapshot());
+ initial.tileShape='hex';delete initial.boardFrame.cut;
+ await page.locator('#jsonArea').fill(JSON.stringify(initial));
+ await page.locator('#applyJson').click();
+ await expect(page.locator('#ownershipCut')).toHaveValue('corner');
+ initial.boardFrame.cut='notch';
+ await page.locator('#jsonArea').fill(JSON.stringify(initial));
+ await page.locator('#applyJson').click();
+ await expect(page.locator('#ownershipCut')).toHaveValue('notch');
+ await page.reload();
+ await expect(page.locator('#ownershipCut')).toHaveValue('notch');
+});
