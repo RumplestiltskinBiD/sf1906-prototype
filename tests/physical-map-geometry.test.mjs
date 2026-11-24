@@ -108,3 +108,57 @@ test('small cuts at large clearance are flagged rather than promising an invisib
  const oct=ownershipGeometry({shape:'oct',sizeMm:50,cutMm:8,clearanceMm:.5,owner:5});
  assert.equal(oct.marks.length,8);assert.equal(oct.vertices.length,9);
 });
+
+import {defaultFold,readFold,changeFoldPreset,foldLayout,foldConflicts} from '../physical-map-folds.js';
+test('fold grids form a connected tree with separate overlays and correct nominal stack',()=>{
+ for(const [preset,count] of [['2x2',4],['3x2',6],['4x2',8],['4x3',12]]){
+  const f=defaultFold(preset),l=foldLayout(840,560,f);
+  assert.equal(l.panels.length,count);assert.equal(l.seams.filter(s=>s.kind==='hinge').length,count-1);
+  const reached=new Set(['p1-1']);
+  for(let k=0;k<count;k++)for(const s of l.seams.filter(s=>s.kind==='hinge')){
+   const [i,j]=s.id.slice(1).split('-').map(Number);
+   const a=s.axis==='x'?'p'+j+'-'+i:'p'+i+'-'+j;
+   const b=s.axis==='x'?'p'+j+'-'+(i+1):'p'+(i+1)+'-'+j;
+   if(reached.has(a)||reached.has(b)){reached.add(a);reached.add(b)}
+  }
+  assert.equal(reached.size,count);
+  close(l.stack.w,840/l.cols);close(l.stack.h,560/l.rows);close(l.stack.depth,count*2.5);
+  close(l.panels.reduce((a,p)=>a+p.w*p.h,0),840*560);
+  for(const p of l.panels){
+   assert.ok(p.overlay.w>0&&p.overlay.h>0);
+   if(p.c)close(p.overlay.x-p.x,8);
+   if(p.r)close(p.overlay.y-p.y,8);
+   if(p.c<l.cols-1)close(p.x+p.w-p.overlay.x-p.overlay.w,8);
+   if(p.r<l.rows-1)close(p.y+p.h-p.overlay.y-p.overlay.h,8);
+  }
+ }
+ const l=foldLayout(840,560,defaultFold());
+ assert.deepEqual(l.stack,{w:280,h:280,depth:15});assert.equal(l.fitsNominal,true);
+ assert.equal(foldLayout(840,560,{...l.config,boxW:279}).fitsNominal,false);
+ assert.equal(foldLayout(840,560,{...l.config,boxDepth:14}).fitsNominal,false);
+});
+test('fold line positions, unequal panels and box rotation are explicit and validated',()=>{
+ const f=defaultFold(),changed=readFold({...f,x:[.25,.6],spine:2});
+ const l=foldLayout(840,560,changed);
+ close(l.stack.w,336);assert.equal(l.regular,false);
+ assert.equal(l.seams.find(s=>s.id==='h1-3').kind,'hinge');
+ assert.equal(l.seams.find(s=>s.id==='h1-2').kind,'cut');
+ assert.deepEqual(readFold(JSON.parse(JSON.stringify(changed))),changed);
+ assert.equal(foldLayout(840,560,{...changed,boxW:280,boxH:337}).fitsNominal,true);
+ assert.equal(changeFoldPreset(changed,'4x3').x.length,3);
+ for(const invalid of [{x:[.6,.25]},{x:[.02,.6]},{x:[.3]},{guardMm:13},{baseMm:0},{spine:3},{boxW:100}])assert.throws(()=>readFold({...f,...invalid}));
+});
+test('seam collision uses actual opening and infrastructure polygons, including touch and zero guard',()=>{
+ const f={...defaultFold(),enabled:true},l=foldLayout(840,560,f);
+ const rect=(x,y,w,h)=>[{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h}];
+ const entries=[{id:'hole',kind:'slot',polygon:rect(270,40,8,10)},{id:'node',kind:'node',polygon:rect(100,272,10,10)},{id:'safe',kind:'slot',polygon:rect(10,10,10,10)},{id:'touch',kind:'slot',polygon:rect(260,40,12,10)}];
+ assert.deepEqual(foldConflicts(l,entries).map(x=>x.id),['hole','node','touch']);
+ assert.deepEqual(foldConflicts(foldLayout(840,560,{...f,enabled:false}),entries),[]);
+ const noGuard=foldLayout(840,560,{...f,guardMm:0});
+ assert.deepEqual(foldConflicts(noGuard,[{id:'cross',kind:'slot',polygon:rect(275,40,10,10)},{id:'away',kind:'slot',polygon:rect(270,40,9,10)}]).map(x=>x.id),['cross']);
+});
+test('reference 79-slot HEX50 geometry has thirteen conflicts at 110cm / 3x2 without moving records',()=>{
+ const u=1536/1100,layout=foldLayout(1100,1100*2/3,{...defaultFold(),enabled:true});
+ const entries=readSlotRegistry(hex.districts,u).map(e=>({id:e.id,kind:'slot',polygon:slotGeometry({record:e.record,shape:'hex',sizeMm:50,clearanceMm:.5,unitsPerMm:u,angle:e.record.rotation}).hole.map(p=>({x:p.x/u,y:(p.y-11)/u}))}));
+ assert.equal(foldConflicts(layout,entries).length,13);
+});
