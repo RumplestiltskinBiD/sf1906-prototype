@@ -102,7 +102,15 @@ button.danger{background:#51313c}
 #mapSvg.schematic #regionLayer .region.current path{fill:#e9d9a8;stroke:#997b32}
 #districtLabels text{fill:#233e43;font-size:14px;font-weight:700;text-anchor:middle;paint-order:stroke;stroke:#e3e9dc;stroke-width:3px;pointer-events:none}
 #vertexLayer circle{fill:#fff;stroke:#137c93;stroke-width:2;cursor:move;vector-effect:non-scaling-stroke}
-#frameZones{pointer-events:none}
+#frameZones,#foldLayer{pointer-events:none}
+#foldEditor input[type=number]{max-width:100px;background:#081521;color:#e9eff4;border:1px solid #526475;border-radius:5px;padding:6px}
+#foldSummary{white-space:pre-line;line-height:1.5}
+#foldSummary.warning{color:#ffc0b8}
+#foldLayer .fold-hinge{stroke:#925d18;stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
+#foldLayer .fold-cut{stroke:#a32935;stroke-width:2;vector-effect:non-scaling-stroke}
+#foldLayer .fold-overlay{fill:none;stroke:#417e73;stroke-dasharray:3 4;stroke-width:1;vector-effect:non-scaling-stroke}
+#foldLayer .fold-label{font-size:12px;fill:#14232d;paint-order:stroke;stroke:#fff;stroke-width:2px}
+.slot .slot-hole.fold-conflict,#nodeLayer .node.fold-conflict rect{stroke:#a32935;stroke-width:4;vector-effect:non-scaling-stroke}
 #nodeLayer .node{cursor:grab}
 #nodeLayer .node rect{fill:#f1e5be;stroke:#6c5632;stroke-width:1.5;vector-effect:non-scaling-stroke}
 #nodeLayer .node.problem rect{stroke:#e64e3e;stroke-width:3}
@@ -137,7 +145,7 @@ button.danger{background:#51313c}
 <h2>Посадочное отверстие</h2>
 <div class="field"><label for="holeClearance">Допуск на грань, мм</label><input id="holeClearance" type="number" min="0" max="1" step="0.1" value="0.5"></div>
 <p class="sub" id="holeDimensions"></p>
-<p class="sub">Сплошной внешний контур — отверстие, пунктир внутри пустого места — габарит тайла. Допуск отсчитывается перпендикулярно грани. Нулевой допуск — только для сравнения. Проверка перемычек и сгибов будет на следующих этапах.</p>
+<p class="sub">Сплошной внешний контур — отверстие, пунктир внутри пустого места — габарит тайла. Допуск отсчитывается перпендикулярно грани. Нулевой допуск — только для сравнения. Проверка сгибов — в разделе «Складное поле». Производственные перемычки — следующий этап.</p>
 </section>
 <section id="boardEditor">
 <h2>Композиция поля</h2>
@@ -153,6 +161,22 @@ button.danger{background:#51313c}
 <div class="field"><label for="zoneBottom">Резерв снизу, мм</label><input id="zoneBottom" type="number" min="0" max="150" step="1" value="0"></div>
 <div class="field"><label for="zoneLeft">Резерв слева, мм</label><input id="zoneLeft" type="number" min="0" max="150" step="1" value="0"></div>
 <p class="sub">Полосы — только резерв для треков, легенды и служебных зон. Оранжевая разметка не является готовой шкалой.</p>
+<div id="foldEditor">
+<h2>Складное поле · эксперимент</h2>
+<div class="field"><label for="foldEnabled">Показать и проверять швы</label><input id="foldEnabled" type="checkbox"></div>
+<div class="field"><label for="foldPreset">Сетка панелей</label><select id="foldPreset"><option value="2x2">2 × 2</option><option value="3x2">3 × 2</option><option value="4x2">4 × 2</option><option value="4x3">4 × 3</option></select></div>
+<div class="controls"><button id="presetFold84">84 × 56 см / 6 панелей</button><button id="resetFoldLines">Равные панели</button></div>
+<div id="foldLineControls"></div>
+<div class="field"><label for="foldSpine">Колонка поперечных шарниров</label><select id="foldSpine"></select></div>
+<div class="field"><label for="foldGuard">Защита с каждой стороны, мм</label><input id="foldGuard" type="number" min="0" max="12" step="1"></div>
+<div class="field"><label for="foldBase">Основание, мм</label><input id="foldBase" type="number" min="1" max="2.5" step="0.1"></div>
+<div class="field"><label for="foldTop">Верхний слой, мм</label><input id="foldTop" type="number" min="0.5" max="2" step="0.1"></div>
+<div class="field"><label for="foldBoxW">Внутр. ширина коробки, мм</label><input id="foldBoxW" type="number" min="150" max="600" step="1"></div>
+<div class="field"><label for="foldBoxH">Внутр. длина коробки, мм</label><input id="foldBoxH" type="number" min="150" max="600" step="1"></div>
+<div class="field"><label for="foldBoxDepth">Доступная высота под поле, мм</label><input id="foldBoxDepth" type="number" min="10" max="200" step="1"></div>
+<p id="foldSummary" class="sub" role="status"></p>
+<p class="sub">Пунктир охры — шарниры; красная сплошная — разрезы; полосы — защита; зелёный пунктир — границы верхних накладок. Размеры линий отсчитываются от края рамки. Все панели соединены по дереву шарниров. Это номинальная схема, а не проверенная кинематика или чертёж фабрики. При неравных панелях размеры стопки не гарантированы.</p>
+</div>
 <h2>Контуры районов</h2>
 <div class="field"><label for="editDistrict">Район (все 21)</label><select id="editDistrict"></select></div>
 <div class="field"><label for="editVertices">Править вершины мышью</label><input type="checkbox" id="editVertices"></div>
@@ -254,7 +278,7 @@ button.danger{background:#51313c}
 <g class="region" data-region="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g></g>
 <g id="districtLabels"></g><g id="slotLayer"></g><g id="nodeLayer"></g><g id="vertexLayer"></g>
 </g>
-<g id="frameZones"></g>
+<g id="frameZones"></g><g id="foldLayer"></g>
 </svg>
 </div>
 </div>
@@ -262,6 +286,7 @@ button.danger{background:#51313c}
 </div>
 <script type="module">
 import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
+import {defaultFold,readFold,changeFoldPreset,foldLayout,foldConflicts} from './physical-map-folds.js';
 'use strict';
 const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
@@ -277,7 +302,7 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
-const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM});
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM,fold:defaultFold()});
 let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
@@ -305,7 +330,7 @@ function readFrame(data){
   f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
  }
  if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
- f.cut=data.cut??'corner';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);return f;
+ f.cut=data.cut??'corner';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);f.fold=readFold(data.fold);return f;
 }
 function syncFrame(){
  $('boardWidthExact').value=round(boardWidthMm/10);$('boardHeightExact').value=round(boardHeight()/10);
@@ -313,7 +338,52 @@ function syncFrame(){
  $('mapBackground').value=frame.background;$('showLabels').checked=frame.labels;
  for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).value=frame.zones[k];
  $('showNodes').checked=frame.showNodes;syncNode();
- $('holeClearance').value=frame.clearanceMm;$('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
+ syncFold();$('holeClearance').value=frame.clearanceMm;$('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
+}
+function currentFold(){return foldLayout(boardWidthMm,boardHeight(),frame.fold)}
+function foldDiagnostics(){
+ const layout=currentFold(),v=viewport(),u=unitsPerMm();
+ const mm=polygon=>polygon.map(p=>({x:(p.x-v.x)/u,y:(p.y-v.y)/u}));
+ // Include all infrastructure regardless of whether the layer is shown.
+ const conflicts=foldConflicts(layout,[...slots.map(t=>({id:t.id,kind:'slot',polygon:mm(worldVertices(t))})),...nodeCatalog.map(n=>({id:n.id,kind:'node',polygon:mm(nodePoly(n))}))]);
+ return {layout,conflicts};
+}
+function syncFold(){
+ const f=frame.fold;
+ $('foldEnabled').checked=f.enabled;$('foldPreset').value=f.preset;
+ for(const [id,key] of [['foldGuard','guardMm'],['foldBase','baseMm'],['foldTop','topMm'],['foldBoxW','boxW'],['foldBoxH','boxH'],['foldBoxDepth','boxDepth']])$(id).value=f[key];
+ const spine=$('foldSpine');spine.replaceChildren();
+ for(let i=0;i<=f.x.length;i++)spine.add(new Option(String(i+1),String(i)));
+ spine.value=String(f.spine);
+ const controls=$('foldLineControls');controls.replaceChildren();
+ for(const axis of ['x','y'])for(let i=0;i<f[axis].length;i++){
+  const field=document.createElement('div');field.className='field';
+  const id='foldLine-'+axis+'-'+i,label=document.createElement('label'),input=document.createElement('input'),length=axis==='x'?boardWidthMm:boardHeight();
+  label.htmlFor=id;label.textContent=(axis==='x'?'Вертикаль ':'Горизонталь ')+(i+1)+', мм';
+  input.id=id;input.type='number';input.step='0.1';input.value=round(f[axis][i]*length);
+  input.min=round(((f[axis][i-1]??0)+.05)*length);input.max=round(((f[axis][i+1]??1)-.05)*length);
+  input.onchange=()=>{const next=structuredClone(frame.fold),value=Number(input.value);if(!input.value.trim()||!Number.isFinite(value)){syncFold();return}next[axis][i]=value/length;applyFold(next)};
+  field.append(label,input);controls.append(field);
+ }
+}
+function applyFold(next){try{frame.fold=readFold(next);commitFrame()}catch(e){syncFold();notice(e.message)}}
+function renderFold(diagnostics){
+ const {layout,conflicts}=diagnostics,f=layout.config,layer=$('foldLayer'),v=viewport(),u=unitsPerMm();
+ layer.replaceChildren();
+ const {w,h,depth}=layout.stack,slotsBad=conflicts.filter(c=>c.kind==='slot'),nodesBad=conflicts.filter(c=>c.kind==='node');
+ $('foldSummary').textContent=layout.panels.length+' панелей · '+(layout.regular?'равные панели':'неравные панели')+'\nМакс. панель: '+round(w)+' × '+round(h)+' мм\nНоминальная стопка: '+round(w)+' × '+round(h)+' × '+round(depth)+' мм\nКоробка: '+(layout.fitsNominal?'номинально помещается':'не помещается по номиналу')+'; без припусков на шарниры.\n'+(f.enabled?'Конфликты: '+slotsBad.length+' мест, '+nodesBad.length+' площадок логистики (включая скрытые).':'Проверка швов выключена.')+(!layout.regular?'\nНеравные панели: складывание не подтверждено.':'');
+ $('foldSummary').classList.toggle('warning',!layout.fitsNominal||!layout.regular||conflicts.length>0);
+ if(!f.enabled)return;
+ for(const p of layout.panels){
+  const o=p.overlay;
+  layer.append(element('rect',{x:v.x+o.x*u,y:v.y+o.y*u,width:o.w*u,height:o.h*u,class:'fold-overlay','data-panel':p.id}));
+  layer.append(element('text',{x:v.x+(p.x+4)*u,y:v.y+(p.y+7)*u,class:'fold-label'},p.id));
+ }
+ for(const seam of layout.seams){
+  const vert=seam.axis==='x',x=v.x+(vert?seam.at:seam.from)*u,y=v.y+(vert?seam.from:seam.at)*u,length=(seam.to-seam.from)*u,guard=f.guardMm*u;
+  if(guard>0)layer.append(element('rect',{x:vert?x-guard:x,y:vert?y:y-guard,width:vert?guard*2:length,height:vert?length:guard*2,fill:'#ce704b','fill-opacity':.18}));
+  layer.append(element('line',{x1:x,y1:y,x2:vert?x:x+length,y2:vert?y+length:y,class:'fold-'+seam.kind,'data-seam':seam.id}));
+ }
 }
 function updateBoardView(){
  const v=viewport();$('mapSvg').setAttribute('viewBox',[v.x,v.y,v.w,v.h].join(' '));
@@ -333,19 +403,19 @@ function nodeProblems(){if(!frame.showNodes)return {edge:[],reserved:[],collisio
   for(let j=0;j<i;j++)if(polygonOverlap(p,polys[j])){collisions.add(id);collisions.add(nodeCatalog[j].id)}
  }return {edge,reserved,collisions:[...collisions]};
 }
-function renderNodes(){
+function renderNodes(foldBad=new Set()){
  const layer=$('nodeLayer');layer.replaceChildren();layer.style.pointerEvents=mode==='layout'?'':'none';if(!frame.showNodes)return;
  const issues=nodeProblems(),bad=new Set([...issues.edge,...issues.reserved,...issues.collisions]);
  for(const n of nodeCatalog){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u,h=p.h*u;
-  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')});
+  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')+(foldBad.has(n.id)?' fold-conflict':'')});
   g.append(element('rect',{x:p.x-w/2,y:p.y-h/2,width:w,height:h,rx:2}));
   g.append(element('text',{x:p.x,y:p.y,'font-size':Math.min(u*3.4,w/Math.max(5,n.shortName.length)*1.4)},n.shortName));
   g.append(element('title',{},n.name+' · '+n.districtId));layer.append(g);
  }
 }
-function renderBoardParts(){
+function renderBoardParts(folds){
  const labelLayer=$('districtLabels'),vertices=$('vertexLayer'),zones=$('frameZones');
- labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes();
+ labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes(new Set(folds.conflicts.filter(c=>c.kind==='node').map(c=>c.id)));renderFold(folds);
  if(frame.background==='schematic'&&frame.labels)for(const d of DISTRICTS){const b=pathById[d.id].getBBox();labelLayer.append(element('text',{x:b.x+b.width/2,y:b.y+15},d.name))}
  if($('editVertices').checked)contourPoints(editId).forEach(([x,y],i)=>vertices.append(element('circle',{cx:x,cy:y,r:5,'data-vertex':i})));
  const v=viewport(),u=unitsPerMm(),z=frame.zones;
@@ -573,16 +643,17 @@ function drawTile(g,t,s){
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
+ const folds=foldDiagnostics(),foldBad=new Set(folds.conflicts.filter(c=>c.kind==='slot').map(c=>c.id));
  const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),holeOutside=new Set(holes.outside),layer=$('slotLayer'),frag=document.createDocumentFragment();
  const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
-  const bad=problem.flag.has(t.id)||holeBad.has(t.id)||holeOutside.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
+  const bad=problem.flag.has(t.id)||holeBad.has(t.id)||holeOutside.has(t.id)||foldBad.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
   const origin=actualSlotOrigin(t);
   const g=element('g',{transform:'translate('+round(origin.x)+' '+round(origin.y)+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
    class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
   const hole=physicalGeometry(t).hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
   // Draw the actual opening behind the tile; keep a separate nominal tile contour for empty slots.
-  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':''),'data-hole':t.id}));
+  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':'')+(foldBad.has(t.id)?' fold-conflict':''),'data-hole':t.id}));
   if(!poly){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
@@ -614,13 +685,13 @@ function render(){
     ' · '+t.status+' · '+(t.rotation||0)+'°'+(bad?' · пересечение/граница':'')));
   frag.append(g);
  }
- layer.replaceChildren(frag);renderBoardParts();
+ layer.replaceChildren(frag);renderBoardParts(folds);
  $('mapSvg').classList.toggle('build-mode',mode==='build');
  for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
-  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · за контуром '+holes.outside.length+' · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · за контуром '+holes.outside.length+' · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'')+(frame.fold.enabled?'<br>Конфликт со швами: '+foldBad.size+' участков · '+folds.conflicts.filter(c=>c.kind==='node').length+' логистика':'');
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
   ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
  $('holeDimensions').textContent='Тайл '+tileSizesMm[tileShape]+' мм · отверстие '+round(holeDiameterMm(tileShape,tileSizesMm[tileShape],frame.clearanceMm))+' мм · допуск '+frame.clearanceMm+' мм на грань.';
@@ -807,6 +878,12 @@ async function init(){
  for(const [id,k] of [['nodeX','x'],['nodeY','y'],['nodeW','w'],['nodeH','h']])$(id).onchange=e=>{const n=nodeCatalog.find(n=>n.id===editNodeId),v=Number(e.target.value);if(!n||!Number.isFinite(v)){syncNode();return}const p={...nodeValue(n)};p[k]=k==='x'||k==='y'?clamp(v*unitsPerMm(),-10000,10000):clamp(v,10,120);frame.nodes[n.id]=p;commitFrame()};
  $('resetNode').onclick=()=>{delete frame.nodes[editNodeId];commitFrame()};
  $('holeClearance').onchange=e=>{const v=Number(e.target.value);if(e.target.value.trim()!==''&&validClearance(v)){frame.clearanceMm=v;commitFrame()}else{syncFrame();notice('Допуск должен быть от 0 до 1 мм')}};
+ $('foldEnabled').onchange=e=>applyFold({...frame.fold,enabled:e.target.checked});
+ $('foldPreset').onchange=e=>applyFold(changeFoldPreset(frame.fold,e.target.value));
+ $('resetFoldLines').onclick=()=>applyFold(changeFoldPreset(frame.fold,frame.fold.preset));
+ $('presetFold84').onclick=()=>{frame.fold=changeFoldPreset({...frame.fold,enabled:true},'3x2');setBoardSize(840,560)};
+ $('foldSpine').onchange=e=>applyFold({...frame.fold,spine:Number(e.target.value)});
+ for(const [id,key] of [['foldGuard','guardMm'],['foldBase','baseMm'],['foldTop','topMm'],['foldBoxW','boxW'],['foldBoxH','boxH'],['foldBoxDepth','boxDepth']])$(id).onchange=e=>{if(e.target.value.trim()===''){syncFold();return}applyFold({...frame.fold,[key]:Number(e.target.value)})};
  $('ownershipCut').onchange=e=>{frame.cut=e.target.value;commitFrame()};
  $('resetFrame').onclick=()=>{frame.heightMm=null;frame.magnification=100;frame.xMm=0;frame.yMm=0;frame.zones=defaultFrame().zones;commitFrame()};
  $('fitBuildings').onclick=fitBuildings;
@@ -897,7 +974,7 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation()}),
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation(),folds:foldDiagnostics().conflicts}),folds:foldDiagnostics,
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
