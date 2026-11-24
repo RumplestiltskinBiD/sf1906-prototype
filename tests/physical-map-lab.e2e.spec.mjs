@@ -697,3 +697,73 @@ test('corner mode defaults for old geometry but explicit archived notch remains 
  await page.reload();
  await expect(page.locator('#ownershipCut')).toHaveValue('notch');
 });
+
+test('fold editor: reference conflicts, nominal six-panel stack and legacy import',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ page.once('dialog',d=>d.accept());
+ await page.locator('#loadHexLayout').click();
+ await expect(page.locator('#notice')).toContainText('HEX 50 мм восстановлена');
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const folds=()=>page.evaluate(()=>window.__physicalMapLab.folds());
+ const original=await snap();
+ await page.locator('#foldEnabled').check();
+ await expect(page.locator('#foldLayer [data-panel]')).toHaveCount(6);
+ await expect(page.locator('#foldLayer .fold-hinge')).toHaveCount(5);
+ await expect(page.locator('#foldLayer .fold-cut')).toHaveCount(2);
+ expect((await folds()).conflicts.filter(c=>c.kind==='slot')).toHaveLength(13);
+ await expect(page.locator('#slotLayer [data-hole].fold-conflict')).toHaveCount(13);
+ expect((await snap()).districts).toEqual(original.districts);
+ await page.locator('#presetFold84').click();
+ await expect(page.locator('#boardSizeBadge')).toHaveText('84 × 56 см');
+ expect((await folds()).layout.stack).toEqual({w:280,h:280,depth:15});
+ expect((await snap()).districts).toEqual(original.districts);
+ await page.locator('#foldBoxW').fill('279');await page.locator('#foldBoxW').press('Tab');
+ expect((await folds()).layout.fitsNominal).toBe(false);
+ await page.locator('#foldTop').fill('0.8');await page.locator('#foldTop').press('Tab');
+ expect((await folds()).layout.stack.depth).toBeCloseTo(13.8,8);
+ await page.locator('#foldEnabled').uncheck();
+ await expect(page.locator('#foldLayer [data-panel]')).toHaveCount(0);
+ expect((await folds()).conflicts).toEqual([]);
+ const old=await snap();delete old.boardFrame.fold;
+ await page.locator('#jsonArea').fill(JSON.stringify(old));
+ await page.locator('#applyJson').click();
+ expect((await snap()).boardFrame.fold.enabled).toBe(false);
+ expect((await snap()).districts).toEqual(original.districts);
+});
+
+test('fold editor: adjustable seam and spine, zoom, roundtrip and mobile',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+  const folds=()=>page.evaluate(()=>window.__physicalMapLab.folds());
+  await page.locator('#presetFold84').click();
+  await page.locator('#foldPreset').selectOption('4x3');
+  await expect(page.locator('#foldLayer [data-panel]')).toHaveCount(12);
+  await expect(page.locator('#foldLayer .fold-hinge')).toHaveCount(11);
+  await expect(page.locator('#foldLayer .fold-cut')).toHaveCount(6);
+  await page.locator('#foldLine-x-0').fill('180');await page.locator('#foldLine-x-0').press('Tab');
+  expect((await folds()).layout.regular).toBe(false);
+  expect((await folds()).layout.seams.find(s=>s.id==='v1-1').at).toBeCloseTo(180,6);
+  await page.locator('#foldSpine').selectOption('3');
+  expect((await folds()).layout.seams.find(s=>s.id==='h1-4').kind).toBe('hinge');
+  const before=await folds(),state=await snap();
+  await page.locator('#zoom').evaluate(el=>{el.value='150';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  expect(await folds()).toEqual(before);
+  await page.reload();
+  await expect(page.locator('#foldLayer [data-panel]')).toHaveCount(12);
+  expect((await snap()).boardFrame.fold).toEqual(state.boardFrame.fold);
+  expect(await folds()).toEqual(before);
+  const invalid=await snap();invalid.boardFrame.fold.x=[.6,.3,.8];
+  await page.locator('#jsonArea').fill(JSON.stringify(invalid));
+  await page.locator('#applyJson').click();
+  await expect(page.locator('#notice')).toContainText('Панели должны');
+  expect((await snap()).boardFrame.fold).toEqual(state.boardFrame.fold);
+  await page.locator('#resetFoldLines').click();
+  expect((await folds()).layout.regular).toBe(true);
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
