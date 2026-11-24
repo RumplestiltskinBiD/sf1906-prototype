@@ -547,15 +547,15 @@ function render(){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
   }else{
-   const frame=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
+   const guide=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
    const vertex=regularVertices(n,s);
-   frame.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
+   guide.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
    vertex.forEach((a,i)=>{
     const b=vertex[(i+1)%n],p=frame.cut==='corner'?cornerSeat(a,b,s):seatCenter(a,b,s);
-    frame.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,effectiveCornerMm()*unitsPerMm()*.12):s*.035),
+    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,effectiveCornerMm()*unitsPerMm()*.12):s*.035),
       fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
    });
-   g.append(frame);
+   g.append(guide);
    if(t.status==='empty')drawTile(g,t,s);
    else{
     const face=element('g',{transform:'rotate('+((t.rotation||0)+t.owner*360/n)+' '+s/2+' '+s/2+')',
