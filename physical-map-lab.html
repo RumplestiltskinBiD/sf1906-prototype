@@ -357,7 +357,7 @@ function changeDistrict(dx,dy,sx=1,sy=1){
 }
 function physicalGeometry(t){return slotGeometry({record:t,shape:tileShape,sizeMm:tileSizesMm[tileShape],clearanceMm:frame.clearanceMm,unitsPerMm:unitsPerMm(),angle:t.rotation||0})}
 function worldVertices(t){return physicalGeometry(t).hole.map(p=>({x:p.x,y:p.y-11}))}
-function holeValidation(){const entries=slots.map(t=>({id:t.id,hole:physicalGeometry(t).hole}));const result=holeConflicts(entries);return {pairs:result.pairs,minimumMm:result.minimum===null?null:result.minimum/unitsPerMm()};}
+function holeValidation(){const entries=slots.map(t=>({id:t.id,districtId:t.districtId,...physicalGeometry(t)}));const result=holeConflicts(entries);const outside=entries.filter(e=>!polygonInsideDistrict(e.districtId,e.hole,e.center)).map(e=>e.id);return {pairs:result.pairs,outside,minimumMm:result.minimum===null?null:result.minimum/unitsPerMm()};}
 function frameProblems(){const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[],reserved=[];
  for(const t of slots){const p=worldVertices(t);if(p.some(q=>q.x<v.x||q.y<v.y||q.x>v.x+v.w||q.y>v.y+v.h))edge.push(t.id);
  else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(t.id)}
@@ -385,7 +385,6 @@ function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min
  // Display every new size around the same historical center, without moving any saved coordinate.
 function sizeSvg(){return unitsPerMm()*TILE_MM}
 function currentSizeSvg(){return unitsPerMm()*tileSizesMm[tileShape]}
-function sizeOffsetSvg(){return (sizeSvg()-currentSizeSvg())/2}
 function actualSlotOrigin(t){const center=legacyCenter(t,unitsPerMm()),half=currentSizeSvg()/2;return {x:center.x-half,y:center.y-half}}
 function gapSvg(){return unitsPerMm()*GAP_MM}
 function normalizeAngle(value){return ((Math.round(value)%360)+360)%360}
@@ -409,18 +408,20 @@ function seatCenter(a,b,s){
  const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},len=Math.hypot(s/2-mid.x,s/2-mid.y);
  return {x:mid.x+(s/2-mid.x)/len*s*.048,y:mid.y+(s/2-mid.y)/len*s*.048};
 }
-function insideSlot(t,s){
- const origin=actualSlotOrigin(t);
- if(tileShape==='square')return inside(t.districtId,origin.x,origin.y,s);
- const path=pathById[t.districtId],vertices=tileVertices(t,s),center={x:origin.x+s/2,y:origin.y+s/2};
- if(!path)return false;
+function polygonInsideDistrict(districtId,vertices,center){
+ const path=pathById[districtId];if(!path)return false;
  const samples=[center];
  for(let i=0;i<vertices.length;i++){
   const a=vertices[i],b=vertices[(i+1)%vertices.length];
   for(const p of [a,{x:(a.x+b.x)/2,y:(a.y+b.y)/2}])
-   samples.push({x:origin.x+p.x*.992+s*.004,y:origin.y+p.y*.992+s*.004});
+   samples.push({x:p.x*.992+center.x*.008,y:p.y*.992+center.y*.008});
  }
  return samples.every(p=>typeof path.isPointInFill==='function'?path.isPointInFill(p):pointInBBox(path,p));
+}
+function insideSlot(t,s){
+ const origin=actualSlotOrigin(t);
+ if(tileShape==='square')return inside(t.districtId,origin.x,origin.y,s);
+ return polygonInsideDistrict(t.districtId,tileVertices(t,s).map(p=>({x:p.x+origin.x,y:p.y+origin.y})),{x:origin.x+s/2,y:origin.y+s/2});
 }
 function shapePairViolatesGap(a,b,gap){
  const bbox=p=>({minX:Math.min(...p.map(v=>v.x)),maxX:Math.max(...p.map(v=>v.x)),
@@ -536,16 +537,16 @@ function drawTile(g,t,s){
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
- const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),layer=$('slotLayer'),frag=document.createDocumentFragment();
+ const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),holeOutside=new Set(holes.outside),layer=$('slotLayer'),frag=document.createDocumentFragment();
  const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
-  const bad=problem.flag.has(t.id)||holeBad.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
+  const bad=problem.flag.has(t.id)||holeBad.has(t.id)||holeOutside.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
   const origin=actualSlotOrigin(t);
   const g=element('g',{transform:'translate('+round(origin.x)+' '+round(origin.y)+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
    class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
   const hole=physicalGeometry(t).hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
   // Draw the actual opening behind the tile; keep a separate nominal tile contour for empty slots.
-  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)?' slot-hole-conflict':''),'data-hole':t.id}));
+  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':''),'data-hole':t.id}));
   if(!poly){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
@@ -578,7 +579,7 @@ function render(){
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
-  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · за контуром '+holes.outside.length+' · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
   ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
  $('holeDimensions').textContent='Тайл '+tileSizesMm[tileShape]+' мм · отверстие '+round(holeDiameterMm(tileShape,tileSizesMm[tileShape],frame.clearanceMm))+' мм · допуск '+frame.clearanceMm+' мм на грань.';
@@ -594,7 +595,7 @@ function render(){
  const t=slots.find(x=>x.id===selectedId),p=projectById.get(t?.projectId);
  $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[t.status])+
   (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
-  '\nКоординаты: '+round(t.x/unitsPerMm())+' × '+round(t.y/unitsPerMm())+' мм'+
+  '\nЦентр (SVG-слой карты): '+round(legacyCenter(t,unitsPerMm()).x/unitsPerMm())+' × '+round(legacyCenter(t,unitsPerMm()).y/unitsPerMm())+' мм'+
   '\nПоворот места: '+(t.rotation||0)+'°'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери место';
  const allowRotate=!!t&&poly&&mode==='layout';
  $('slotRotation').value=String(t?.rotation||0);$('slotRotation').disabled=!allowRotate;
