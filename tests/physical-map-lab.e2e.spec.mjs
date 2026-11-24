@@ -270,6 +270,8 @@ test('physical map lab: geometry reset preserves chosen polygon shape, and rotat
  expect((await page.evaluate(()=>window.__physicalMapLab.snapshot())).districts.innersunset[0].rotation).toBe(5);
  page.once('dialog',dialog=>dialog.accept());
  await page.locator('#loadAuthorLayout').click();
+ // Clicking schedules an async fetch; assert the completed import, not an intermediate state.
+ await expect(page.locator('#notice')).toContainText('восстановлена');
  const restored=await page.evaluate(()=>window.__physicalMapLab.snapshot());
  expect(restored.tileShape).toBe('oct');
  expect(restored.districts.innersunset[0].rotation).toBe(0);
