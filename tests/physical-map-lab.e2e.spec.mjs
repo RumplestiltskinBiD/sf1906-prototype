@@ -517,3 +517,31 @@ test('physical board editor: logistics footprints use current catalog, are edita
  await page.locator('#showNodes').uncheck();
  await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(0);
 });
+
+test('physical board editor: external dimension rulers show physical cm independently of zoom',async({page})=>{
+ for(const size of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(size);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#presetScythe').click();
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 60 см');
+  await expect(page.locator('#boardWidthRuler')).toHaveText('80 см');
+  await expect(page.locator('#boardHeightRuler')).toHaveText('60 см');
+  await page.locator('#boardHeightExact').fill('57');
+  await page.locator('#boardHeightExact').press('Tab');
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  await page.locator('#zoom').evaluate(el=>{el.value='150';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  const aligned=await page.evaluate(()=>{
+   const svg=document.querySelector('#mapSvg').getBoundingClientRect();
+   const w=document.querySelector('.measure-width').getBoundingClientRect();
+   const h=document.querySelector('.measure-height').getBoundingClientRect();
+   return Math.abs(w.left-svg.left)<1&&Math.abs(w.width-svg.width)<1&&Math.abs(h.top-svg.top)<1&&Math.abs(h.height-svg.height)<1;
+  });
+  expect(aligned).toBe(true);
+  await page.reload();
+  await expect(page.locator('#boardSizeBadge')).toHaveText('80 × 57 см');
+  const viewport=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));
+  expect(viewport.scroll).toBeLessThanOrEqual(viewport.width+2);
+ }
+});
