@@ -80,3 +80,53 @@ export function holeConflicts(entries){
  }
  return {pairs,minimum:Number.isFinite(minimum)?minimum:null};
 }
+
+// Corner ownership: dimensions are physical mm, never screen pixels.
+// The cut is along two adjacent sides, not a second hole in the board.
+export const OWNERS=Object.freeze([
+ {name:'Синий',color:'#287ec1',symbol:'1'},{name:'Красный',color:'#df5b42',symbol:'2'},
+ {name:'Зелёный',color:'#68a561',symbol:'3'},{name:'Фиолетовый',color:'#a86dce',symbol:'4'},
+ {name:'Жёлтый',color:'#cead45',symbol:'5'},{name:'Нейтральный',color:'#929ba6',symbol:'Н'}
+].map(Object.freeze));
+export function clippedCorner({shape='hex',sizeMm,cutMm,angle=0,center={x:0,y:0}}){
+ if(!['hex','oct'].includes(shape)||!Number.isFinite(sizeMm)||sizeMm<=0||!Number.isFinite(cutMm)||cutMm<=0||!Number.isFinite(angle))throw Error('Invalid corner cut');
+ const n=SHAPE_SIDES[shape],side=sizeMm*Math.sin(Math.PI/n),a=Math.min(cutMm,.9*side),v=regularVertices(n,sizeMm,angle,center);
+ const lerp=b=>({x:v[0].x+(b.x-v[0].x)*a/side,y:v[0].y+(b.y-v[0].y)*a/side});
+ const first=lerp(v[1]),last=lerp(v[n-1]);
+ return {vertices:[first,...v.slice(1),last],cutMm:a,depthMm:a*Math.sin(Math.PI/n),widthMm:2*a*Math.cos(Math.PI/n),sideMm:side,cutEdge:[last,first]};
+}
+export function edgeMargin(point,poly){
+ let min=Infinity;
+ for(let i=0;i<poly.length;i++){
+  const a=poly[i],b=poly[(i+1)%poly.length],dx=b.x-a.x,dy=b.y-a.y;
+  min=Math.min(min,(dx*(point.y-a.y)-dy*(point.x-a.x))/Math.hypot(dx,dy));
+ }
+ return min;
+}
+// Reflection about the radial axis through the clipped corner (the physical flip axis).
+// Reverse winding after reflection; artwork is printed normally on each face.
+export function mirrorAcrossCut(poly,center,angle){
+ const a=(-90+angle)*Math.PI/180,x=Math.cos(a),y=Math.sin(a);
+ return poly.map(p=>{const dx=p.x-center.x,dy=p.y-center.y,k=2*(dx*x+dy*y);return {x:center.x+k*x-dx,y:center.y+k*y-dy}}).reverse();
+}
+export function ownershipGeometry({shape='hex',sizeMm,cutMm,clearanceMm=DEFAULT_CLEARANCE_MM,angle=0,owner=0,center={x:0,y:0}}){
+ if(!['hex','oct'].includes(shape)||!Number.isInteger(owner)||owner<0||owner>=OWNERS.length||!validClearance(clearanceMm))throw Error('Invalid ownership geometry');
+ const n=SHAPE_SIDES[shape],step=360/n,faceAngle=angle+owner*step,cut=clippedCorner({shape,sizeMm,cutMm,angle:faceAngle,center});
+ const cos=Math.cos(Math.PI/n),shift=clearanceMm/cos;
+ // A fixed-orientation tile can translate within the clearance polygon.
+ // A circular bound of radius shift is conservative in every direction.
+ const maxRadius=(cut.depthMm-shift-shift/cos)/(1+1/cos);
+ const radius=Math.max(0,Math.min(1.6,maxRadius*.85));
+ const lo=(radius+shift)/cos,hi=cut.depthMm-radius-shift;
+ const inset=radius>0?(lo+hi)/2:cut.depthMm/2;
+ const marks=regularVertices(n,sizeMm-2*inset,angle,center).map((p,i)=>({...p,index:i,radius,owner:OWNERS[i]??null}));
+ const hole=shapeVertices(shape,holeDiameterMm(shape,sizeMm,clearanceMm),center,angle);
+ const [a,b]=cut.cutEdge,dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+ const selected=marks[owner];
+ const exposedMargin=-(dx*(selected.y-a.y)-dy*(selected.x-a.x))/len-radius-shift;
+ const hiddenMargin=Math.min(...marks.filter(m=>m.index!==owner).map(m=>edgeMargin(m,cut.vertices)-radius-shift));
+ const insideMargin=Math.min(...marks.map(m=>edgeMargin(m,hole)-radius));
+ const safe=radius>=.5&&Math.min(exposedMargin,hiddenMargin,insideMargin)>=-1e-8;
+ return {...cut,faceAngle,hole,marks,owner,translationBoundMm:shift,exposedMargin,hiddenMargin,insideMargin,safe,
+  backVertices:mirrorAcrossCut(cut.vertices,center,faceAngle)};
+}
