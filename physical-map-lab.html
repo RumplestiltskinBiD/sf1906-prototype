@@ -46,6 +46,10 @@ button.danger{background:#51313c}
 .slot{cursor:grab;touch-action:none}
 .slot:active{cursor:grabbing}
 .slot .tile{fill:rgba(224,234,236,.56);stroke:#43616a;stroke-width:2;stroke-dasharray:8 5}
+.slot .owner-seat{stroke:#fff;stroke-width:1.2;pointer-events:none}
+.slot .slot-guide{fill:rgba(215,224,225,.55);stroke:#58717a;stroke-width:1.3;stroke-dasharray:5 4;pointer-events:none}
+#slotRotation{width:100%;accent-color:#55c3d4}
+#slotRotation:disabled,.rotate-controls button:disabled{opacity:.4}
 .slot .tile-under{fill:#cba767;stroke:#58432e;stroke-width:2.5;stroke-dasharray:none}
 .slot .tile-done{fill:#f0dfbd;stroke:#725d48;stroke-width:2.5;stroke-dasharray:none}
 .slot text{font-weight:700;fill:#1d3342;text-anchor:middle;pointer-events:none;user-select:none}
@@ -80,7 +84,7 @@ button.danger{background:#51313c}
 <div class="workspace">
 <aside>
 <section class="instructions">
-<p><b>Расстановка:</b> перетаскивай квадраты в режиме «Размещать слоты». <b>Строительство:</b> выбери проект и цвет игрока, включи «Строить тайлы» и щёлкни свободное место на карте.</p><p>Это визуальный тест. Он не расходует деньги и рабочих, не рассчитывает маршруты и не меняет основную игру.</p>
+<p><b>Форма:</b> переключай все 79 участков между квадратом, шестиугольником и восьмиугольником: координаты сохраняются. <b>Расстановка:</b> перетаскивай участки, а в режиме многоугольников — поворачивай каждый отдельно с шагом 1°.</p><p><b>Пробное владение:</b> на шести-/восьмиугольном здании одна выемка открывает цвет владельца, напечатанный под тайлом. Угол участка и положение выемки относительно него независимы. Это визуальный тест без денег, рабочих и логистики.</p>
 <p><b>Передать расстановку:</b> нажми «Скачать JSON» и прикрепи полученный файл в чат. Файл содержит координаты всех мест, не только снимок экрана.</p>
 <p><b>Важно:</b> масштаб карты — гипотеза физической печати; на экране 40 мм не означает 40 экранных миллиметров.</p>
 </section>
@@ -88,7 +92,9 @@ button.danger{background:#51313c}
 <h2>Масштаб настольной карты</h2>
 <div class="field"><label for="boardWidth">Ширина поля, см</label><select id="boardWidth"><option>70</option><option selected>80</option><option>90</option><option>100</option><option>110</option><option>120</option></select></div>
 <div class="field"><label for="zoom">Зум просмотра</label><input id="zoom" type="range" min="50" max="210" step="10" value="80"><output id="zoomValue">80%</output></div>
-<p class="sub" id="dimensions">80 × 53,3 см · тайлы 40 × 40 мм · зазор 2 мм</p>
+<p class="sub" id="dimensions">110 × 73,3 см · габарит 40 × 40 мм · зазор 2 мм</p>
+<div class="field"><label for="tileShape">Форма всех мест</label><select id="tileShape"><option value="square">Квадрат</option><option value="hex">Шестиугольник</option><option value="oct">Восьмиугольник</option></select></div>
+<p class="sub">При переключении меняется только форма, не координаты. Радиус многоугольника 20 мм: он свободно поворачивается внутри исходного квадрата 40 мм.</p>
 </section>
 <section>
 <h2>Проверка расположения</h2>
@@ -99,22 +105,26 @@ button.danger{background:#51313c}
 <section>
 <h2>Режимы</h2>
 <div class="field"><label for="labMode">На карте</label><select id="labMode"><option value="layout">Размещать слоты</option><option value="build">Строить тайлы</option></select></div>
+<div class="field"><label for="slotRotation">Угол выбранного места</label><output id="angleValue">0°</output></div>
+<input id="slotRotation" type="range" min="0" max="359" step="1" value="0" aria-label="Поворот выбранного места, градусы">
+<div class="controls rotate-controls"><button id="rotateLeft" type="button">↺ −5°</button><button id="rotateRight" type="button">↻ +5°</button><button id="rotateReset" type="button">Сброс 0°</button></div>
+<p class="sub">Поворот места: произвольный угол (шаг 1°). Положение выемки здания для владельца: отдельный поворот на 60° или 45°.</p>
 <div class="controls"><button id="loadAuthorLayout">Восстановить авторскую схему 110 см</button></div>
 <h2>Редактирование</h2>
 <div class="field"><label for="focusDistrict">Район</label><select id="focusDistrict"></select></div>
-<div id="selectedInfo">Выбери квадрат на карте.</div>
+<div id="selectedInfo">Выбери участок на карте.</div>
 <section>
 <h2>Тест зданий на тайлах</h2>
-<div class="field"><label for="ownerSelect">Игрок</label><select id="ownerSelect"><option value="0">Синий</option><option value="1">Красный</option><option value="2">Зелёный</option><option value="3">Фиолетовый</option><option value="4">Жёлтый</option></select></div>
+<div class="field"><label for="ownerSelect">Игрок</label><select id="ownerSelect"><option value="0">Синий</option><option value="1">Красный</option><option value="2">Зелёный</option><option value="3">Фиолетовый</option><option value="4">Жёлтый</option><option value="5">Нейтральный (серый)</option></select></div>
 <label for="projectSelect" class="sub">Здание из настоящего игрового каталога</label>
 <select id="projectSelect"></select>
 <div id="projectPreview">Загрузка проектов…</div>
 <div class="controls">
 <button id="markBuilding" class="primary">Начать стройку</button><button id="deliverOne">Привезти 1 материал</button><button id="deliverAll">Привезти все материалы</button><button id="markComplete">Перевернуть тайл</button><button id="markEmpty">Освободить</button>
 </div>
-<small>Тестовая доставка добавляет требуемые материалы по порядку. Последний кубик переворачивает тайл. Это не моделирование игровой вместимости, стоимости или маршрута. Цветной угол — временное обозначение владельца.</small>
+<small>Тестовая доставка добавляет материалы по порядку и переворачивает тайл. Это не игровая логистика. Цветной угол у квадрата остаётся заглушкой; у многоугольников пробная физическая выемка показывает единственный цвет под тайлом. Производственная форма выемки ещё не утверждена.</small>
 </section>
-<p class="sub">Стрелки перемещают выбранный квадрат на 1 мм (Shift — 5 мм) только в режиме расстановки слотов.</p>
+<p class="sub">Стрелки перемещают выбранное место на 1 мм (Shift — 5 мм) в режиме расстановки. Угол — ползунком либо кнопками ±5°.</p>
 <div class="controls"><button id="seedDistrict">Авторазместить район</button><button id="seedAll" class="danger">Сбросить все места</button></div>
 <div class="controls"><button id="fillAll">Показать полную застройку</button><button id="emptyAll">Показать пустые</button></div>
 </section>
@@ -127,13 +137,13 @@ button.danger{background:#51313c}
 <div class="controls"><button id="download" class="primary">Скачать JSON</button><button id="copyJson">Копировать JSON</button></div>
 <div class="controls"><label class="file-label">Загрузить JSON <input id="loadFile" type="file" accept="application/json,.json" hidden></label><button id="applyJson">Применить JSON ниже</button></div>
 <textarea id="jsonArea" aria-label="Импорт и экспорт JSON" placeholder="Сюда можно вставить сохранённый JSON, затем нажать «Применить»."></textarea>
-<p class="sub">JSON сохраняет все 79 координат и, при наличии, тестовые здания. Старые файлы только с координатами можно загружать без изменений. Автосохранение работает в этом браузере, поэтому экспортируй JSON перед сменой устройства.</p>
+<p class="sub">JSON сохраняет 79 координат, форму, индивидуальные повороты и тестовые здания. Старые файлы без формы и угла открываются как квадраты. Для переноса на другое устройство экспортируй JSON.</p>
 </section>
 </aside>
 <main class="map-panel">
 <div class="map-toolbar"><div><b>Карта V8</b> · редактирование 79 участков · выделены текущие границы</div><div id="selectedDistrictLabel">Inner Sunset</div></div>
 <div class="map-scroll" id="mapScroll">
-<svg id="mapSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" aria-label="Интерактивный редактор расположения квадратных строительных мест Сан-Франциско" role="img">
+<svg id="mapSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" aria-label="Редактор 79 квадратных, шестиугольных или восьмиугольных строительных мест Сан-Франциско" role="img">
 <image href="./assets/v8-map.webp?v=028" x="0" y="0" width="1536" height="1024" preserveAspectRatio="none" pointer-events="none"/>
 <g transform="translate(0 -11)">
 <g id="regionLayer"><g class="region" data-region="presidio"><path d="M 464 57 L 501 88 L 520 93 L 557 108 L 572 104 L 621 88 L 645 138 L 648 153 L 661 165 L 657 185 L 643 197 L 618 212 L 609 228 L 610 276 L 588 263 L 535 261 L 457 265 L 433 262 L 375 271 L 299 268 L 278 248 L 324 217 L 333 185 L 355 164 L 368 133 L 383 54 L 409 61 L 429 68 L 464 57 Z"/></g>
@@ -170,8 +180,10 @@ const TOTAL=DISTRICTS.reduce((sum,d)=>sum+d.slots,0);
 const TILE_MM=40,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
 const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
-let projectCatalog=[],projectById=new Map(),mode='layout';
-const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45'];
+let projectCatalog=[],projectById=new Map(),mode='layout',tileShape='square';
+const SHAPE_SIDES=Object.freeze({square:4,hex:6,oct:8});
+const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45','#929ba6'];
+const SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
 const $=id=>document.getElementById(id);
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const round=x=>Math.round(x*1000)/1000;
@@ -179,6 +191,72 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 function sizeSvg(){return VB_WIDTH*TILE_MM/boardWidthMm}
 function gapSvg(){return VB_WIDTH*GAP_MM/boardWidthMm}
+function normalizeAngle(value){return ((Math.round(value)%360)+360)%360}
+function regularVertices(n,s,angle=0){
+ return Array.from({length:n},(_,i)=>{
+  const a=(-Math.PI/2+2*Math.PI*i/n+angle*Math.PI/180);
+  return {x:s/2+Math.cos(a)*s/2,y:s/2+Math.sin(a)*s/2};
+ });
+}
+function tileVertices(t,s){
+ return tileShape==='square'
+  ?[{x:0,y:0},{x:s,y:0},{x:s,y:s},{x:0,y:s}]
+  :regularVertices(SHAPE_SIDES[tileShape],s,t.rotation||0);
+}
+function vertexString(vertices){return vertices.map(v=>round(v.x)+','+round(v.y)).join(' ')}
+function notchPath(n,s){
+ const v=regularVertices(n,s),a=v[0],b=v[1],edge=Math.hypot(b.x-a.x,b.y-a.y);
+ const half=Math.min(s*.067,edge*.22);
+ const start={x:(a.x+b.x)/2-(b.x-a.x)*half/edge,y:(a.y+b.y)/2-(b.y-a.y)*half/edge};
+ const end={x:(a.x+b.x)/2+(b.x-a.x)*half/edge,y:(a.y+b.y)/2+(b.y-a.y)*half/edge};
+ const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},len=Math.hypot(s/2-mid.x,s/2-mid.y);
+ const depth=s*.085,apex={x:mid.x+(s/2-mid.x)/len*depth,y:mid.y+(s/2-mid.y)/len*depth};
+ const fmt=p=>round(p.x)+' '+round(p.y);
+ return 'M '+fmt(a)+' L '+fmt(start)+' L '+fmt(apex)+' L '+fmt(end)+' '+v.slice(1).map(p=>'L '+fmt(p)).join(' ')+' Z';
+}
+function seatCenter(a,b,s){
+ const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},len=Math.hypot(s/2-mid.x,s/2-mid.y);
+ return {x:mid.x+(s/2-mid.x)/len*s*.048,y:mid.y+(s/2-mid.y)/len*s*.048};
+}
+function insideSlot(t,s){
+ if(tileShape==='square')return inside(t.districtId,t.x,t.y,s);
+ const path=pathById[t.districtId],vertices=tileVertices(t,s),center={x:t.x+s/2,y:t.y+s/2};
+ if(!path)return false;
+ const samples=[center];
+ for(let i=0;i<vertices.length;i++){
+  const a=vertices[i],b=vertices[(i+1)%vertices.length];
+  for(const p of [a,{x:(a.x+b.x)/2,y:(a.y+b.y)/2}])
+   samples.push({x:t.x+p.x*.992+s*.004,y:t.y+p.y*.992+s*.004});
+ }
+ return samples.every(p=>typeof path.isPointInFill==='function'?path.isPointInFill(p):pointInBBox(path,p));
+}
+function polygonOverlap(a,b){
+ for(const vertices of [a,b])for(let i=0;i<vertices.length;i++){
+  const p=vertices[i],q=vertices[(i+1)%vertices.length],axis={x:q.y-p.y,y:p.x-q.x};
+  const projections=poly=>poly.map(v=>v.x*axis.x+v.y*axis.y);
+  const ap=projections(a),bp=projections(b);
+  if(Math.max(...ap)<=Math.min(...bp)||Math.max(...bp)<=Math.min(...ap))return false;
+ }
+ return true;
+}
+function pointEdgeDistanceSq(p,a,b){
+ const dx=b.x-a.x,dy=b.y-a.y,len=dx*dx+dy*dy;
+ const ratio=len?clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/len,0,1):0;
+ const x=a.x+dx*ratio,y=a.y+dy*ratio;
+ return (p.x-x)**2+(p.y-y)**2;
+}
+function shapePairViolatesGap(a,b,gap){
+ const bbox=p=>({minX:Math.min(...p.map(v=>v.x)),maxX:Math.max(...p.map(v=>v.x)),
+  minY:Math.min(...p.map(v=>v.y)),maxY:Math.max(...p.map(v=>v.y))});
+ const aa=bbox(a),bb=bbox(b);
+ if(aa.minX>=bb.maxX+gap-.12||bb.minX>=aa.maxX+gap-.12||
+    aa.minY>=bb.maxY+gap-.12||bb.minY>=aa.maxY+gap-.12)return false;
+ if(polygonOverlap(a,b))return true;
+ const sq=(gap-.12)**2;
+ for(const [first,second] of [[a,b],[b,a]])for(const p of first)for(let i=0;i<second.length;i++)
+  if(pointEdgeDistanceSq(p,second[i],second[(i+1)%second.length])<sq)return true;
+ return false;
+}
 function variantLayouts(n){
  const G=(...cells)=>cells;
  if(n===2)return [G([0,0],[1,0]),G([0,0],[0,1])];
@@ -226,21 +304,21 @@ function autoDistrict(id){
   }
  }
  slots=slots.filter(t=>t.districtId!==id);
- (best||[]).forEach(([x,y],i)=>slots.push({id:id+'-'+(i+1),districtId:id,n:i+1,x:round(x),y:round(y),status:'empty',owner:i%COLORS.length}));
+ (best||[]).forEach(([x,y],i)=>slots.push({id:id+'-'+(i+1),districtId:id,n:i+1,x:round(x),y:round(y),rotation:0,status:'empty',owner:i%COLORS.length}));
 }
 function autoAll(){
  slots=[];for(const d of DISTRICTS)if(d.slots)autoDistrict(d.id);
 }
 function validation(){
  const s=sizeSvg(),gap=gapSvg(),flag=new Set(),outside=new Set(),pairs=new Set();
- for(const t of slots){
-   if(!inside(t.districtId,t.x,t.y,s)){flag.add(t.id);outside.add(t.id)}
- }
+ const poly=tileShape!=='square';
+ for(const t of slots)if(!insideSlot(t,s)){flag.add(t.id);outside.add(t.id)}
+ const shapes=poly?slots.map(t=>tileVertices(t,s).map(p=>({x:p.x+t.x,y:p.y+t.y}))):null;
  for(let i=0;i<slots.length;i++)for(let j=i+1;j<slots.length;j++){
   const a=slots[i],b=slots[j];
-  if(Math.abs(a.x-b.x)<s+gap-.12&&Math.abs(a.y-b.y)<s+gap-.12){
-    flag.add(a.id);flag.add(b.id);pairs.add(a.id+'|'+b.id);
-  }
+  const overlap=poly?shapePairViolatesGap(shapes[i],shapes[j],gap)
+   :Math.abs(a.x-b.x)<s+gap-.12&&Math.abs(a.y-b.y)<s+gap-.12;
+  if(overlap){flag.add(a.id);flag.add(b.id);pairs.add(a.id+'|'+b.id)}
  }
  return {flag,outside,pairs};
 }
