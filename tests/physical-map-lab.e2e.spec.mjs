@@ -545,3 +545,88 @@ test('physical board editor: external dimension rulers show physical cm independ
   expect(viewport.scroll).toBeLessThanOrEqual(viewport.width+2);
  }
 });
+
+test('hex seating openings: exact clearance, independent contours and unchanged author coordinates',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ const reference=await page.evaluate(async()=>await (await fetch('./docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json')).json());
+ page.once('dialog',d=>d.accept());
+ await page.locator('#loadHexLayout').click();
+ await expect(page.locator('#notice')).toContainText('HEX 50 мм восстановлена');
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const geometry=()=>page.evaluate(()=>window.__physicalMapLab.geometry('civic-1'));
+ const initial=await snap();
+ const coords=m=>Object.entries(m.districts).flatMap(([id,a])=>a.map(t=>[id,t.slot,t.x,t.y,t.rotation||0]));
+ expect(coords(initial)).toEqual(coords(reference));
+ await expect(page.locator('#slotLayer [data-hole]')).toHaveCount(79);
+ await expect(page.locator('#holeClearance')).toHaveValue('0.5');
+ const first=await geometry();
+ expect(first.holeMm).toBeCloseTo(50+2/Math.sqrt(3),8);
+ expect(first.tile).toHaveLength(6);
+ expect(first.hole).toHaveLength(6);
+ const v=await page.evaluate(()=>window.__physicalMapLab.validation().holes);
+ expect(v.minimumMm).toBeCloseTo(1.2234043,5);
+ expect(v.pairs).toEqual([]);
+ await page.locator('#holeClearance').fill('1');
+ await page.locator('#holeClearance').press('Tab');
+ const bigger=await geometry();
+ expect(bigger.center).toEqual(first.center);
+ expect(bigger.tile).toEqual(first.tile);
+ expect(bigger.holeMm).toBeCloseTo(50+4/Math.sqrt(3),8);
+ expect(coords(await snap())).toEqual(coords(initial));
+ await page.locator('#focusDistrict').selectOption('civic');
+ await page.locator('#projectSelect').selectOption('std_warehouse');
+ await page.locator('#markBuilding').click();
+ await page.locator('#deliverOne').click();
+ const built=await snap();
+ const tile=page.locator('[data-slot-id="civic-1"]');
+ await expect(tile.locator('polygon[data-hole]')).toHaveCount(1);
+ await expect(tile.locator('path.tile-under')).toHaveCount(1);
+ await page.locator('#rotateRight').click();
+ const rotated=await geometry();
+ expect(rotated.center).toEqual(first.center);
+ expect(rotated.hole).not.toEqual(bigger.hole);
+ await page.reload();
+ await expect(page.locator('#holeClearance')).toHaveValue('1');
+ expect((await snap()).districts.civic[0].delivered).toEqual(built.districts.civic[0].delivered);
+ expect((await geometry()).hole).toEqual(rotated.hole);
+ const malformed=await snap();malformed.boardFrame.clearanceMm=1.1;
+ await page.locator('#jsonArea').fill(JSON.stringify(malformed));
+ await page.locator('#applyJson').click();
+ await expect(page.locator('#notice')).toContainText('clearanceMm');
+ expect((await snap()).boardFrame.clearanceMm).toBe(1);
+ const old=structuredClone(initial);delete old.boardFrame;
+ await page.locator('#jsonArea').fill(JSON.stringify(old));
+ await page.locator('#applyJson').click();
+ expect((await snap()).boardFrame.clearanceMm).toBe(.5);
+ expect(coords(await snap())).toEqual(coords(initial));
+});
+
+test('hex seating openings: touching and overlapping holes, mobile controls and zoom',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#tileShape').selectOption('hex');
+  await page.locator('#tileSize').fill('50');await page.locator('#tileSize').press('Tab');
+  await page.locator('#holeClearance').fill('0.5');await page.locator('#holeClearance').press('Tab');
+  const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+  const draft=await snap();
+  const a=draft.districts.civic[0],b=draft.districts.civic[1];
+  const u=1536/draft.boardWidthMm*100/draft.boardFrame.magnification;
+  a.rotation=0;b.rotation=0;b.x=a.x+(50*Math.sqrt(3)/2+.5)*u;b.y=a.y;
+  await page.locator('#jsonArea').fill(JSON.stringify(draft));
+  await page.locator('#applyJson').click();
+  const holes=await page.evaluate(()=>window.__physicalMapLab.validation().holes);
+  expect(holes.pairs.some(p=>p.ids.includes('civic-1')&&p.ids.includes('civic-2')&&p.overlap)).toBe(true);
+  await expect(page.locator('[data-slot-id="civic-1"] [data-hole]')).toHaveClass(/slot-hole-conflict/);
+  const before=await page.evaluate(()=>window.__physicalMapLab.geometry('civic-1'));
+  await page.locator('#zoom').evaluate(el=>{el.value='150';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  expect(await page.evaluate(()=>window.__physicalMapLab.geometry('civic-1'))).toEqual(before);
+  await page.locator('#holeClearance').fill('0');await page.locator('#holeClearance').press('Tab');
+  const without=await page.evaluate(()=>window.__physicalMapLab.validation().holes);
+  expect(without.pairs.some(p=>p.ids.includes('civic-1')&&p.ids.includes('civic-2'))).toBe(false);
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
