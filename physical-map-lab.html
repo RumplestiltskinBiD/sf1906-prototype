@@ -57,6 +57,10 @@ button.danger{background:#51313c}
 .slot{cursor:grab;touch-action:none}
 .slot:active{cursor:grabbing}
 .slot .tile{fill:rgba(224,234,236,.56);stroke:#43616a;stroke-width:2;stroke-dasharray:8 5}
+.slot .slot-hole{fill:#b6c6c3;stroke:#284f58;stroke-width:1.5;vector-effect:non-scaling-stroke}
+.slot .slot-hole-conflict{stroke:#f05d46;stroke-width:2.5}
+.slot .slot-guide{pointer-events:none}
+#holeClearance{width:95px;color:#e9eff4;background:#081521;border:1px solid #526475;border-radius:5px;padding:6px}
 .slot .owner-seat{stroke:#fff;stroke-width:1.2;pointer-events:none}
 .slot .slot-guide{fill:rgba(215,224,225,.55);stroke:#58717a;stroke-width:1.3;stroke-dasharray:5 4;pointer-events:none}
 #slotRotation{width:100%;accent-color:#55c3d4}
@@ -123,6 +127,10 @@ button.danger{background:#51313c}
 <div class="controls"><button id="tileSizeDown" type="button" aria-label="Уменьшить размер на 1 мм">− 1 мм</button><button id="tileSizeUp" type="button" aria-label="Увеличить размер на 1 мм">+ 1 мм</button></div>
 <input id="tileSizeRange" type="range" min="25" max="70" step="1" value="40" aria-label="Размер всех тайлов выбранной формы в миллиметрах" style="width:100%;accent-color:#55c3d4">
 <p class="sub">Размер общий для всех мест выбранной формы, от 25 до 70 мм, шаг 1 мм. У квадрата это сторона, у многоугольника — расстояние между противоположными вершинами (диаметр описанной окружности). Для каждой формы размер запоминается отдельно. Центры всех 79 мест остаются неподвижными; при увеличении фигуры возможны красные предупреждения о пересечениях.</p>
+<h2>Посадочное отверстие</h2>
+<div class="field"><label for="holeClearance">Допуск на грань, мм</label><input id="holeClearance" type="number" min="0" max="1" step="0.1" value="0.5"></div>
+<p class="sub" id="holeDimensions"></p>
+<p class="sub">Сплошной внешний контур — отверстие, пунктир внутри пустого места — габарит тайла. Допуск отсчитывается перпендикулярно грани. Нулевой допуск — только для сравнения. Проверка перемычек и сгибов будет на следующих этапах.</p>
 </section>
 <section id="boardEditor">
 <h2>Композиция поля</h2>
@@ -241,16 +249,14 @@ button.danger{background:#51313c}
 </div>
 </main>
 </div>
-<script>
+<script type="module">
+import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts} from './physical-map-geometry.js';
 'use strict';
-const DISTRICTS=[{"id":"presidio","name":"Presidio","slots":0},{"id":"marina","name":"Marina","slots":2},{"id":"northbeach","name":"North Beach","slots":3},{"id":"chinatown","name":"Chinatown","slots":2},{"id":"pacific","name":"Pacific Heights","slots":5},{"id":"financial","name":"Financial District","slots":5},{"id":"soma","name":"SoMa","slots":5},{"id":"civic","name":"Civic Center","slots":5},{"id":"western","name":"Western Addition","slots":5},{"id":"innerrichmond","name":"Inner Richmond","slots":4},{"id":"outerrichmond","name":"Outer Richmond","slots":5},{"id":"haight","name":"Haight-Ashbury","slots":5},{"id":"innersunset","name":"Inner Sunset","slots":3},{"id":"sunset","name":"Outer Sunset","slots":6},{"id":"mission","name":"Mission","slots":5},{"id":"missionbay","name":"Mission Bay","slots":5},{"id":"potrero","name":"Potrero","slots":5},{"id":"noe","name":"Noe Valley","slots":5},{"id":"bernal","name":"Bernal Heights","slots":4},{"id":"park","name":"Golden Gate Park","slots":0},{"id":"twinpeaks","name":"Twin Peaks","slots":0}];
-const TOTAL=DISTRICTS.reduce((sum,d)=>sum+d.slots,0);
-const TILE_MM=40,MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
+const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
 const HEX_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json';
 const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
 let projectCatalog=[],projectById=new Map(),mode='layout',tileShape='square',tileSizesMm={square:TILE_MM,hex:TILE_MM,oct:TILE_MM};
-const SHAPE_SIDES=Object.freeze({square:4,hex:6,oct:8});
 const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45','#929ba6'];
 const SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
 const $=id=>document.getElementById(id);
@@ -260,7 +266,7 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
-const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'notch',cornerMm:8});
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'notch',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM});
 let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
@@ -288,7 +294,7 @@ function readFrame(data){
   f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
  }
  if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
- f.cut=data.cut??'notch';f.cornerMm=num('cornerMm',3,12,8);return f;
+ f.cut=data.cut??'notch';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);return f;
 }
 function syncFrame(){
  $('boardWidthExact').value=round(boardWidthMm/10);$('boardHeightExact').value=round(boardHeight()/10);
@@ -296,7 +302,7 @@ function syncFrame(){
  $('mapBackground').value=frame.background;$('showLabels').checked=frame.labels;
  for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).value=frame.zones[k];
  $('showNodes').checked=frame.showNodes;syncNode();
- $('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
+ $('holeClearance').value=frame.clearanceMm;$('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
 }
 function updateBoardView(){
  const v=viewport();$('mapSvg').setAttribute('viewBox',[v.x,v.y,v.w,v.h].join(' '));
@@ -349,7 +355,9 @@ function changeDistrict(dx,dy,sx=1,sy=1){
  }
  commitFrame();
 }
-function worldVertices(t){const o=actualSlotOrigin(t);return tileVertices(t,currentSizeSvg()).map(p=>({x:p.x+o.x,y:p.y+o.y-11}))}
+function physicalGeometry(t){return slotGeometry({record:t,shape:tileShape,sizeMm:tileSizesMm[tileShape],clearanceMm:frame.clearanceMm,unitsPerMm:unitsPerMm(),angle:t.rotation||0})}
+function worldVertices(t){return physicalGeometry(t).hole.map(p=>({x:p.x,y:p.y-11}))}
+function holeValidation(){const entries=slots.map(t=>({id:t.id,hole:physicalGeometry(t).hole}));const result=holeConflicts(entries);return {pairs:result.pairs,minimumMm:result.minimum===null?null:result.minimum/unitsPerMm()};}
 function frameProblems(){const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[],reserved=[];
  for(const t of slots){const p=worldVertices(t);if(p.some(q=>q.x<v.x||q.y<v.y||q.x>v.x+v.w||q.y>v.y+v.h))edge.push(t.id);
  else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(t.id)}
@@ -378,15 +386,9 @@ function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min
 function sizeSvg(){return unitsPerMm()*TILE_MM}
 function currentSizeSvg(){return unitsPerMm()*tileSizesMm[tileShape]}
 function sizeOffsetSvg(){return (sizeSvg()-currentSizeSvg())/2}
-function actualSlotOrigin(t){const offset=sizeOffsetSvg();return {x:t.x+offset,y:t.y+offset}}
+function actualSlotOrigin(t){const center=legacyCenter(t,unitsPerMm()),half=currentSizeSvg()/2;return {x:center.x-half,y:center.y-half}}
 function gapSvg(){return unitsPerMm()*GAP_MM}
 function normalizeAngle(value){return ((Math.round(value)%360)+360)%360}
-function regularVertices(n,s,angle=0){
- return Array.from({length:n},(_,i)=>{
-  const a=(-Math.PI/2+2*Math.PI*i/n+angle*Math.PI/180);
-  return {x:s/2+Math.cos(a)*s/2,y:s/2+Math.sin(a)*s/2};
- });
-}
 function tileVertices(t,s){
  return tileShape==='square'
   ?[{x:0,y:0},{x:s,y:0},{x:s,y:s},{x:0,y:s}]
@@ -419,21 +421,6 @@ function insideSlot(t,s){
    samples.push({x:origin.x+p.x*.992+s*.004,y:origin.y+p.y*.992+s*.004});
  }
  return samples.every(p=>typeof path.isPointInFill==='function'?path.isPointInFill(p):pointInBBox(path,p));
-}
-function polygonOverlap(a,b){
- for(const vertices of [a,b])for(let i=0;i<vertices.length;i++){
-  const p=vertices[i],q=vertices[(i+1)%vertices.length],axis={x:q.y-p.y,y:p.x-q.x};
-  const projections=poly=>poly.map(v=>v.x*axis.x+v.y*axis.y);
-  const ap=projections(a),bp=projections(b);
-  if(Math.max(...ap)<=Math.min(...bp)||Math.max(...bp)<=Math.min(...ap))return false;
- }
- return true;
-}
-function pointEdgeDistanceSq(p,a,b){
- const dx=b.x-a.x,dy=b.y-a.y,len=dx*dx+dy*dy;
- const ratio=len?clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/len,0,1):0;
- const x=a.x+dx*ratio,y=a.y+dy*ratio;
- return (p.x-x)**2+(p.y-y)**2;
 }
 function shapePairViolatesGap(a,b,gap){
  const bbox=p=>({minX:Math.min(...p.map(v=>v.x)),maxX:Math.max(...p.map(v=>v.x)),
@@ -549,13 +536,16 @@ function drawTile(g,t,s){
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
- const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),layer=$('slotLayer'),frag=document.createDocumentFragment();
+ const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),layer=$('slotLayer'),frag=document.createDocumentFragment();
  const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
-  const bad=problem.flag.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
+  const bad=problem.flag.has(t.id)||holeBad.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
   const origin=actualSlotOrigin(t);
   const g=element('g',{transform:'translate('+round(origin.x)+' '+round(origin.y)+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
    class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
+  const hole=physicalGeometry(t).hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
+  // Draw the actual opening behind the tile; keep a separate nominal tile contour for empty slots.
+  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)?' slot-hole-conflict':''),'data-hole':t.id}));
   if(!poly){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
@@ -588,9 +578,10 @@ function render(){
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
-  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
   ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
+ $('holeDimensions').textContent='Тайл '+tileSizesMm[tileShape]+' мм · отверстие '+round(holeDiameterMm(tileShape,tileSizesMm[tileShape],frame.clearanceMm))+' мм · допуск '+frame.clearanceMm+' мм на грань.';
  $('tileShape').value=tileShape;
  $('tileSize').value=String(tileSizesMm[tileShape]);
  $('tileSizeRange').value=String(tileSizesMm[tileShape]);
@@ -638,22 +629,17 @@ function applySnapshot(data){
   }
  }
  const next=[];
- for(const d of DISTRICTS)if(d.slots){
-  const array=data.districts?.[d.id];
-  if(!Array.isArray(array)||array.length!==d.slots)throw Error('Количество мест в '+d.id+' не совпадает с согласованным набором');
-  const unique=new Set();
-  for(const item of array){
-   if(!Number.isInteger(item.slot)||item.slot<1||item.slot>d.slots||unique.has(item.slot)||!Number.isFinite(item.x)||!Number.isFinite(item.y)||Math.abs(item.x)>10000||Math.abs(item.y)>10000)throw Error('Некорректные координаты или дубли в '+d.id);
-   unique.add(item.slot);
+ const importedRegistry=readSlotRegistry(data.districts,VB_WIDTH/data.boardWidthMm*100/importedFrame.magnification);
+ for(const entry of importedRegistry){
+   const item=entry.record;
    const project=projectById.get(item.projectId);
    const delivered=(Array.isArray(item.delivered)&&project&&item.status==='under'&&item.delivered.length<=project.materials.length&&
      item.delivered.every((m,i)=>m===project.materials[i]))?[...item.delivered]:[];
-   next.push({id:d.id+'-'+item.slot,districtId:d.id,n:item.slot,x:item.x,y:item.y,
+   next.push({id:entry.id,districtId:entry.districtId,n:entry.ordinal,x:item.x,y:item.y,
       rotation:Number.isFinite(item.rotation)?normalizeAngle(item.rotation):0,
       status:['empty','under','complete'].includes(item.status)?item.status:'empty',
       owner:Number.isInteger(item.owner)?clamp(item.owner,0,5):0,
       projectId:project?.id||null,delivered});
-  }
  }
  boardWidthMm=data.boardWidthMm;tileShape=importedShape;tileSizesMm=importedSizes;slots=next;frame=importedFrame;applyContours();syncFrame();
  if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
@@ -777,6 +763,7 @@ async function init(){
  $('editNode').onchange=e=>{editNodeId=e.target.value;syncNode()};
  for(const [id,k] of [['nodeX','x'],['nodeY','y'],['nodeW','w'],['nodeH','h']])$(id).onchange=e=>{const n=nodeCatalog.find(n=>n.id===editNodeId),v=Number(e.target.value);if(!n||!Number.isFinite(v)){syncNode();return}const p={...nodeValue(n)};p[k]=k==='x'||k==='y'?clamp(v*unitsPerMm(),-10000,10000):clamp(v,10,120);frame.nodes[n.id]=p;commitFrame()};
  $('resetNode').onclick=()=>{delete frame.nodes[editNodeId];commitFrame()};
+ $('holeClearance').onchange=e=>{const v=Number(e.target.value);if(e.target.value.trim()!==''&&validClearance(v)){frame.clearanceMm=v;commitFrame()}else{syncFrame();notice('Допуск должен быть от 0 до 1 мм')}};
  $('ownershipCut').onchange=e=>{frame.cut=e.target.value;commitFrame()};
  $('resetFrame').onclick=()=>{frame.heightMm=null;frame.magnification=100;frame.xMm=0;frame.yMm=0;frame.zones=defaultFrame().zones;commitFrame()};
  $('fitBuildings').onclick=fitBuildings;
@@ -865,10 +852,11 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems()}),
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation()}),
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
+ geometry:(id)=>{const t=slots.find(x=>x.id===id);return t?physicalGeometry(t):null},
  placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }
 init();
