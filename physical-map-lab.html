@@ -353,7 +353,7 @@ function syncFold(){
  $('foldEnabled').checked=f.enabled;$('foldPreset').value=f.preset;
  for(const [id,key] of [['foldGuard','guardMm'],['foldBase','baseMm'],['foldTop','topMm'],['foldBoxW','boxW'],['foldBoxH','boxH'],['foldBoxDepth','boxDepth']])$(id).value=f[key];
  const spine=$('foldSpine');spine.replaceChildren();
- for(let i=0;i<=f.x.length;i++)spine.add(new Option(String(i+1),String(i)));
+ for(let i=0;i<=f.x.length;i++)spine.add(new Option('Колонка '+(i+1),String(i)));
  spine.value=String(f.spine);
  const controls=$('foldLineControls');controls.replaceChildren();
  for(const axis of ['x','y'])for(let i=0;i<f[axis].length;i++){
