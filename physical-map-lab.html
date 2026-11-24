@@ -59,6 +59,16 @@ button.danger{background:#51313c}
 .instructions p{margin:0 0 8px}
 #selectedInfo{padding:10px;background:#233647;border-radius:8px;font-size:12px;line-height:1.5}
 .file-label{display:inline-block;color:#f0f6fa;background:#203447;border:1px solid #4c6373;border-radius:8px;padding:9px 10px;cursor:pointer}
+#projectSelect,#labMode{width:100%;max-width:100%;font-size:12px}
+#projectPreview{background:#202f3f;border:1px solid #3c5365;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;white-space:pre-line}
+#selectedInfo{white-space:pre-line}
+#mapSvg.build-mode .slot{cursor:pointer}
+#mapSvg.build-mode .slot.build-available .tile{stroke:#149e7f;stroke-width:4}
+#mapSvg .slot .owner-mark{stroke:#fff;stroke-width:1.3}
+#mapSvg .slot .tile-title{fill:#263746;font-weight:700}
+#mapSvg .slot .tile-stat{fill:#3d4850;font-weight:600}
+#mapSvg .slot .tile-chip{stroke:#6c5941;stroke-width:.5}
+
 @media(max-width:900px){.workspace{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid #344456}.map-scroll{min-height:520px}}
 </style>
 </head>
@@ -70,7 +80,7 @@ button.danger{background:#51313c}
 <div class="workspace">
 <aside>
 <section class="instructions">
-<p><b>Как работать:</b> выбери район и перетаскивай квадраты мышкой или пальцем. Двигать можно свободно — выход за границу и наложения подсвечиваются красным, но не блокируются.</p>
+<p><b>Расстановка:</b> перетаскивай квадраты в режиме «Размещать слоты». <b>Строительство:</b> выбери проект и цвет игрока, включи «Строить тайлы» и щёлкни свободное место на карте.</p><p>Это визуальный тест. Он не расходует деньги и рабочих, не рассчитывает маршруты и не меняет основную игру.</p>
 <p><b>Передать расстановку:</b> нажми «Скачать JSON» и прикрепи полученный файл в чат. Файл содержит координаты всех мест, не только снимок экрана.</p>
 <p><b>Важно:</b> масштаб карты — гипотеза физической печати; на экране 40 мм не означает 40 экранных миллиметров.</p>
 </section>
@@ -87,13 +97,24 @@ button.danger{background:#51313c}
 <div class="legend"><span><i class="swatch" style="background:#d6dfdf"></i>пусто</span><span><i class="swatch" style="background:#cba767"></i>стройка</span><span><i class="swatch" style="background:#f0dfbd"></i>готово</span><span><i class="swatch" style="background:#ee5446"></i>ошибка</span></div>
 </section>
 <section>
+<h2>Режимы</h2>
+<div class="field"><label for="labMode">На карте</label><select id="labMode"><option value="layout">Размещать слоты</option><option value="build">Строить тайлы</option></select></div>
+<div class="controls"><button id="loadAuthorLayout">Восстановить авторскую схему 110 см</button></div>
 <h2>Редактирование</h2>
 <div class="field"><label for="focusDistrict">Район</label><select id="focusDistrict"></select></div>
 <div id="selectedInfo">Выбери квадрат на карте.</div>
+<section>
+<h2>Тест зданий на тайлах</h2>
+<div class="field"><label for="ownerSelect">Игрок</label><select id="ownerSelect"><option value="0">Синий</option><option value="1">Красный</option><option value="2">Зелёный</option><option value="3">Фиолетовый</option><option value="4">Жёлтый</option></select></div>
+<label for="projectSelect" class="sub">Здание из настоящего игрового каталога</label>
+<select id="projectSelect"></select>
+<div id="projectPreview">Загрузка проектов…</div>
 <div class="controls">
-<button id="markBuilding">Начать стройку</button><button id="markComplete">Готово</button><button id="markEmpty">Освободить</button>
+<button id="markBuilding" class="primary">Начать стройку</button><button id="deliverOne">Привезти 1 материал</button><button id="deliverAll">Привезти все материалы</button><button id="markComplete">Перевернуть тайл</button><button id="markEmpty">Освободить</button>
 </div>
-<p class="sub">Стрелки клавиатуры передвигают выбранный слот на 1 мм; Shift + стрелка — на 5 мм. Сдвиг не меняет действующую игровую механику.</p>
+<small>Тестовая доставка добавляет требуемые материалы по порядку. Последний кубик переворачивает тайл. Это не моделирование игровой вместимости, стоимости или маршрута. Цветной угол — временное обозначение владельца.</small>
+</section>
+<p class="sub">Стрелки перемещают выбранный квадрат на 1 мм (Shift — 5 мм) только в режиме расстановки слотов.</p>
 <div class="controls"><button id="seedDistrict">Авторазместить район</button><button id="seedAll" class="danger">Сбросить все места</button></div>
 <div class="controls"><button id="fillAll">Показать полную застройку</button><button id="emptyAll">Показать пустые</button></div>
 </section>
@@ -106,7 +127,7 @@ button.danger{background:#51313c}
 <div class="controls"><button id="download" class="primary">Скачать JSON</button><button id="copyJson">Копировать JSON</button></div>
 <div class="controls"><label class="file-label">Загрузить JSON <input id="loadFile" type="file" accept="application/json,.json" hidden></label><button id="applyJson">Применить JSON ниже</button></div>
 <textarea id="jsonArea" aria-label="Импорт и экспорт JSON" placeholder="Сюда можно вставить сохранённый JSON, затем нажать «Применить»."></textarea>
-<p class="sub">Координаты сохраняются автоматически только в этом браузере, отдельным ключом лаборатории. Экспортируй JSON перед сменой устройства или браузера.</p>
+<p class="sub">JSON сохраняет все 79 координат и, при наличии, тестовые здания. Старые файлы только с координатами можно загружать без изменений. Автосохранение работает в этом браузере, поэтому экспортируй JSON перед сменой устройства.</p>
 </section>
 </aside>
 <main class="map-panel">
@@ -148,11 +169,13 @@ const DISTRICTS=[{"id":"presidio","name":"Presidio","slots":0},{"id":"marina","n
 const TOTAL=DISTRICTS.reduce((sum,d)=>sum+d.slots,0);
 const TILE_MM=40,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
+const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
+let projectCatalog=[],projectById=new Map(),mode='layout';
 const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45'];
 const $=id=>document.getElementById(id);
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const round=x=>Math.round(x*1000)/1000;
-let boardWidthMm=800,zoom=80,selectedDistrict='innersunset',selectedId='innersunset-1',slots=[],drag=null,busy=false;
+let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersunset-1',slots=[],drag=null;
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 function sizeSvg(){return VB_WIDTH*TILE_MM/boardWidthMm}
 function gapSvg(){return VB_WIDTH*GAP_MM/boardWidthMm}
@@ -227,34 +250,64 @@ function element(tag,attrs={},text){
  if(text!==undefined)el.textContent=String(text);
  return el;
 }
+function compactLines(name){
+ const words=String(name||'').split(/\s+/).filter(Boolean),out=['',''];
+ for(const w of words){
+  const idx=out[0].length<11?0:1;
+  if(out[idx].length+w.length+(out[idx]?1:0)<=16)out[idx]+=(out[idx]?' ':'')+w;
+  else if(idx===0)out[1]=w.slice(0,15);
+  else out[1]=out[1].slice(0,14)+'…';
+ }
+ return out;
+}
+function drawTile(g,t,s){
+ if(t.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.29},t.n));return}
+ const p=projectById.get(t.projectId),title=p?.name||'Тестовое здание';
+ g.append(element('rect',{x:s*.045,y:s*.04,width:s*.91,height:s*.15,rx:2,fill:t.status==='complete'?'#c9b99b':'#a78c61'}));
+ const [line1,line2]=compactLines(title),font=s*(line2.length>=14?.105:.123);
+ g.append(element('text',{x:s*.48,y:s*.34,'font-size':font,class:'tile-title'},line1));
+ if(line2)g.append(element('text',{x:s*.48,y:s*.49,'font-size':font,class:'tile-title'},line2));
+ if(p&&t.status==='under'){
+  g.append(element('text',{x:s*.48,y:s*.67,'font-size':s*.135,class:'tile-stat'},(t.delivered?.length||0)+' / '+p.materials.length+' · стройка'));
+  (t.delivered||[]).slice(0,5).forEach((m,i)=>{
+   const x=s*(.08+i*.175),code=m==='Lumber'?'Д':m==='Masonry'?'К':'С';
+   g.append(element('rect',{x,y:s*.75,width:s*.148,height:s*.15,rx:1,fill:'#e4aa5f',class:'tile-chip'}));
+   g.append(element('text',{x:x+s*.073,y:s*.858,'font-size':s*.107,class:'tile-stat'},code));
+  });
+ }else if(p){
+  g.append(element('text',{x:s*.48,y:s*.67,'font-size':s*.132,class:'tile-stat'},'Income '+(p.income>=0?'+':'')+p.income+' · VP '+p.prestige));
+  g.append(element('text',{x:s*.48,y:s*.85,'font-size':s*.133,class:'tile-stat'},p.actionName&&p.actionName!=='—'?'● действие':'✓ готово'));
+ }else{
+  g.append(element('text',{x:s*.48,y:s*.79,'font-size':s*.145,class:'tile-stat'},t.status==='complete'?'✓ готово':'стройка'));
+ }
+ g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
+}
 function render(){
- const s=sizeSvg(),problem=validation(),layer=$('slotLayer');
- const frag=document.createDocumentFragment();
+ const s=sizeSvg(),problem=validation(),layer=$('slotLayer'),frag=document.createDocumentFragment();
  for(const t of slots){
   const bad=problem.flag.has(t.id),sel=t.id===selectedId;
-  const g=element('g',{transform:'translate('+t.x+' '+t.y+')','data-slot-id':t.id,class:'slot'+(bad?' problem':'')+(sel?' selected':'')});
-  const rect=element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')});
-  const label=t.districtId==='innersunset'||t.districtId==='civic'?t.n:String(t.n);
-  g.append(rect,element('text',{x:s/2,y:s*.52,'font-size':s*.28},label));
-  if(t.status!=='empty'){
-   g.append(element('rect',{x:s*.77,y:s*.055,width:s*.16,height:s*.16,rx:s*.02,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
-   if(t.status==='under'){g.append(element('text',{x:s*.5,y:s*.77,'font-size':s*.16},'СТР'))}
-   if(t.status==='complete'){g.append(element('text',{x:s*.5,y:s*.77,'font-size':s*.16},'✓'))}
-  }
-  const desc=element('title',{},t.districtId+' · место '+t.n+' · '+({empty:'свободно',under:'стройка',complete:'готово'}[t.status])+(bad?' · проблема размещения':''));
-  g.append(desc);frag.append(g);
+  const g=element('g',{transform:'translate('+t.x+' '+t.y+')','data-slot-id':t.id,class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
+  g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
+  drawTile(g,t,s);
+  const p=projectById.get(t.projectId);
+  g.append(element('title',{},(p?.name||'Свободный участок')+' · '+t.districtId+' №'+t.n+' · '+t.status+(bad?' · пересечение/граница':'')));
+  frag.append(g);
  }
  layer.replaceChildren(frag);
+ $('mapSvg').classList.toggle('build-mode',mode==='build');
  for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
+ const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardWidthMm/15)+' см<br>'+
-   '<b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
+   '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardWidthMm/15)+' см · тайл '+TILE_MM+' мм · зазор '+GAP_MM+' мм';
  $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
  for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
  $('focusDistrict').value=selectedDistrict;
- const selected=slots.find(t=>t.id===selectedId);
- $('selectedInfo').textContent=selected?('Участок '+selected.id+' · '+({empty:'свободен',under:'строится',complete:'готов'}[selected.status])+' · позиция '+round(selected.x/VB_WIDTH*boardWidthMm)+' × '+round(selected.y/VB_WIDTH*boardWidthMm)+' мм · '+(problem.flag.has(selected.id)?'⚠ конфликт/граница':'без выявленных проблем')):'Выбери слот';
+ const t=slots.find(x=>x.id===selectedId),p=projectById.get(t?.projectId);
+ $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[t.status])+
+  (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
+  '\nКоординаты: '+round(t.x/VB_WIDTH*boardWidthMm)+' × '+round(t.y/VB_WIDTH*boardWidthMm)+' мм'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери квадрат';
 }
 function persist(){
  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(snapshot()))}catch(e){notice('Не удалось сохранить в браузере: '+e.message)}
@@ -262,7 +315,11 @@ function persist(){
 function notice(msg){$('notice').textContent=msg}
 function snapshot(){
  const districts={};
- for(const d of DISTRICTS)if(d.slots)districts[d.id]=slots.filter(x=>x.districtId===d.id).sort((a,b)=>a.n-b.n).map(t=>({slot:t.n,x:round(t.x),y:round(t.y),status:t.status,owner:t.owner}));
+ for(const d of DISTRICTS)if(d.slots)districts[d.id]=slots.filter(x=>x.districtId===d.id).sort((a,b)=>a.n-b.n).map(t=>({
+ slot:t.n,x:round(t.x),y:round(t.y),status:t.status,owner:t.owner,
+ ...(t.projectId?{projectId:t.projectId}:{}),
+ ...(t.delivered?.length?{delivered:[...t.delivered]}:{})
+}));
  return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,districts};
 }
 function applySnapshot(data){
@@ -275,7 +332,13 @@ function applySnapshot(data){
   for(const item of array){
    if(!Number.isInteger(item.slot)||item.slot<1||item.slot>d.slots||unique.has(item.slot)||!Number.isFinite(item.x)||!Number.isFinite(item.y)||Math.abs(item.x)>10000||Math.abs(item.y)>10000)throw Error('Некорректные координаты или дубли в '+d.id);
    unique.add(item.slot);
-   next.push({id:d.id+'-'+item.slot,districtId:d.id,n:item.slot,x:item.x,y:item.y,status:['empty','under','complete'].includes(item.status)?item.status:'empty',owner:Number.isInteger(item.owner)?clamp(item.owner,0,4):0});
+   const project=projectById.get(item.projectId);
+   const delivered=(Array.isArray(item.delivered)&&project&&item.status==='under'&&item.delivered.length<=project.materials.length&&
+     item.delivered.every((m,i)=>m===project.materials[i]))?[...item.delivered]:[];
+   next.push({id:d.id+'-'+item.slot,districtId:d.id,n:item.slot,x:item.x,y:item.y,
+      status:['empty','under','complete'].includes(item.status)?item.status:'empty',
+      owner:Number.isInteger(item.owner)?clamp(item.owner,0,4):0,
+      projectId:project?.id||null,delivered});
   }
  }
  boardWidthMm=data.boardWidthMm;slots=next;
@@ -312,11 +375,55 @@ function initList(){
  }
  $('focusDistrict').addEventListener('change',e=>selectDistrict(e.target.value));
 }
-function init(){
- initList();
+async function loadAuthorLayout(){
+ const res=await fetch(AUTHOR_LAYOUT_URL,{cache:'no-store'});
+ if(!res.ok)throw Error('Ошибка загрузки авторской схемы: '+res.status);
+ applySnapshot(await res.json());
+}
+async function initCatalog(){
+ const data=await import('./game-core.js');
+ projectCatalog=[...data.PROJECTS,...data.STANDARD_PROJECTS];
+ projectById=new Map(projectCatalog.map(p=>[p.id,p]));
+ const market=document.createElement('optgroup');market.label='Рыночные проекты';
+ const standard=document.createElement('optgroup');standard.label='Стандартные проекты';
+ for(const p of projectCatalog)(p.standard?standard:market).append(new Option(p.name,p.id));
+ $('projectSelect').append(market,standard);
+ $('projectSelect').value=projectCatalog[0]?.id||'';
+ $('projectSelect').addEventListener('change',projectPreview);
+ projectPreview();
+}
+function projectPreview(){
+ const p=projectById.get($('projectSelect').value);
+ $('projectPreview').textContent=p?p.name+' · '+p.types.join(' + ')+
+ '\nМатериалы: '+p.materials.join(', ')+
+ '\nНачальная ставка: $'+p.open+' · Income: '+p.income+' · VP: '+p.prestige+
+ '\nЭффект: '+p.effect+
+ (p.actionName&&p.actionName!=='—'?'\nДействие: '+p.actionName:'')
+ :'Проект не выбран';
+}
+function placeProject(t=activeSlot()){
+ if(!t||t.status!=='empty'){notice('Выбери свободный слот');return false}
+ const p=projectById.get($('projectSelect').value);
+ if(!p){notice('Проект не найден');return false}
+ t.projectId=p.id;t.owner=Number($('ownerSelect').value);t.status='under';t.delivered=[];
+ persist();render();notice('Тестовая стройка: '+p.name);return true;
+}
+function supplyMaterial(all=false){
+ const t=activeSlot(),p=projectById.get(t?.projectId);
+ if(!t||t.status!=='under'||!p){notice('Выбери стройку с проектом');return false}
+ const count=t.delivered?.length||0;
+ if(count>=p.materials.length)return false;
+ t.delivered=p.materials.slice(0,all?p.materials.length:count+1);
+ if(t.delivered.length>=p.materials.length){t.status='complete';t.delivered=[];notice('Последняя условная поставка — тайл перевёрнут (без игровых выплат)')}
+ else notice('Материал доставлен: '+t.delivered.length+'/'+p.materials.length);
+ persist();render();return true;
+}
+async function init(){
+ initList();await initCatalog();
  let restored=false;
  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){applySnapshot(JSON.parse(raw));restored=true}}catch(e){notice('Старое сохранение не загружено: '+e.message)}
- if(!restored){autoAll();persist();render()}
+ if(!restored){try{await loadAuthorLayout();notice('Открыта авторская расстановка 110 см')}
+  catch(e){autoAll();persist();render();notice('Авторская схема недоступна: показан черновой автогрид')}}
  updateScale();
  $('boardWidth').addEventListener('change',e=>{
    const n=Number(e.target.value)*10;if(!Number.isFinite(n))return;
@@ -334,6 +441,7 @@ function init(){
    const t=slots.find(s=>s.id===g.dataset.slotId),point=mapPoint(e);
    if(!t||!point)return;
    selectedId=t.id;selectedDistrict=t.districtId;
+   if(mode==='build'){if(t.status==='empty')placeProject(t);else render();e.preventDefault();return}
    drag={pointerId:e.pointerId,id:t.id,offsetX:t.x-point.x,offsetY:t.y-point.y};
    svg.setPointerCapture(e.pointerId);svg.style.cursor='grabbing';render();e.preventDefault();
  });
@@ -347,19 +455,25 @@ function init(){
  function finish(e){if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
  svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
  window.addEventListener('keydown',e=>{
-  if(['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement?.tagName))return;
+  if(mode!=='layout'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement?.tagName))return;
   const dir={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
   const t=activeSlot();if(!dir||!t)return;
   const mm=e.shiftKey?5:1,delta=VB_WIDTH*mm/boardWidthMm;
   t.x=round(t.x+dir[0]*delta);t.y=round(t.y+dir[1]*delta);
   persist();render();e.preventDefault();
  });
- const status=(mode)=>{const t=activeSlot();if(!t)return;t.status=mode;persist();render()};
- $('markBuilding').onclick=()=>status('under');$('markComplete').onclick=()=>status('complete');$('markEmpty').onclick=()=>status('empty');
+ $('labMode').onchange=e=>{mode=e.target.value;drag=null;render();notice(mode==='build'?'Нажми на пустой квадрат, чтобы начать стройку':'Теперь квадраты можно перетаскивать')};
+ $('loadAuthorLayout').onclick=async()=>{if(!confirm('Восстановить авторскую схему? Текущая расстановка и тестовые здания заменятся — сначала экспортируй JSON.'))return;
+  try{await loadAuthorLayout();notice('Авторская геометрия восстановлена')}catch(e){notice(e.message)}};
+ $('markBuilding').onclick=()=>placeProject();
+ $('deliverOne').onclick=()=>supplyMaterial(false);
+ $('deliverAll').onclick=()=>supplyMaterial(true);
+ $('markComplete').onclick=()=>{const t=activeSlot();if(!t||t.status!=='under'){notice('Нужно сначала начать стройку');return;}t.status='complete';t.delivered=[];persist();render();notice('Тайл перевёрнут (визуальный тест)')};
+ $('markEmpty').onclick=()=>{const t=activeSlot();if(!t)return;t.status='empty';t.projectId=null;t.delivered=[];persist();render();notice('Место освобождено')};
  $('seedDistrict').onclick=()=>{if(confirm('Заменить вручную выбранные координаты в районе '+selectedDistrict+'?')){autoDistrict(selectedDistrict);persist();render();notice('Район авторазмещён как черновик')}};
  $('seedAll').onclick=()=>{if(confirm('Сбросить все 79 позиций? Все ручные перемещения в браузере будут потеряны. Сначала скачай JSON, если они нужны.')){autoAll();persist();render();notice('Все районы авторазмещены заново')}};
- $('fillAll').onclick=()=>{for(const t of slots)t.status='complete';persist();render();notice('Показана тестовая полная застройка — реальная игра не менялась')};
- $('emptyAll').onclick=()=>{for(const t of slots)t.status='empty';persist();render()};
+ $('fillAll').onclick=()=>{for(const t of slots){t.status='complete';t.projectId=$('projectSelect').value;t.owner=t.n%COLORS.length;t.delivered=[]}persist();render();notice('Показана полная застройка выбранным типом для теста')};
+ $('emptyAll').onclick=()=>{for(const t of slots){t.status='empty';t.projectId=null;t.delivered=[]}persist();render()};
  $('download').onclick=()=>{
    const json=JSON.stringify(snapshot(),null,2),blob=new Blob([json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='sf1906-slot-layout-40mm.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -376,7 +490,7 @@ function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),selectDistrict,slots:()=>slots.map(x=>({...x}))};
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),selectDistrict,slots:()=>slots.map(x=>({...x})),placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }
 init();
 </script>
