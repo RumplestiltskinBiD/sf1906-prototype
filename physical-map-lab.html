@@ -103,9 +103,13 @@ button.danger{background:#51313c}
 #districtLabels text{fill:#233e43;font-size:14px;font-weight:700;text-anchor:middle;paint-order:stroke;stroke:#e3e9dc;stroke-width:3px;pointer-events:none}
 #vertexLayer circle{fill:#fff;stroke:#137c93;stroke-width:2;cursor:move;vector-effect:non-scaling-stroke}
 #frameZones,#foldLayer{pointer-events:none}
-#foldEditor input[type=number]{max-width:100px;background:#081521;color:#e9eff4;border:1px solid #526475;border-radius:5px;padding:6px}
+#foldEditor input[type=number],#manufacturingEditor input[type=number]{max-width:100px;background:#081521;color:#e9eff4;border:1px solid #526475;border-radius:5px;padding:6px}
 #foldSummary{white-space:pre-line;line-height:1.5}
 #foldSummary.warning{color:#ffc0b8}
+#manufacturingSummary,#materialSummary{white-space:pre-line;line-height:1.5;overflow-wrap:anywhere}
+#manufacturingSummary.warning{color:#ffc0b8}
+#manufacturingDetails{max-height:270px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+#mapSvg .slot .slot-hole.manufacturing-warning,#mapSvg #nodeLayer .node.manufacturing-warning rect{stroke:#d84783;stroke-width:3;vector-effect:non-scaling-stroke}
 #foldLayer .fold-hinge{stroke:#925d18;stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
 #foldLayer .fold-cut{stroke:#a32935;stroke-width:2;vector-effect:non-scaling-stroke}
 #foldLayer .fold-overlay{fill:none;stroke:#417e73;stroke-dasharray:3 4;stroke-width:1;vector-effect:non-scaling-stroke}
@@ -145,7 +149,7 @@ button.danger{background:#51313c}
 <h2>Посадочное отверстие</h2>
 <div class="field"><label for="holeClearance">Допуск на грань, мм</label><input id="holeClearance" type="number" min="0" max="1" step="0.1" value="0.5"></div>
 <p class="sub" id="holeDimensions"></p>
-<p class="sub">Сплошной внешний контур — отверстие, пунктир внутри пустого места — габарит тайла. Допуск отсчитывается перпендикулярно грани. Нулевой допуск — только для сравнения. Проверка сгибов — в разделе «Складное поле». Производственные перемычки — следующий этап.</p>
+<p class="sub">Сплошной внешний контур — отверстие, пунктир внутри пустого места — габарит тайла. Допуск отсчитывается перпендикулярно грани. Нулевой допуск — только для сравнения. Проверка сгибов — в разделе «Складное поле». Производственные перемычки — в разделе производственных ограничений.</p>
 </section>
 <section id="boardEditor">
 <h2>Композиция поля</h2>
@@ -176,6 +180,28 @@ button.danger{background:#51313c}
 <div class="field"><label for="foldBoxDepth">Доступная высота под поле, мм</label><input id="foldBoxDepth" type="number" min="10" max="200" step="1"></div>
 <p id="foldSummary" class="sub" role="status"></p>
 <p class="sub">Пунктир охры — шарниры; красная сплошная — разрезы; полосы — защита; зелёный пунктир — границы верхних накладок. Размеры линий отсчитываются от края рамки. Все панели соединены по дереву шарниров. Это номинальная схема, а не проверенная кинематика или чертёж фабрики. При неравных панелях размеры стопки не гарантированы.</p>
+</div>
+<div id="manufacturingEditor">
+<h2>Производственные ограничения · эксперимент</h2>
+<p class="sub">6 мм — предварительная проверка, не утверждённая норма для двухслойного поля. Отдельно проверяем отверстия, а не только габариты тайлов.</p>
+<div class="field"><label for="manufacturingHighlight">Подсветить риски на карте (розовый)</label><input type="checkbox" id="manufacturingHighlight"></div>
+<div class="field"><label for="mfgWeb">Перемычка отверстие–отверстие, мм</label><input type="number" id="mfgWeb" min="0" max="20" step="0.5"></div>
+<div class="field"><label for="mfgEdge">До края поля / верхней накладки, мм</label><input type="number" id="mfgEdge" min="0" max="20" step="0.5"></div>
+<div class="field"><label for="mfgNodeGap">Зазор до площадок логистики, мм</label><input type="number" id="mfgNodeGap" min="0" max="20" step="0.5"></div>
+<p class="sub">При включённых швах край верхней накладки учитывает защитную полосу, плюс этот отступ. Логистика — зоны компонентов, не обязательно высечка. Проверяются и скрытые зоны.</p>
+<p id="manufacturingSummary" class="sub" role="status"></p>
+<details><summary>Проблемные пары и расстояния</summary><pre id="manufacturingDetails"></pre></details>
+<h2>Картон и вес · расчёт</h2>
+<div class="field"><label for="mfgDensity">Плотность картона, кг/м³</label><input type="number" id="mfgDensity" min="400" max="1200" step="10"></div>
+<div class="field"><label for="mfgTileThickness">Толщина тайла, мм</label><input type="number" id="mfgTileThickness" min="1" max="3" step="0.1"></div>
+<div class="field"><label for="mfgTileCount">Тайлов в комплекте (гипотеза)</label><input type="number" id="mfgTileCount" min="1" max="500" step="1"></div>
+<div class="field"><label for="mfgSheetW">Лист высечки, ширина, мм</label><input type="number" id="mfgSheetW" min="100" max="600" step="1"></div>
+<div class="field"><label for="mfgSheetH">Лист высечки, высота, мм</label><input type="number" id="mfgSheetH" min="100" max="600" step="1"></div>
+<div class="field"><label for="mfgSheetWeb">Лист: между ножами, мм</label><input type="number" id="mfgSheetWeb" min="0" max="20" step="0.5"></div>
+<div class="field"><label for="mfgSheetEdge">Лист: от края, мм</label><input type="number" id="mfgSheetEdge" min="0" max="25" step="0.5"></div>
+<p id="materialSummary" class="sub" role="status"></p>
+<p class="sub">Толщина основания и накладки — в разделе складывания. Вес без печати, клея, шарниров и упаковки. Расход листов — консервативные прямоугольные ячейки одного контура, без оптимизации гексами. 110 тайлов — гипотеза, не утверждённый BOM. При выключенных швах расчёт цельной накладки. При пересечении отверстий точный нетто-вес не выводится. Это не котировка.</p>
+<button id="resetManufacturing" type="button">Сброс производственных настроек</button>
 </div>
 <h2>Контуры районов</h2>
 <div class="field"><label for="editDistrict">Район (все 21)</label><select id="editDistrict"></select></div>
@@ -287,6 +313,7 @@ button.danger{background:#51313c}
 <script type="module">
 import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
 import {defaultFold,readFold,changeFoldPreset,foldLayout,foldConflicts} from './physical-map-folds.js';
+import {DEFAULT_MANUFACTURING,MANUFACTURING_FIELDS,readManufacturing,manufacturingDiagnostics,tileMaterial} from './physical-map-manufacturing.js';
 'use strict';
 const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
@@ -302,7 +329,7 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
-const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM,fold:defaultFold()});
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM,fold:defaultFold(),manufacturing:readManufacturing()});
 let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
@@ -330,7 +357,7 @@ function readFrame(data){
   f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
  }
  if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
- f.cut=data.cut??'corner';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);f.fold=readFold(data.fold);return f;
+ f.cut=data.cut??'corner';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);f.fold=readFold(data.fold);f.manufacturing=readManufacturing(data.manufacturing);return f;
 }
 function syncFrame(){
  $('boardWidthExact').value=round(boardWidthMm/10);$('boardHeightExact').value=round(boardHeight()/10);
@@ -338,7 +365,7 @@ function syncFrame(){
  $('mapBackground').value=frame.background;$('showLabels').checked=frame.labels;
  for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).value=frame.zones[k];
  $('showNodes').checked=frame.showNodes;syncNode();
- syncFold();$('holeClearance').value=frame.clearanceMm;$('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
+ syncFold();syncManufacturing();$('holeClearance').value=frame.clearanceMm;$('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
 }
 function currentFold(){return foldLayout(boardWidthMm,boardHeight(),frame.fold)}
 function foldDiagnostics(){
@@ -347,6 +374,53 @@ function foldDiagnostics(){
  // Include all infrastructure regardless of whether the layer is shown.
  const conflicts=foldConflicts(layout,[...slots.map(t=>({id:t.id,kind:'slot',polygon:mm(worldVertices(t))})),...nodeCatalog.map(n=>({id:n.id,kind:'node',polygon:mm(nodePoly(n))}))]);
  return {layout,conflicts};
+}
+const manufacturingControls=[['mfgWeb','webMm'],['mfgEdge','edgeMm'],['mfgNodeGap','nodeGapMm'],['mfgDensity','density'],['mfgTileThickness','tileThicknessMm'],['mfgTileCount','tileCount'],['mfgSheetW','sheetW'],['mfgSheetH','sheetH'],['mfgSheetWeb','sheetWebMm'],['mfgSheetEdge','sheetEdgeMm']];
+function syncManufacturing(){
+ $('manufacturingHighlight').checked=frame.manufacturing.highlight;
+ for(const [id,key] of manufacturingControls)$(id).value=frame.manufacturing[key];
+}
+function applyManufacturing(next){try{frame.manufacturing=readManufacturing(next);syncManufacturing();persist();render()}catch(e){syncManufacturing();notice(e.message)}}
+function currentManufacturing(folds=foldDiagnostics()){
+ const v=viewport(),u=unitsPerMm(),mm=polygon=>polygon.map(p=>({x:(p.x-v.x)/u,y:(p.y-v.y)/u}));
+ const result=manufacturingDiagnostics({width:boardWidthMm,height:boardHeight(),layout:folds.layout,zones:frame.zones,config:frame.manufacturing,
+ entries:slots.map(t=>({id:t.id,polygon:mm(worldVertices(t))})),nodes:nodeCatalog.map(n=>({id:n.id,polygon:mm(nodePoly(n))}))});
+ const tiles=tileMaterial({shape:tileShape,sizeMm:tileSizesMm[tileShape],cut:frame.cut,cutMm:frame.cornerMm,config:frame.manufacturing});
+ return {...result,foldConflicts:folds.conflicts,tiles,boardAndTilesG:result.boardMaterial.netG===null?null:result.boardMaterial.netG+tiles.netG};
+}
+function renderManufacturing(report){
+ const f=frame.manufacturing,fmt=v=>v===null?'—':round(v)+' мм',area=v=>v===null?'—':(v/1e6).toFixed(3)+' м²',mass=v=>v===null?'—':round(v)+' г';
+ const b=report.boardMaterial,t=report.tiles,seamSlots=report.foldConflicts.filter(x=>x.kind==='slot'),seamNodes=report.foldConflicts.filter(x=>x.kind==='node');
+ const bad=report.badSlots.length||report.badNodes.length||report.foldConflicts.length;
+ $('manufacturingSummary').textContent=[
+  'Перемычки < '+f.webMm+' мм / касания: '+report.pairs.length+' пар · минимум '+fmt(report.minimumWebMm),
+  'До края поля: '+report.edges.length+' мест · минимум '+fmt(report.minimumEdgeMm),
+  'До края накладки: '+(frame.fold.enabled?report.panelEdges.length+' мест · минимум '+fmt(report.minimumPanelEdgeMm):'швы выключены'),
+  'Резервные зоны: '+report.reserves.length+' мест · '+report.nodeReserves.length+' логистических площадок',
+  'Швы: '+(frame.fold.enabled?seamSlots.length+' мест · '+seamNodes.length+' площадок':'проверка выключена'),
+  'Логистика: '+report.logistics.length+' пар с отверстиями · '+report.nodePairs.length+' пар площадок · '+report.nodeEdges.length+' у края',
+  bad?'Есть риски по выбранным порогам.':'По активным проверкам рисков не найдено; это не допуск к производству.'
+ ].join('\n');
+ $('manufacturingSummary').classList.toggle('warning',!!bad);
+ const pairs=(title,rows)=>rows.length?[title,...rows.map(p=>p.ids.join(' ↔ ')+' : '+fmt(p.distanceMm)+(p.overlap?' (пересечение)':''))]:[];
+ const single=(title,rows)=>rows.length?[title,...rows.map(p=>p.id+(p.panel?' / '+p.panel:'')+' : '+fmt(p.distanceMm))]:[];
+ $('manufacturingDetails').textContent=[
+ ...pairs('Между отверстиями',report.pairs),...single('Край поля',report.edges),...single('Край накладки',report.panelEdges),
+ ...pairs('Отверстия / логистика',report.logistics),...pairs('Площадки логистики',report.nodePairs),...single('Край / логистика',report.nodeEdges),
+ ...(report.reserves.length||report.nodeReserves.length?['Резервы: '+[...report.reserves,...report.nodeReserves].join(', ')]:[]),
+ ...report.foldConflicts.map(p=>p.id+' / швы: '+p.seamIds.join(', '))
+ ].join('\n')||'Нет конфликтов по активным проверкам.';
+ $('materialSummary').textContent=[
+ 'Основание: '+area(b.grossBaseMm2)+' · '+mass(b.baseG),
+ 'Верх до высечки: '+area(b.grossTopMm2)+' · '+mass(b.grossTopG),
+ 'Верх после высечки: '+area(b.topNetMm2)+' · '+mass(b.netTopG),
+ 'Картон поля до высечки: '+mass(b.grossG),
+ 'Картон поля нетто: '+mass(b.netG)+(b.netG===null?' (пересечение отверстий)':''),
+ 'Тайлы ('+f.tileCount+' шт.): '+mass(t.netG)+(t.exact?'':' (верхняя оценка без V-среза)'),
+ 'Листы тайлов: '+(t.sheets===null?'тайл не помещается':t.sheets+' × '+t.perSheet+' мест · '+area(t.grossMm2)+' · '+mass(t.grossG)),
+ 'Поле + тайлы нетто: '+mass(report.boardAndTilesG),
+ 'Поле + листы до высечки: '+mass(t.grossG===null?null:b.grossG+t.grossG)
+ ].join('\n');
 }
 function syncFold(){
  const f=frame.fold;
@@ -403,19 +477,19 @@ function nodeProblems(){if(!frame.showNodes)return {edge:[],reserved:[],collisio
   for(let j=0;j<i;j++)if(polygonOverlap(p,polys[j])){collisions.add(id);collisions.add(nodeCatalog[j].id)}
  }return {edge,reserved,collisions:[...collisions]};
 }
-function renderNodes(foldBad=new Set()){
+function renderNodes(foldBad=new Set(),manufacturingBad=new Set()){
  const layer=$('nodeLayer');layer.replaceChildren();layer.style.pointerEvents=mode==='layout'?'':'none';if(!frame.showNodes)return;
  const issues=nodeProblems(),bad=new Set([...issues.edge,...issues.reserved,...issues.collisions]);
  for(const n of nodeCatalog){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u,h=p.h*u;
-  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')+(foldBad.has(n.id)?' fold-conflict':'')});
+  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')+(foldBad.has(n.id)?' fold-conflict':'')+(manufacturingBad.has(n.id)?' manufacturing-warning':'')});
   g.append(element('rect',{x:p.x-w/2,y:p.y-h/2,width:w,height:h,rx:2}));
   g.append(element('text',{x:p.x,y:p.y,'font-size':Math.min(u*3.4,w/Math.max(5,n.shortName.length)*1.4)},n.shortName));
   g.append(element('title',{},n.name+' · '+n.districtId));layer.append(g);
  }
 }
-function renderBoardParts(folds){
+function renderBoardParts(folds,manufacturingBadNodes){
  const labelLayer=$('districtLabels'),vertices=$('vertexLayer'),zones=$('frameZones');
- labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes(new Set(folds.conflicts.filter(c=>c.kind==='node').map(c=>c.id)));renderFold(folds);
+ labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes(new Set(folds.conflicts.filter(c=>c.kind==='node').map(c=>c.id)),manufacturingBadNodes);renderFold(folds);
  if(frame.background==='schematic'&&frame.labels)for(const d of DISTRICTS){const b=pathById[d.id].getBBox();labelLayer.append(element('text',{x:b.x+b.width/2,y:b.y+15},d.name))}
  if($('editVertices').checked)contourPoints(editId).forEach(([x,y],i)=>vertices.append(element('circle',{cx:x,cy:y,r:5,'data-vertex':i})));
  const v=viewport(),u=unitsPerMm(),z=frame.zones;
@@ -643,7 +717,7 @@ function drawTile(g,t,s){
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
- const folds=foldDiagnostics(),foldBad=new Set(folds.conflicts.filter(c=>c.kind==='slot').map(c=>c.id));
+ const folds=foldDiagnostics(),foldBad=new Set(folds.conflicts.filter(c=>c.kind==='slot').map(c=>c.id)),mfg=currentManufacturing(folds),mfgBad=new Set(frame.manufacturing.highlight?mfg.badSlots:[]);
  const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),holeOutside=new Set(holes.outside),layer=$('slotLayer'),frag=document.createDocumentFragment();
  const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
@@ -653,7 +727,7 @@ function render(){
    class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
   const hole=physicalGeometry(t).hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
   // Draw the actual opening behind the tile; keep a separate nominal tile contour for empty slots.
-  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':'')+(foldBad.has(t.id)?' fold-conflict':''),'data-hole':t.id}));
+  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':'')+(foldBad.has(t.id)?' fold-conflict':'')+(mfgBad.has(t.id)?' manufacturing-warning':''),'data-hole':t.id}));
   if(!poly){
    g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
    drawTile(g,t,s);
@@ -685,7 +759,7 @@ function render(){
     ' · '+t.status+' · '+(t.rotation||0)+'°'+(bad?' · пересечение/граница':'')));
   frag.append(g);
  }
- layer.replaceChildren(frag);renderBoardParts(folds);
+ layer.replaceChildren(frag);renderBoardParts(folds,new Set(frame.manufacturing.highlight?mfg.badNodes:[]));renderManufacturing(mfg);
  $('mapSvg').classList.toggle('build-mode',mode==='build');
  for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
@@ -878,6 +952,9 @@ async function init(){
  for(const [id,k] of [['nodeX','x'],['nodeY','y'],['nodeW','w'],['nodeH','h']])$(id).onchange=e=>{const n=nodeCatalog.find(n=>n.id===editNodeId),v=Number(e.target.value);if(!n||!Number.isFinite(v)){syncNode();return}const p={...nodeValue(n)};p[k]=k==='x'||k==='y'?clamp(v*unitsPerMm(),-10000,10000):clamp(v,10,120);frame.nodes[n.id]=p;commitFrame()};
  $('resetNode').onclick=()=>{delete frame.nodes[editNodeId];commitFrame()};
  $('holeClearance').onchange=e=>{const v=Number(e.target.value);if(e.target.value.trim()!==''&&validClearance(v)){frame.clearanceMm=v;commitFrame()}else{syncFrame();notice('Допуск должен быть от 0 до 1 мм')}};
+ $('manufacturingHighlight').onchange=e=>applyManufacturing({...frame.manufacturing,highlight:e.target.checked});
+ for(const [id,key] of manufacturingControls)$(id).onchange=e=>{if(e.target.value.trim()===''){syncManufacturing();return}applyManufacturing({...frame.manufacturing,[key]:Number(e.target.value)})};
+ $('resetManufacturing').onclick=()=>applyManufacturing({...DEFAULT_MANUFACTURING});
  $('foldEnabled').onchange=e=>applyFold({...frame.fold,enabled:e.target.checked});
  $('foldPreset').onchange=e=>applyFold(changeFoldPreset(frame.fold,e.target.value));
  $('resetFoldLines').onclick=()=>applyFold(changeFoldPreset(frame.fold,frame.fold.preset));
@@ -974,7 +1051,7 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation(),folds:foldDiagnostics().conflicts}),folds:foldDiagnostics,
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation(),folds:foldDiagnostics().conflicts}),folds:foldDiagnostics,manufacturing:()=>currentManufacturing(),
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
