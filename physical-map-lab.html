@@ -81,6 +81,10 @@ button.danger{background:#51313c}
 #districtLabels text{fill:#233e43;font-size:14px;font-weight:700;text-anchor:middle;paint-order:stroke;stroke:#e3e9dc;stroke-width:3px;pointer-events:none}
 #vertexLayer circle{fill:#fff;stroke:#137c93;stroke-width:2;cursor:move;vector-effect:non-scaling-stroke}
 #frameZones{pointer-events:none}
+#nodeLayer .node{cursor:grab}
+#nodeLayer .node rect{fill:#f1e5be;stroke:#6c5632;stroke-width:1.5;vector-effect:non-scaling-stroke}
+#nodeLayer .node.problem rect{stroke:#e64e3e;stroke-width:3}
+#nodeLayer text{font-weight:700;fill:#42351f;text-anchor:middle;pointer-events:none}
 </style>
 </head>
 <body>
@@ -126,12 +130,21 @@ button.danger{background:#51313c}
 <h2>Контуры районов</h2>
 <div class="field"><label for="editDistrict">Район (все 21)</label><select id="editDistrict"></select></div>
 <div class="field"><label for="editVertices">Править вершины мышью</label><input type="checkbox" id="editVertices"></div>
-<div class="field"><label for="moveDistrictSlots">Перемещать и участки района</label><input type="checkbox" id="moveDistrictSlots" checked></div>
+<div class="field"><label for="moveDistrictSlots">Перемещать участки и логистику района</label><input type="checkbox" id="moveDistrictSlots" checked></div>
 <div class="field"><label for="districtStep">Шаг перемещения, мм</label><input id="districtStep" type="number" min="1" max="50" value="5"></div>
 <div class="controls"><button id="districtLeft">←</button><button id="districtUp">↑</button><button id="districtDown">↓</button><button id="districtRight">→</button></div>
 <div class="controls"><button id="districtNarrow">Уже −5%</button><button id="districtWider">Шире +5%</button><button id="districtShorter">Ниже −5%</button><button id="districtTaller">Выше +5%</button></div>
 <div class="controls"><button id="resetDistrict">Сброс контура района</button><button id="resetContours">Сброс всех контуров</button></div>
 <p class="sub">Редактируются только визуальные полигоны. Соседство игры неизменно; общие границы соседей автоматически не сшиваются. Сброс контура не возвращает передвинутые тайлы.</p>
+<h2>Логистика и служебные объекты</h2>
+<div class="field"><label for="showNodes">Показать площадки логистики</label><input id="showNodes" type="checkbox"></div>
+<div class="field"><label for="editNode">Объект</label><select id="editNode"></select></div>
+<div class="field"><label for="nodeX">Центр X, мм карты</label><input id="nodeX" type="number" step="1"></div>
+<div class="field"><label for="nodeY">Центр Y, мм карты</label><input id="nodeY" type="number" step="1"></div>
+<div class="field"><label for="nodeW">Ширина, мм</label><input id="nodeW" type="number" min="10" max="120" step="1"></div>
+<div class="field"><label for="nodeH">Высота, мм</label><input id="nodeH" type="number" min="10" max="120" step="1"></div>
+<div class="controls"><button id="resetNode">Сброс объекта</button></div>
+<p class="sub">Пять узлов и три нейтральных поставщика из игрового реестра. Прямоугольники — черновые зоны под компоненты; перетаскивай их или меняй размеры. Идентичность и район в правилах не меняются. Координаты отсчитываются от исходной карты, не рамки.</p>
 <h2>Обозначение владельца</h2>
 <div class="field"><label for="ownershipCut">Форма выемки</label><select id="ownershipCut"><option value="notch">V-выемка</option><option value="corner">Срез вершины</option></select></div>
 <div class="field"><label for="cornerCutMm">Срез вдоль грани, мм</label><input id="cornerCutMm" type="number" min="3" max="12" step="1" value="8"></div>
@@ -208,7 +221,7 @@ button.danger{background:#51313c}
 <g class="region" data-region="bernal"><path d="M 740 909 L 743 866 L 736 848 L 732 752 L 779 766 L 826 770 L 944 767 L 949 920 L 868 959 L 841 965 L 815 958 L 791 938 L 762 928 L 740 909 Z"/></g>
 <g class="region" data-region="park"><path d="M 130 454 L 117 500 L 138 545 L 146 602 L 183 574 L 540 580 L 546 512 L 582 483 L 606 474 L 604 415 L 529 420 L 525 388 L 445 401 L 405 396 L 179 424 L 142 439 L 130 454 Z"/></g>
 <g class="region" data-region="twinpeaks"><path d="M 414 904 L 357 846 L 340 845 L 376 748 L 392 736 L 407 734 L 416 718 L 431 718 L 443 710 L 441 691 L 458 683 L 472 662 L 487 659 L 510 678 L 515 704 L 526 712 L 543 739 L 595 747 L 615 770 L 610 813 L 601 823 L 598 853 L 585 878 L 520 886 L 495 902 L 414 904 Z"/></g></g>
-<g id="districtLabels"></g><g id="slotLayer"></g><g id="vertexLayer"></g>
+<g id="districtLabels"></g><g id="slotLayer"></g><g id="nodeLayer"></g><g id="vertexLayer"></g>
 </g>
 <g id="frameZones"></g>
 </svg>
@@ -234,8 +247,8 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
-const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},cut:'notch',cornerMm:8});
-let frame=defaultFrame(),editId='innersunset',vertexDrag=null;
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'notch',cornerMm:8});
+let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
 function viewport(){const u=unitsPerMm();return {x:frame.xMm*u,y:frame.yMm*u,w:boardWidthMm*u,h:boardHeight()*u}}
@@ -256,6 +269,11 @@ function readFrame(data){
   if(!Object.hasOwn(originalPoints,id)||!Array.isArray(p)||p.length!==originalPoints[id].length||p.some(v=>!Array.isArray(v)||v.length!==2||v.some(n=>!Number.isFinite(n)||Math.abs(n)>10000)))throw Error('Некорректный контур '+id);
   f.contours[id]=p.map(v=>[...v]);
  }
+ f.showNodes=data.showNodes===true;
+ for(const [id,p] of Object.entries(data.nodes??{})){
+  if(!nodeCatalog.some(n=>n.id===id)||!p||typeof p!=='object'||!['x','y','w','h'].every(k=>Number.isFinite(p[k]))||Math.abs(p.x)>10000||Math.abs(p.y)>10000||p.w<10||p.w>120||p.h<10||p.h>120)throw Error('Некорректная площадка '+id);
+  f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
+ }
  if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
  f.cut=data.cut??'notch';f.cornerMm=num('cornerMm',3,12,8);return f;
 }
@@ -264,6 +282,7 @@ function syncFrame(){
  $('mapMagnification').value=frame.magnification;$('frameX').value=round(frame.xMm);$('frameY').value=round(frame.yMm);
  $('mapBackground').value=frame.background;$('showLabels').checked=frame.labels;
  for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).value=frame.zones[k];
+ $('showNodes').checked=frame.showNodes;syncNode();
  $('ownershipCut').value=frame.cut;$('cornerCutMm').value=frame.cornerMm;$('cornerCutMm').disabled=frame.cut!=='corner';
 }
 function updateBoardView(){
@@ -272,9 +291,31 @@ function updateBoardView(){
  $('originalMapImage').style.display=frame.background==='original'?'':'none';
  updateScale();
 }
+function nodeValue(n){return frame.nodes[n.id]??{x:n.x,y:n.y,w:32,h:18}}
+function nodePoly(n){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u/2,h=p.h*u/2;return [{x:p.x-w,y:p.y-h-11},{x:p.x+w,y:p.y-h-11},{x:p.x+w,y:p.y+h-11},{x:p.x-w,y:p.y+h-11}]}
+function syncNode(){const n=nodeCatalog.find(n=>n.id===editNodeId);if(!n)return;const p=nodeValue(n),u=unitsPerMm();$('nodeX').value=round(p.x/u);$('nodeY').value=round(p.y/u);$('nodeW').value=p.w;$('nodeH').value=p.h}
+function nodeProblems(){if(!frame.showNodes)return {edge:[],reserved:[],collisions:[]};
+ const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[],reserved=[],collisions=new Set(),polys=nodeCatalog.map(nodePoly),buildings=slots.map(worldVertices);
+ for(let i=0;i<polys.length;i++){const p=polys[i],id=nodeCatalog[i].id;
+  if(p.some(q=>q.x<v.x||q.y<v.y||q.x>v.x+v.w||q.y>v.y+v.h))edge.push(id);
+  else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(id);
+  if(buildings.some(b=>polygonOverlap(p,b)))collisions.add(id);
+  for(let j=0;j<i;j++)if(polygonOverlap(p,polys[j])){collisions.add(id);collisions.add(nodeCatalog[j].id)}
+ }return {edge,reserved,collisions:[...collisions]};
+}
+function renderNodes(){
+ const layer=$('nodeLayer');layer.replaceChildren();layer.style.pointerEvents=mode==='layout'?'':'none';if(!frame.showNodes)return;
+ const issues=nodeProblems(),bad=new Set([...issues.edge,...issues.reserved,...issues.collisions]);
+ for(const n of nodeCatalog){const p=nodeValue(n),u=unitsPerMm(),w=p.w*u,h=p.h*u;
+  const g=element('g',{'data-node-id':n.id,class:'node'+(bad.has(n.id)?' problem':'')});
+  g.append(element('rect',{x:p.x-w/2,y:p.y-h/2,width:w,height:h,rx:2}));
+  g.append(element('text',{x:p.x,y:p.y,'font-size':Math.min(u*3.4,w/Math.max(5,n.shortName.length)*1.4)},n.shortName));
+  g.append(element('title',{},n.name+' · '+n.districtId));layer.append(g);
+ }
+}
 function renderBoardParts(){
  const labelLayer=$('districtLabels'),vertices=$('vertexLayer'),zones=$('frameZones');
- labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();
+ labelLayer.replaceChildren();vertices.replaceChildren();zones.replaceChildren();renderNodes();
  if(frame.background==='schematic'&&frame.labels)for(const d of DISTRICTS){const b=pathById[d.id].getBBox();labelLayer.append(element('text',{x:b.x+b.width/2,y:b.y+15},d.name))}
  if($('editVertices').checked)contourPoints(editId).forEach(([x,y],i)=>vertices.append(element('circle',{cx:x,cy:y,r:5,'data-vertex':i})));
  const v=viewport(),u=unitsPerMm(),z=frame.zones;
@@ -289,7 +330,10 @@ function changeDistrict(dx,dy,sx=1,sy=1){
  const p=contourPoints(editId),xs=p.map(v=>v[0]),ys=p.map(v=>v[1]),cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
  const transform=(x,y)=>[round(cx+(x-cx)*sx+dx),round(cy+(y-cy)*sy+dy)];
  frame.contours[editId]=p.map(([x,y])=>transform(x,y));
- if($('moveDistrictSlots').checked)for(const t of slots.filter(t=>t.districtId===editId)){const a=sizeSvg()/2;const [x,y]=transform(t.x+a,t.y+a);t.x=round(x-a);t.y=round(y-a)}
+ if($('moveDistrictSlots').checked){
+  for(const t of slots.filter(t=>t.districtId===editId)){const a=sizeSvg()/2;const [x,y]=transform(t.x+a,t.y+a);t.x=round(x-a);t.y=round(y-a)}
+  for(const n of nodeCatalog.filter(n=>n.districtId===editId)){const p=nodeValue(n),[x,y]=transform(p.x,p.y);frame.nodes[n.id]={...p,x,y}}
+ }
  commitFrame();
 }
 function worldVertices(t){const o=actualSlotOrigin(t);return tileVertices(t,currentSizeSvg()).map(p=>({x:p.x+o.x,y:p.y+o.y-11}))}
@@ -298,7 +342,7 @@ function frameProblems(){const v=viewport(),u=unitsPerMm(),z=frame.zones,edge=[]
  else if(p.some(q=>q.x<v.x+z.left*u||q.x>v.x+v.w-z.right*u||q.y<v.y+z.top*u||q.y>v.y+v.h-z.bottom*u))reserved.push(t.id)}
  return {edge,reserved};
 }
-function fitBuildings(){const u=unitsPerMm(),p=slots.flatMap(worldVertices),pad=5;
+function fitBuildings(){const u=unitsPerMm(),p=[...slots.flatMap(worldVertices),...(frame.showNodes?nodeCatalog.flatMap(nodePoly):[])],pad=5;
  const minX=Math.min(...p.map(q=>q.x))/u-pad-frame.zones.left,minY=Math.min(...p.map(q=>q.y))/u-pad-frame.zones.top;
  const maxX=Math.max(...p.map(q=>q.x))/u+pad+frame.zones.right,maxY=Math.max(...p.map(q=>q.y))/u+pad+frame.zones.bottom;
  // Preserve physical scale while changing the frame, including the legacy anchor.
@@ -530,7 +574,7 @@ function render(){
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
-  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length;
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'');
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
   ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
  $('tileShape').value=tileShape;
@@ -652,6 +696,8 @@ async function loadAuthorLayout(){
 }
 async function initCatalog(){
  const data=await import('./game-core.js');
+ nodeCatalog=[...data.LOGISTICS_NODES,...data.NEUTRAL_MATERIAL_SUPPLIERS];editNodeId=nodeCatalog[0]?.id;
+ for(const n of nodeCatalog)$('editNode').add(new Option(n.shortName,n.id));
  projectCatalog=[...data.PROJECTS,...data.STANDARD_PROJECTS];
  projectById=new Map(projectCatalog.map(p=>[p.id,p]));
  const market=document.createElement('optgroup');market.label='Рыночные проекты';
@@ -705,13 +751,17 @@ async function init(){
  $('presetScythe').onclick=()=>setBoardSize(800,600);$('preset90').onclick=()=>setBoardSize(900,600);
  for(const [id,k,lo,hi] of [['mapMagnification','magnification',60,220],['frameX','xMm',-500,1500],['frameY','yMm',-500,1500],['cornerCutMm','cornerMm',3,12]])$(id).onchange=e=>{const v=Number(e.target.value);if(v>=lo&&v<=hi){frame[k]=v;commitFrame()}else syncFrame()};
  for(const k of Object.keys(frame.zones))$('zone'+k[0].toUpperCase()+k.slice(1)).onchange=e=>{const v=Number(e.target.value);if(v>=0&&v<=150){frame.zones[k]=v;commitFrame()}else syncFrame()};
- $('mapBackground').onchange=e=>{frame.background=e.target.value;commitFrame()};
+ $('mapBackground').onchange=e=>{frame.background=e.target.value;if(frame.background==='schematic')frame.showNodes=true;commitFrame()};
  $('showLabels').onchange=e=>{frame.labels=e.target.checked;commitFrame()};
+ $('showNodes').onchange=e=>{frame.showNodes=e.target.checked;commitFrame()};
+ $('editNode').onchange=e=>{editNodeId=e.target.value;syncNode()};
+ for(const [id,k] of [['nodeX','x'],['nodeY','y'],['nodeW','w'],['nodeH','h']])$(id).onchange=e=>{const n=nodeCatalog.find(n=>n.id===editNodeId),v=Number(e.target.value);if(!n||!Number.isFinite(v)){syncNode();return}const p={...nodeValue(n)};p[k]=k==='x'||k==='y'?clamp(v*unitsPerMm(),-10000,10000):clamp(v,10,120);frame.nodes[n.id]=p;commitFrame()};
+ $('resetNode').onclick=()=>{delete frame.nodes[editNodeId];commitFrame()};
  $('ownershipCut').onchange=e=>{frame.cut=e.target.value;commitFrame()};
  $('resetFrame').onclick=()=>{frame.heightMm=null;frame.magnification=100;frame.xMm=0;frame.yMm=0;frame.zones=defaultFrame().zones;commitFrame()};
  $('fitBuildings').onclick=fitBuildings;
  $('editDistrict').onchange=e=>{editId=e.target.value;render()};
- $('editVertices').onchange=e=>{if(e.target.checked){frame.background='schematic';commitFrame()}else render()};
+ $('editVertices').onchange=e=>{if(e.target.checked){frame.background='schematic';frame.showNodes=true;commitFrame()}else render()};
  for(const [id,x,y] of [['districtLeft',-1,0],['districtRight',1,0],['districtUp',0,-1],['districtDown',0,1]])$(id).onclick=()=>{const d=clamp(Number($('districtStep').value)||5,1,50)*unitsPerMm();changeDistrict(x*d,y*d)};
  for(const [id,x,y] of [['districtNarrow',.95,1],['districtWider',1.05,1],['districtShorter',1,.95],['districtTaller',1,1.05]])$(id).onclick=()=>changeDistrict(0,0,x,y);
  $('resetDistrict').onclick=()=>{delete frame.contours[editId];commitFrame()};
@@ -732,6 +782,8 @@ async function init(){
  svg.addEventListener('pointerdown',e=>{
    const vertex=e.target.closest?.('[data-vertex]');
    if(vertex&&$('editVertices').checked){vertexDrag={pointerId:e.pointerId,id:editId,index:Number(vertex.dataset.vertex)};svg.setPointerCapture(e.pointerId);e.preventDefault();return}
+   const node=e.target.closest?.('[data-node-id]');
+   if(node&&mode==='layout'){const n=nodeCatalog.find(n=>n.id===node.dataset.nodeId),p=mapPoint(e);if(n&&p){const q=nodeValue(n);editNodeId=n.id;$('editNode').value=n.id;nodeDrag={pointerId:e.pointerId,id:n.id,dx:q.x-p.x,dy:q.y-p.y};svg.setPointerCapture(e.pointerId);e.preventDefault();return}}
    const g=e.target.closest?.('[data-slot-id]');
    if(!g){
      const region=e.target.closest?.('[data-region]');
@@ -746,6 +798,7 @@ async function init(){
    svg.setPointerCapture(e.pointerId);svg.style.cursor='grabbing';render();e.preventDefault();
  });
  svg.addEventListener('pointermove',e=>{
+  if(nodeDrag&&nodeDrag.pointerId===e.pointerId){const p=mapPoint(e),n=nodeCatalog.find(n=>n.id===nodeDrag.id);if(p&&n){frame.nodes[n.id]={...nodeValue(n),x:round(p.x+nodeDrag.dx),y:round(p.y+nodeDrag.dy)};syncNode();render();e.preventDefault()}return}
   if(vertexDrag&&vertexDrag.pointerId===e.pointerId){const p=mapPoint(e);if(!p)return;const pts=contourPoints(vertexDrag.id).map(v=>[...v]);pts[vertexDrag.index]=[round(p.x),round(p.y)];frame.contours[vertexDrag.id]=pts;applyContours();render();e.preventDefault();return}
   if(!drag||drag.pointerId!==e.pointerId)return;
   const point=mapPoint(e),t=slots.find(s=>s.id===drag.id);
@@ -753,7 +806,7 @@ async function init(){
   t.x=round(point.x+drag.offsetX);t.y=round(point.y+drag.offsetY);
   render();e.preventDefault();
  });
- function finish(e){if(vertexDrag&&vertexDrag.pointerId===e.pointerId){vertexDrag=null;persist();render();return}if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
+ function finish(e){if(nodeDrag&&nodeDrag.pointerId===e.pointerId){nodeDrag=null;persist();render();return}if(vertexDrag&&vertexDrag.pointerId===e.pointerId){vertexDrag=null;persist();render();return}if(!drag||drag.pointerId!==e.pointerId)return;drag=null;svg.style.cursor='';persist();render();}
  svg.addEventListener('pointerup',finish);svg.addEventListener('pointercancel',finish);
  window.addEventListener('keydown',e=>{
   if(mode!=='layout'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement?.tagName))return;
@@ -792,7 +845,7 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems()}),
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems()}),
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
