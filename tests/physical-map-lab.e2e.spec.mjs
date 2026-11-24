@@ -493,3 +493,27 @@ test('physical board editor: hex reference, fit frame, zones and corner window o
   expect(htmlWidth.content).toBeLessThanOrEqual(htmlWidth.viewport+2);
  }
 });
+
+test('physical board editor: logistics footprints use current catalog, are editable and validated',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ await page.locator('#mapBackground').selectOption('schematic');
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(8);
+ await page.locator('#editNode').selectOption('broadway');
+ await page.locator('#nodeW').fill('45');await page.locator('#nodeW').press('Tab');
+ await page.locator('#nodeH').fill('24');await page.locator('#nodeH').press('Tab');
+ await page.locator('#nodeX').fill('1300');await page.locator('#nodeX').press('Tab');
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const edited=await snap();
+ expect(edited.boardFrame.nodes.broadway.w).toBe(45);
+ expect(edited.boardFrame.nodes.broadway.h).toBe(24);
+ expect((await page.evaluate(()=>window.__physicalMapLab.validation())).nodes.edge).toContain('broadway');
+ await page.reload();
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(8);
+ expect((await snap()).boardFrame.nodes.broadway).toEqual(edited.boardFrame.nodes.broadway);
+ await page.locator('#editNode').selectOption('broadway');
+ await page.locator('#resetNode').click();
+ expect((await snap()).boardFrame.nodes.broadway).toBeUndefined();
+ await page.locator('#showNodes').uncheck();
+ await expect(page.locator('#nodeLayer [data-node-id]')).toHaveCount(0);
+});
