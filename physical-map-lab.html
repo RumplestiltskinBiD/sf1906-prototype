@@ -90,7 +90,7 @@ button.danger{background:#51313c}
 <body>
 <header>
 <h1>San Francisco 1906 · лаборатория физических строительных мест</h1>
-<p>Отдельный редактор. Оригинальная карта V8 и точные SVG-контуры районов. На основную игру и её сохранения не влияет.</p>
+<p>Отдельный редактор. Оригинальная карта V8 и редактируемая схема районов. На основную игру и её сохранения не влияет.</p>
 </header>
 <div class="workspace">
 <aside>
@@ -148,7 +148,7 @@ button.danger{background:#51313c}
 <h2>Обозначение владельца</h2>
 <div class="field"><label for="ownershipCut">Форма выемки</label><select id="ownershipCut"><option value="notch">V-выемка</option><option value="corner">Срез вершины</option></select></div>
 <div class="field"><label for="cornerCutMm">Срез вдоль грани, мм</label><input id="cornerCutMm" type="number" min="3" max="12" step="1" value="8"></div>
-<div class="controls"><button id="loadHexLayout">Открыть исходные HEX 50 мм / 110 см</button></div>
+<p class="sub" id="effectiveCut"></p><div class="controls"><button id="loadHexLayout">Открыть исходные HEX 50 мм / 110 см</button></div>
 </section>
 <section>
 <h2>Проверка расположения</h2>
@@ -191,7 +191,7 @@ button.danger{background:#51313c}
 <div class="controls"><button id="download" class="primary">Скачать JSON</button><button id="copyJson">Копировать JSON</button></div>
 <div class="controls"><label class="file-label">Загрузить JSON <input id="loadFile" type="file" accept="application/json,.json" hidden></label><button id="applyJson">Применить JSON ниже</button></div>
 <textarea id="jsonArea" aria-label="Импорт и экспорт JSON" placeholder="Сюда можно вставить сохранённый JSON, затем нажать «Применить»."></textarea>
-<p class="sub">JSON сохраняет 79 координат, форму, размеры всех трёх форм, индивидуальные повороты и тестовые здания. Старые файлы без размеров открываются с исходными 40 мм. Для переноса на другое устройство экспортируй JSON.</p>
+<p class="sub">JSON сохраняет 79 координат, форму, размеры всех трёх форм, индивидуальные повороты, тестовые здания и необязательный boardFrame (рамка, контуры, площадки логистики и резервы). Старые файлы без размеров открываются с исходными 40 мм. Для переноса на другое устройство экспортируй JSON.</p>
 </section>
 </aside>
 <main class="map-panel">
@@ -351,12 +351,13 @@ function fitBuildings(){const u=unitsPerMm(),p=[...slots.flatMap(worldVertices),
  frame.magnification=newMag;frame.xMm=clamp(minX,-500,1500);frame.yMm=clamp(minY,-500,1500);setBoardSize(newW,newH);
  notice('Рамка охватывает строительные места с резервами. Проверь отдельно логистику и контуры районов.');
 }
+function effectiveCornerMm(){const n=SHAPE_SIDES[tileShape];return Math.min(frame.cornerMm,.9*tileSizesMm[tileShape]*Math.sin(Math.PI/n))}
 function cornerPath(n,s){
- const v=regularVertices(n,s),a=v[0],prev=v[n-1],next=v[1],edge=Math.hypot(a.x-next.x,a.y-next.y),ratio=Math.min(.45,frame.cornerMm*unitsPerMm()/edge);
+ const v=regularVertices(n,s),a=v[0],prev=v[n-1],next=v[1],edge=Math.hypot(a.x-next.x,a.y-next.y),ratio=Math.min(.9,frame.cornerMm*unitsPerMm()/edge);
  const p=b=>({x:a.x+(b.x-a.x)*ratio,y:a.y+(b.y-a.y)*ratio});
  return 'M '+[p(next),...v.slice(1),p(prev)].map(q=>round(q.x)+' '+round(q.y)).join(' L ')+' Z';
 }
-function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min(.45,frame.cornerMm*unitsPerMm()/edge)*edge*Math.sin(Math.PI/regularVertices(SHAPE_SIDES[tileShape],s).length);const len=Math.hypot(s/2-a.x,s/2-a.y);
+function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min(.9,frame.cornerMm*unitsPerMm()/edge)*edge*Math.sin(Math.PI/regularVertices(SHAPE_SIDES[tileShape],s).length);const len=Math.hypot(s/2-a.x,s/2-a.y);
  return {x:a.x+(s/2-a.x)/len*depth*.42,y:a.y+(s/2-a.y)/len*depth*.42}}
 
 // Canonical saved x/y are the upper-left of the ORIGINAL 40 mm square.
@@ -551,7 +552,7 @@ function render(){
    frame.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
    vertex.forEach((a,i)=>{
     const b=vertex[(i+1)%n],p=frame.cut==='corner'?cornerSeat(a,b,s):seatCenter(a,b,s);
-    frame.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,frame.cornerMm*unitsPerMm()*.12):s*.035),
+    frame.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,effectiveCornerMm()*unitsPerMm()*.12):s*.035),
       fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
    });
    g.append(frame);
@@ -582,6 +583,7 @@ function render(){
  $('tileSizeRange').value=String(tileSizesMm[tileShape]);
  $('tileSizeDown').disabled=tileSizesMm[tileShape]===MIN_TILE_MM;
  $('tileSizeUp').disabled=tileSizesMm[tileShape]===MAX_TILE_MM;
+ $('effectiveCut').textContent=frame.cut==='corner'&&poly?'Фактический срез: '+round(effectiveCornerMm())+' мм вдоль грани (ограничен длиной грани). Для квадрата не применяется.':'';
  $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
  for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
  $('focusDistrict').value=selectedDistrict;
@@ -799,7 +801,7 @@ async function init(){
  });
  svg.addEventListener('pointermove',e=>{
   if(nodeDrag&&nodeDrag.pointerId===e.pointerId){const p=mapPoint(e),n=nodeCatalog.find(n=>n.id===nodeDrag.id);if(p&&n){frame.nodes[n.id]={...nodeValue(n),x:round(p.x+nodeDrag.dx),y:round(p.y+nodeDrag.dy)};syncNode();render();e.preventDefault()}return}
-  if(vertexDrag&&vertexDrag.pointerId===e.pointerId){const p=mapPoint(e);if(!p)return;const pts=contourPoints(vertexDrag.id).map(v=>[...v]);pts[vertexDrag.index]=[round(p.x),round(p.y)];frame.contours[vertexDrag.id]=pts;applyContours();render();e.preventDefault();return}
+  if(vertexDrag&&vertexDrag.pointerId===e.pointerId){const p=mapPoint(e);if(!p)return;const pts=contourPoints(vertexDrag.id).map(v=>[...v]);const old=pts[vertexDrag.index];for(let i=0;i<pts.length;i++)if(pts[i][0]===old[0]&&pts[i][1]===old[1])pts[i]=[round(p.x),round(p.y)];frame.contours[vertexDrag.id]=pts;applyContours();render();e.preventDefault();return}
   if(!drag||drag.pointerId!==e.pointerId)return;
   const point=mapPoint(e),t=slots.find(s=>s.id===drag.id);
   if(!point||!t)return;
