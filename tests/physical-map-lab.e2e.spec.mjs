@@ -181,6 +181,7 @@ test('physical map lab: changing square/hex/oct preserves all 79 coordinates and
  expect(coordinates(oct)).toEqual(coordinates(before));
  await page.reload();
  await expect(page.locator('#tileShape')).toHaveValue('oct');
+ await page.locator('#focusDistrict').selectOption('civic');
  await expect(page.locator('#angleValue')).toHaveText('23°');
  expect(coordinates(await page.evaluate(()=>window.__physicalMapLab.snapshot()))).toEqual(coordinates(before));
  await page.locator('#tileShape').selectOption('square');
