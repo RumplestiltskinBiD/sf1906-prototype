@@ -62,6 +62,13 @@ button.danger{background:#51313c}
 .slot .slot-guide{pointer-events:none}
 #holeClearance{width:95px;color:#e9eff4;background:#081521;border:1px solid #526475;border-radius:5px;padding:6px}
 .slot .owner-seat{stroke:#fff;stroke-width:1.2;pointer-events:none}
+.slot .owner-seat.corner-seat{stroke:none}
+.slot text.owner-symbol{font-weight:800;fill:#14232d;stroke:none}
+#mapSvg .slot .corner-face .tile{stroke:none}
+#mapSvg .slot.selected .slot-hole:not(.slot-hole-conflict){stroke:#137c93;stroke-width:3}
+#ownershipPreview{width:100%;max-height:220px;background:#142533;border-radius:8px}
+#ownerGeometryStatus{white-space:pre-line}
+#ownerGeometryStatus.warning{color:#ffc0b8}
 .slot .slot-guide{fill:rgba(215,224,225,.55);stroke:#58717a;stroke-width:1.3;stroke-dasharray:5 4;pointer-events:none}
 #slotRotation{width:100%;accent-color:#55c3d4}
 #slotRotation:disabled,.rotate-controls button:disabled{opacity:.4}
@@ -110,7 +117,7 @@ button.danger{background:#51313c}
 <div class="workspace">
 <aside>
 <section class="instructions">
-<p><b>Форма и размер:</b> переключай все 79 участков между квадратом, шестиугольником и восьмиугольником, меняй размер шагом 1 мм: центры и координаты сохраняются. <b>Расстановка:</b> перетаскивай участки, а в режиме многоугольников — поворачивай каждый отдельно с шагом 1°.</p><p><b>Пробное владение:</b> на шести-/восьмиугольном здании одна выемка открывает цвет владельца, напечатанный под тайлом. Угол участка и положение выемки относительно него независимы. Это визуальный тест без денег, рабочих и логистики.</p>
+<p><b>Форма и размер:</b> переключай все 79 участков между квадратом, шестиугольником и восьмиугольником, меняй размер шагом 1 мм: центры и координаты сохраняются. <b>Расстановка:</b> перетаскивай участки, а в режиме многоугольников — поворачивай каждый отдельно с шагом 1°.</p><p><b>Пробное владение:</b> на шести-/восьмиугольном здании один срез вершины открывает цвет владельца, напечатанный под тайлом. Угол участка и положение выемки относительно него независимы. Это визуальный тест без денег, рабочих и логистики.</p>
 <p><b>Передать расстановку:</b> нажми «Скачать JSON» и прикрепи полученный файл в чат. Файл содержит координаты всех мест, не только снимок экрана.</p>
 <p><b>Важно:</b> масштаб карты — гипотеза физической печати; на экране 40 мм не означает 40 экранных миллиметров.</p>
 </section>
@@ -165,9 +172,13 @@ button.danger{background:#51313c}
 <div class="controls"><button id="resetNode">Сброс объекта</button></div>
 <p class="sub">Пять узлов и три нейтральных поставщика из игрового реестра. Прямоугольники — черновые зоны под компоненты; перетаскивай их или меняй размеры. Идентичность и район в правилах не меняются. Координаты отсчитываются от исходной карты, не рамки.</p>
 <h2>Обозначение владельца</h2>
-<div class="field"><label for="ownershipCut">Форма выемки</label><select id="ownershipCut"><option value="notch">V-выемка</option><option value="corner">Срез вершины</option></select></div>
+<div class="field"><label for="ownershipCut">Форма тайла</label><select id="ownershipCut"><option value="corner">Срез вершины</option><option value="notch">V-выемка (архивный тест)</option></select></div>
 <div class="field"><label for="cornerCutMm">Срез вдоль грани, мм</label><input id="cornerCutMm" type="number" min="3" max="12" step="1" value="8"></div>
-<p class="sub" id="effectiveCut"></p><div class="controls"><button id="loadHexLayout">Открыть исходные HEX 50 мм / 110 см</button></div>
+<p class="sub" id="effectiveCut"></p>
+<svg id="ownershipPreview" viewBox="0 0 250 150" role="img" aria-label="Две стороны тайла и обозначение владельца"></svg>
+<p id="ownerGeometryStatus" class="sub" role="status"></p>
+<p class="sub">Срез используется и для извлечения. Отдельная выемка не добавлена. Символы 1–5 и Н — пробное дублирование цвета. Проверяется боковой люфт при фиксированной ориентации; физическое вращение, печатные допуски и удобство извлечения требуют образца.</p>
+<div class="controls"><button id="loadHexLayout">Открыть исходные HEX 50 мм / 110 см</button></div>
 </section>
 <section>
 <h2>Проверка расположения</h2>
@@ -193,9 +204,9 @@ button.danger{background:#51313c}
 <select id="projectSelect"></select>
 <div id="projectPreview">Загрузка проектов…</div>
 <div class="controls">
-<button id="markBuilding" class="primary">Начать стройку</button><button id="deliverOne">Привезти 1 материал</button><button id="deliverAll">Привезти все материалы</button><button id="markComplete">Перевернуть тайл</button><button id="markEmpty">Освободить</button>
+<button id="markBuilding" class="primary">Начать стройку</button><button id="deliverOne">Привезти 1 материал</button><button id="deliverAll">Привезти все материалы</button><button id="markComplete">Перевернуть тайл</button><button id="markEmpty">Освободить</button><button id="changeDemoOwner" type="button">Сменить владельца (тест)</button>
 </div>
-<small>Тестовая доставка добавляет материалы по порядку и переворачивает тайл. Это не игровая логистика. Цветной угол у квадрата остаётся заглушкой; у многоугольников пробная физическая выемка показывает единственный цвет под тайлом. Производственная форма выемки ещё не утверждена.</small>
+<small>Тестовая доставка добавляет материалы по порядку и переворачивает тайл. Это не игровая логистика. Цветной угол у квадрата остаётся заглушкой; у многоугольников срез вершины открывает обозначение владельца. V-выемка сохранена только для сравнения; физическая пригодность среза ещё не подтверждена.</small>
 </section>
 <p class="sub">Стрелки перемещают выбранное место на 1 мм (Shift — 5 мм) в режиме расстановки. Угол — ползунком либо кнопками ±5°.</p>
 <div class="controls"><button id="seedDistrict">Авторазместить район</button><button id="seedAll" class="danger">Сбросить все места</button></div>
@@ -250,14 +261,14 @@ button.danger{background:#51313c}
 </main>
 </div>
 <script type="module">
-import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts} from './physical-map-geometry.js';
+import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
 'use strict';
 const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
 const SVG_NS='http://www.w3.org/2000/svg';
 const HEX_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json';
 const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
 let projectCatalog=[],projectById=new Map(),mode='layout',tileShape='square',tileSizesMm={square:TILE_MM,hex:TILE_MM,oct:TILE_MM};
-const COLORS=['#287ec1','#df5b42','#68a561','#a86dce','#cead45','#929ba6'];
+const COLORS=OWNERS.map(o=>o.color);
 const SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
 const $=id=>document.getElementById(id);
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
@@ -266,7 +277,7 @@ let boardWidthMm=1100,zoom=80,selectedDistrict='innersunset',selectedId='innersu
 const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector('[data-region="'+d.id+'"] path')]));
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
-const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'notch',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM});
+const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM});
 let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
@@ -294,7 +305,7 @@ function readFrame(data){
   f.nodes[id]={x:p.x,y:p.y,w:p.w,h:p.h};
  }
  if(data.cut!==undefined&&!['notch','corner'].includes(data.cut))throw Error('Неизвестная выемка');
- f.cut=data.cut??'notch';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);return f;
+ f.cut=data.cut??'corner';f.cornerMm=num('cornerMm',3,12,8);f.clearanceMm=num('clearanceMm',0,1,DEFAULT_CLEARANCE_MM);return f;
 }
 function syncFrame(){
  $('boardWidthExact').value=round(boardWidthMm/10);$('boardHeightExact').value=round(boardHeight()/10);
@@ -372,14 +383,39 @@ function fitBuildings(){const u=unitsPerMm(),p=[...slots.flatMap(worldVertices),
  frame.magnification=newMag;frame.xMm=clamp(minX,-500,1500);frame.yMm=clamp(minY,-500,1500);setBoardSize(newW,newH);
  notice('Рамка охватывает строительные места с резервами. Проверь отдельно логистику и контуры районов.');
 }
-function effectiveCornerMm(){const n=SHAPE_SIDES[tileShape];return Math.min(frame.cornerMm,.9*tileSizesMm[tileShape]*Math.sin(Math.PI/n))}
-function cornerPath(n,s){
- const v=regularVertices(n,s),a=v[0],prev=v[n-1],next=v[1],edge=Math.hypot(a.x-next.x,a.y-next.y),ratio=Math.min(.9,frame.cornerMm*unitsPerMm()/edge);
- const p=b=>({x:a.x+(b.x-a.x)*ratio,y:a.y+(b.y-a.y)*ratio});
- return 'M '+[p(next),...v.slice(1),p(prev)].map(q=>round(q.x)+' '+round(q.y)).join(' L ')+' Z';
+function cornerModel(owner=0,angle=0){
+ return ownershipGeometry({shape:tileShape,sizeMm:tileSizesMm[tileShape],cutMm:frame.cornerMm,clearanceMm:frame.clearanceMm,owner,angle});
 }
-function cornerSeat(a,b,s){const edge=Math.hypot(a.x-b.x,a.y-b.y),depth=Math.min(.9,frame.cornerMm*unitsPerMm()/edge)*edge*Math.sin(Math.PI/regularVertices(SHAPE_SIDES[tileShape],s).length);const len=Math.hypot(s/2-a.x,s/2-a.y);
- return {x:a.x+(s/2-a.x)/len*depth*.42,y:a.y+(s/2-a.y)/len*depth*.42}}
+function effectiveCornerMm(){return cornerModel().cutMm}
+function cornerPath(n,s){
+ const model=clippedCorner({shape:tileShape,sizeMm:tileSizesMm[tileShape],cutMm:frame.cornerMm});
+ return 'M '+model.vertices.map(p=>round(s/2+p.x*unitsPerMm())+' '+round(s/2+p.y*unitsPerMm())).join(' L ')+' Z';
+}
+function drawCornerMarks(g,model,scale,cx,cy){
+ for(const m of model.marks){
+  const x=cx+m.x*scale,y=cy+m.y*scale,r=m.radius*scale;
+  g.append(element('circle',{cx:x,cy:y,r,fill:SEAT_COLORS[m.index],class:'owner-seat corner-seat','data-owner-seat':m.index,stroke:'none'}));
+  if(m.owner&&r>0)g.append(element('text',{x,y:y+r*.43,'font-size':r*1.28,class:'owner-symbol','text-anchor':'middle',fill:'#14232d'},m.owner.symbol));
+ }
+}
+function renderOwnershipPreview(t){
+ const preview=$('ownershipPreview'),status=$('ownerGeometryStatus');preview.replaceChildren();
+ if(tileShape==='square'||frame.cut!=='corner'){status.textContent='Срез вершины проверяется в режиме шести-/восьмиугольника.';status.classList.remove('warning');return}
+ const owner=t&&t.status!=='empty'?t.owner:Number($('ownerSelect').value),model=cornerModel(owner),scale=90/model.holeMm;
+ for(const [i,vertices] of [model.vertices,model.backVertices].entries()){
+  const cx=i?185:65,cy=58,g=element('g');
+  const points=poly=>vertexString(poly.map(p=>({x:cx+p.x*scale,y:cy+p.y*scale})));
+  g.append(element('polygon',{points:points(model.hole),fill:'#bac9c3',stroke:'#67877f'}));
+  drawCornerMarks(g,model,scale,cx,cy);
+  g.append(element('polygon',{points:points(vertices),fill:i?'#f0dfbd':'#cba767','data-preview-side':i?'back':'front'}));
+  g.append(element('text',{x:cx,y:cy,'text-anchor':'middle','font-size':11,fill:'#243744'},i?'Здание':'Стройка'));
+  g.append(element('text',{x:cx,y:cy+15,'text-anchor':'middle','font-size':10,fill:'#243744'},OWNERS[owner].name));
+  preview.append(g);
+ }
+ preview.append(element('text',{x:125,y:129,'text-anchor':'middle','font-size':10,fill:'#e9eff4'},'Обе стороны · один владелец'));
+ status.textContent='Срез: глубина '+round(model.depthMm)+' мм · ширина '+round(model.widthMm)+' мм.\nДиаметр метки: '+round(model.marks[owner].radius*2)+' мм · максимальный боковой люфт ≤ '+round(model.translationBoundMm)+' мм.\n'+(model.safe?'Геометрически: выбранная метка открыта, остальные скрыты при боковом люфте.':'Недостаточный запас для уверенного различения меток: увеличь срез или уменьши допуск.');
+ status.classList.toggle('warning',!model.safe);
+}
 
 // Canonical saved x/y are the upper-left of the ORIGINAL 40 mm square.
  // Display every new size around the same historical center, without moving any saved coordinate.
@@ -554,18 +590,23 @@ function render(){
    const guide=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
    const vertex=regularVertices(n,s);
    guide.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
-   vertex.forEach((a,i)=>{
-    const b=vertex[(i+1)%n],p=frame.cut==='corner'?cornerSeat(a,b,s):seatCenter(a,b,s);
-    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(frame.cut==='corner'?Math.min(s*.035,effectiveCornerMm()*unitsPerMm()*.12):s*.035),
-      fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
+   if(frame.cut==='corner')drawCornerMarks(guide,cornerModel(),unitsPerMm(),s/2,s/2);
+   else vertex.forEach((a,i)=>{
+    const b=vertex[(i+1)%n],p=seatCenter(a,b,s);
+    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(s*.035),fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
    });
    g.append(guide);
    if(t.status==='empty')drawTile(g,t,s);
    else{
     const face=element('g',{transform:'rotate('+((t.rotation||0)+t.owner*360/n)+' '+s/2+' '+s/2+')',
-      'data-notch-owner':t.owner});
+      'data-notch-owner':t.owner,'data-face':t.status==='complete'?'back':'front',...(frame.cut==='corner'?{class:'corner-face'}:{})});
     face.append(element('path',{d:frame.cut==='corner'?cornerPath(n,s):notchPath(n,s),class:'tile'+(t.status==='under'?' tile-under':' tile-done')}));
-    drawTile(face,t,s);g.append(face);
+    if(frame.cut==='corner'){
+     const clipId='physical-face-'+t.id,clip=element('clipPath',{id:clipId});
+     clip.append(element('path',{d:cornerPath(n,s)}));face.append(clip);
+     const artwork=element('g',{'clip-path':'url(#'+clipId+')'});drawTile(artwork,t,s);face.append(artwork);
+    }else drawTile(face,t,s);
+    g.append(face);
    }
   }
   const p=projectById.get(t.projectId);
@@ -597,6 +638,7 @@ function render(){
   (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
   '\nЦентр (SVG-слой карты): '+round(legacyCenter(t,unitsPerMm()).x/unitsPerMm())+' × '+round(legacyCenter(t,unitsPerMm()).y/unitsPerMm())+' мм'+
   '\nПоворот места: '+(t.rotation||0)+'°'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери место';
+ renderOwnershipPreview(t);$('changeDemoOwner').disabled=!t||t.status==='empty';
  const allowRotate=!!t&&poly&&mode==='layout';
  $('slotRotation').value=String(t?.rotation||0);$('slotRotation').disabled=!allowRotate;
  $('angleValue').textContent=(t?.rotation||0)+'°';
@@ -828,6 +870,8 @@ async function init(){
  $('loadAuthorLayout').onclick=async()=>{if(!confirm('Восстановить авторскую схему? Текущая расстановка и тестовые здания заменятся — сначала экспортируй JSON.'))return;
   try{const savedShape=tileShape,savedSizes={...tileSizesMm};await loadAuthorLayout();tileShape=savedShape;tileSizesMm=savedSizes;persist();render();
     notice('Авторская геометрия восстановлена; выбранная форма и размеры сохранены, углы сброшены')}catch(e){notice(e.message)}};
+ $('ownerSelect').onchange=()=>renderOwnershipPreview(activeSlot());
+ $('changeDemoOwner').onclick=()=>{const t=activeSlot();if(!t||t.status==='empty')return;t.owner=Number($('ownerSelect').value);persist();render();notice('Владелец тестового тайла изменён; участок и материалы сохранены')};
  $('markBuilding').onclick=()=>placeProject();
  $('deliverOne').onclick=()=>supplyMaterial(false);
  $('deliverAll').onclick=()=>supplyMaterial(true);
@@ -857,6 +901,7 @@ async function init(){
  selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
+ ownership:(id)=>{const t=slots.find(x=>x.id===id);return t&&tileShape!=='square'&&frame.cut==='corner'?cornerModel(t.owner,t.rotation||0):null},
  geometry:(id)=>{const t=slots.find(x=>x.id===id);return t?physicalGeometry(t):null},
  placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }

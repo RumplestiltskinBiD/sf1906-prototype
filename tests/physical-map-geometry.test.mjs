@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {SLOT_COUNT,SLOT_REGISTRY,legacyCenter,legacyAnchor,readSlotRegistry,holeDiameterMm,slotGeometry,shapeVertices,polygonDistance,holeConflicts} from '../physical-map-geometry.js';
+import {SLOT_COUNT,SLOT_REGISTRY,legacyCenter,legacyAnchor,readSlotRegistry,holeDiameterMm,slotGeometry,shapeVertices,polygonDistance,holeConflicts,OWNERS,clippedCorner,ownershipGeometry,edgeMargin,mirrorAcrossCut} from '../physical-map-geometry.js';
 const hex=JSON.parse(readFileSync(new URL('../docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json',import.meta.url),'utf8'));
 const square=JSON.parse(readFileSync(new URL('../docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json',import.meta.url),'utf8'));
 const close=(a,b,epsilon=1e-8)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
@@ -60,4 +60,51 @@ test('actual HEX50 reference retains centers while clearance reduces minimum bri
  close(original.minimum/u,2.2234042899447672,1e-5);
  close(withClearance.minimum/u,1.2234042899447672,1e-5);
  assert.equal(withClearance.pairs.length,0);
+});
+
+test('clipped hex uses a single cut with exact physical dimensions and a bounded edge length',()=>{
+ for(const d of [25,40,45,50,70])for(const a of [3,5,8,12]){
+  const c=clippedCorner({sizeMm:d,cutMm:a});
+  assert.equal(c.vertices.length,7);
+  close(c.cutMm,Math.min(a,.9*d/2));
+  close(c.depthMm,c.cutMm/2);
+  close(c.widthMm,c.cutMm*Math.sqrt(3));
+  close(Math.hypot(c.cutEdge[1].x-c.cutEdge[0].x,c.cutEdge[1].y-c.cutEdge[0].y),c.widthMm);
+ }
+});
+test('six owners retain the same opening and expose exactly one mark through both faces',()=>{
+ assert.equal(OWNERS.length,6);
+ for(const sizeMm of [40,45,50,70])for(const angle of [0,23,359])for(let owner=0;owner<6;owner++){
+  const g=ownershipGeometry({sizeMm,cutMm:8,clearanceMm:.5,angle,owner});
+  assert.equal(g.safe,true);
+  assert.equal(g.marks.length,6);
+  close(g.faceAngle,angle+owner*60);
+  assert.deepEqual(g.hole,ownershipGeometry({sizeMm,cutMm:8,clearanceMm:.5,angle,owner:0}).hole);
+  assert.equal(g.vertices.length,7);
+  for(const p of g.backVertices)assert.ok(g.vertices.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<1e-8));
+  for(const p of mirrorAcrossCut(g.backVertices,{x:0,y:0},g.faceAngle))assert.ok(g.vertices.some(q=>Math.hypot(q.x-p.x,q.y-p.y)<1e-8));
+  for(const poly of [g.vertices,g.backVertices]){
+   // Sample the entire conservative translation circle, including arbitrary directions.
+   for(let k=0;k<72;k++){
+    const theta=k*Math.PI/36,dx=g.translationBoundMm*Math.cos(theta),dy=g.translationBoundMm*Math.sin(theta);
+    const shifted=poly.map(p=>({x:p.x+dx,y:p.y+dy}));
+    for(const m of g.marks){
+     const margin=edgeMargin(m,shifted);
+     if(m.index===owner)assert.ok(margin<=-m.radius+1e-8,'owner mark must be outside cut');
+     else assert.ok(margin>=m.radius-1e-8,'other marks must remain covered');
+    }
+   }
+  }
+ }
+});
+test('small cuts at large clearance are flagged rather than promising an invisible mark',()=>{
+ const bad=ownershipGeometry({sizeMm:50,cutMm:3,clearanceMm:1});
+ assert.equal(bad.safe,false);
+ assert.equal(bad.marks[0].radius,0);
+ const good=ownershipGeometry({sizeMm:50,cutMm:12,clearanceMm:1});
+ assert.equal(good.safe,true);
+ for(const invalid of [-1,6,1.2])assert.throws(()=>ownershipGeometry({sizeMm:50,cutMm:8,owner:invalid}));
+ // Legacy octagon experiment remains supported, with two non-player locations.
+ const oct=ownershipGeometry({shape:'oct',sizeMm:50,cutMm:8,clearanceMm:.5,owner:5});
+ assert.equal(oct.marks.length,8);assert.equal(oct.vertices.length,9);
 });
