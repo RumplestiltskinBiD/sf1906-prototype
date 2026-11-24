@@ -339,36 +339,56 @@ function compactLines(name){
  return out;
 }
 function drawTile(g,t,s){
- if(t.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.29},t.n));return}
- const p=projectById.get(t.projectId),title=p?.name||'Тестовое здание';
- g.append(element('rect',{x:s*.045,y:s*.04,width:s*.91,height:s*.15,rx:2,fill:t.status==='complete'?'#c9b99b':'#a78c61'}));
+ if(t.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.27},t.n));return}
+ const p=projectById.get(t.projectId),title=p?.name||'Тестовое здание',poly=tileShape!=='square';
+ g.append(element('rect',{x:s*(poly?.22:.045),y:s*(poly?.225:.04),width:s*(poly?.56:.91),height:s*(poly?.09:.15),rx:2,fill:t.status==='complete'?'#c9b99b':'#a78c61'}));
  const [line1,line2]=compactLines(title),font=s*(line2.length>=14?.105:.123);
- g.append(element('text',{x:s*.48,y:s*.34,'font-size':font,class:'tile-title'},line1));
- if(line2)g.append(element('text',{x:s*.48,y:s*.49,'font-size':font,class:'tile-title'},line2));
+ g.append(element('text',{x:s*.5,y:s*(poly?.43:.34),'font-size':font,class:'tile-title'},line1));
+ if(line2)g.append(element('text',{x:s*.5,y:s*(poly?.54:.49),'font-size':font,class:'tile-title'},line2));
  if(p&&t.status==='under'){
-  g.append(element('text',{x:s*.48,y:s*.67,'font-size':s*.135,class:'tile-stat'},(t.delivered?.length||0)+' / '+p.materials.length+' · стройка'));
+  g.append(element('text',{x:s*.5,y:s*(poly?.67:.67),'font-size':s*.124,class:'tile-stat'},(t.delivered?.length||0)+' / '+p.materials.length+' · стройка'));
   (t.delivered||[]).slice(0,5).forEach((m,i)=>{
-   const x=s*(.08+i*.175),code=m==='Lumber'?'Д':m==='Masonry'?'К':'С';
-   g.append(element('rect',{x,y:s*.75,width:s*.148,height:s*.15,rx:1,fill:'#e4aa5f',class:'tile-chip'}));
-   g.append(element('text',{x:x+s*.073,y:s*.858,'font-size':s*.107,class:'tile-stat'},code));
+   const x=s*((poly?.16:.08)+i*(poly?.14:.175)),code=m==='Lumber'?'Д':m==='Masonry'?'К':'С';
+   g.append(element('rect',{x,y:s*.75,width:s*(poly?.12:.148),height:s*.13,rx:1,fill:'#e4aa5f',class:'tile-chip'}));
+   g.append(element('text',{x:x+s*(poly?.06:.073),y:s*.847,'font-size':s*.105,class:'tile-stat'},code));
   });
  }else if(p){
-  g.append(element('text',{x:s*.48,y:s*.67,'font-size':s*.132,class:'tile-stat'},'Income '+(p.income>=0?'+':'')+p.income+' · VP '+p.prestige));
-  g.append(element('text',{x:s*.48,y:s*.85,'font-size':s*.133,class:'tile-stat'},p.actionName&&p.actionName!=='—'?'● действие':'✓ готово'));
- }else{
-  g.append(element('text',{x:s*.48,y:s*.79,'font-size':s*.145,class:'tile-stat'},t.status==='complete'?'✓ готово':'стройка'));
- }
- g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
+  g.append(element('text',{x:s*.5,y:s*(poly?.68:.67),'font-size':s*.12,class:'tile-stat'},'Income '+(p.income>=0?'+':'')+p.income+' · VP '+p.prestige));
+  g.append(element('text',{x:s*.5,y:s*(poly?.8:.85),'font-size':s*.125,class:'tile-stat'},p.actionName&&p.actionName!=='—'?'● действие':'✓ готово'));
+ }else g.append(element('text',{x:s*.5,y:s*.75,'font-size':s*.13,class:'tile-stat'},t.status==='complete'?'✓ готово':'стройка'));
+ if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
 }
 function render(){
  const s=sizeSvg(),problem=validation(),layer=$('slotLayer'),frag=document.createDocumentFragment();
+ const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
  for(const t of slots){
   const bad=problem.flag.has(t.id),sel=t.id===selectedId;
-  const g=element('g',{transform:'translate('+t.x+' '+t.y+')','data-slot-id':t.id,class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
-  g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
-  drawTile(g,t,s);
+  const g=element('g',{transform:'translate('+t.x+' '+t.y+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
+   class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
+  if(!poly){
+   g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
+   drawTile(g,t,s);
+  }else{
+   const frame=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
+   const vertex=regularVertices(n,s);
+   frame.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
+   vertex.forEach((a,i)=>{
+    const b=vertex[(i+1)%n],p=seatCenter(a,b,s);
+    frame.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(s*.035),
+      fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
+   });
+   g.append(frame);
+   if(t.status==='empty')drawTile(g,t,s);
+   else{
+    const face=element('g',{transform:'rotate('+((t.rotation||0)+t.owner*360/n)+' '+s/2+' '+s/2+')',
+      'data-notch-owner':t.owner});
+    face.append(element('path',{d:notchPath(n,s),class:'tile'+(t.status==='under'?' tile-under':' tile-done')}));
+    drawTile(face,t,s);g.append(face);
+   }
+  }
   const p=projectById.get(t.projectId);
-  g.append(element('title',{},(p?.name||'Свободный участок')+' · '+t.districtId+' №'+t.n+' · '+t.status+(bad?' · пересечение/граница':'')));
+  g.append(element('title',{},(p?.name||'Свободный участок')+' · '+t.districtId+' №'+t.n+
+    ' · '+t.status+' · '+(t.rotation||0)+'°'+(bad?' · пересечение/граница':'')));
   frag.append(g);
  }
  layer.replaceChildren(frag);
@@ -377,15 +397,22 @@ function render(){
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
  const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardWidthMm/15)+' см<br>'+
-   '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
- $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardWidthMm/15)+' см · тайл '+TILE_MM+' мм · зазор '+GAP_MM+' мм';
+  '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size;
+ $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardWidthMm/15)+' см · габарит '+TILE_MM+' мм · зазор '+GAP_MM+' мм · '+
+  ({square:'квадрат',hex:'шестиугольник',oct:'восьмиугольник'}[tileShape]);
+ $('tileShape').value=tileShape;
  $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
  for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
  $('focusDistrict').value=selectedDistrict;
  const t=slots.find(x=>x.id===selectedId),p=projectById.get(t?.projectId);
  $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[t.status])+
   (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
-  '\nКоординаты: '+round(t.x/VB_WIDTH*boardWidthMm)+' × '+round(t.y/VB_WIDTH*boardWidthMm)+' мм'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери квадрат';
+  '\nКоординаты: '+round(t.x/VB_WIDTH*boardWidthMm)+' × '+round(t.y/VB_WIDTH*boardWidthMm)+' мм'+
+  '\nПоворот места: '+(t.rotation||0)+'°'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери место';
+ const allowRotate=!!t&&poly&&mode==='layout';
+ $('slotRotation').value=String(t?.rotation||0);$('slotRotation').disabled=!allowRotate;
+ $('angleValue').textContent=(t?.rotation||0)+'°';
+ for(const id of ['rotateLeft','rotateRight','rotateReset'])$(id).disabled=!allowRotate;
 }
 function persist(){
  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(snapshot()))}catch(e){notice('Не удалось сохранить в браузере: '+e.message)}
@@ -394,14 +421,16 @@ function notice(msg){$('notice').textContent=msg}
 function snapshot(){
  const districts={};
  for(const d of DISTRICTS)if(d.slots)districts[d.id]=slots.filter(x=>x.districtId===d.id).sort((a,b)=>a.n-b.n).map(t=>({
- slot:t.n,x:round(t.x),y:round(t.y),status:t.status,owner:t.owner,
+ slot:t.n,x:round(t.x),y:round(t.y),rotation:t.rotation||0,status:t.status,owner:t.owner,
  ...(t.projectId?{projectId:t.projectId}:{}),
  ...(t.delivered?.length?{delivered:[...t.delivered]}:{})
 }));
- return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,districts};
+ return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,tileShape,districts};
 }
 function applySnapshot(data){
  if(!data||data.schema!=='sf1906-physical-slot-layout-v1'||data.tileMm!==TILE_MM||!Number.isFinite(data.boardWidthMm)||data.boardWidthMm<600||data.boardWidthMm>1500)throw Error('Неверная версия, размер или масштаб файла');
+ const importedShape=data.tileShape??'square';
+ if(!Object.prototype.hasOwnProperty.call(SHAPE_SIDES,importedShape))throw Error('Неизвестная форма тайла');
  const next=[];
  for(const d of DISTRICTS)if(d.slots){
   const array=data.districts?.[d.id];
@@ -414,12 +443,13 @@ function applySnapshot(data){
    const delivered=(Array.isArray(item.delivered)&&project&&item.status==='under'&&item.delivered.length<=project.materials.length&&
      item.delivered.every((m,i)=>m===project.materials[i]))?[...item.delivered]:[];
    next.push({id:d.id+'-'+item.slot,districtId:d.id,n:item.slot,x:item.x,y:item.y,
+      rotation:Number.isFinite(item.rotation)?normalizeAngle(item.rotation):0,
       status:['empty','under','complete'].includes(item.status)?item.status:'empty',
-      owner:Number.isInteger(item.owner)?clamp(item.owner,0,4):0,
+      owner:Number.isInteger(item.owner)?clamp(item.owner,0,5):0,
       projectId:project?.id||null,delivered});
   }
  }
- boardWidthMm=data.boardWidthMm;slots=next;
+ boardWidthMm=data.boardWidthMm;tileShape=importedShape;slots=next;
  if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
  $('boardWidth').value=String(boardWidthMm/10);
  updateScale();persist();render();notice('Координаты загружены. Проверь красные предупреждения.');
@@ -430,6 +460,12 @@ function updateScale(){
  $('zoomValue').textContent=zoom+'%';
 }
 function activeSlot(){return slots.find(s=>s.id===selectedId)}
+function rotateSelected(degrees,absolute=false){
+ const t=activeSlot();
+ if(mode!=='layout'||tileShape==='square'||!t){notice('Выбери многоугольный участок в режиме расстановки');return}
+ t.rotation=normalizeAngle(absolute?degrees:(t.rotation||0)+degrees);
+ persist();render();
+}
 function mapPoint(event){
  const svg=$('mapSvg'),pt=svg.createSVGPoint();
  pt.x=event.clientX;pt.y=event.clientY;
@@ -508,6 +544,12 @@ async function init(){
    boardWidthMm=n;persist();render();
  });
  $('zoom').addEventListener('input',e=>{zoom=Number(e.target.value);updateScale()});
+ $('tileShape').onchange=e=>{tileShape=e.target.value;drag=null;persist();render();
+  notice('Форма изменена для всех 79 мест. Координаты и углы сохранены.')};
+ $('slotRotation').oninput=e=>rotateSelected(Number(e.target.value),true);
+ $('rotateLeft').onclick=()=>rotateSelected(-5);
+ $('rotateRight').onclick=()=>rotateSelected(5);
+ $('rotateReset').onclick=()=>rotateSelected(0,true);
  const svg=$('mapSvg');
  svg.addEventListener('pointerdown',e=>{
    const g=e.target.closest?.('[data-slot-id]');
@@ -540,9 +582,10 @@ async function init(){
   t.x=round(t.x+dir[0]*delta);t.y=round(t.y+dir[1]*delta);
   persist();render();e.preventDefault();
  });
- $('labMode').onchange=e=>{mode=e.target.value;drag=null;render();notice(mode==='build'?'Нажми на пустой квадрат, чтобы начать стройку':'Теперь квадраты можно перетаскивать')};
+ $('labMode').onchange=e=>{mode=e.target.value;drag=null;render();notice(mode==='build'?'Нажми на свободное место, чтобы начать стройку':'Места можно перемещать и поворачивать')};
  $('loadAuthorLayout').onclick=async()=>{if(!confirm('Восстановить авторскую схему? Текущая расстановка и тестовые здания заменятся — сначала экспортируй JSON.'))return;
-  try{await loadAuthorLayout();notice('Авторская геометрия восстановлена')}catch(e){notice(e.message)}};
+  try{const savedShape=tileShape;await loadAuthorLayout();tileShape=savedShape;persist();render();
+    notice('Авторские координаты восстановлены; текущая форма сохранена, углы сброшены')}catch(e){notice(e.message)}};
  $('markBuilding').onclick=()=>placeProject();
  $('deliverOne').onclick=()=>supplyMaterial(false);
  $('deliverAll').onclick=()=>supplyMaterial(true);
@@ -568,7 +611,10 @@ async function init(){
   try{applySnapshot(JSON.parse(await file.text()))}catch(err){notice('Ошибка файла: '+err.message)}
   e.target.value='';
  });
- window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),selectDistrict,slots:()=>slots.map(x=>({...x})),placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
+ window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size}),
+ selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
+ vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,sizeSvg()):null},
+ placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }
 init();
 </script>
