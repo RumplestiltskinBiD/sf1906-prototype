@@ -311,17 +311,17 @@ button.danger{background:#51313c}
 </main>
 </div>
 <script type="module">
-import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
+import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TILE_MM,SHAPE_SIDES,DEFAULT_CLEARANCE_MM,validClearance,legacyCenter,readSlotRegistry,regularVertices,holeDiameterMm,slotGeometry,polygonOverlap,pointEdgeDistanceSq,holeConflicts,OWNERS,ownershipGeometry} from './physical-map-geometry.js';
 import {defaultFold,readFold,changeFoldPreset,foldLayout,foldConflicts} from './physical-map-folds.js';
 import {DEFAULT_MANUFACTURING,MANUFACTURING_FIELDS,readManufacturing,manufacturingDiagnostics,tileMaterial} from './physical-map-manufacturing.js';
+import {svgElement,vertexString,drawCornerMarks,renderPhysicalTile} from './physical-tile-renderer.js';
+import {emptyDemo,readDemoRecord,writeDemoRecord,startDemo,finishDemo,supplyDemo,changeDemoOwner,demoTileView} from './physical-map-demo.js';
 'use strict';
 const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
-const SVG_NS='http://www.w3.org/2000/svg';
 const HEX_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_HEX50_USER_2026-11-24.json';
 const AUTHOR_LAYOUT_URL='./docs/PHYSICAL_MAP_LAYOUT_110CM_USER_2026-11-24.json';
 let projectCatalog=[],projectById=new Map(),mode='layout',tileShape='square',tileSizesMm={square:TILE_MM,hex:TILE_MM,oct:TILE_MM};
-const COLORS=OWNERS.map(o=>o.color);
-const SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
+const OWNER_COUNT=OWNERS.length;
 const $=id=>document.getElementById(id);
 const clamp=(x,min,max)=>Math.max(min,Math.min(max,x));
 const round=x=>Math.round(x*1000)/1000;
@@ -330,6 +330,9 @@ const pathById=Object.fromEntries(DISTRICTS.map(d=>[d.id,document.querySelector(
 const originalContours=Object.fromEntries(Object.entries(pathById).map(([id,p])=>[id,p.getAttribute('d')]));
 const originalPoints=Object.fromEntries(Object.entries(originalContours).map(([id,d])=>[id,Array.from(d.matchAll(/[ML]\s*([-\d.]+)\s+([-\d.]+)/g),m=>[Number(m[1]),Number(m[2])])]));
 const defaultFrame=()=>({heightMm:null,magnification:100,xMm:0,yMm:0,background:'original',labels:true,zones:{top:0,right:0,bottom:0,left:0},contours:{},showNodes:false,nodes:{},cut:'corner',cornerMm:8,clearanceMm:DEFAULT_CLEARANCE_MM,fold:defaultFold(),manufacturing:readManufacturing()});
+let demoState=new Map();
+const demoFor=t=>demoState.get(t.id)??emptyDemo();
+const viewFor=t=>demoTileView(t,demoFor(t),projectById);
 let frame=defaultFrame(),editId='innersunset',vertexDrag=null,nodeDrag=null,nodeCatalog=[],editNodeId=null;
 function boardHeight(){return frame.heightMm??boardWidthMm*VB_HEIGHT/VB_WIDTH}
 function unitsPerMm(){return VB_WIDTH/boardWidthMm*100/frame.magnification}
@@ -531,21 +534,10 @@ function cornerModel(owner=0,angle=0){
  return ownershipGeometry({shape:tileShape,sizeMm:tileSizesMm[tileShape],cutMm:frame.cornerMm,clearanceMm:frame.clearanceMm,owner,angle});
 }
 function effectiveCornerMm(){return cornerModel().cutMm}
-function cornerPath(n,s){
- const model=clippedCorner({shape:tileShape,sizeMm:tileSizesMm[tileShape],cutMm:frame.cornerMm});
- return 'M '+model.vertices.map(p=>round(s/2+p.x*unitsPerMm())+' '+round(s/2+p.y*unitsPerMm())).join(' L ')+' Z';
-}
-function drawCornerMarks(g,model,scale,cx,cy){
- for(const m of model.marks){
-  const x=cx+m.x*scale,y=cy+m.y*scale,r=m.radius*scale;
-  g.append(element('circle',{cx:x,cy:y,r,fill:SEAT_COLORS[m.index],class:'owner-seat corner-seat','data-owner-seat':m.index,stroke:'none'}));
-  if(m.owner&&r>0)g.append(element('text',{x,y:y+r*.43,'font-size':r*1.28,class:'owner-symbol','text-anchor':'middle',fill:'#14232d'},m.owner.symbol));
- }
-}
 function renderOwnershipPreview(t){
  const preview=$('ownershipPreview'),status=$('ownerGeometryStatus');preview.replaceChildren();
  if(tileShape==='square'||frame.cut!=='corner'){status.textContent='Срез вершины проверяется в режиме шести-/восьмиугольника.';status.classList.remove('warning');return}
- const owner=t&&t.status!=='empty'?t.owner:Number($('ownerSelect').value),model=cornerModel(owner),scale=90/model.holeMm;
+ const d=t?demoFor(t):null,owner=d&&d.status!=='empty'?d.owner:Number($('ownerSelect').value),model=cornerModel(owner),scale=90/model.holeMm;
  for(const [i,vertices] of [model.vertices,model.backVertices].entries()){
   const cx=i?185:65,cy=58,g=element('g');
   const points=poly=>vertexString(poly.map(p=>({x:cx+p.x*scale,y:cy+p.y*scale})));
@@ -572,21 +564,6 @@ function tileVertices(t,s){
  return tileShape==='square'
   ?[{x:0,y:0},{x:s,y:0},{x:s,y:s},{x:0,y:s}]
   :regularVertices(SHAPE_SIDES[tileShape],s,t.rotation||0);
-}
-function vertexString(vertices){return vertices.map(v=>round(v.x)+','+round(v.y)).join(' ')}
-function notchPath(n,s){
- const v=regularVertices(n,s),a=v[0],b=v[1],edge=Math.hypot(b.x-a.x,b.y-a.y);
- const half=Math.min(s*.067,edge*.22);
- const start={x:(a.x+b.x)/2-(b.x-a.x)*half/edge,y:(a.y+b.y)/2-(b.y-a.y)*half/edge};
- const end={x:(a.x+b.x)/2+(b.x-a.x)*half/edge,y:(a.y+b.y)/2+(b.y-a.y)*half/edge};
- const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},len=Math.hypot(s/2-mid.x,s/2-mid.y);
- const depth=s*.085,apex={x:mid.x+(s/2-mid.x)/len*depth,y:mid.y+(s/2-mid.y)/len*depth};
- const fmt=p=>round(p.x)+' '+round(p.y);
- return 'M '+fmt(a)+' L '+fmt(start)+' L '+fmt(apex)+' L '+fmt(end)+' '+v.slice(1).map(p=>'L '+fmt(p)).join(' ')+' Z';
-}
-function seatCenter(a,b,s){
- const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2},len=Math.hypot(s/2-mid.x,s/2-mid.y);
- return {x:mid.x+(s/2-mid.x)/len*s*.048,y:mid.y+(s/2-mid.y)/len*s*.048};
 }
 function polygonInsideDistrict(districtId,vertices,center){
  const path=pathById[districtId];if(!path)return false;
@@ -661,11 +638,12 @@ function autoDistrict(id){
     if(score<bestScore){bestScore=score;best=placed;}
   }
  }
+ for(const t of slots.filter(t=>t.districtId===id))demoState.delete(t.id);
  slots=slots.filter(t=>t.districtId!==id);
- (best||[]).forEach(([x,y],i)=>slots.push({id:id+'-'+(i+1),districtId:id,n:i+1,x:round(x),y:round(y),rotation:0,status:'empty',owner:i%COLORS.length}));
+ (best||[]).forEach(([x,y],i)=>{const key=id+'-'+(i+1);slots.push({id:key,districtId:id,n:i+1,x:round(x),y:round(y),rotation:0});demoState.set(key,emptyDemo(i%OWNER_COUNT));});
 }
 function autoAll(){
- slots=[];for(const d of DISTRICTS)if(d.slots)autoDistrict(d.id);
+ slots=[];demoState.clear();for(const d of DISTRICTS)if(d.slots)autoDistrict(d.id);
 }
 function validation(){
  const s=currentSizeSvg(),gap=gapSvg(),flag=new Set(),outside=new Set(),pairs=new Set();
@@ -680,90 +658,25 @@ function validation(){
  }
  return {flag,outside,pairs};
 }
-function element(tag,attrs={},text){
- const el=document.createElementNS(SVG_NS,tag);
- for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));
- if(text!==undefined)el.textContent=String(text);
- return el;
-}
-function compactLines(name){
- const words=String(name||'').split(/\s+/).filter(Boolean),out=['',''];
- for(const w of words){
-  const idx=out[0].length<11?0:1;
-  if(out[idx].length+w.length+(out[idx]?1:0)<=16)out[idx]+=(out[idx]?' ':'')+w;
-  else if(idx===0)out[1]=w.slice(0,15);
-  else out[1]=out[1].slice(0,14)+'…';
- }
- return out;
-}
-function drawTile(g,t,s){
- if(t.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.27},t.n));return}
- const p=projectById.get(t.projectId),title=p?.name||'Тестовое здание',poly=tileShape!=='square';
- g.append(element('rect',{x:s*(poly?.22:.045),y:s*(poly?.225:.04),width:s*(poly?.56:.91),height:s*(poly?.09:.15),rx:2,fill:t.status==='complete'?'#c9b99b':'#a78c61'}));
- const [line1,line2]=compactLines(title),font=s*(line2.length>=14?.105:.123);
- g.append(element('text',{x:s*.5,y:s*(poly?.43:.34),'font-size':font,class:'tile-title'},line1));
- if(line2)g.append(element('text',{x:s*.5,y:s*(poly?.54:.49),'font-size':font,class:'tile-title'},line2));
- if(p&&t.status==='under'){
-  g.append(element('text',{x:s*.5,y:s*(poly?.67:.67),'font-size':s*.124,class:'tile-stat'},(t.delivered?.length||0)+' / '+p.materials.length+' · стройка'));
-  (t.delivered||[]).slice(0,5).forEach((m,i)=>{
-   const x=s*((poly?.16:.08)+i*(poly?.14:.175)),code=m==='Lumber'?'Д':m==='Masonry'?'К':'С';
-   g.append(element('rect',{x,y:s*.75,width:s*(poly?.12:.148),height:s*.13,rx:1,fill:'#e4aa5f',class:'tile-chip'}));
-   g.append(element('text',{x:x+s*(poly?.06:.073),y:s*.847,'font-size':s*.105,class:'tile-stat'},code));
-  });
- }else if(p){
-  g.append(element('text',{x:s*.5,y:s*(poly?.68:.67),'font-size':s*.12,class:'tile-stat'},'Income '+(p.income>=0?'+':'')+p.income+' · VP '+p.prestige));
-  g.append(element('text',{x:s*.5,y:s*(poly?.8:.85),'font-size':s*.125,class:'tile-stat'},p.actionName&&p.actionName!=='—'?'● действие':'✓ готово'));
- }else g.append(element('text',{x:s*.5,y:s*.75,'font-size':s*.13,class:'tile-stat'},t.status==='complete'?'✓ готово':'стройка'));
- if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[t.owner%COLORS.length]}));
-}
+const element=(...args)=>svgElement(document,...args);
 function render(){
  const folds=foldDiagnostics(),foldBad=new Set(folds.conflicts.filter(c=>c.kind==='slot').map(c=>c.id)),mfg=currentManufacturing(folds),mfgBad=new Set(frame.manufacturing.highlight?mfg.badSlots:[]);
  const s=currentSizeSvg(),problem=validation(),frameIssues=frameProblems(),holes=holeValidation(),holeBad=new Set(holes.pairs.flatMap(p=>p.ids)),holeOutside=new Set(holes.outside),layer=$('slotLayer'),frag=document.createDocumentFragment();
- const poly=tileShape!=='square',n=SHAPE_SIDES[tileShape];
+ const poly=tileShape!=='square';
  for(const t of slots){
   const bad=problem.flag.has(t.id)||holeBad.has(t.id)||holeOutside.has(t.id)||foldBad.has(t.id)||frameIssues.edge.includes(t.id)||frameIssues.reserved.includes(t.id),sel=t.id===selectedId;
-  const origin=actualSlotOrigin(t);
-  const g=element('g',{transform:'translate('+round(origin.x)+' '+round(origin.y)+')','data-slot-id':t.id,'data-shape':tileShape,'data-rotation':t.rotation||0,
-   class:'slot'+(bad?' problem':'')+(sel?' selected':'')+(mode==='build'&&t.status==='empty'?' build-available':'')});
-  const hole=physicalGeometry(t).hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
-  // Draw the actual opening behind the tile; keep a separate nominal tile contour for empty slots.
-  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeBad.has(t.id)||holeOutside.has(t.id)?' slot-hole-conflict':'')+(foldBad.has(t.id)?' fold-conflict':'')+(mfgBad.has(t.id)?' manufacturing-warning':''),'data-hole':t.id}));
-  if(!poly){
-   g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:'tile'+(t.status==='under'?' tile-under':t.status==='complete'?' tile-done':'')}));
-   drawTile(g,t,s);
-  }else{
-   const guide=element('g',{transform:'rotate('+(t.rotation||0)+' '+s/2+' '+s/2+')'});
-   const vertex=regularVertices(n,s);
-   guide.append(element('polygon',{points:vertexString(vertex),class:t.status==='empty'?'tile':'slot-guide'}));
-   if(frame.cut==='corner')drawCornerMarks(guide,cornerModel(),unitsPerMm(),s/2,s/2);
-   else vertex.forEach((a,i)=>{
-    const b=vertex[(i+1)%n],p=seatCenter(a,b,s);
-    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(s*.035),fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
-   });
-   g.append(guide);
-   if(t.status==='empty')drawTile(g,t,s);
-   else{
-    const face=element('g',{transform:'rotate('+((t.rotation||0)+t.owner*360/n)+' '+s/2+' '+s/2+')',
-      'data-notch-owner':t.owner,'data-face':t.status==='complete'?'back':'front',...(frame.cut==='corner'?{class:'corner-face'}:{})});
-    face.append(element('path',{d:frame.cut==='corner'?cornerPath(n,s):notchPath(n,s),class:'tile'+(t.status==='under'?' tile-under':' tile-done')}));
-    if(frame.cut==='corner'){
-     const clipId='physical-face-'+t.id,clip=element('clipPath',{id:clipId});
-     clip.append(element('path',{d:cornerPath(n,s)}));face.append(clip);
-     const artwork=element('g',{'clip-path':'url(#'+clipId+')'});drawTile(artwork,t,s);face.append(artwork);
-    }else drawTile(face,t,s);
-    g.append(face);
-   }
-  }
-  const p=projectById.get(t.projectId);
-  g.append(element('title',{},(p?.name||'Свободный участок')+' · '+t.districtId+' №'+t.n+
-    ' · '+t.status+' · '+(t.rotation||0)+'°'+(bad?' · пересечение/граница':'')));
+  const view=viewFor(t);
+  const className=[bad?'problem':'',sel?'selected':'',mode==='build'&&view.status==='empty'?'build-available':''].filter(Boolean).join(' ');
+  const holeClass=[holeBad.has(t.id)||holeOutside.has(t.id)?'slot-hole-conflict':'',foldBad.has(t.id)?'fold-conflict':'',mfgBad.has(t.id)?'manufacturing-warning':''].filter(Boolean).join(' ');
+  const g=renderPhysicalTile(document,{view,geometry:physicalGeometry(t),shape:tileShape,sizeMm:tileSizesMm[tileShape],unitsPerMm:unitsPerMm(),rotation:t.rotation||0,
+   cut:frame.cut,cutMm:frame.cornerMm,clearanceMm:frame.clearanceMm,className,holeClass,warning:bad});
   frag.append(g);
  }
  layer.replaceChildren(frag);renderBoardParts(folds,new Set(frame.manufacturing.highlight?mfg.badNodes:[]));renderManufacturing(mfg);
  $('mapSvg').classList.toggle('build-mode',mode==='build');
  for(const d of DISTRICTS){const g=document.querySelector('[data-region="'+d.id+'"]');if(g)g.classList.toggle('current',d.id===selectedDistrict)}
  const byDistrict={};for(const id of problem.flag){const k=slots.find(s=>s.id===id)?.districtId;if(k)byDistrict[k]=(byDistrict[k]||0)+1}
- const occupied=slots.filter(t=>t.status!=='empty').length,done=slots.filter(t=>t.status==='complete').length;
+ const occupied=slots.filter(t=>demoFor(t).status!=='empty').length,done=slots.filter(t=>demoFor(t).status==='complete').length;
  $('stats').innerHTML='<strong>'+slots.length+' / '+TOTAL+'</strong> мест · '+boardWidthMm/10+' × '+round(boardHeight()/10)+' см<br>'+
   '<b>'+occupied+' занято · '+done+' готово</b><br><b style="color:'+(problem.flag.size?'#ffb0a6':'#9be2c6')+'">'+problem.flag.size+' проблемных мест</b> · за контуром: '+problem.outside.size+' · пересечений: '+problem.pairs.size+'<br>За краем поля: '+frameIssues.edge.length+' · в резерве: '+frameIssues.reserved.length+'<br>Отверстия: '+holes.pairs.length+' пар пересекаются/касаются · за контуром '+holes.outside.length+' · мин. перемычка '+(holes.minimumMm===null?'—':round(holes.minimumMm)+' мм')+(frame.showNodes?'<br>Логистика: за краем '+nodeProblems().edge.length+' · в резерве '+nodeProblems().reserved.length+' · наложения '+nodeProblems().collisions.length:'')+(frame.fold.enabled?'<br>Конфликт со швами: '+foldBad.size+' участков · '+folds.conflicts.filter(c=>c.kind==='node').length+' логистика':'');
  $('dimensions').textContent=(boardWidthMm/10)+' × '+round(boardHeight()/10)+' см · размер '+tileSizesMm[tileShape]+' мм · зазор '+GAP_MM+' мм · '+
@@ -778,12 +691,12 @@ function render(){
  $('selectedDistrictLabel').textContent=DISTRICTS.find(x=>x.id===selectedDistrict)?.name+' · '+(byDistrict[selectedDistrict]||0)+' проблемных мест';
  for(const b of document.querySelectorAll('#districtList button')){const id=b.dataset.districtId;b.classList.toggle('current',id===selectedDistrict);b.classList.toggle('problem',!!byDistrict[id])}
  $('focusDistrict').value=selectedDistrict;
- const t=slots.find(x=>x.id===selectedId),p=projectById.get(t?.projectId);
- $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[t.status])+
-  (p?'\n'+p.name+' · материалы '+(t.delivered?.length||0)+'/'+p.materials.length:'')+
+ const t=slots.find(x=>x.id===selectedId),d=t?demoFor(t):null,p=projectById.get(d?.projectId);
+ $('selectedInfo').textContent=t?('Участок '+t.id+' · '+({empty:'свободен',under:'стройка',complete:'готово'}[d.status])+
+  (p?'\n'+p.name+' · материалы '+(d.delivered?.length||0)+'/'+p.materials.length:'')+
   '\nЦентр (SVG-слой карты): '+round(legacyCenter(t,unitsPerMm()).x/unitsPerMm())+' × '+round(legacyCenter(t,unitsPerMm()).y/unitsPerMm())+' мм'+
   '\nПоворот места: '+(t.rotation||0)+'°'+(problem.flag.has(t.id)?'\n⚠ Конфликт/граница':'')):'Выбери место';
- renderOwnershipPreview(t);$('changeDemoOwner').disabled=!t||t.status==='empty';
+ renderOwnershipPreview(t);$('changeDemoOwner').disabled=!t||d.status==='empty';
  const allowRotate=!!t&&poly&&mode==='layout';
  $('slotRotation').value=String(t?.rotation||0);$('slotRotation').disabled=!allowRotate;
  $('angleValue').textContent=(t?.rotation||0)+'°';
@@ -796,9 +709,7 @@ function notice(msg){$('notice').textContent=msg}
 function snapshot(){
  const districts={};
  for(const d of DISTRICTS)if(d.slots)districts[d.id]=slots.filter(x=>x.districtId===d.id).sort((a,b)=>a.n-b.n).map(t=>({
- slot:t.n,x:round(t.x),y:round(t.y),rotation:t.rotation||0,status:t.status,owner:t.owner,
- ...(t.projectId?{projectId:t.projectId}:{}),
- ...(t.delivered?.length?{delivered:[...t.delivered]}:{})
+ slot:t.n,x:round(t.x),y:round(t.y),rotation:t.rotation||0,...writeDemoRecord(demoFor(t))
 }));
  return {schema:'sf1906-physical-slot-layout-v1',boardViewBox:[1536,1024],boardWidthMm,tileMm:TILE_MM,gapMm:GAP_MM,tileShape,tileSizesMm:{...tileSizesMm},boardFrame:structuredClone(frame),districts};
 }
@@ -816,20 +727,15 @@ function applySnapshot(data){
    importedSizes[shape]=value;
   }
  }
- const next=[];
+ const next=[],nextDemo=new Map();
  const importedRegistry=readSlotRegistry(data.districts,VB_WIDTH/data.boardWidthMm*100/importedFrame.magnification);
  for(const entry of importedRegistry){
    const item=entry.record;
    const project=projectById.get(item.projectId);
-   const delivered=(Array.isArray(item.delivered)&&project&&item.status==='under'&&item.delivered.length<=project.materials.length&&
-     item.delivered.every((m,i)=>m===project.materials[i]))?[...item.delivered]:[];
-   next.push({id:entry.id,districtId:entry.districtId,n:entry.ordinal,x:item.x,y:item.y,
-      rotation:Number.isFinite(item.rotation)?normalizeAngle(item.rotation):0,
-      status:['empty','under','complete'].includes(item.status)?item.status:'empty',
-      owner:Number.isInteger(item.owner)?clamp(item.owner,0,5):0,
-      projectId:project?.id||null,delivered});
+   next.push({id:entry.id,districtId:entry.districtId,n:entry.ordinal,x:item.x,y:item.y,rotation:Number.isFinite(item.rotation)?normalizeAngle(item.rotation):0});
+   nextDemo.set(entry.id,readDemoRecord(item,project));
  }
- boardWidthMm=data.boardWidthMm;tileShape=importedShape;tileSizesMm=importedSizes;slots=next;frame=importedFrame;applyContours();syncFrame();
+ boardWidthMm=data.boardWidthMm;tileShape=importedShape;tileSizesMm=importedSizes;slots=next;demoState=nextDemo;frame=importedFrame;applyContours();syncFrame();
  if(!$('boardWidth').querySelector('option[value="'+boardWidthMm/10+'"]'))$('boardWidth').add(new Option(String(boardWidthMm/10),String(boardWidthMm/10)));
  $('boardWidth').value=String(boardWidthMm/10);
  updateBoardView();persist();render();notice('Координаты загружены. Проверь красные предупреждения.');
@@ -912,20 +818,17 @@ function projectPreview(){
  :'Проект не выбран';
 }
 function placeProject(t=activeSlot()){
- if(!t||t.status!=='empty'){notice('Выбери свободный слот');return false}
- const p=projectById.get($('projectSelect').value);
- if(!p){notice('Проект не найден');return false}
- t.projectId=p.id;t.owner=Number($('ownerSelect').value);t.status='under';t.delivered=[];
- persist();render();notice('Тестовая стройка: '+p.name);return true;
+ if(!t||demoFor(t).status!=='empty'){notice('Выбери свободный слот');return false}
+ const p=projectById.get($('projectSelect').value),next=startDemo(demoFor(t),p,Number($('ownerSelect').value));
+ if(!next){notice('Проект не найден');return false}
+ demoState.set(t.id,next);persist();render();notice('Тестовая стройка: '+p.name);return true;
 }
 function supplyMaterial(all=false){
- const t=activeSlot(),p=projectById.get(t?.projectId);
- if(!t||t.status!=='under'||!p){notice('Выбери стройку с проектом');return false}
- const count=t.delivered?.length||0;
- if(count>=p.materials.length)return false;
- t.delivered=p.materials.slice(0,all?p.materials.length:count+1);
- if(t.delivered.length>=p.materials.length){t.status='complete';t.delivered=[];notice('Последняя условная поставка — тайл перевёрнут (без игровых выплат)')}
- else notice('Материал доставлен: '+t.delivered.length+'/'+p.materials.length);
+ const t=activeSlot(),d=t?demoFor(t):null,p=projectById.get(d?.projectId);
+ if(!d||d.status!=='under'||!p){notice('Выбери стройку с проектом');return false}
+ const next=supplyDemo(d,p,all);if(!next)return false;
+ demoState.set(t.id,next);
+ notice(next.status==='complete'?'Последняя условная поставка — тайл перевёрнут (без игровых выплат)':'Материал доставлен: '+next.delivered.length+'/'+p.materials.length);
  persist();render();return true;
 }
 async function init(){
@@ -997,7 +900,7 @@ async function init(){
    const t=slots.find(s=>s.id===g.dataset.slotId),point=mapPoint(e);
    if(!t||!point)return;
    selectedId=t.id;selectedDistrict=t.districtId;
-   if(mode==='build'){if(t.status==='empty')placeProject(t);else render();e.preventDefault();return}
+   if(mode==='build'){if(demoFor(t).status==='empty')placeProject(t);else render();e.preventDefault();return}
    drag={pointerId:e.pointerId,id:t.id,offsetX:t.x-point.x,offsetY:t.y-point.y};
    svg.setPointerCapture(e.pointerId);svg.style.cursor='grabbing';render();e.preventDefault();
  });
@@ -1025,16 +928,16 @@ async function init(){
   try{const savedShape=tileShape,savedSizes={...tileSizesMm};await loadAuthorLayout();tileShape=savedShape;tileSizesMm=savedSizes;persist();render();
     notice('Авторская геометрия восстановлена; выбранная форма и размеры сохранены, углы сброшены')}catch(e){notice(e.message)}};
  $('ownerSelect').onchange=()=>renderOwnershipPreview(activeSlot());
- $('changeDemoOwner').onclick=()=>{const t=activeSlot();if(!t||t.status==='empty')return;t.owner=Number($('ownerSelect').value);persist();render();notice('Владелец тестового тайла изменён; участок и материалы сохранены')};
+ $('changeDemoOwner').onclick=()=>{const t=activeSlot(),next=t?changeDemoOwner(demoFor(t),Number($('ownerSelect').value)):null;if(!next)return;demoState.set(t.id,next);persist();render();notice('Владелец тестового тайла изменён; участок и материалы сохранены')};
  $('markBuilding').onclick=()=>placeProject();
  $('deliverOne').onclick=()=>supplyMaterial(false);
  $('deliverAll').onclick=()=>supplyMaterial(true);
- $('markComplete').onclick=()=>{const t=activeSlot();if(!t||t.status!=='under'){notice('Нужно сначала начать стройку');return;}t.status='complete';t.delivered=[];persist();render();notice('Тайл перевёрнут (визуальный тест)')};
- $('markEmpty').onclick=()=>{const t=activeSlot();if(!t)return;t.status='empty';t.projectId=null;t.delivered=[];persist();render();notice('Место освобождено')};
+ $('markComplete').onclick=()=>{const t=activeSlot(),next=t?finishDemo(demoFor(t)):null;if(!next){notice('Нужно сначала начать стройку');return;}demoState.set(t.id,next);persist();render();notice('Тайл перевёрнут (визуальный тест)')};
+ $('markEmpty').onclick=()=>{const t=activeSlot();if(!t)return;demoState.set(t.id,emptyDemo(demoFor(t).owner));persist();render();notice('Место освобождено')};
  $('seedDistrict').onclick=()=>{if(confirm('Заменить вручную выбранные координаты в районе '+selectedDistrict+'?')){autoDistrict(selectedDistrict);persist();render();notice('Район авторазмещён как черновик')}};
  $('seedAll').onclick=()=>{if(confirm('Сбросить все 79 позиций? Все ручные перемещения в браузере будут потеряны. Сначала скачай JSON, если они нужны.')){autoAll();persist();render();notice('Все районы авторазмещены заново')}};
- $('fillAll').onclick=()=>{for(const t of slots){t.status='complete';t.projectId=$('projectSelect').value;t.owner=t.n%COLORS.length;t.delivered=[]}persist();render();notice('Показана полная застройка выбранным типом для теста')};
- $('emptyAll').onclick=()=>{for(const t of slots){t.status='empty';t.projectId=null;t.delivered=[]}persist();render()};
+ $('fillAll').onclick=()=>{for(const t of slots){demoState.set(t.id,{status:'complete',projectId:$('projectSelect').value,owner:t.n%OWNER_COUNT,delivered:[]})}persist();render();notice('Показана полная застройка выбранным типом для теста')};
+ $('emptyAll').onclick=()=>{for(const t of slots){demoState.set(t.id,emptyDemo(demoFor(t).owner))}persist();render()};
  $('download').onclick=()=>{
    const json=JSON.stringify(snapshot(),null,2),blob=new Blob([json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='sf1906-slot-layout-'+tileSizesMm[tileShape]+'mm-'+tileShape+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -1052,10 +955,10 @@ async function init(){
   e.target.value='';
  });
  window.__physicalMapLab={snapshot,validation:()=>({outside:[...validation().outside],overlaps:validation().pairs.size,pairIds:[...validation().pairs],...frameProblems(),nodes:nodeProblems(),holes:holeValidation(),folds:foldDiagnostics().conflicts}),folds:foldDiagnostics,manufacturing:()=>currentManufacturing(),
- selectDistrict,slots:()=>slots.map(x=>({...x})),shape:()=>tileShape,rotateSelected,
+ selectDistrict,slots:()=>slots.map(x=>({...x,...demoFor(x),delivered:[...demoFor(x).delivered]})),slotRecords:()=>slots.map(x=>({...x})),tileView:id=>{const t=slots.find(x=>x.id===id);return t?viewFor(t):null},shape:()=>tileShape,rotateSelected,
  board:()=>({widthMm:boardWidthMm,heightMm:boardHeight(),unitsPerMm:unitsPerMm(),viewport:viewport()}),
  vertices:(id)=>{const t=slots.find(x=>x.id===id);return t?tileVertices(t,currentSizeSvg()):null},size:()=>tileSizesMm[tileShape],sizes:()=>({...tileSizesMm}),
- ownership:(id)=>{const t=slots.find(x=>x.id===id);return t&&tileShape!=='square'&&frame.cut==='corner'?cornerModel(t.owner,t.rotation||0):null},
+ ownership:(id)=>{const t=slots.find(x=>x.id===id);return t&&tileShape!=='square'&&frame.cut==='corner'?cornerModel(demoFor(t).owner,t.rotation||0):null},
  geometry:(id)=>{const t=slots.find(x=>x.id===id);return t?physicalGeometry(t):null},
  placeProject,supplyMaterial,projectCatalog:()=>projectCatalog.map(p=>p.id)};
 }
