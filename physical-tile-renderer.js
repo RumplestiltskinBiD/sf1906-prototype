@@ -2,6 +2,7 @@
 // No dependency on the laboratory, catalog lookup, game rules, saves or global DOM.
 import {SHAPE_SIDES,regularVertices,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
 import {renderTileIcon,materialIconId,categoryIconId} from './physical-tile-icons.js';
+import {BUILDING_TYPE_COLORS,categoryColors,categoryStops,categoryTextStyle} from './building-type-palette.js';
 const SVG_NS='http://www.w3.org/2000/svg';
 const COLORS=OWNERS.map(o=>o.color),SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
 const round=x=>Math.round(x*1000)/1000;
@@ -50,17 +51,18 @@ function compactLines(name){
  return out;
 }
 
-export function drawTileArtwork(g,v,s,shape){
+export function drawTileArtwork(g,v,s,shape,colors=categoryColors(v.categories)){
  const element=(...args)=>svgElement(g.ownerDocument,...args),poly=shape!=='square';
  if(v.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.27},v.ordinal));return}
+ const ink=categoryTextStyle(colors)+(colors.length>1?'stroke-width:'+s*.017+';':'');
  g.append(element('rect',{x:s*(poly?.22:.045),y:s*(poly?.225:.04),width:s*(poly?.56:.91),height:s*(poly?.09:.15),rx:2,fill:v.status==='complete'?'#c9b99b':'#a78c61'}));
  const categorySize=s*(poly?.075:.115),categoryStep=categorySize*1.3;
  v.categories.forEach((category,i)=>g.append(renderTileIcon(g.ownerDocument,categoryIconId(category),{x:s/2-categorySize/2+(i-(v.categories.length-1)/2)*categoryStep,y:s*(poly?.231:.058),size:categorySize,label:category})));
  const [line1,line2]=compactLines(v.name),font=s*(line2.length>=14?.105:.123);
- g.append(element('text',{x:s*.5,y:s*(poly?.43:.34),'font-size':font,class:'tile-title'},line1));
- if(line2)g.append(element('text',{x:s*.5,y:s*(poly?.54:.49),'font-size':font,class:'tile-title'},line2));
+ g.append(element('text',{x:s*.5,y:s*(poly?.43:.34),'font-size':font,class:'tile-title',style:ink},line1));
+ if(line2)g.append(element('text',{x:s*.5,y:s*(poly?.54:.49),'font-size':font,class:'tile-title',style:ink},line2));
  if(v.knownProject&&v.status==='under'){
-  g.append(element('text',{x:s*.5,y:s*.67,'font-size':s*.124,class:'tile-stat'},v.delivered.length+' / '+v.required.length+' · стройка'));
+  g.append(element('text',{x:s*.5,y:s*.67,'font-size':s*.124,class:'tile-stat',style:ink},v.delivered.length+' / '+v.required.length+' · стройка'));
   v.delivered.slice(0,5).forEach((m,i)=>{
    const x=s*((poly?.16:.08)+i*(poly?.14:.175));
    g.append(element('rect',{x,y:s*.75,width:s*(poly?.12:.148),height:s*.13,rx:1,fill:'#e4aa5f',class:'tile-chip','data-material':m}));
@@ -70,15 +72,15 @@ export function drawTileArtwork(g,v,s,shape){
  }else if(v.knownProject){
   const income=v.live.income??v.catalog.baseIncome,vp=v.live.vp??v.catalog.baseVP;
   const fmt=x=>x===null?'—':(x>=0?'+':'')+x;
-  g.append(element('text',{x:s*.5,y:s*(poly?.68:.67),'font-size':s*.12,class:'tile-stat'},'Income '+fmt(income)+' · VP '+(vp??'—')));
+  g.append(element('text',{x:s*.5,y:s*(poly?.68:.67),'font-size':s*.12,class:'tile-stat',style:ink},'Income '+fmt(income)+' · VP '+(vp??'—')));
   // Historical demo caption; actionName alone does NOT prove worker action availability.
-  g.append(element('text',{x:s*.5,y:s*(poly?.8:.85),'font-size':s*.125,class:'tile-stat'},v.catalog.actionName&&v.catalog.actionName!=='—'?'● действие':'✓ готово'));
- }else g.append(element('text',{x:s*.5,y:s*.75,'font-size':s*.13,class:'tile-stat'},v.status==='complete'?'✓ готово':'стройка'));
+  g.append(element('text',{x:s*.5,y:s*(poly?.8:.85),'font-size':s*.125,class:'tile-stat',style:ink},v.catalog.actionName&&v.catalog.actionName!=='—'?'● действие':'✓ готово'));
+ }else g.append(element('text',{x:s*.5,y:s*.75,'font-size':s*.13,class:'tile-stat',style:ink},v.status==='complete'?'✓ готово':'стройка'));
  if(!poly)g.append(element('rect',{x:s*.795,y:s*.015,width:s*.19,height:s*.19,rx:2,class:'owner-mark',fill:COLORS[v.owner]}));
 }
 // geometry is the same slotGeometry result used by manufacturing diagnostics.
 // Namespace is explicit so multiple render surfaces can coexist without clip ID collisions.
-export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,rotation=0,cut='corner',cutMm=8,clearanceMm=.5,namespace='physical-face',className='',holeClass='',warning=false}){
+export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,rotation=0,cut='corner',cutMm=8,clearanceMm=.5,namespace='physical-face',className='',holeClass='',warning=false,palette=BUILDING_TYPE_COLORS}){
  if(!/^[a-zA-Z0-9_-]+$/.test(namespace)||!/^[a-zA-Z0-9_-]+$/.test(view.slotId))throw Error('Invalid SVG tile namespace or slot ID');
  const element=(...args)=>svgElement(doc,...args),s=sizeMm*unitsPerMm,n=SHAPE_SIDES[shape],poly=shape!=='square';
  const origin={x:geometry.center.x-s/2,y:geometry.center.y-s/2};
@@ -88,9 +90,21 @@ export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,ro
  const hole=geometry.hole.map(p=>({x:p.x-origin.x,y:p.y-origin.y}));
  g.append(element('polygon',{points:vertexString(hole),class:'slot-hole'+(holeClass?' '+holeClass:''),'data-hole':view.slotId}));
  const faceClass='tile'+(view.status==='under'?' tile-under':view.status==='complete'?' tile-done':'');
+ const colors=view.status==='empty'?[]:categoryColors(view.categories,palette);
+ const gradientId=namespace+'-'+view.slotId+'-category-fill';
+ let faceAttrs={};
+ if(colors.length){
+  const fill=colors.length===1?colors[0]:'url(#'+gradientId+')';
+  faceAttrs={style:'fill:'+fill,'data-category-colors':colors.join(','),'data-category-fill':colors.length===1?'single':'split'};
+  if(colors.length>1){
+   const defs=element('defs'),gradient=element('linearGradient',{id:gradientId,x1:'0%',y1:'0%',x2:'100%',y2:'0%'});
+   for(const {color,offset} of categoryStops(colors))gradient.append(element('stop',{'stop-color':color,offset:offset+'%'}));
+   defs.append(gradient);g.append(defs);
+  }
+ }
  if(!poly){
-  g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:faceClass}));
-  drawTileArtwork(g,view,s,shape);
+  g.append(element('rect',{x:0,y:0,width:s,height:s,rx:1.6,class:faceClass,...faceAttrs}));
+  drawTileArtwork(g,view,s,shape,colors);
  }else{
   const guide=element('g',{transform:'rotate('+rotation+' '+s/2+' '+s/2+')'}),vertex=regularVertices(n,s);
   guide.append(element('polygon',{points:vertexString(vertex),class:view.status==='empty'?'tile':'slot-guide'}));
@@ -100,17 +114,17 @@ export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,ro
    guide.append(element('circle',{cx:round(p.x),cy:round(p.y),r:round(s*.035),fill:SEAT_COLORS[i],class:'owner-seat','data-owner-seat':i}));
   });
   g.append(guide);
-  if(view.status==='empty')drawTileArtwork(g,view,s,shape);
+  if(view.status==='empty')drawTileArtwork(g,view,s,shape,colors);
   else{
    const face=element('g',{transform:'rotate('+(rotation+view.owner*360/n)+' '+s/2+' '+s/2+')',
     'data-notch-owner':view.owner,'data-face':view.side,...(cut==='corner'?{class:'corner-face'}:{})});
    const path=cut==='corner'?cornerPath({shape,sizeMm,cutMm,unitsPerMm}):notchPath(n,s);
-   face.append(element('path',{d:path,class:faceClass}));
+   face.append(element('path',{d:path,class:faceClass,...faceAttrs}));
    if(cut==='corner'){
     const clipId=namespace+'-'+view.slotId,clip=element('clipPath',{id:clipId});
     clip.append(element('path',{d:path}));face.append(clip);
-    const artwork=element('g',{'clip-path':'url(#'+clipId+')'});drawTileArtwork(artwork,view,s,shape);face.append(artwork);
-   }else drawTileArtwork(face,view,s,shape);
+    const artwork=element('g',{'clip-path':'url(#'+clipId+')'});drawTileArtwork(artwork,view,s,shape,colors);face.append(artwork);
+   }else drawTileArtwork(face,view,s,shape,colors);
    g.append(face);
   }
  }

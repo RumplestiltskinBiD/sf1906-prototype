@@ -1,3 +1,4 @@
+import {categoryColors,categoryStripe,UNKNOWN_CATEGORY_COLOR} from './building-type-palette.js';
 import {
 PROJECTS,STANDARD_PROJECTS,STANDARD_PROJECT_FEE,isStandardProject,isWarehouseConstruction,warehouseStorageCapacity,PROJECT_COPIES,DISTRICTS,CITY_GOALS,MAX_ROUNDS,RESOURCE_PRICES,BASE_ROUND_INCOME,CONSTRUCTION_UPKEEP_COST,ADVERTISING_CAMPAIGN_COST,ADVERTISING_CAMPAIGN_INCOME,LOAN_PRINCIPAL,MAX_ACTIVE_LOANS,BUREAU_LAND_DISCOUNT,HAND_LIMIT,STARTER_KEEP,WORKERS_PER_PLAYER,
 LOGISTICS_NODES,NEUTRAL_MATERIAL_SUPPLIERS,LOGISTICS_RESOURCE_WEIGHTS,CONSTRUCTION_STAGING_CAPACITY,WAREHOUSE_STORAGE_CAPACITY,DELIVERY_HAULERS,DELIVERY_EDGE_COST,generateLogisticsSupply,f03CurrentPortIncident,h04DonationOptions,donateH04,e01ContractPreview,currentE01PendingContract,chooseE01Contract,e02TradeWeekPreview,e02TradeOptions,organizeE02TradeEvent,e04StrikePreview,e04SettlementOptions,settleE04Strike,e06ReliefPreview,e06ReliefOptions,chooseE06Relief,e03AidPreview,e03WarehouseAidOptions,claimE03WarehouseAid,E03_AID_DISTRICTS,E03_AID_MATERIALS,
@@ -619,24 +620,9 @@ if(state.phase==='declare'&&currentDeclarer(state)!=null)return currentDeclarer(
 return state.firstPlayer;
 }
 function projectTypeLabel(project){const types=projectTypes(project).join(' · ')||project?.type||'Проект';return types+(project?.largeBuilding?' · КРУПНОЕ ЗДАНИЕ':'');}
-const BUILDING_TYPE_COLORS=Object.freeze({
-'Жилое':'#56875A',
-'Бизнес':'#76558F',
-'Промышленное':'#34383D',
-'Общественное':'#3F78A8',
-'Торговое':'#D5A021'
-});
-function projectTypeColors(project){
-return projectTypes(project).map(t=>BUILDING_TYPE_COLORS[t]).filter(Boolean);
-}
-function projectTypeStripe(project){
-const colors=projectTypeColors(project);
-if(!colors.length)return '#8A7D6B';
-if(colors.length===1)return colors[0];
-const stop=100/colors.length;
-return 'linear-gradient(90deg,'+colors.map((c,i)=>c+' '+(i*stop)+'% '+((i+1)*stop)+'%').join(',')+')';
-}
-function projectTypeStyle(project){return 'style="--type-stripe:'+projectTypeStripe(project)+'"';}
+function projectTypeColors(project){return categoryColors(projectTypes(project));}
+function projectTypeStripe(project){return categoryStripe(projectTypes(project));}
+function projectTypeStyle(project){return 'style="--type-stripe:'+projectTypeStripe(project)+';--type-primary:'+(projectTypeColors(project)[0]||UNKNOWN_CATEGORY_COLOR)+'"';}
 function projectSvgTypeStripe(project,{x,y,width,height=5}){
 const colors=projectTypeColors(project);
 if(!colors.length)return '';
