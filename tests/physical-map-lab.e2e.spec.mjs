@@ -841,3 +841,73 @@ test('manufacturing settings roundtrip, invalid imports, screen zoom and mobile 
   expect(w.content).toBeLessThanOrEqual(w.viewport+2);
  }
 });
+
+test('shared tile renderer: separate demo state survives geometry changes and all 79 slots fill and clear on mobile',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer [data-tile-renderer="shared"]')).toHaveCount(79);
+  const slots=()=>page.evaluate(()=>window.__physicalMapLab.slotRecords());
+  const view=()=>page.evaluate(()=>window.__physicalMapLab.tileView('civic-1'));
+  const initial=await slots();
+  expect(initial.every(s=>!Object.hasOwn(s,'status')&&!Object.hasOwn(s,'projectId')&&!Object.hasOwn(s,'delivered')&&!Object.hasOwn(s,'owner'))).toBe(true);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#markEmpty').click();
+  await page.locator('#projectSelect').selectOption('std_warehouse');
+  await page.locator('#ownerSelect').selectOption('4');
+  await page.locator('#markBuilding').click();
+  await page.locator('#deliverOne').click();
+  const partial=await view();
+  expect(partial.side).toBe('front');expect(partial.delivered).toEqual(['Lumber']);
+  expect(partial.constructionId).toBeNull();expect(partial.live.income).toBeNull();
+  expect(await slots()).toEqual(initial);
+  const tile=page.locator('[data-slot-id="civic-1"]');
+  for(const shape of ['hex','oct','square']){
+   await page.locator('#tileShape').selectOption(shape);
+   await page.locator('#tileSize').fill('45');await page.locator('#tileSize').press('Tab');
+   await expect(tile.locator('[data-material="Lumber"]')).toHaveCount(1);
+   expect(await view()).toEqual(partial);expect(await slots()).toEqual(initial);
+  }
+  await page.locator('#tileShape').selectOption('hex');
+  await page.locator('#rotateRight').click();
+  const moved=await slots();
+  expect(moved.find(s=>s.id==='civic-1').rotation).not.toBe(initial.find(s=>s.id==='civic-1').rotation);
+  expect(await view()).toEqual(partial);
+  await page.reload();
+  expect(await slots()).toEqual(moved);expect(await view()).toEqual(partial);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#deliverAll').click();
+  await expect(tile.locator('[data-face="back"][data-notch-owner="4"]')).toHaveCount(1);
+  expect((await view()).side).toBe('back');expect(await slots()).toEqual(moved);
+  await page.locator('#fillAll').click();
+  await expect(page.locator('#slotLayer [data-tile-status="complete"]')).toHaveCount(79);
+  expect(await slots()).toEqual(moved);
+  await page.locator('#emptyAll').click();
+  await expect(page.locator('#slotLayer [data-tile-status="empty"]')).toHaveCount(79);
+  expect(await slots()).toEqual(moved);
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
+
+test('shared renderer works outside lab state for all catalog projects, shapes and sides',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ const result=await page.evaluate(async()=>{
+  const [{PROJECTS,STANDARD_PROJECTS},{createTileView},{renderPhysicalTile},{slotGeometry}]=await Promise.all([import('/game-core.js'),import('/physical-tile-view.js'),import('/physical-tile-renderer.js'),import('/physical-map-geometry.js')]);
+  const catalog=[...PROJECTS,...STANDARD_PROJECTS],slot={id:'test-1',districtId:'civic',n:1,x:0,y:0},issues=[];
+  let count=0;
+  for(const project of catalog)for(const shape of ['square','hex','oct'])for(const status of ['under','complete']){
+   const building={status,projectId:project.id,owner:2,constructionId:'C-test',delivered:status==='under'?project.materials.slice(0,1):[]};
+   const view=createTileView({slot,building,project});
+   const geometry=slotGeometry({record:slot,shape,sizeMm:42,unitsPerMm:1});
+   const g=renderPhysicalTile(document,{view,geometry,shape,sizeMm:42,unitsPerMm:1,namespace:'external'});
+   if(!g.querySelector('.tile-title')||g.dataset.constructionId!=='C-test'||g.dataset.tileStatus!==status||g.querySelectorAll('[data-hole]').length!==1)issues.push(project.id+':'+shape+':'+status);
+   if(shape!=='square'&&!g.querySelector('[data-face="'+view.side+'"]'))issues.push('face:'+project.id);
+   count++;
+  }
+  return {count,expected:catalog.length*6,issues};
+ });
+ expect(result.count).toBe(result.expected);expect(result.count).toBeGreaterThan(240);expect(result.issues).toEqual([]);
+ await expect(page.locator('#slotLayer [data-tile-renderer="shared"]')).toHaveCount(79);
+});
