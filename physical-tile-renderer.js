@@ -1,6 +1,7 @@
 // Shared SVG renderer. Callers supply the physical geometry and immutable tile view.
 // No dependency on the laboratory, catalog lookup, game rules, saves or global DOM.
 import {SHAPE_SIDES,regularVertices,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
+import {renderTileIcon,materialIconId,categoryIconId} from './physical-tile-icons.js';
 const SVG_NS='http://www.w3.org/2000/svg';
 const COLORS=OWNERS.map(o=>o.color),SEAT_COLORS=[...COLORS,'#d1d9df','#bcc6cd'];
 const round=x=>Math.round(x*1000)/1000;
@@ -53,15 +54,18 @@ export function drawTileArtwork(g,v,s,shape){
  const element=(...args)=>svgElement(g.ownerDocument,...args),poly=shape!=='square';
  if(v.status==='empty'){g.append(element('text',{x:s/2,y:s*.54,'font-size':s*.27},v.ordinal));return}
  g.append(element('rect',{x:s*(poly?.22:.045),y:s*(poly?.225:.04),width:s*(poly?.56:.91),height:s*(poly?.09:.15),rx:2,fill:v.status==='complete'?'#c9b99b':'#a78c61'}));
+ const categorySize=s*(poly?.075:.115),categoryStep=categorySize*1.3;
+ v.categories.forEach((category,i)=>g.append(renderTileIcon(g.ownerDocument,categoryIconId(category),{x:s/2-categorySize/2+(i-(v.categories.length-1)/2)*categoryStep,y:s*(poly?.231:.058),size:categorySize,label:category})));
  const [line1,line2]=compactLines(v.name),font=s*(line2.length>=14?.105:.123);
  g.append(element('text',{x:s*.5,y:s*(poly?.43:.34),'font-size':font,class:'tile-title'},line1));
  if(line2)g.append(element('text',{x:s*.5,y:s*(poly?.54:.49),'font-size':font,class:'tile-title'},line2));
  if(v.knownProject&&v.status==='under'){
   g.append(element('text',{x:s*.5,y:s*.67,'font-size':s*.124,class:'tile-stat'},v.delivered.length+' / '+v.required.length+' · стройка'));
   v.delivered.slice(0,5).forEach((m,i)=>{
-   const x=s*((poly?.16:.08)+i*(poly?.14:.175)),code=({Lumber:'Д',Masonry:'К',Steel:'С'})[m]??'?';
+   const x=s*((poly?.16:.08)+i*(poly?.14:.175));
    g.append(element('rect',{x,y:s*.75,width:s*(poly?.12:.148),height:s*.13,rx:1,fill:'#e4aa5f',class:'tile-chip','data-material':m}));
-   g.append(element('text',{x:x+s*(poly?.06:.073),y:s*.847,'font-size':s*.105,class:'tile-stat'},code));
+   const iconSize=s*(poly?.105:.11);
+   g.append(renderTileIcon(g.ownerDocument,materialIconId(m),{x:x+s*(poly?.06:.074)-iconSize/2,y:s*.815-iconSize/2,size:iconSize,label:m}));
   });
  }else if(v.knownProject){
   const income=v.live.income??v.catalog.baseIncome,vp=v.live.vp??v.catalog.baseVP;
