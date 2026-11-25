@@ -965,3 +965,38 @@ test('shared tile icons: materials match actual demo delivery and categories on 
  await expect(tile.locator('[data-icon="lumber"]')).toHaveCount(0);
  await expect(tile.locator('[data-icon="worker"]')).toHaveCount(0);
 });
+
+test('category palette paints both faces and survives delivery/reload on both mobile viewports',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#markEmpty').click();
+  await page.locator('#tileShape').selectOption('hex');
+  await page.locator('#projectSelect').selectOption('bank');
+  await page.locator('#markBuilding').click();
+  const tile=page.locator('[data-slot-id="civic-1"]');
+  const face=tile.locator('[data-category-fill="single"]');
+  await expect(face).toHaveCSS('fill','rgb(98, 77, 115)');
+  await page.locator('#deliverAll').click();
+  await expect(tile.locator('[data-face="back"]')).toHaveCount(1);
+  await expect(face).toHaveCSS('fill','rgb(98, 77, 115)');
+  await page.locator('#markEmpty').click();
+  await page.locator('#projectSelect').selectOption('polytechnic_campus');
+  await page.locator('#markBuilding').click();
+  const mixed=tile.locator('[data-category-fill="split"]');
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  expect(await tile.locator('linearGradient stop').evaluateAll(els=>els.map(el=>el.getAttribute('stop-color')))).toEqual(['#466B50','#466B50','#3C607C','#3C607C']);
+  await page.locator('#deliverOne').click();
+  await page.reload();
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  await expect(tile.locator('[data-material="Lumber"]')).toHaveCount(1);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#deliverAll').click();
+  await expect(tile.locator('[data-face="back"]')).toHaveCount(1);
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+ }
+});
