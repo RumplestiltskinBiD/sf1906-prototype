@@ -56,29 +56,17 @@ button.danger{background:#51313c}
 #regionLayer .region:hover path{stroke:#9bdef0;stroke-opacity:1}
 .slot{cursor:grab;touch-action:none}
 .slot:active{cursor:grabbing}
-.slot .tile{fill:rgba(224,234,236,.56);stroke:#43616a;stroke-width:2;stroke-dasharray:8 5}
-.slot .slot-hole{fill:#b6c6c3;stroke:#284f58;stroke-width:1.5;vector-effect:non-scaling-stroke}
-.slot .slot-hole-conflict{stroke:#f05d46;stroke-width:2.5}
-.slot .slot-guide{pointer-events:none}
 #holeClearance{width:95px;color:#e9eff4;background:#081521;border:1px solid #526475;border-radius:5px;padding:6px}
-.slot .owner-seat{stroke:#fff;stroke-width:1.2;pointer-events:none}
-.slot .owner-seat.corner-seat{stroke:none}
-.slot text.owner-symbol{font-weight:800;fill:#14232d;stroke:none}
 #mapSvg .slot .corner-face .tile{stroke:none}
 #mapSvg .slot.selected .slot-hole:not(.slot-hole-conflict){stroke:#137c93;stroke-width:3}
 #ownershipPreview{width:100%;max-height:220px;background:#142533;border-radius:8px}
 #ownerGeometryStatus{white-space:pre-line}
 #ownerGeometryStatus.warning{color:#ffc0b8}
-.slot .slot-guide{fill:rgba(215,224,225,.55);stroke:#58717a;stroke-width:1.3;stroke-dasharray:5 4;pointer-events:none}
 #slotRotation{width:100%;accent-color:#55c3d4}
 #slotRotation:disabled,.rotate-controls button:disabled{opacity:.4}
-.slot .tile-under{fill:#cba767;stroke:#58432e;stroke-width:2.5;stroke-dasharray:none}
-.slot .tile-done{fill:#f0dfbd;stroke:#725d48;stroke-width:2.5;stroke-dasharray:none}
-.slot text{font-weight:700;fill:#1d3342;text-anchor:middle;pointer-events:none;user-select:none}
 .slot.problem .tile{stroke:#ee5446;stroke-width:5;stroke-dasharray:7 4}
 .slot.selected .tile{stroke:#137c93;stroke-width:5}
 .slot.selected.problem .tile{stroke:#ee5446}
-.slot .owner-mark{stroke:#fff;stroke-width:1.3}
 .legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:#cbd5df}
 .swatch{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:5px;vertical-align:middle}
 .instructions{background:#172b3b;border:1px solid #425568;border-radius:9px;padding:12px;line-height:1.5;font-size:12px}
@@ -90,10 +78,6 @@ button.danger{background:#51313c}
 #selectedInfo{white-space:pre-line}
 #mapSvg.build-mode .slot{cursor:pointer}
 #mapSvg.build-mode .slot.build-available .tile{stroke:#149e7f;stroke-width:4}
-#mapSvg .slot .owner-mark{stroke:#fff;stroke-width:1.3}
-#mapSvg .slot .tile-title{fill:#263746;font-weight:700}
-#mapSvg .slot .tile-stat{fill:#3d4850;font-weight:600}
-#mapSvg .slot .tile-chip{stroke:#6c5941;stroke-width:.5}
 
 @media(max-width:900px){.workspace{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid #344456}.map-scroll{min-height:520px}}
 #boardEditor input[type=number]{width:100px;background:#081521;color:#e9eff4;border:1px solid #526475;border-radius:5px;padding:6px}
@@ -120,6 +104,7 @@ button.danger{background:#51313c}
 #nodeLayer .node.problem rect{stroke:#e64e3e;stroke-width:3}
 #nodeLayer text{font-weight:700;fill:#42351f;text-anchor:middle;pointer-events:none}
 </style>
+<link rel="stylesheet" href="./physical-tile.css">
 </head>
 <body>
 <header>
