@@ -767,3 +767,77 @@ test('fold editor: adjustable seam and spine, zoom, roundtrip and mobile',async(
   expect(w.content).toBeLessThanOrEqual(w.viewport+2);
  }
 });
+
+test('manufacturing diagnostics: actual opening pairs, independent thresholds and material estimates',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ page.once('dialog',d=>d.accept());
+ await page.locator('#loadHexLayout').click();
+ await expect(page.locator('#notice')).toContainText('HEX 50 мм восстановлена');
+ const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+ const mfg=()=>page.evaluate(()=>window.__physicalMapLab.manufacturing());
+ const original=await snap(),first=await mfg();
+ expect(first.pairs).toHaveLength(46);
+ expect(first.minimumWebMm).toBeCloseTo(1.2234042899447672,6);
+ expect(first.boardMaterial.netG).toBeCloseTo(1505.9145901793581,5);
+ expect(first.tiles.perSheet).toBe(25);
+ expect(first.tiles.sheets).toBe(5);
+ expect(first.tiles.netG).toBeCloseTo(280.9109281747508,5);
+ await expect(page.locator('#manufacturingSummary')).toContainText('46 пар');
+ await page.locator('#manufacturingEditor details summary').click();
+ await expect(page.locator('#manufacturingDetails')).toContainText(first.pairs[0].ids.join(' ↔ '));
+ await page.locator('#manufacturingHighlight').check();
+ await expect(page.locator('#slotLayer [data-hole].manufacturing-warning')).toHaveCount(first.badSlots.length);
+ await page.locator('#mfgWeb').fill('2');await page.locator('#mfgWeb').press('Tab');
+ const changed=await mfg();
+ expect(changed.pairs.length).toBeLessThan(46);
+ expect(changed.minimumWebMm).toBeCloseTo(first.minimumWebMm,7);
+ expect(changed.tiles).toEqual(first.tiles);
+ expect(changed.boardMaterial).toEqual(first.boardMaterial);
+ await page.locator('#mfgTileCount').fill('126');await page.locator('#mfgTileCount').press('Tab');
+ expect((await mfg()).tiles.sheets).toBe(6);
+ expect((await mfg()).boardMaterial).toEqual(first.boardMaterial);
+ await page.locator('#foldEnabled').check();
+ const folded=await mfg();
+ expect(folded.boardMaterial.panelCount).toBe(6);
+ expect(folded.boardMaterial.grossTopMm2).toBeCloseTo(766112,4);
+ expect(folded.panelEdges).toHaveLength(18);
+ expect(folded.foldConflicts.filter(c=>c.kind==='slot')).toHaveLength(13);
+ expect((await snap()).districts).toEqual(original.districts);
+ await page.locator('#manufacturingHighlight').uncheck();
+ await expect(page.locator('#slotLayer [data-hole].manufacturing-warning')).toHaveCount(0);
+ expect(await mfg()).toEqual(folded);
+});
+
+test('manufacturing settings roundtrip, invalid imports, screen zoom and mobile overflow',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  const snap=()=>page.evaluate(()=>window.__physicalMapLab.snapshot());
+  const mfg=()=>page.evaluate(()=>window.__physicalMapLab.manufacturing());
+  await page.locator('#mfgDensity').fill('900');await page.locator('#mfgDensity').press('Tab');
+  await page.locator('#mfgSheetWeb').fill('8');await page.locator('#mfgSheetWeb').press('Tab');
+  await page.locator('#manufacturingHighlight').check();
+  const state=await snap(),report=await mfg();
+  expect(state.boardFrame.manufacturing.density).toBe(900);
+  expect(state.boardFrame.manufacturing.sheetWebMm).toBe(8);
+  await page.locator('#zoom').evaluate(el=>{el.value='150';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  expect(await mfg()).toEqual(report);
+  await page.reload();
+  await expect(page.locator('#mfgDensity')).toHaveValue('900');
+  expect((await snap()).boardFrame.manufacturing).toEqual(state.boardFrame.manufacturing);
+  expect(await mfg()).toEqual(report);
+  const invalid=await snap();invalid.boardFrame.manufacturing.tileCount=1.5;
+  await page.locator('#jsonArea').fill(JSON.stringify(invalid));await page.locator('#applyJson').click();
+  await expect(page.locator('#notice')).toContainText('tileCount');
+  expect((await snap()).boardFrame.manufacturing).toEqual(state.boardFrame.manufacturing);
+  const legacy=await snap();delete legacy.boardFrame.manufacturing;
+  await page.locator('#jsonArea').fill(JSON.stringify(legacy));await page.locator('#applyJson').click();
+  await expect(page.locator('#mfgDensity')).toHaveValue('800');
+  await expect(page.locator('#mfgWeb')).toHaveValue('6');
+  expect((await snap()).districts).toEqual(state.districts);
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
