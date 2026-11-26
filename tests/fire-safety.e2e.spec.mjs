@@ -117,3 +117,29 @@ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
     });
   }
 }
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('public workshop quick action through post survives reload at '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  const s=game({workshop:true});
+  s.constructions=[building('WORK',1,'fireworkshop'),building('POST',2,'std_fire'),building('FAC',0,'factory'),building('FAC2',0,'woodworks')];
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await seed(page,s);await page.goto('/');
+  await page.locator('#officeBtn').click();
+  const btn=page.locator('[data-workshop-target="FAC"]');
+  await expect(btn).toBeEnabled();await btn.click();
+  const check=async()=>{
+   const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
+   expect(saved.constructions.find(c=>c.id==='FAC').fireSafetyModernized).toBe(true);
+   expect(saved.constructions.find(c=>c.id==='WORK').fireWorkshopUsedRound).toBe(saved.round);
+   expect(saved.players.map(p=>p.capital)).toEqual(s.players.map((p,i)=>p.capital-(i===0?1:0)));
+   expect(saved.players[0].workers[0].used).toBeFalsy();
+   expect(saved.activationMainActionUsed).toBe(false);
+  };
+  await check();await expect(page.locator('[data-workshop-target="FAC2"]')).toBeDisabled();
+  await page.reload();await page.locator('#officeBtn').click();await check();
+  await expect(page.locator('[data-workshop-target="FAC2"]')).toBeDisabled();
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+ });
+}

@@ -182,3 +182,43 @@ test('radius-one actions reject distant targets even with workshops, and standar
   assert.equal(G.useFirehouseAction(s,0,'POST','upgrade','FAR').reason,'no-firehouse');
   assert.equal(s.players[0].workers[0].used,false);assert.equal(s.players[0].capital,50);
 });
+
+test('public workshop quick modernization via standard post costs $1, uses no representative or station slot and pays no commission',()=>{
+ const s=state(),neighbor=G.districtNeighbors('civic').find(id=>G.districtById(id)?.buildable!==false);
+ s.constructions=[built('W',1,'fireworkshop'),built('POST',2,'std_fire',neighbor),built('A',0,'factory',neighbor),built('B',1,'factory',neighbor)];
+ const workers=JSON.stringify(s.players.map(p=>p.workers)),before=G.districtRisk(s,neighbor).fire.net;
+ const r=G.useFireWorkshopModernization(s,0,'W','POST','A');
+ assert.equal(r.ok,true);assert.equal(s.players[0].capital,49);assert.equal(s.players[1].capital,50);assert.equal(s.players[2].capital,50);
+ assert.equal(JSON.stringify(s.players.map(p=>p.workers)),workers);assert.equal(s.activationMainActionUsed,false);assert.deepEqual(s.actionSpaceOccupancy,{});
+ assert.equal(G.districtRisk(s,neighbor).fire.net,before-1);assert.equal(s.constructions[0].fireWorkshopUsedRound,s.round);
+ s.developmentPlayer=1;
+ assert.equal(G.useFireWorkshopModernization(s,1,'W','POST','B').reason,'already-used');
+ s.round++;
+ assert.equal(G.useFireWorkshopModernization(s,1,'W','POST','B').ok,true);
+ assert.equal(s.players[1].capital,49);
+});
+
+test('main firehouse extends target coverage but cannot use unconnected workshops or repeat a modernization',()=>{
+ const s=state(),near=G.districtNeighbors('civic').find(id=>G.districtById(id)?.buildable!==false);
+ const far=G.DISTRICTS.find(d=>d.buildable!==false&&!G.serviceCoverageDistricts('firehouse','civic').includes(d.id)).id;
+ s.constructions=[built('W',1,'fireworkshop'),built('FH',2,'firehouse'),built('A',0,'factory',near),built('B',0,'factory',far),built('C',1,'factory',near),built('FAR',2,'std_fire',far)];
+ s.activationMainActionUsed=true;s.actionSpaceOccupancy.FH=2;
+ assert.equal(G.useFireWorkshopModernization(s,0,'W','FH','B').reason,'target');
+ assert.equal(G.useFireWorkshopModernization(s,0,'W','FH','C').reason,'target');
+ assert.equal(G.useFireWorkshopModernization(s,0,'W','FAR','B').reason,'target');
+ s.players[0].capital=0;assert.equal(G.useFireWorkshopModernization(s,0,'W','FH','A').reason,'capital');s.players[0].capital=50;
+ assert.equal(G.useFireWorkshopModernization(s,0,'W','FH','A').ok,true);
+ assert.equal(s.actionSpaceOccupancy.FH,2);assert.equal(s.activationMainActionUsed,true);
+ s.round++;assert.equal(G.useFireWorkshopModernization(s,0,'W','FH','A').reason,'target');
+});
+
+test('unfinished services and workshops are ineligible and a second workshop has independent capacity',()=>{
+ const s=state();s.constructions=[built('W1',1,'fireworkshop'),built('W2',1,'fireworkshop'),built('P',2,'std_fire'),built('A',0,'factory'),built('B',0,'woodworks')];
+ s.constructions[0].status='under-construction';s.constructions[2].status='under-construction';
+ assert.equal(G.useFireWorkshopModernization(s,0,'W1','P','A').reason,'workshop');
+ assert.equal(G.useFireWorkshopModernization(s,0,'W2','P','A').reason,'target');
+ s.constructions[0].status='complete';s.constructions[2].status='complete';
+ assert.equal(G.useFireWorkshopModernization(s,0,'W1','P','A').ok,true);
+ assert.equal(G.useFireWorkshopModernization(s,0,'W2','P','B').ok,true);
+ assert.equal(s.players[0].capital,48);
+});
