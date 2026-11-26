@@ -384,7 +384,7 @@ export const PROJECTS = [
   {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и +1 ★ подозрения',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и +1 ★. При ★★★ после выплаты — арест выбранного незаключённого сотрудника, подозрение → 0 и санкции C1.2.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove; незаконный вариант требует хотя бы одного неарестованного сотрудника.'},
   {prestige:3,income:4,id:'press_tower',types:['Бизнес','Промышленное'],risk:{earthquake:0,fire:1},name:'Газетный небоскрёб',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 3+; крупное здание, 5 материалов',landMin:3,effect:'Доход +$4/год · после годового газетного выпуска: +$2 ИЛИ −$2 и +1 Влияние',benefit:'Газетная кампания после каждого ежегодного выпуска · выбор без рабочего',actionName:'Газетная кампания',actionText:'После подведения итогов газеты автоматически выберите +$2 или уплатите $2, чтобы повысить Влияние на 1 шаг. Один раз за год на небоскрёб, включая 1905.',limits:'Выбор после газетных последствий, до годового дохода; платёж — из имеющихся денег, никаких авансов; без действия рабочего.'},
   {prestige:0,income:0,id:'workers_complex',types:['Жилое','Промышленное'],risk:{earthquake:1,fire:2},name:'Фабричный рабочий корпус с ночной сменой',type:'Промышленность',open:3,materials:['Lumber','Lumber','Masonry'],requires:'В районе есть собственная завершённая фабрика или завод, не привязанные к другому корпусу',effect:'Нет собственного дохода · удваивает ежегодный доход выбранной фабрики/завода и её выпуск строительных материалов',benefit:'Ночная смена ×2: доход одной фабрики/завода; Brickworks 2→4 Masonry/год, Foundry 1→2 Steel/год',actionName:'Ночная смена',actionText:'При завершении выбрать одну собственную завершённую фабрику или завод в том же районе. Удваиваются ежегодный доход предприятия и производственная мощность (если производит материалы). Привязка постоянна и не суммируется.',limits:'Подходят Крупная фабрика, Кирпичный завод, Деревообрабатывающая фабрика, Литейно-механический и Консервный завод. Две ночные смены на одно предприятие запрещены; разовая премия деревообработки не удваивается. Комплекс сам не приносит дохода.'},
-  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · пожарная часть рядом: модернизация $1',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2. Радиус обслуживания не расширяется.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
+  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · быстрая модернизация $1 через пожарную сеть',actionName:'Пожарная ремонтная сеть',actionText:'Быстрое действие: за $1 модернизируйте своё завершённое здание с П>0 через готовый пожарный пост или часть в радиусе 1 мастерских, в пределах радиуса самой службы. Главная часть также сохраняет скидку на обычную модернизацию.',limits:'Один общий выезд за год на мастерские для всех игроков; без представителя, комиссии владельцам и расхода основной ячейки части. Одно улучшение на здание.'},
 ]
 
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
@@ -3197,6 +3197,7 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
 
 // Sell any unstarted hand project through a completed commission house.
 
+export const FIREWORKSHOP_QUICK_COST=1;
 export function firehouseHasWorkshop(state,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return false;
@@ -3208,12 +3209,47 @@ export function firehouseInspectionDistricts(state,firehouseId){
   if(!house)return [];
   return serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false);
 }
-export function firehouseUpgradeCandidates(state,playerId,firehouseId){
-  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
-  if(!house)return [];
-  const eligible=new Set(serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false));
+function fireModernizationCandidates(state,playerId,service){
+  const eligible=new Set(serviceCoverageDistricts(service.projectId,service.districtId).filter(id=>districtById(id)?.buildable!==false));
   return (state.constructions||[]).filter(c=>c.status==='complete'&&eligible.has(c.districtId)
     &&c.playerId===playerId&&!c.fireSafetyModernized&&constructionFireRisk(c)>0);
+}
+export function firehouseUpgradeCandidates(state,playerId,firehouseId){
+  const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
+  return house?fireModernizationCandidates(state,playerId,house):[];
+}
+function applyFireModernization(state,target){
+  target.fireSafetyModernized=true;
+  completeF04NoticeFromModernization(state,target.id);
+}
+// Public workshop capacity, not the user's worker or the connected station's main-action slot.
+export function fireWorkshopOptions(state,playerId){
+  const active=canUseFreeAction(state,playerId)&&!state.pendingConstruction&&!state.pendingWorkerAction;
+  const affordable=(state.players[playerId]?.capital??0)>=FIREWORKSHOP_QUICK_COST;
+  const completed=(state.constructions||[]).filter(c=>c.status==='complete');
+  return completed.filter(c=>c.projectId==='fireworkshop').map(workshop=>{
+    const area=new Set([workshop.districtId,...districtNeighbors(workshop.districtId)]);
+    const used=workshop.fireWorkshopUsedRound===state.round;
+    const services=completed.filter(c=>serviceFamilyForProject(c.projectId)==='firehouse'&&area.has(c.districtId));
+    const targets=services.flatMap(service=>fireModernizationCandidates(state,playerId,service).map(target=>({serviceId:service.id,targetId:target.id})));
+    return {workshopId:workshop.id,used,active,affordable,services:services.map(c=>c.id),targets,available:active&&affordable&&!used&&targets.length>0};
+  });
+}
+export function useFireWorkshopModernization(state,playerId,workshopId,serviceId,targetId){
+  if(!canUseFreeAction(state,playerId)||state.pendingConstruction||state.pendingWorkerAction)return {ok:false,reason:'not-active-player'};
+  const option=fireWorkshopOptions(state,playerId).find(x=>x.workshopId===workshopId);
+  if(!option)return {ok:false,reason:'workshop'};
+  if(option.used)return {ok:false,reason:'already-used'};
+  if(!option.affordable)return {ok:false,reason:'capital'};
+  if(!option.targets.some(x=>x.serviceId===serviceId&&x.targetId===targetId))return {ok:false,reason:'target'};
+  const workshop=state.constructions.find(c=>c.id===workshopId),target=state.constructions.find(c=>c.id===targetId);
+  const districtId=target.districtId,fireBefore=districtRisk(state,districtId)?.fire.raw;
+  state.players[playerId].capital-=FIREWORKSHOP_QUICK_COST;
+  applyFireModernization(state,target);
+  workshop.fireWorkshopUsedRound=state.round;
+  const fireAfter=districtRisk(state,districtId)?.fire.raw;
+  logEvent(state,`${state.players[playerId].name}: быстрая пожарная модернизация «${projectById(target.projectId).name}» в ${districtById(districtId)?.name} за ${FIREWORKSHOP_QUICK_COST}; П ${fireBefore}→${fireAfter}.`,'accent');
+  return {ok:true,workshopId,serviceId,targetId,districtId,fireBefore,fireAfter,cost:FIREWORKSHOP_QUICK_COST};
 }
 export function firehouseInspectionTargets(state,firehouseId,districtId){
   if(!firehouseInspectionDistricts(state,firehouseId).includes(districtId))return [];
@@ -3253,8 +3289,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
   if(kind==='upgrade'){
     const target=targets[0];
     state.players[playerId].capital-=fee;
-    target.fireSafetyModernized=true;
-    completeF04NoticeFromModernization(state,target.id);
+    applyFireModernization(state,target);
     impacts.push({playerId,cost:fee,paid:fee,incomePenalty:0,influenceDelta:0,constructionIds:[target.id]});
   }else{
     const owners=[...new Set(targets.map(c=>c.playerId))];
@@ -3269,7 +3304,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
       impacts.push({playerId:pid,cost:due,paid,incomePenalty:shortfall?1:0,
         influenceDelta:influence.steps,constructionIds:owned.map(c=>c.id)});
     }
-    for(const c of targets){c.fireSafetyModernized=true;completeF04NoticeFromModernization(state,c.id);}
+    for(const c of targets)applyFireModernization(state,c);
   }
   state.actionSpaceOccupancy=state.actionSpaceOccupancy||{};
   state.actionSpaceOccupancy[firehouseId]=playerId;
