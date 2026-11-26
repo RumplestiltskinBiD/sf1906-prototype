@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {createInitialState,projectById} from '../game-core.js';
+import {createInitialState,projectById,districtNeighbors,districtById} from '../game-core.js';
 const KEY='sf1906_phase1_ui_v030a';
 function seed(page,s){
   return page.addInitScript(({key,value})=>{if(!localStorage.getItem(key))localStorage.setItem(key,value);},{key:KEY,value:JSON.stringify(s)});
@@ -89,3 +89,31 @@ test('old saved game receives exactly two workshops without disturbing hand/mark
   const second=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
   expect(second.deck.filter(x=>x.id==='fireworkshop')).toHaveLength(2);
 });
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  for(const mode of ['upgrade','inspect']){
+    test('radius-one '+mode+' without workshop persists at '+viewport.width+'x'+viewport.height,async({page})=>{
+      await page.setViewportSize(viewport);
+      const s=game({workshop:false,inspect:mode==='inspect'});
+      const neighbor=districtNeighbors('civic').find(id=>districtById(id)?.buildable!==false);
+      s.constructions.find(c=>c.id==='FAC').districtId=neighbor;
+      if(mode==='inspect')s.constructions=s.constructions.filter(c=>c.id!=='WOOD');
+      const errors=[];page.on('pageerror',e=>errors.push(e.message));
+      await seed(page,s);await page.goto('/');
+      await page.locator('#cityActions [data-fire-mode="'+mode+'"]').click();
+      const target=page.locator('#cityActions [data-fire-target="'+(mode==='upgrade'?'FAC':neighbor)+'"]');
+      await expect(target).toBeEnabled();await target.click();
+      const check=async()=>{
+        const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY);
+        expect(saved.constructions.find(c=>c.id==='FAC').fireSafetyModernized).toBe(true);
+        expect(saved.players[0].workers[0].districtId).toBe('civic');
+        expect(saved.players[0].workers[0].used).toBe(true);
+        expect(saved.actionSpaceOccupancy.FH).toBe(0);
+        expect(saved.players[mode==='upgrade'?0:1].capital).toBe(mode==='upgrade'?48:47);
+      };
+      await check();await page.reload();await check();
+      expect(errors).toEqual([]);
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+    });
+  }
+}
