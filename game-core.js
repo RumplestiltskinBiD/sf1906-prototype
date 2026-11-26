@@ -371,7 +371,7 @@ export const PROJECTS = [
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли',benefit:'Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'ad_agency',types:['Бизнес'],risk:{earthquake:0,fire:1},name:'Городское рекламное агентство',type:'Коммерция',open:6,materials:['Lumber','Masonry','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Рекламная кампания',benefit:'Доход +3 / год',actionName:'Рекламная кампания',actionText:'1 представитель + $2 → +2 к постоянному Income.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
-  {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная служба: радиус 1 · П −1 только в своём районе · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная служба радиус 1',actionName:'Модернизация / инспекция',actionText:'Основное действие: модернизация одного своего здания за $2 ($1 с мастерскими) или инспекция одного района. Обе способности доступны в своём и соседних районах.',limits:'Одна общая ячейка действия за год. П −1 только в районе постройки; муниципальный участок пока не проверяется.'},
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1',benefit:'Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
   {prestige:3,income:0,id:'clinic',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доступ к клинике (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Доступ к клинике действует в своём и соседнем районе.'},
   {prestige:2,income:0,id:'school',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Муниципальная начальная школа',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Стоимость земли района +1 · до +2 дополнительных VP за завершённое жильё в этом и соседних районах',benefit:'До +2 дополнительных VP за жильё · Стоимость земли района +1',actionName:'Развитый жилой квартал',actionText:'При завершении школы получите +1 VP за каждое завершённое жилое здание в этом или соседних районах (любого владельца), максимум +2 VP.',limits:'Бонус школы единовременный, только при завершении; будущие жилые здания не дают VP задним числом.'},
@@ -384,7 +384,7 @@ export const PROJECTS = [
   {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и +1 ★ подозрения',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и +1 ★. При ★★★ после выплаты — арест выбранного незаключённого сотрудника, подозрение → 0 и санкции C1.2.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove; незаконный вариант требует хотя бы одного неарестованного сотрудника.'},
   {prestige:3,income:4,id:'press_tower',types:['Бизнес','Промышленное'],risk:{earthquake:0,fire:1},name:'Газетный небоскрёб',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 3+; крупное здание, 5 материалов',landMin:3,effect:'Доход +$4/год · после годового газетного выпуска: +$2 ИЛИ −$2 и +1 Влияние',benefit:'Газетная кампания после каждого ежегодного выпуска · выбор без рабочего',actionName:'Газетная кампания',actionText:'После подведения итогов газеты автоматически выберите +$2 или уплатите $2, чтобы повысить Влияние на 1 шаг. Один раз за год на небоскрёб, включая 1905.',limits:'Выбор после газетных последствий, до годового дохода; платёж — из имеющихся денег, никаких авансов; без действия рабочего.'},
   {prestige:0,income:0,id:'workers_complex',types:['Жилое','Промышленное'],risk:{earthquake:1,fire:2},name:'Фабричный рабочий корпус с ночной сменой',type:'Промышленность',open:3,materials:['Lumber','Lumber','Masonry'],requires:'В районе есть собственная завершённая фабрика или завод, не привязанные к другому корпусу',effect:'Нет собственного дохода · удваивает ежегодный доход выбранной фабрики/завода и её выпуск строительных материалов',benefit:'Ночная смена ×2: доход одной фабрики/завода; Brickworks 2→4 Masonry/год, Foundry 1→2 Steel/год',actionName:'Ночная смена',actionText:'При завершении выбрать одну собственную завершённую фабрику или завод в том же районе. Удваиваются ежегодный доход предприятия и производственная мощность (если производит материалы). Привязка постоянна и не суммируется.',limits:'Подходят Крупная фабрика, Кирпичный завод, Деревообрабатывающая фабрика, Литейно-механический и Консервный завод. Две ночные смены на одно предприятие запрещены; разовая премия деревообработки не удваивается. Комплекс сам не приносит дохода.'},
-  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
+  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · пожарная часть рядом: модернизация $1',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2. Радиус обслуживания не расширяется.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
 ]
 
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
@@ -762,12 +762,16 @@ export function districtRoadAccess(state,districtId){
   const d=districtById(districtId);
   return !!d&&d.buildable!==false;
 }
+// Shared service coverage: standard institutions cover their own district; market institutions also cover immediate neighbors. Numerical risk remains local.
+export function serviceCoverageDistricts(projectId,districtId){
+  if(!serviceFamilyForProject(projectId)||!districtById(districtId))return [];
+  return projectId.startsWith('std_')?[districtId]:[districtId,...districtNeighbors(districtId)];
+}
 export function serviceSources(state,districtId,serviceProjectId){
   const family=serviceFamilyForProject(serviceProjectId)||serviceProjectId;
   const ids=STANDARD_SERVICE_FAMILIES[family]||[serviceProjectId];
-  const eligible=new Set([districtId,...districtNeighbors(districtId)]);
   return (state.constructions||[]).filter(c=>c.status==='complete'&&ids.includes(c.projectId)
-    &&(c.projectId.startsWith('std_')?c.districtId===districtId:eligible.has(c.districtId)));
+    &&serviceCoverageDistricts(c.projectId,c.districtId).includes(districtId));
 }
 export function districtAccess(state,districtId){
   const d=districtById(districtId);
@@ -3202,14 +3206,13 @@ export function firehouseHasWorkshop(state,firehouseId){
 export function firehouseInspectionDistricts(state,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return [];
-  return firehouseHasWorkshop(state,firehouseId)
-    ?[house.districtId,...districtNeighbors(house.districtId)].filter(id=>districtById(id)?.buildable!==false)
-    :[house.districtId];
+  return serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false);
 }
 export function firehouseUpgradeCandidates(state,playerId,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return [];
-  return (state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===house.districtId
+  const eligible=new Set(serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false));
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&eligible.has(c.districtId)
     &&c.playerId===playerId&&!c.fireSafetyModernized&&constructionFireRisk(c)>0);
 }
 export function firehouseInspectionTargets(state,firehouseId,districtId){
@@ -3234,6 +3237,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
   if(kind==='upgrade'){
     targets=firehouseUpgradeCandidates(state,playerId,firehouseId).filter(c=>c.id===targetId);
     if(targets.length!==1)return {ok:false,reason:'no-upgrade-target'};
+    districtId=targets[0].districtId;
     fee=firehouseHasWorkshop(state,firehouseId)?1:2;
     if(state.players[playerId].capital<fee)return {ok:false,reason:'capital'};
   }else{

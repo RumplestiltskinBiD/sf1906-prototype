@@ -52,7 +52,7 @@ test('voluntary modernization spends $2, places one permanent token and reduces 
   assert.equal(G.useFirehouseAction(s,0,'FIRE','upgrade','FAC').reason,'occupied');
 });
 
-test('workshops cut upgrade cost to $1 and extend inspections to neighboring districts',()=>{
+test('workshops cut upgrade cost to $1 and preserve radius-one inspections',()=>{
   const s=state(),neighbor=G.districtNeighbors('civic').find(id=>G.districtById(id)?.buildable);
   assert.ok(neighbor);
   s.constructions=[built('FH',1,'firehouse'),built('W1',2,'fireworkshop'),built('FAC',0,'factory'),
@@ -68,12 +68,14 @@ test('workshops cut upgrade cost to $1 and extend inspections to neighboring dis
   assert.equal(s.constructions[3].fireSafetyModernized,true);
 });
 
-test('without workshops, inspections are limited to their own firehouse district',()=>{
+test('without workshops, inspections cover own and adjacent districts under the approved radius-one rule',()=>{
   const s=state(),neighbor=G.districtNeighbors('civic').find(id=>G.districtById(id)?.buildable);
   s.constructions=[built('FH',1,'firehouse'),built('FAR',1,'factory',neighbor)];
-  assert.deepEqual(G.firehouseInspectionDistricts(s,'FH'),['civic']);
-  assert.equal(G.useFirehouseAction(s,0,'FH','inspect',neighbor).reason,'district');
-  assert.equal(s.players[0].workers[0].used,false);
+  assert.deepEqual(G.firehouseInspectionDistricts(s,'FH'),['civic',...G.districtNeighbors('civic').filter(id=>G.districtById(id)?.buildable!==false)]);
+  const result=G.useFirehouseAction(s,0,'FH','inspect',neighbor);
+  assert.equal(result.ok,true);assert.equal(result.districtId,neighbor);
+  assert.equal(s.constructions[1].fireSafetyModernized,true);
+  assert.equal(s.players[1].capital,47);assert.equal(s.players[0].workers[0].used,true);
 });
 
 test('inspection modernizes all tied maximum-P buildings, charges owners and loses one Influence each',()=>{
@@ -151,4 +153,32 @@ test('income penalty is capped at zero but remains stored on player',()=>{
   const s=state();s.players[0].fireIncomePenalty=500;
   assert.equal(G.roundIncome(s,0),0);
   assert.equal(s.players[0].fireIncomePenalty,500);
+});
+
+
+test('neighbor modernization uses the actual target district and shared service radius; passive P stays local',()=>{
+  const s=state(),neighbor=G.districtNeighbors('civic').find(id=>G.districtById(id)?.buildable);
+  const beforeNeighbor=G.districtRisk(s,neighbor).fire.net;
+  s.constructions=[built('FH',1,'firehouse')];
+  assert.equal(G.districtAccess(s,neighbor).fire,true);
+  assert.equal(G.districtRisk(s,neighbor).fire.net,beforeNeighbor);
+  s.constructions.push(built('FAC',0,'factory',neighbor));
+  const before=G.districtRisk(s,neighbor).fire.raw,local=G.districtRisk(s,'civic').fire.net;
+  const result=G.useFirehouseAction(s,0,'FH','upgrade','FAC');
+  assert.equal(result.ok,true);assert.equal(result.districtId,neighbor);
+  assert.equal(result.fireBefore,before);assert.equal(result.fireAfter,before-1);
+  assert.equal(G.districtRisk(s,'civic').fire.net,local);
+  assert.equal(s.players[0].capital,48);assert.equal(s.players[0].workers[0].districtId,'civic');
+  assert.equal(s.actionSpaceOccupancy.FH,0);
+});
+
+test('radius-one actions reject distant targets even with workshops, and standard posts grant no actions',()=>{
+  const s=state(),near=G.serviceCoverageDistricts('firehouse','civic');
+  const far=G.DISTRICTS.find(d=>d.buildable!==false&&!near.includes(d.id)).id;
+  s.constructions=[built('FH',1,'firehouse'),built('W',2,'fireworkshop'),built('FAR',0,'factory',far),built('POST',2,'std_fire',far)];
+  assert.equal(G.firehouseInspectionDistricts(s,'FH').includes(far),false);
+  assert.equal(G.useFirehouseAction(s,0,'FH','upgrade','FAR').reason,'no-upgrade-target');
+  assert.equal(G.useFirehouseAction(s,0,'FH','inspect',far).reason,'district');
+  assert.equal(G.useFirehouseAction(s,0,'POST','upgrade','FAR').reason,'no-firehouse');
+  assert.equal(s.players[0].workers[0].used,false);assert.equal(s.players[0].capital,50);
 });
