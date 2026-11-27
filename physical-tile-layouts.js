@@ -104,31 +104,13 @@ export function drawReviewedTileArtwork(g,view,d,{surface,filled=false,unitsPerM
    block('passive-condition','passive');text(d*.20,d*.49,'Новый тип',d*.047);
    block('passive-completion','passive');icon('completion',d*.34,d*.427,d*.105);
    block('passive-location','passive');text(d*.59,d*.49,'в районе',d*.047);
-   block('passive-result','passive');text(d*.77,d*.49,'+3
+   block('passive-result','passive');text(d*.77,d*.49,'+3$',d*.062);
   }
  }
  const delivered=[...view.delivered];
  slots.forEach((s,i)=>{
   const worker=s.kind==='worker',goods=s.kind==='goods',color=worker?ink:RESOURCE_COLORS[s.resource];
   block('component-'+i,worker?'action':goods?'storage':'materials',worker?{'data-action-group':'main'}:{});
-  const used=filled||(!worker&&!goods&&delivered.includes(s.resource));
-  if(!worker&&!goods&&delivered.includes(s.resource))delivered.splice(delivered.indexOf(s.resource),1);
-  target.append(e(doc,'rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:.45,stroke:color,'stroke-width':goods?.65:.35,'stroke-dasharray':worker?'1.5 .9':'none',fill:goods?color:'none','fill-opacity':goods?.12:1,'data-component-slot':s.kind,'data-slot-index':i,'data-width-mm':s.w,'data-height-mm':s.h,...(s.resource?{'data-resource':s.resource}:{})}));
-  if(worker){
-   if(used)target.append(e(doc,'rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:.5,fill:'#DF5B42','data-placed':'worker'}));
-   else{target.append(e(doc,'circle',{cx:s.x+s.w/2,cy:s.y+3,r:1.1,fill:ink,opacity:.55}));target.append(e(doc,'path',{d:'M'+(s.x+s.w/2-1.3)+' '+(s.y+4.5)+'h2.6l1 2.5h-4.6Z',fill:ink,opacity:.55}));}
-  }else if(used){
-   target.append(e(doc,'rect',{x:s.x+.4,y:s.y+.4,width:8,height:8,rx:.3,fill:color,stroke:'#20282C','stroke-width':.25,'data-placed':'cube'}));
-  }else if(!goods)icon(materialIconId(s.resource),s.x+1.4,s.y+1.4,6);
- });
- g.append(root);return true;
-}
-,d*.062);
-  }
- }
- const delivered=[...view.delivered];
- slots.forEach((s,i)=>{
-  const worker=s.kind==='worker',goods=s.kind==='goods',color=worker?ink:RESOURCE_COLORS[s.resource];
   const used=filled||(!worker&&!goods&&delivered.includes(s.resource));
   if(!worker&&!goods&&delivered.includes(s.resource))delivered.splice(delivered.indexOf(s.resource),1);
   target.append(e(doc,'rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:.45,stroke:color,'stroke-width':goods?.65:.35,'stroke-dasharray':worker?'1.5 .9':'none',fill:goods?color:'none','fill-opacity':goods?.12:1,'data-component-slot':s.kind,'data-slot-index':i,'data-width-mm':s.w,'data-height-mm':s.h,...(s.resource?{'data-resource':s.resource}:{})}));
