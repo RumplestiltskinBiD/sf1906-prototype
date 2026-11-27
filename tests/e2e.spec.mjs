@@ -74,8 +74,8 @@ test('building type stripes render in market, office, completed buildings and ma
   const marketCard=page.locator('#projectMarket .project-card').first();
   await expect(marketCard).toHaveClass(/typed-project/);
   const marketStyle=await marketCard.getAttribute('style');
-  expect(marketStyle).toContain('#76558F');
-  expect(marketStyle).toContain('#D5A021');
+  expect(marketStyle).toContain('#624D73');
+  expect(marketStyle).toContain('#A58B43');
   const stripeBg=await marketCard.locator('.card-stripe').evaluate(el=>getComputedStyle(el).backgroundImage);
   expect(stripeBg).toContain('linear-gradient');
 
@@ -90,17 +90,19 @@ test('building type stripes render in market, office, completed buildings and ma
 
   const completed=page.locator('.construction-card.completed.typed-project').filter({hasText:'Крупная фабрика'});
   await expect(completed).toBeVisible();
-  expect(await completed.getAttribute('style')).toContain('#34383D');
+  expect(await completed.getAttribute('style')).toContain('#353B40');
 
   const active=page.locator('.construction-card.active-build.typed-project').filter({hasText:'Ресторан и клуб'});
   await expect(active).toBeVisible();
   const activeStyle=await active.getAttribute('style');
-  expect(activeStyle).toContain('#76558F');
-  expect(activeStyle).toContain('#D5A021');
+  expect(activeStyle).toContain('#624D73');
+  expect(activeStyle).toContain('#A58B43');
 
   await page.locator('#officeDrawer [data-close-drawer]').click();
   await expect(page.locator('[data-construction-token="TYPE_FACTORY"] .construction-type-cap')).toHaveCount(1);
   await expect(page.locator('[data-construction-token="TYPE_CLUB"] .construction-type-cap')).toHaveCount(2);
+  await expect(page.locator('[data-construction-token="TYPE_FACTORY"] .construction-type-cap')).toHaveAttribute('fill','#353B40');
+  expect(await page.locator('[data-construction-token="TYPE_CLUB"] .construction-type-cap').evaluateAll(els=>els.map(el=>el.getAttribute('fill')))).toEqual(['#624D73','#A58B43']);
 });
 
 test('portrait mobile object strip keeps building type color accents',async({page})=>{
@@ -113,8 +115,8 @@ test('portrait mobile object strip keeps building type color accents',async({pag
   await expect(chip).toBeVisible();
   await expect(chip).toHaveClass(/typed-project/);
   const style=await chip.getAttribute('style');
-  expect(style).toContain('#76558F');
-  expect(style).toContain('#D5A021');
+  expect(style).toContain('#624D73');
+  expect(style).toContain('#A58B43');
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });

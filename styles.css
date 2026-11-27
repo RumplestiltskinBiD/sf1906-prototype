@@ -845,15 +845,9 @@ button.city-action-card{cursor:pointer}
 }
 .draft-market-item{
   position:relative;min-width:0;padding:7px 7px 6px;
-  border:1px solid #cbbca5;border-top:4px solid #8a7d6b;
+  border:1px solid #cbbca5;border-top:4px solid var(--type-primary,#8a7d6b);
   border-radius:8px;background:#fff9ee
 }
-.draft-market-item.type-housing{border-top-color:#a66e55}
-.draft-market-item.type-commerce{border-top-color:#517b83}
-.draft-market-item.type-industry{border-top-color:#755f55}
-.draft-market-item.type-logistics{border-top-color:#92764e}
-.draft-market-item.type-civic{border-top-color:#5f7b5a}
-.draft-market-item.type-infra{border-top-color:#7b6f94}
 .draft-market-slot{
   display:block;font-size:7px;font-weight:900;letter-spacing:.08em;color:#918475
 }
@@ -2689,8 +2683,7 @@ body.year-transition-open .sticky-action{pointer-events:none}
 }
 
 
-/* UX — building type colors
-   Жилое #56875A · Бизнес #76558F · Промышленное #34383D · Общественное #3F78A8 · Торговое #D5A021 */
+/* UX — category colors supplied by building-type-palette.js through CSS variables. */
 .typed-project{
   --type-stripe:#8A7D6B;
   position:relative;

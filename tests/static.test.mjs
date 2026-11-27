@@ -138,16 +138,26 @@ test('v0.43B influence and upkeep UI hooks are present',async()=>{
 test('building type color palette and stripe hooks are present everywhere',async()=>{
   const app=await readFile(new URL('../app.js',import.meta.url),'utf8');
   const css=await readFile(new URL('../styles.css',import.meta.url),'utf8');
+  const palette=await readFile(new URL('../building-type-palette.js',import.meta.url),'utf8');
+  const renderer=await readFile(new URL('../physical-tile-renderer.js',import.meta.url),'utf8');
   for(const pair of [
-    ["'Жилое':'#56875A'","Жилое"],
-    ["'Бизнес':'#76558F'","Бизнес"],
-    ["'Промышленное':'#34383D'","Промышленное"],
-    ["'Общественное':'#3F78A8'","Общественное"],
-    ["'Торговое':'#D5A021'","Торговое"]
-  ]) assert.ok(app.includes(pair[0]),pair[1]);
+    ["'Жилое':'#466B50'","Жилое"],
+    ["'Бизнес':'#624D73'","Бизнес"],
+    ["'Промышленное':'#353B40'","Промышленное"],
+    ["'Общественное':'#3C607C'","Общественное"],
+    ["'Торговое':'#A58B43'","Торговое"]
+  ]){
+    assert.ok(palette.includes(pair[0]),pair[1]);
+    const color=pair[0].match(/#[A-F0-9]{6}/)[0];
+    for(const source of [app,css,renderer])assert.ok(!source.includes(color),'Duplicate palette color '+color);
+  }
+  assert.ok(app.includes("from './building-type-palette.js'"));
+  assert.ok(renderer.includes("from './building-type-palette.js'"));
+  assert.ok(!css.includes('.draft-market-item.type-housing{border-top-color:'));
+  assert.ok(palette.includes('linear-gradient(90deg'));
   for(const needle of [
     'function projectTypeStripe(project)',
-    'linear-gradient(90deg',
+    'categoryStripe(projectTypes(project))',
     'typed-project',
     'type-stripe-compact',
     'projectSvgTypeStripe',

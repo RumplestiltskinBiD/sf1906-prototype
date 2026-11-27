@@ -74,6 +74,17 @@ button.danger{background:#51313c}
 #selectedInfo{padding:10px;background:#233647;border-radius:8px;font-size:12px;line-height:1.5}
 .file-label{display:inline-block;color:#f0f6fa;background:#203447;border:1px solid #4c6373;border-radius:8px;padding:9px 10px;cursor:pointer}
 #projectSelect,#labMode{width:100%;max-width:100%;font-size:12px}
+#iconLegend{--sample-size:5mm;margin-top:10px}
+#iconLegend .icon-group{margin:10px 0}
+#iconLegend .icon-group-title{font-size:12px;font-weight:700;margin:8px 0;color:#dbe5ec}
+#iconLegend .icon-entry{display:grid;grid-template-columns:minmax(32px,auto) minmax(0,1fr);align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #3c5365}
+#iconLegend .icon-sample{display:flex;align-items:center;justify-content:center;width:calc(var(--sample-size) + 10px);min-width:32px;min-height:32px;padding:4px;background:#f0dfbd;border-radius:4px}
+#iconLegend .icon-sample svg{width:var(--sample-size);height:var(--sample-size);flex:none}
+#iconLegend .icon-desc{font-size:11px;color:#b8cbd6;line-height:1.35;overflow-wrap:anywhere}
+#iconLegend .icon-name{font-size:12px;font-weight:600}
+#iconLegend[data-paper="white"] .icon-sample{background:white}
+#iconLegend[data-paper="dark"] .icon-sample{background:#22323c}
+
 #projectPreview{background:#202f3f;border:1px solid #3c5365;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;white-space:pre-line}
 #selectedInfo{white-space:pre-line}
 #mapSvg.build-mode .slot{cursor:pointer}
@@ -238,6 +249,15 @@ button.danger{background:#51313c}
 <label for="projectSelect" class="sub">Здание из настоящего игрового каталога</label>
 <select id="projectSelect"></select>
 <div id="projectPreview">Загрузка проектов…</div>
+<p><a href="physical-tile-lab.html" style="color:#dbe5ec">Лаборатория согласованных тайлов · размеры и печать</a></p>
+<details id="iconLegendDetails">
+ <summary>Библиотека иконок · черновик (этап 4)</summary>
+ <p class="sub">Один словарь для материалов, товаров, экономики, рисков, действий и типов зданий. Пиктограммы одноцветные: значение не зависит от цвета. Это варианты оформления, не новые правила. Размеры в браузере номинальные; для проверки печатать образцы 1:1.</p>
+ <div class="field"><label for="iconSampleSize">Размер образца, мм</label><select id="iconSampleSize"><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option><option value="8">8</option></select></div>
+ <div class="field"><label for="iconPaper">Фон</label><select id="iconPaper"><option value="card">Картон</option><option value="white">Белый</option><option value="dark">Тёмный</option></select></div>
+ <div id="iconLegend" data-paper="card"></div>
+ <p class="sub">Числа и знаки (например −1, +2, 0) задаются отдельно от символа. Разовые, годовые и условные эффекты не выводятся автоматически из названия действия. Полная разметка сторон — этапы 5–8.</p>
+</details>
 <div class="controls">
 <button id="markBuilding" class="primary">Начать стройку</button><button id="deliverOne">Привезти 1 материал</button><button id="deliverAll">Привезти все материалы</button><button id="markComplete">Перевернуть тайл</button><button id="markEmpty">Освободить</button><button id="changeDemoOwner" type="button">Сменить владельца (тест)</button>
 </div>
@@ -300,6 +320,7 @@ import {SLOT_DISTRICTS as DISTRICTS,SLOT_COUNT as TOTAL,REFERENCE_TILE_MM as TIL
 import {defaultFold,readFold,changeFoldPreset,foldLayout,foldConflicts} from './physical-map-folds.js';
 import {DEFAULT_MANUFACTURING,MANUFACTURING_FIELDS,readManufacturing,manufacturingDiagnostics,tileMaterial} from './physical-map-manufacturing.js';
 import {svgElement,vertexString,drawCornerMarks,renderPhysicalTile} from './physical-tile-renderer.js';
+import {TILE_ICONS,TILE_ICON_GROUPS,renderTileIcon} from './physical-tile-icons.js';
 import {emptyDemo,readDemoRecord,writeDemoRecord,startDemo,finishDemo,supplyDemo,changeDemoOwner,demoTileView} from './physical-map-demo.js';
 'use strict';
 const MIN_TILE_MM=25,MAX_TILE_MM=70,GAP_MM=2,VB_WIDTH=1536,VB_HEIGHT=1024,STORAGE_KEY='sf1906_physical_map_lab_v1';
@@ -816,7 +837,25 @@ function supplyMaterial(all=false){
  notice(next.status==='complete'?'Последняя условная поставка — тайл перевёрнут (без игровых выплат)':'Материал доставлен: '+next.delivered.length+'/'+p.materials.length);
  persist();render();return true;
 }
+function initIconLegend(){
+ const legend=$('iconLegend');
+ for(const group of TILE_ICON_GROUPS){
+  const section=document.createElement('div');section.className='icon-group';
+  const heading=document.createElement('div');heading.className='icon-group-title';heading.textContent=group.label;section.append(heading);
+  for(const icon of TILE_ICONS.filter(i=>i.group===group.id)){
+   const entry=document.createElement('div');entry.className='icon-entry';entry.dataset.iconId=icon.id;
+   const sample=document.createElement('div');sample.className='icon-sample';sample.append(renderTileIcon(document,icon.id,{surface:'#f0dfbd'}));
+   const info=document.createElement('div'),name=document.createElement('div'),desc=document.createElement('div');
+   name.className='icon-name';name.textContent=icon.label;desc.className='icon-desc';desc.textContent=icon.description;
+   info.append(name,desc);entry.append(sample,info);section.append(entry);
+  }
+  legend.append(section);
+ }
+ $('iconSampleSize').onchange=e=>legend.style.setProperty('--sample-size',e.target.value+'mm');
+ $('iconPaper').onchange=e=>{legend.dataset.paper=e.target.value;const surface={card:'#f0dfbd',white:'#FFFFFF',dark:'#22323c'}[e.target.value];for(const row of legend.querySelectorAll('[data-icon-id]')){const sample=row.querySelector('.icon-sample');sample.replaceChildren(renderTileIcon(document,row.dataset.iconId,{surface,ink:e.target.value==='dark'?'#f7f3e8':'#202b32'}));}};
+}
 async function init(){
+ initIconLegend();
  initList();for(const d of DISTRICTS)$('editDistrict').add(new Option(d.name,d.id));$('editDistrict').value=editId;await initCatalog();
  let restored=false;
  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){applySnapshot(JSON.parse(raw));restored=true}}catch(e){notice('Старое сохранение не загружено: '+e.message)}

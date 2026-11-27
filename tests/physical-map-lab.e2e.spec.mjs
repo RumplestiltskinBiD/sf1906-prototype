@@ -911,3 +911,94 @@ test('shared renderer works outside lab state for all catalog projects, shapes a
  expect(result.count).toBe(result.expected);expect(result.count).toBeGreaterThan(240);expect(result.issues).toEqual([]);
  await expect(page.locator('#slotLayer [data-tile-renderer="shared"]')).toHaveCount(79);
 });
+
+test('semantic icon legend: all IDs, accessible labels, size and contrast preview on mobile',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer [data-tile-renderer="shared"]')).toHaveCount(79);
+  await page.locator('#iconLegendDetails summary').click();
+  const definitions=await page.evaluate(async()=>{const m=await import('/physical-tile-icons.js');return m.TILE_ICONS.map(i=>({id:i.id,label:i.label}))});
+  await expect(page.locator('#iconLegend [data-icon-id]')).toHaveCount(definitions.length);
+  for(const {id,label} of definitions){
+   const row=page.locator('#iconLegend [data-icon-id="'+id+'"]');
+   await expect(row.locator('svg')).toHaveAttribute('aria-label',label);
+   expect(await row.locator('svg path, svg text, svg rect, svg circle').count()).toBeGreaterThan(0);
+  }
+  const sample=page.locator('#iconLegend [data-icon-id="lumber"] svg');
+  const small=await sample.boundingBox();
+  await page.locator('#iconSampleSize').selectOption('8');
+  expect((await sample.boundingBox()).width).toBeGreaterThan(small.width);
+  await page.locator('#iconPaper').selectOption('dark');
+  await expect(page.locator('#iconLegend')).toHaveAttribute('data-paper','dark');
+  await expect(sample.locator('path').first()).toHaveAttribute('fill','#A66B35');
+  await expect(page.locator('#iconLegend [data-icon-id="fire"] svg text')).toHaveAttribute('fill','#22323c');
+  await page.locator('#iconPaper').selectOption('white');
+  await expect(sample.locator('path').first()).toHaveAttribute('fill','#A66B35');
+  await expect(page.locator('#iconLegend [data-icon-id="fire"] svg text')).toHaveAttribute('fill','#FFFFFF');
+  const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
+  expect(w.content).toBeLessThanOrEqual(w.viewport+2);
+ }
+});
+test('shared tile icons: materials match actual demo delivery and categories on both faces',async({page})=>{
+ await page.goto('/physical-map-lab.html');
+ await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+ await page.locator('#focusDistrict').selectOption('civic');
+ await page.locator('#markEmpty').click();
+ await page.locator('#tileShape').selectOption('hex');
+ await page.locator('#projectSelect').selectOption('std_warehouse');
+ await page.locator('#markBuilding').click();
+ const tile=page.locator('[data-slot-id="civic-1"]');
+ await expect(tile.locator('[data-icon="trade"]')).toHaveCount(1);
+ await expect(tile.locator('[data-icon="lumber"]')).toHaveCount(0);
+ await page.locator('#deliverOne').click();
+ await expect(tile.locator('[data-icon="lumber"]')).toHaveCount(1);
+ await page.locator('#deliverOne').click();
+ await expect(tile.locator('[data-icon="masonry"]')).toHaveCount(1);
+ const snapshot=await page.evaluate(()=>window.__physicalMapLab.snapshot());
+ expect(snapshot.districts.civic[0].delivered).toEqual(['Lumber','Masonry']);
+ await page.reload();
+ await expect(tile.locator('[data-icon="masonry"]')).toHaveCount(1);
+ await expect(tile.locator('[data-icon="lumber"]')).toHaveCount(1);
+ await page.locator('#focusDistrict').selectOption('civic');
+ await page.locator('#deliverAll').click();
+ await expect(tile.locator('[data-face="back"]')).toHaveCount(1);
+ await expect(tile.locator('[data-icon="trade"]')).toHaveCount(1);
+ await expect(tile.locator('[data-icon="lumber"]')).toHaveCount(0);
+ await expect(tile.locator('[data-icon="worker"]')).toHaveCount(0);
+});
+
+test('category palette paints both faces and survives delivery/reload on both mobile viewports',async({page})=>{
+ for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+  await page.setViewportSize(viewport);
+  await page.goto('/physical-map-lab.html');
+  await expect(page.locator('#slotLayer .slot')).toHaveCount(79);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#markEmpty').click();
+  await page.locator('#tileShape').selectOption('hex');
+  await page.locator('#projectSelect').selectOption('bank');
+  await page.locator('#markBuilding').click();
+  const tile=page.locator('[data-slot-id="civic-1"]');
+  const face=tile.locator('[data-category-fill="single"]');
+  await expect(face).toHaveCSS('fill','rgb(98, 77, 115)');
+  await page.locator('#deliverAll').click();
+  await expect(tile.locator('[data-face="back"]')).toHaveCount(1);
+  await expect(face).toHaveCSS('fill','rgb(98, 77, 115)');
+  await page.locator('#markEmpty').click();
+  await page.locator('#projectSelect').selectOption('polytechnic_campus');
+  await page.locator('#markBuilding').click();
+  const mixed=tile.locator('[data-category-fill="split"]');
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  expect(await tile.locator('linearGradient stop').evaluateAll(els=>els.map(el=>el.getAttribute('stop-color')))).toEqual(['#466B50','#466B50','#3C607C','#3C607C']);
+  await page.locator('#deliverOne').click();
+  await page.reload();
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  await expect(tile.locator('[data-material="Lumber"]')).toHaveCount(1);
+  await page.locator('#focusDistrict').selectOption('civic');
+  await page.locator('#deliverAll').click();
+  await expect(tile.locator('[data-face="back"]')).toHaveCount(1);
+  await expect(mixed).toHaveAttribute('data-category-colors','#466B50,#3C607C');
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+ }
+});

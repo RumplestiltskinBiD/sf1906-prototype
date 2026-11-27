@@ -19,7 +19,7 @@ export function createTileView({slot,building,project=null,facts={}}){
   name:occupied?(p?.name||'Тестовое здание'):'Свободный участок',categories:strings(p?.types),category:string(p?.type),standard:!!p?.standard,
   required,delivered,
   catalog:freeze({open:number(p?.open),baseIncome:number(p?.income),baseVP:number(p?.prestige),
-   earthquake:number(p?.risk?.earthquake),fire:number(p?.risk?.fire),requires:string(p?.requires),effect:string(p?.effect),
+   earthquake:number(p?.risk?.earthquake),fire:number(p?.risk?.fire),landMin:number(p?.landMin),landChange:number(facts.landChange),requires:string(p?.requires),effect:string(p?.effect),
    benefit:string(p?.benefit),actionName:string(p?.actionName),actionText:string(p?.actionText),limits:string(p?.limits)}),
   // null means not supplied, not zero or an invented rule. Stage 4–8 can extend
   // semantic descriptors here; core stays authoritative for all live values.
