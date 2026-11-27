@@ -45,6 +45,7 @@ function auditCatalog(){
   const result=auditTileBlocks(measureTileBlocks(root),{diameter:d,side,margin,cutMm:REVIEW_DIMENSIONS.cut});
   faces++;total+=result.issues.length;if(!result.ok)problemFaces++;outside+=result.issues.filter(x=>x.type==='outside').length;
   svg.dataset.auditIssues=result.issues.length;svg.dataset.auditOutside=result.issues.filter(x=>x.type==='outside').length;
+  svg.dataset.auditUnmeasured=result.issues.filter(x=>x.type==='unmeasured').length;
   const details=document.createElement('details');details.className='audit-details no-print';
   const summary=document.createElement('summary');summary.textContent=result.ok?'Проверка: без замечаний':'Проверка: '+result.issues.length+' замечаний';summary.className=result.ok?'audit-ok':'warning';details.append(summary);
   if(!result.ok){const ul=document.createElement('ul');for(const issue of result.issues){const li=document.createElement('li');li.textContent=issueLabel[issue.type]+': '+issue.ids.map(id=>{const b=result.blocks.find(x=>x.id===id);return (TILE_ZONES[b?.zone]?.label||'Блок')+' ['+id+']'}).join(' / ')+(Number.isFinite(issue.clearance)?' ('+issue.clearance.toFixed(2)+' мм)':'');ul.append(li)}details.append(ul)}
