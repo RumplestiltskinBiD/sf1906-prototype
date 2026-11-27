@@ -1,6 +1,7 @@
 // Shared SVG renderer. Callers supply the physical geometry and immutable tile view.
 // No dependency on the laboratory, catalog lookup, game rules, saves or global DOM.
 import {SHAPE_SIDES,regularVertices,OWNERS,clippedCorner,ownershipGeometry} from './physical-map-geometry.js';
+import {drawReviewedTileArtwork,REVIEWED_TILE_LAYOUTS,REVIEW_DIMENSIONS} from './physical-tile-layouts.js';
 import {renderTileIcon,materialIconId,categoryIconId} from './physical-tile-icons.js';
 import {BUILDING_TYPE_COLORS,categoryColors,categoryStops,categoryTextStyle} from './building-type-palette.js';
 const SVG_NS='http://www.w3.org/2000/svg';
@@ -80,7 +81,7 @@ export function drawTileArtwork(g,v,s,shape,colors=categoryColors(v.categories))
 }
 // geometry is the same slotGeometry result used by manufacturing diagnostics.
 // Namespace is explicit so multiple render surfaces can coexist without clip ID collisions.
-export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,rotation=0,cut='corner',cutMm=8,clearanceMm=.5,namespace='physical-face',className='',holeClass='',warning=false,palette=BUILDING_TYPE_COLORS}){
+export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,rotation=0,cut='corner',cutMm=8,clearanceMm=.5,namespace='physical-face',className='',holeClass='',warning=false,palette=BUILDING_TYPE_COLORS,filled=false,reviewed=true}){
  if(!/^[a-zA-Z0-9_-]+$/.test(namespace)||!/^[a-zA-Z0-9_-]+$/.test(view.slotId))throw Error('Invalid SVG tile namespace or slot ID');
  const element=(...args)=>svgElement(doc,...args),s=sizeMm*unitsPerMm,n=SHAPE_SIDES[shape],poly=shape!=='square';
  const origin={x:geometry.center.x-s/2,y:geometry.center.y-s/2};
@@ -123,7 +124,10 @@ export function renderPhysicalTile(doc,{view,geometry,shape,sizeMm,unitsPerMm,ro
    if(cut==='corner'){
     const clipId=namespace+'-'+view.slotId,clip=element('clipPath',{id:clipId});
     clip.append(element('path',{d:path}));face.append(clip);
-    const artwork=element('g',{'clip-path':'url(#'+clipId+')'});drawTileArtwork(artwork,view,s,shape,colors);face.append(artwork);
+    const artwork=element('g',{'clip-path':'url(#'+clipId+')'});
+    const reviewedFit=reviewed&&shape==='hex'&&sizeMm>=REVIEW_DIMENSIONS.min&&sizeMm<=REVIEW_DIMENSIONS.max&&colors.length===1&&REVIEWED_TILE_LAYOUTS[view.projectId];
+    if(!reviewedFit||!drawReviewedTileArtwork(artwork,view,sizeMm,{surface:colors[0],filled,unitsPerMm}))drawTileArtwork(artwork,view,s,shape,colors);
+    face.append(artwork);
    }else drawTileArtwork(face,view,s,shape,colors);
    g.append(face);
   }
