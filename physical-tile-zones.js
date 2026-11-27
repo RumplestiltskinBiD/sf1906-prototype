@@ -76,7 +76,14 @@ export function measureTileBlocks(root){
      const factor=style.strokeLinejoin==='miter'?Math.max(1,parseFloat(style.strokeMiterlimit)||4):1;
      pad=parseFloat(style.strokeWidth)*factor/2;
     }
-    const corners=boxCorners({x:b.x-pad,y:b.y-pad,w:b.width+2*pad,h:b.height+2*pad}).map(p=>matrix.transformPoint(p));
+    // getScreenCTM()/multiply() can return legacy SVGMatrix in Chromium,
+    // not DOMMatrix. Both expose the same six affine coefficients.
+    // Do not require transformPoint (its absence made every block unmeasured).
+    const corners=boxCorners({x:b.x-pad,y:b.y-pad,w:b.width+2*pad,h:b.height+2*pad}).map(p=>({
+     x:matrix.a*p.x+matrix.c*p.y+matrix.e,
+     y:matrix.b*p.x+matrix.d*p.y+matrix.f
+    }));
+    if(corners.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))throw Error('Invalid SVG transform');
     const minX=Math.min(...corners.map(p=>p.x)),maxX=Math.max(...corners.map(p=>p.x)),minY=Math.min(...corners.map(p=>p.y)),maxY=Math.max(...corners.map(p=>p.y));
     bounds=bounds?{minX:Math.min(bounds.minX,minX),minY:Math.min(bounds.minY,minY),maxX:Math.max(bounds.maxX,maxX),maxY:Math.max(bounds.maxY,maxY)}:{minX,minY,maxX,maxY};
    }catch{failed=true;}
