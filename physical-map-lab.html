@@ -84,7 +84,7 @@ button.danger{background:#51313c}
 #iconLegend .icon-name{font-size:12px;font-weight:600}
 #iconLegend[data-paper="white"] .icon-sample{background:white}
 #iconLegend[data-paper="dark"] .icon-sample{background:#22323c}
-#iconLegend[data-paper="dark"] .icon-sample svg g{stroke:#f7f3e8}
+
 #projectPreview{background:#202f3f;border:1px solid #3c5365;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;white-space:pre-line}
 #selectedInfo{white-space:pre-line}
 #mapSvg.build-mode .slot{cursor:pointer}
@@ -843,7 +843,7 @@ function initIconLegend(){
   const heading=document.createElement('div');heading.className='icon-group-title';heading.textContent=group.label;section.append(heading);
   for(const icon of TILE_ICONS.filter(i=>i.group===group.id)){
    const entry=document.createElement('div');entry.className='icon-entry';entry.dataset.iconId=icon.id;
-   const sample=document.createElement('div');sample.className='icon-sample';sample.append(renderTileIcon(document,icon.id));
+   const sample=document.createElement('div');sample.className='icon-sample';sample.append(renderTileIcon(document,icon.id,{surface:'#f0dfbd'}));
    const info=document.createElement('div'),name=document.createElement('div'),desc=document.createElement('div');
    name.className='icon-name';name.textContent=icon.label;desc.className='icon-desc';desc.textContent=icon.description;
    info.append(name,desc);entry.append(sample,info);section.append(entry);
@@ -851,7 +851,7 @@ function initIconLegend(){
   legend.append(section);
  }
  $('iconSampleSize').onchange=e=>legend.style.setProperty('--sample-size',e.target.value+'mm');
- $('iconPaper').onchange=e=>legend.dataset.paper=e.target.value;
+ $('iconPaper').onchange=e=>{legend.dataset.paper=e.target.value;const surface={card:'#f0dfbd',white:'#FFFFFF',dark:'#22323c'}[e.target.value];for(const row of legend.querySelectorAll('[data-icon-id]')){const sample=row.querySelector('.icon-sample');sample.replaceChildren(renderTileIcon(document,row.dataset.iconId,{surface,ink:e.target.value==='dark'?'#f7f3e8':'#202b32'}));}};
 }
 async function init(){
  initIconLegend();
