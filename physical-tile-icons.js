@@ -1,4 +1,6 @@
-// Shared, provisional pictograms for physical tiles. Semantic ID -> SVG paths.
+// Shared semantic icon registry. Approved artwork overrides legacy placeholders.
+import {APPROVED_ARTWORK,drawApprovedArtwork} from './physical-tile-approved-icons.js';
+export {RESOURCE_COLORS,TILE_INK} from './physical-tile-approved-icons.js';
 // No game rules, project IDs, text parsing, remote fonts or external assets.
 const icon=(id,group,label,description,paths)=>Object.freeze({id,group,label,description,paths:Object.freeze(paths)});
 export const TILE_ICON_GROUPS=Object.freeze([
@@ -6,7 +8,7 @@ export const TILE_ICON_GROUPS=Object.freeze([
  {id:'risks',label:'Риски и защита'},{id:'actions',label:'Действия и ограничения'},
  {id:'types',label:'Типы зданий'}
 ].map(Object.freeze));
-export const TILE_ICONS=Object.freeze([
+const legacyIcons=[
  icon('lumber','materials','Дерево','Строительный материал Lumber',['M3 7l12-4 6 4-12 4z M3 7v10l6 4V11 M9 21l12-4V7','M12 8l5-2 M5 12l2 2 M12 15l6-2 M12 18l4-1']),
  icon('masonry','materials','Кладка','Строительный материал Masonry',['M2 5h20v14H2z M2 12h20 M8 5v7 M16 5v7 M12 12v7']),
  icon('steel','materials','Сталь','Строительный материал Steel',['M4 3h16v4h-6v10h6v4H4v-4h6V7H4z']),
@@ -37,7 +39,13 @@ export const TILE_ICONS=Object.freeze([
  icon('public','types','Общественное','Категория здания Общественное',['M2 8l10-6 10 6z M4 21h16 M6 10v9 M12 10v9 M18 10v9']),
  icon('trade','types','Торговое','Категория здания Торговое',['M3 3h18l1 7H2z M4 10v11h16V10 M8 21v-7h8v7 M8 3l-1 7 M16 3l1 7']),
  icon('unknown','actions','Неизвестно','Нет зарегистрированного обозначения; не подменять другим ресурсом',['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M8 8a4 4 0 1 1 5 4l-1 2 M12 18h.1'])
-]);
+];
+const addedIcons=[["construction","actions","Строительство"],["project","actions","Проект"],["newspaper","actions","Газета"],["production","actions","Производство"],["delivery","actions","Доставка"],["movement","actions","Перемещение"],["disaster","risks","Катастрофа 1906"],["credit","economy","Кредит"],["goal","actions","Городская цель"],["warehouse","actions","Склад"],["partnership","actions","Партнёрство"],["inspection","actions","Инспекция"],["port","actions","Порт"],["rail","actions","Железная дорога"],["upgrade","actions","Модернизация"],["firehouse","risks","Пожарная служба"],["medical","risks","Медицина"],["police","risks","Полиция"],["suspicion","risks","Подозрение"],["material","materials","Любой строительный материал"]].map(([id,group,label])=>icon(id,group,label,id==='material'?'РС1 — рабочий кандидат, один строительный материал':label,[]));
+const pathsOf=nodes=>nodes.flatMap(n=>[...(n.tag==='path'?[n.attrs.d]:[]),...pathsOf(n.children)]);
+export const TILE_ICONS=Object.freeze([...legacyIcons,...addedIcons].map(def=>{
+ const artwork=APPROVED_ARTWORK[def.id];
+ return artwork?Object.freeze({...def,paths:Object.freeze(pathsOf(artwork.children)),artwork,designStatus:def.id==='material'?'candidate':'approved'}):Object.freeze({...def,designStatus:'legacy'});
+}));
 const registry=new Map(TILE_ICONS.map(i=>[i.id,i]));
 export function tileIcon(id){return registry.get(id)??registry.get('unknown');}
 const materialIds=Object.freeze({Lumber:'lumber',Masonry:'masonry',Steel:'steel',Beer:'beer',Bread:'bread',Contraband:'contraband'});
@@ -46,12 +54,13 @@ export function materialIconId(material){return Object.hasOwn(materialIds,materi
 export function categoryIconId(category){return Object.hasOwn(categoryIds,category)?categoryIds[category]:'unknown';}
 const NS='http://www.w3.org/2000/svg';
 const node=(doc,tag,attrs)=>{const n=doc.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));return n;};
-export function renderTileIcon(doc,id,{x=0,y=0,size=24,ink='#202b32',label,decorative=false}={}){
+export function renderTileIcon(doc,id,{x=0,y=0,size=24,ink='#202b32',surface='#f0dfbd',value,label,decorative=false}={}){
  if(!Number.isFinite(size)||size<=0)throw Error('Invalid icon size');
  const def=tileIcon(id);
- const svg=node(doc,'svg',{x,y,width:size,height:size,viewBox:'0 0 24 24',class:'physical-icon','data-icon':def.id,
+ const svg=node(doc,'svg',{x,y,width:size,height:size,viewBox:def.artwork?.viewBox??'0 0 24 24',class:'physical-icon','data-icon':def.id,
   ...(decorative?{'aria-hidden':'true'}:{role:'img','aria-label':label??def.label})});
  const title=node(doc,'title',{});title.textContent=label??def.label;svg.append(title);
+ if(def.artwork){svg.append(drawApprovedArtwork(doc,def.artwork,{ink,surface,value}));return svg;}
  const group=node(doc,'g',{fill:'none',stroke:ink,'stroke-width':1.9,'stroke-linecap':'round','stroke-linejoin':'round'});
  for(const d of def.paths)group.append(node(doc,'path',{d}));svg.append(group);
  return svg;
