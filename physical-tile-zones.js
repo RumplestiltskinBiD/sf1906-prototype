@@ -62,7 +62,7 @@ const LEAF='path,rect,circle,ellipse,polygon,polyline,line,text';
 // Stroke padding includes square/round caps and miter joins.
 export function measureTileBlocks(root){
  const inv=root.getScreenCTM()?.inverse();
- return Array.from(root.querySelectorAll('[data-layout-block]'),group=>{
+ const measured=Array.from(root.querySelectorAll('[data-layout-block]'),group=>{
   const id=group.dataset.layoutBlock,zone=group.dataset.zone;
   let bounds=null,failed=!inv;
   for(const leaf of group.querySelectorAll(LEAF)){
@@ -83,4 +83,8 @@ export function measureTileBlocks(root){
   }
   return {id,zone,frameFor:group.dataset.frameFor,actionGroup:group.dataset.actionGroup,box:!failed&&bounds?{x:bounds.minX,y:bounds.minY,w:bounds.maxX-bounds.minX,h:bounds.maxY-bounds.minY}:null};
  });
+ // New content cannot silently bypass the audit by omitting a semantic block.
+ const orphan=Array.from(root.querySelectorAll(LEAF)).filter(n=>!n.closest('[data-layout-block]'));
+ orphan.forEach((n,i)=>measured.push({id:'untagged-'+i,zone:'unknown',box:null}));
+ return measured;
 }
