@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SF1906 · Лаборатория тайлов</title>
 <link rel="stylesheet" href="physical-tile.css"><style>
-:root{color-scheme:light;font:15px/1.45 Arial,sans-serif;color:#24312e;background:#f3f1eb}*{box-sizing:border-box}body{margin:0}header,main{max-width:1320px;margin:auto;padding:20px}h1{font-size:24px;margin:0 0 8px}h2{font-size:17px;margin:8px 0}p{margin:5px 0 12px}a{color:#375a61}button,select,input{font:inherit}button,select{padding:7px 10px;border:1px solid #8f978d;border-radius:5px;background:white;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #3c607c;outline-offset:3px}button:disabled{opacity:.4}input[type=range]{max-width:100%;vertical-align:middle}.controls{display:flex;flex-wrap:wrap;gap:10px 24px;padding:14px;background:#fff;border:1px solid #d4d2c9;border-radius:8px;align-items:center}.field{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.field label{font-weight:700}.field output{min-width:48px;text-align:center}.hint{font-size:13px;color:#535e54}.scale{overflow:auto;margin:12px 0;padding:8px;background:white;max-width:100%}.ruler{display:block;max-width:none}#catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--card-min,480px)),1fr));gap:16px;margin-top:16px}.building{min-width:0;padding:12px;background:white;border:1px solid #d4d2c9;border-radius:8px;break-inside:avoid}.faces{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:center}.face{margin:0;text-align:center;max-width:100%;overflow:auto}.face>svg{display:block;max-width:none;flex:none}.face figcaption{font-size:12px;color:#4f5c53}.meta{font-size:12px;color:#59665c;text-align:center}.warning{color:#8a4223}#legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}#legend figure{margin:0;padding:8px;text-align:center;border-radius:5px;background:#fff}#legend .swatch{display:flex;align-items:center;justify-content:center;height:48px;background:#a58b43}#legend figcaption{font-size:12px}#legend svg{display:block}.physical-tile .slot-hole{stroke-width:.12;fill:#d6cdbb}.physical-tile .slot-guide{stroke-width:.12;stroke-dasharray:none;fill:#d6cdbb}.physical-tile .corner-face .tile{stroke:#786639;stroke-width:.15}.physical-tile .physical-icon text{pointer-events:none}.physical-tile .tile-title{font-weight:bold}
-@page{size:A4;margin:8mm}@media print{html,body{background:white!important;margin:0}header,main{padding:0;max-width:none}.controls,.no-print,#legendDetails{display:none!important}#catalog{display:block;margin:0}.building{padding:2mm 0;border:0;margin:0;break-inside:avoid}.building h2{font-size:9pt;margin:0 0 1mm}.faces{gap:2mm;justify-content:flex-start;flex-wrap:wrap}.face{overflow:visible;max-width:none}.face>svg{width:var(--print-size)!important;height:var(--print-size)!important;max-width:none!important}.face figcaption,.meta{font-size:7pt}.physical-tile .slot-hole,.physical-tile .slot-guide,.physical-tile .owner-seat,.physical-tile .owner-symbol{display:none}.scale{margin:0;padding:0;overflow:visible}.ruler{width:50mm!important;height:10mm!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+:root{color-scheme:light;font:15px/1.45 Arial,sans-serif;color:#24312e;background:#f3f1eb}*{box-sizing:border-box}body{margin:0}header,main{max-width:1320px;margin:auto;padding:20px}h1{font-size:24px;margin:0 0 8px}h2{font-size:17px;margin:8px 0}p{margin:5px 0 12px}a{color:#375a61}button,select,input{font:inherit}button,select{padding:7px 10px;border:1px solid #8f978d;border-radius:5px;background:white;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #3c607c;outline-offset:3px}button:disabled{opacity:.4}input[type=range]{max-width:100%;vertical-align:middle}.controls{display:flex;flex-wrap:wrap;gap:10px 24px;padding:14px;background:#fff;border:1px solid #d4d2c9;border-radius:8px;align-items:center}.field{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.field label{font-weight:700}.field output{min-width:48px;text-align:center}.hint{font-size:13px;color:#535e54}.scale{overflow:auto;margin:12px 0;padding:8px;background:white;max-width:100%}.ruler{display:block;max-width:none}#catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--card-min,480px)),1fr));gap:16px;margin-top:16px}.building{min-width:0;padding:12px;background:white;border:1px solid #d4d2c9;border-radius:8px;break-inside:avoid}.faces{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:center}.face{margin:0;text-align:center;max-width:100%;overflow:auto}.face>svg{display:block;max-width:none;flex:none}.face figcaption{font-size:12px;color:#4f5c53}.meta{font-size:12px;color:#59665c;text-align:center}.warning{color:#8a4223}.audit-summary{font-size:13px;padding:8px 10px;background:white;border:1px solid #d4d2c9;border-radius:5px}.audit-details{font-size:12px;text-align:left;max-width:340px;margin:4px auto;overflow-wrap:anywhere}.audit-details ul{padding-left:18px;margin:4px 0}.audit-overlay{pointer-events:none}.audit-ok{color:#466B50}#legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}#legend figure{margin:0;padding:8px;text-align:center;border-radius:5px;background:#fff}#legend .swatch{display:flex;align-items:center;justify-content:center;height:48px;background:#a58b43}#legend figcaption{font-size:12px}#legend svg{display:block}.physical-tile .slot-hole{stroke-width:.12;fill:#d6cdbb}.physical-tile .slot-guide{stroke-width:.12;stroke-dasharray:none;fill:#d6cdbb}.physical-tile .corner-face .tile{stroke:#786639;stroke-width:.15}.physical-tile .physical-icon text{pointer-events:none}.physical-tile .tile-title{font-weight:bold}
+@page{size:A4;margin:8mm}@media print{html,body{background:white!important;margin:0}header,main{padding:0;max-width:none}.controls,.no-print,#legendDetails,.audit-overlay,.audit-details{display:none!important}#catalog{display:block;margin:0}.building{padding:2mm 0;border:0;margin:0;break-inside:avoid}.building h2{font-size:9pt;margin:0 0 1mm}.faces{gap:2mm;justify-content:flex-start;flex-wrap:wrap}.face{overflow:visible;max-width:none}.face>svg{width:var(--print-size)!important;height:var(--print-size)!important;max-width:none!important}.face figcaption,.meta{font-size:7pt}.physical-tile .slot-hole,.physical-tile .slot-guide,.physical-tile .owner-seat,.physical-tile .owner-symbol{display:none}.scale{margin:0;padding:0;overflow:visible}.ruler{width:50mm!important;height:10mm!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body><header><h1>San Francisco 1906 · Лаборатория тайлов</h1><p class="no-print">Согласованные векторные макеты, не финальный арт. <a href="physical-map-lab.html">Лаборатория карты</a></p></header>
 <main><div class="controls no-print">
 <div class="field"><label for="diameter">Диаметр</label><button id="minus" aria-label="Уменьшить диаметр">−</button><output id="diameterLabel">50 мм</output><button id="plus" aria-label="Увеличить диаметр">+</button><input id="diameter" type="range" min="40" max="65" step="1" value="50"></div>
@@ -12,11 +12,11 @@
 <div class="field"><label for="category">Категория</label><select id="category"><option value="all">Все согласованные</option><option value="Торговое">Торговые</option></select></div>
 <div class="field"><label for="building">Здание</label><select id="building"><option value="all">Все</option></select></div>
 <label><input id="filled" type="checkbox"> Занятые места</label><label><input id="compare" type="checkbox"> Фиксированные 40 / 45 / 50 / 55 мм</label>
-<button id="print">Печать 1:1</button>
+<label><input id="auditOverlay" type="checkbox"> Безопасная зона и пересечения</label><div class="field"><label for="safeMargin">Отступ, мм</label><input id="safeMargin" type="number" min="0" max="3" step=".5" value="1.5" style="width:65px"></div><button id="print">Печать 1:1</button>
 </div>
 <p class="hint no-print">Подстройте экранную линейку под настоящие 50 мм и выберите 1:1. Печать использует миллиметры независимо от экранных настроек: масштаб принтера 100%, без подгонки. Срез 8 мм вдоль граней (глубина 4 мм), кубик 8 мм, основание 14×9 мм — рабочие параметры.</p>
 <div class="scale"><svg id="ruler" class="ruler" viewBox="0 0 50 10" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Линейка 50 мм"></svg></div>
-<p id="dimensions" class="meta" aria-live="polite"></p><div id="catalog"></div>
+<p id="dimensions" class="meta" aria-live="polite"></p><p id="auditSummary" class="audit-summary no-print" aria-live="polite"></p><div id="catalog"></div>
 <details id="legendDetails" class="no-print"><summary>Общая библиотека утверждённых SVG и рабочие кандидаты</summary><div id="legend"></div></details>
 </main>
 <script type="module">
@@ -25,12 +25,40 @@ import {createTileView} from './physical-tile-view.js';
 import {renderPhysicalTile,svgElement} from './physical-tile-renderer.js';
 import {shapeVertices,holeDiameterMm} from './physical-map-geometry.js';
 import {REVIEWED_TILE_LAYOUTS,REVIEW_DIMENSIONS,reviewedSlotMargins} from './physical-tile-layouts.js';
+import {TILE_ZONES,TILE_SAFE_MARGIN_MM,tileSafePolygon,measureTileBlocks,auditTileBlocks} from './physical-tile-zones.js';
 import {TILE_ICONS,renderTileIcon,TILE_INK} from './physical-tile-icons.js';
 import {BUILDING_TYPE_COLORS} from './building-type-palette.js';
 const $=id=>document.getElementById(id),pxPerMm=96/25.4;
 const projects=[...PROJECTS,...STANDARD_PROJECTS].filter(p=>Object.hasOwn(REVIEWED_TILE_LAYOUTS,p.id));
 const e=(tag,a={},text)=>svgElement(document,tag,a,text);
+$('safeMargin').value=TILE_SAFE_MARGIN_MM;
 for(const p of projects){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;$('building').append(o);}
+const issueLabel={outside:'За контуром', 'safe-margin':'Недостаточный отступ',overlap:'Пересечение','frame-containment':'Вне рамки действия',unmeasured:'Не измерено',zone:'Неверная смысловая зона'};
+function auditCatalog(){
+ const margin=Math.max(0,Math.min(3,Number($('safeMargin').value)||0)),show=$('auditOverlay').checked;
+ let faces=0,problemFaces=0,total=0,outside=0;
+ for(const svg of $('catalog').querySelectorAll('[data-preview-side]')){
+  svg.querySelectorAll('.audit-overlay').forEach(x=>x.remove());
+  svg.parentElement.querySelectorAll('.audit-details').forEach(x=>x.remove());
+  const root=svg.querySelector('[data-reviewed-layout]');if(!root)continue;
+  const d=Number(svg.dataset.sizeMm),side=svg.dataset.previewSide;
+  const result=auditTileBlocks(measureTileBlocks(root),{diameter:d,side,margin,cutMm:REVIEW_DIMENSIONS.cut});
+  faces++;total+=result.issues.length;if(!result.ok)problemFaces++;outside+=result.issues.filter(x=>x.type==='outside').length;
+  svg.dataset.auditIssues=result.issues.length;svg.dataset.auditOutside=result.issues.filter(x=>x.type==='outside').length;
+  const details=document.createElement('details');details.className='audit-details no-print';
+  const summary=document.createElement('summary');summary.textContent=result.ok?'Проверка: без замечаний':'Проверка: '+result.issues.length+' замечаний';summary.className=result.ok?'audit-ok':'warning';details.append(summary);
+  if(!result.ok){const ul=document.createElement('ul');for(const issue of result.issues){const li=document.createElement('li');li.textContent=issueLabel[issue.type]+': '+issue.ids.map(id=>{const b=result.blocks.find(x=>x.id===id);return (TILE_ZONES[b?.zone]?.label||'Блок')+' ['+id+']'}).join(' / ')+(Number.isFinite(issue.clearance)?' ('+issue.clearance.toFixed(2)+' мм)':'');ul.append(li)}details.append(ul)}
+  svg.parentElement.append(details);
+  if(show){
+   const overlay=e('g',{class:'audit-overlay','aria-hidden':'true'});
+   overlay.append(e('polygon',{points:tileSafePolygon(d,margin,REVIEW_DIMENSIONS.cut).map(p=>p.x+','+p.y).join(' '),fill:'none',stroke:'#FFF4DB','stroke-width':.3,'stroke-dasharray':'1 .7','data-safe-polygon':''}));
+   const flagged=new Set(result.issues.flatMap(i=>i.ids));
+   for(const b of result.blocks.filter(b=>b.box&&flagged.has(b.id)))overlay.append(e('rect',{x:b.box.x,y:b.box.y,width:b.box.w,height:b.box.h,fill:'#ff614f','fill-opacity':.13,stroke:'#A92323','stroke-width':.25,'data-audit-block':b.id}));
+   svg.append(overlay);
+  }
+ }
+ $('auditSummary').textContent='Проверено сторон: '+faces+' · с замечаниями: '+problemFaces+' · всего замечаний: '+total+' · за контуром: '+outside+'. Консервативные прямоугольные границы; допуск пока рабочий.';
+}
 function render(){
  const d=+$('diameter').value,zoom=+$('zoom').value,cal=+$('calibration').value/100,filled=$('filled').checked;
  const ds=$('compare').checked?[40,45,50,55]:[d],sides=$('side').value==='both'?['front','back']:[$('side').value];
@@ -59,8 +87,9 @@ function render(){
   }
   catalog.append(article);
  }
+ auditCatalog();
 }
-for(const id of ['diameter','zoom','calibration','side','category','building','filled','compare'])$(id).addEventListener('input',render);
+for(const id of ['diameter','zoom','calibration','side','category','building','filled','compare','auditOverlay','safeMargin'])$(id).addEventListener('input',render);
 $('minus').onclick=()=>{$('diameter').value=Math.max(40,+$('diameter').value-1);render()};
 $('plus').onclick=()=>{$('diameter').value=Math.min(65,+$('diameter').value+1);render()};
 $('print').onclick=()=>window.print();
@@ -70,4 +99,5 @@ for(const def of TILE_ICONS.filter(i=>i.designStatus!=='legacy')){
 }
 let wasFilled=false;window.addEventListener('beforeprint',()=>{wasFilled=$('filled').checked;$('filled').checked=false;render()});window.addEventListener('afterprint',()=>{$('filled').checked=wasFilled;render()});
 render();
+document.fonts.ready.then(auditCatalog);
 </script></body></html>
