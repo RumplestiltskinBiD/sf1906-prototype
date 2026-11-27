@@ -270,7 +270,7 @@ test('historical supplier markers sit inside their gameplay districts',async({pa
   }
 });
 
-test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Delivery',async({page})=>{
+test('Gray Brothers Quarry supplies unlimited Masonry at $3 with Procurement and paid transport',async({page})=>{
   const s=makeDevState();
   s.selectedDistrictId='mission';
   s.procurementRemaining=2;
@@ -292,18 +292,18 @@ test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Deliv
   await page.locator('#deliveryBeginRoute').click();
   await page.locator('[data-route-next="mission"]').click();
   await page.locator('[data-drop-id="SUP1"][data-drop-type="Masonry"]').click();
-  await expect(page.locator('.delivery-total')).toContainText('Материалы $3');
+  await expect(page.locator('.delivery-total')).toContainText('Материалы $0');
   await expect(page.locator('.delivery-total')).toContainText('Границы $1');
   await expect(page.locator('#deliveryConfirm')).toBeEnabled();
   await page.locator('#deliveryConfirm').click();
 
   const saved=await stored(page);
   expect(saved.constructions.find(c=>c.id==='SUP1').materialsDelivered).toEqual(['Masonry']);
-  expect(saved.procurementRemaining).toBe(2);
-  expect(saved.players[0].capital).toBe(46);
+  expect(saved.procurementRemaining).toBe(1);
+  expect(saved.players[0].capital).toBe(49);
 
   await expect(page.locator('#actionDelivery')).toBeDisabled();
-  saved.developmentSlotsUsed[0]=1; // next activation, keep supplier accessible
+  saved.developmentSlotsUsed[0]=1; saved.procurementRemaining=0; // next activation, keep supplier accessible
   await page.evaluate(([key,value])=>localStorage.setItem(key,JSON.stringify(value)),[STORAGE_KEY,saved]);
   await page.reload();
   await page.locator('#actionDelivery').click();
@@ -1522,3 +1522,30 @@ test('mobile Risk view stays usable in landscape without horizontal page overflo
   expect(result.panel.right).toBeLessThanOrEqual(result.viewport.w+1);
   expect(result.panel.bottom).toBeLessThanOrEqual(result.viewport.h+1);
 });
+
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('mobile Procurement covers premium supplier and saves the actual discounted delivery '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  const s=makeDevState();s.selectedDistrictId='mission';s.procurementRemaining=2;
+  s.constructions=[con('SUPM',0,'insurance','mission')];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-supplier="axford-iron"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Steel"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('#deliveryLockRoute').click();
+  await page.locator('[data-construction-token="SUPM"]').click();
+  await page.locator('[data-drop-id="SUPM"][data-drop-type="Steel"]').click();
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryConfirm').click();
+  let saved=await stored(page);
+  expect(saved.players[0].capital).toBe(50);
+  expect(saved.procurementRemaining).toBe(1);
+  expect(saved.constructions.find(c=>c.id==='SUPM').materialsDelivered).toEqual(['Steel']);
+  await page.reload();saved=await stored(page);
+  expect(saved.players[0].capital).toBe(50);
+  expect(saved.procurementRemaining).toBe(1);
+ });
+}
