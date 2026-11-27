@@ -176,16 +176,17 @@ test('mixed two-stop Procurement uses adjusted prices once across all node picku
  assert.equal(G.executeDelivery(s,p).ok,true);
  assert.equal(s.procurementRemaining,0);
 });
-test('Procurement never discounts supplier Lumber even while R07 increases its price',()=>{
+test('Procurement covers supplier Lumber at R07 adjusted prices',()=>{
  const s=game();s.procurementRemaining=2;
  const p=plan({from:source('supplier','engle-lumber'),cargo:['Lumber','Lumber'],
    to:'MAR',district:'marina',haulerId:'dray2a'});
  const c=G.deliveryPlanCost(s,p);
  assert.equal(c.materialGross,8);
- assert.equal(c.procurementDiscount,0);
- assert.equal(c.procurementUsed,0);
+ assert.equal(c.procurementDiscount,8);
+ assert.equal(c.procurementUsed,2);
  assert.equal(G.executeDelivery(s,p).ok,true);
- assert.equal(s.procurementRemaining,2);
+ assert.equal(s.procurementRemaining,0);
+ assert.equal(s.players[0].capital,70);
 });
 test('old purchased warehouse Lumber can move without surcharge after R07 funding',()=>{
  const s=game();s.constructions[0].warehouseInventory=['Lumber'];
