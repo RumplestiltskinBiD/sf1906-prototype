@@ -923,7 +923,7 @@ test('semantic icon legend: all IDs, accessible labels, size and contrast previe
   for(const {id,label} of definitions){
    const row=page.locator('#iconLegend [data-icon-id="'+id+'"]');
    await expect(row.locator('svg')).toHaveAttribute('aria-label',label);
-   expect(await row.locator('svg path').count()).toBeGreaterThan(0);
+   expect(await row.locator('svg path, svg text, svg rect, svg circle').count()).toBeGreaterThan(0);
   }
   const sample=page.locator('#iconLegend [data-icon-id="lumber"] svg');
   const small=await sample.boundingBox();
@@ -931,9 +931,11 @@ test('semantic icon legend: all IDs, accessible labels, size and contrast previe
   expect((await sample.boundingBox()).width).toBeGreaterThan(small.width);
   await page.locator('#iconPaper').selectOption('dark');
   await expect(page.locator('#iconLegend')).toHaveAttribute('data-paper','dark');
-  await expect(sample.locator('g')).toHaveCSS('stroke','rgb(247, 243, 232)');
+  await expect(sample.locator('path').first()).toHaveAttribute('fill','#A66B35');
+  await expect(page.locator('#iconLegend [data-icon-id="fire"] svg text')).toHaveAttribute('fill','#22323c');
   await page.locator('#iconPaper').selectOption('white');
-  await expect(sample.locator('g')).toHaveCSS('stroke','rgb(32, 43, 50)');
+  await expect(sample.locator('path').first()).toHaveAttribute('fill','#A66B35');
+  await expect(page.locator('#iconLegend [data-icon-id="fire"] svg text')).toHaveAttribute('fill','#FFFFFF');
   const w=await page.evaluate(()=>({content:document.documentElement.scrollWidth,viewport:innerWidth}));
   expect(w.content).toBeLessThanOrEqual(w.viewport+2);
  }
