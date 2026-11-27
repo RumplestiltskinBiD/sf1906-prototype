@@ -13,11 +13,13 @@ const flat=n=>[n,...n.children.flatMap(flat)];
 test('semantic icon registry: unique IDs, unique graphic definitions, complete groups and stable unknown fallback',()=>{
  const ids=TILE_ICONS.map(i=>i.id);
  assert.equal(ids.length,new Set(ids).size);
- assert.equal(TILE_ICONS.length,new Set(TILE_ICONS.map(i=>i.paths.join('|'))).size);
+ // Some resources deliberately share geometry and differ only by approved color.
+ assert.equal(tileIcon('beer').artwork.children[0].attrs.fill,tileIcon('bread').artwork.children[0].attrs.fill);
+ assert.notEqual(tileIcon('lumber').artwork.children[0].attrs.fill,tileIcon('masonry').artwork.children[0].attrs.fill);
  assert.equal(TILE_ICON_GROUPS.length,new Set(TILE_ICON_GROUPS.map(g=>g.id)).size);
  for(const id of ['money','bid','income','vp','influence','land','earthquake','fire','worker','capacity','quick','year','once','completion','condition'])assert.equal(tileIcon(id).id,id);
  for(const i of TILE_ICONS){
-  assert.ok(TILE_ICON_GROUPS.some(g=>g.id===i.group));assert.ok(i.label&&i.description&&i.paths.length);
+  assert.ok(TILE_ICON_GROUPS.some(g=>g.id===i.group));assert.ok(i.label&&i.description&&(i.artwork?.children.length||i.paths.length));
   assert.ok(Object.isFrozen(i)&&Object.isFrozen(i.paths));
   assert.ok(i.paths.every(d=>typeof d==='string'&&d.startsWith('M')));
  }
@@ -35,10 +37,11 @@ test('SVG icon has accessible label, monochrome geometry, physical size and expl
  const doc=docStub();
  for(const def of TILE_ICONS){
   const a=renderTileIcon(doc,def.id,{size:3.5,x:2,y:1,ink:'#fff'});
-  assert.equal(a.attrs.width,'3.5');assert.equal(a.attrs.height,'3.5');assert.equal(a.attrs.viewBox,'0 0 24 24');
+  assert.equal(a.attrs.width,'3.5');assert.equal(a.attrs.height,'3.5');assert.equal(a.attrs.viewBox,def.artwork?.viewBox??'0 0 24 24');
   assert.equal(a.attrs['aria-label'],def.label);assert.equal(a.attrs.role,'img');assert.equal(a.attrs['data-icon'],def.id);
-  assert.equal(a.children[0].textContent,def.label);assert.equal(a.children[1].attrs.stroke,'#fff');
-  assert.equal(a.children[1].children.length,def.paths.length);
+  assert.equal(a.children[0].textContent,def.label);
+  if(def.artwork){assert.equal(a.children[1].children.length,def.artwork.children.length);}
+  else{assert.equal(a.children[1].attrs.stroke,'#fff');assert.equal(a.children[1].children.length,def.paths.length);}
  }
  const d=renderTileIcon(doc,'income',{decorative:true});assert.equal(d.attrs['aria-hidden'],'true');assert.equal(d.attrs.role,undefined);
  assert.equal(renderTileIcon(doc,'no-such-id').attrs['data-icon'],'unknown');
@@ -56,4 +59,13 @@ test('shared renderer draws exact delivered material symbols and category symbol
   assert.equal(JSON.stringify(view),before);
  }
  assert.equal(view.live.occupantId,null);assert.equal(view.live.income,null);
+});
+
+test('approved SVG geometry, variable values, foreground and surface are preserved',()=>{
+ const doc=docStub();const f=renderTileIcon(doc,'fire',{ink:'#FFF4DB',surface:'#A58B43',value:'+3'});
+ const nodes=flat(f);assert.equal(f.attrs.viewBox,'0 0 64 64');assert.ok(nodes.some(n=>n.attrs.fill==='#A58B43'&&n.textContent==='+3'));
+ assert.equal(tileIcon('completion').artwork.children[1].attrs.d,'M27 50L43 66L74 33');
+ assert.equal(tileIcon('production').artwork.children[0].attrs.d,'M50 3L86 41H65V95H35V41H14Z');
+ assert.equal(tileIcon('delivery').artwork.children[2].attrs.d,'M57 39H76V25L99 50L76 75V61H57Z');
+ assert.equal(tileIcon('material').designStatus,'candidate');
 });
