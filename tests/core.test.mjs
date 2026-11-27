@@ -398,21 +398,21 @@ test('historical neutral suppliers are unlimited expensive Delivery sources',()=
   const first={playerId:0,source:{kind:'supplier',id:'gray-quarry'},haulerId:'dray2a',cargo:['Masonry'],route:['noe','mission'],drops:[{kind:'construction',id:'I1',materials:['Masonry']}]};
   let v=G.validateDeliveryPlan(s,first);
   assert.equal(v.ok,true,JSON.stringify(v));
-  assert.equal(v.cost.materialCost,3);
-  assert.equal(v.cost.procurementDiscount,0);
+  assert.equal(v.cost.materialCost,0);
+  assert.equal(v.cost.procurementDiscount,3);
   assert.equal(v.cost.routeCost,1);
-  assert.equal(v.cost.total,4);
+  assert.equal(v.cost.total,1);
   assert.equal(G.executeDelivery(s,first).ok,true);
-  assert.equal(s.procurementRemaining,2,'Shopping Row discount must not apply to neutral suppliers');
+  assert.equal(s.procurementRemaining,1,'Procurement covers premium suppliers, one credit per paid cube');
 
   const second={...first,haulerId:'dray2b'};
   assert.equal(G.validateDeliveryPlan(s,second).reason,'delivery-once-per-activation');
-  s.developmentSlotsUsed[0]=1; // next activation: retain neutral supplier regression
+  s.developmentSlotsUsed[0]=1; s.procurementRemaining=0; // next activation: no remaining discount
   v=G.validateDeliveryPlan(s,second);
   assert.equal(v.ok,true,JSON.stringify(v));
   assert.equal(G.executeDelivery(s,second).ok,true);
   assert.deepEqual(s.constructions[0].materialsDelivered,['Masonry','Masonry']);
-  assert.equal(s.players[0].capital,12);
+  assert.equal(s.players[0].capital,15);
   assert.equal(G.deliverySourceInfo(s,0,{kind:'supplier',id:'gray-quarry'}).inventory.length,5,'supplier stock never depletes');
 });
 

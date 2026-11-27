@@ -357,7 +357,7 @@ export const PROJECTS = [
   {prestige:3,income:3,id:'luxury',types:["Жилое"],risk:{earthquake:0,fire:0},name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3',landMin:3,benefit:'Доход +3 / раунд',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
   {prestige:2,income:1,id:'cottages',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Пригородные викторианские коттеджи',type:'Жильё',open:3,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1 / год · при завершении первым в районе +$2',benefit:'Доход +$1 / год · освоение нового района +$2',actionName:'Освоение территории',actionText:'При завершении в районе без других завершённых зданий любых игроков получите +$2 один раз.',limits:'Бонус проверяется в момент завершения; незавершённые стройки не учитываются, премия не повторяется.'},
   {prestige:2,income:4,id:'brickapartments',types:["Жилое"],risk:{earthquake:2,fire:0},name:'Кирпичный многоквартирный дом',type:'Жильё',open:4,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Доход +$4 / год · уязвимость района У +2',benefit:'Доход +$4 / год · капитальная застройка с высоким риском У',actionName:'—',actionText:'Отдельного действия нет. Материалы (5) требуют склада в том же районе для завершения.',limits:'Стоимость земли 2+. У +2 и П 0 изменяют риск всего района. 5 материалов: стандартное ограничение стройплощадки 3.'},
-  {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Принимает розовый товар: 1/год',landMin:1,benefit:'Доход +2 / раунд · Принимает розовый товар: 1/год',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации. Принимает 1 любой розовый кубик в год: +$1 владельцу.',limits:'Для «Закупки» нужна незавершённая стройка; 1 раз за год; чужой платёж $1 владельцу. Приём любого розового товара без рабочего: 1 кубик за год.'},
+  {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Принимает розовый товар: 1/год',landMin:1,benefit:'Доход +2 / раунд · Принимает розовый товар: 1/год',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 платных стройматериалов из любых источников по $0 при доставке в этой активации; транспорт оплачивается. Принимает 1 любой розовый кубик в год: +$1 владельцу.',limits:'Для «Закупки» нужна незавершённая стройка; 1 раз за год; чужой платёж $1 владельцу. Приём любого розового товара без рабочего: 1 кубик за год.'},
   {prestige:3,income:4,id:'hotel',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4',landMin:3,benefit:'Доход +4 / раунд',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
   {prestige:1,income:2,id:'bank',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Банковский кредит»',landMin:2,benefit:'Доход +2 / раунд',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
   {prestige:2,income:2,id:'club',types:["Бизнес","Торговое"],risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Принимает розовый товар: 2/год',landMin:2,benefit:'Доход +2 / раунд · Принимает розовые товары: 2/год',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние. Принимает любые розовые товары, до 2 кубиков за год суммарно: +$1 владельцу за доставленный кубик.',limits:'«Ужин и связи» 1 раз за год; $1 соперника получает владелец. Приём любых розовых товаров без рабочего: общий лимит 2 кубика за год.'},
@@ -371,7 +371,7 @@ export const PROJECTS = [
   {prestige:1,income:0,id:'bureau',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Строительное бюро',type:'Коммерция',open:4,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Строительный контракт · −$2 к Стоимость земли',benefit:'Доход 0',actionName:'Строительный контракт',actionText:'1 представитель → следующая платная земля дешевле до $2.',limits:'Макс. 1 сохранённый контракт · 1 использование / здание / раунд · чужое использование приносит владельцу $1.'},
   {prestige:1,income:3,id:'ad_agency',types:['Бизнес'],risk:{earthquake:0,fire:1},name:'Городское рекламное агентство',type:'Коммерция',open:6,materials:['Lumber','Masonry','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Рекламная кампания',benefit:'Доход +3 / год',actionName:'Рекламная кампания',actionText:'1 представитель + $2 → +2 к постоянному Income.'},
   {prestige:1,income:3,id:'insurance',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Страховая компания',type:'Коммерция',open:5,materials:['Masonry','Masonry','Steel'],requires:'Стоимость земли 2+',effect:'Доход +3 · страховые действия позже',landMin:2,benefit:'Доход +3 / раунд',actionName:'Страхование',actionText:'Страховое действие ещё не активно в текущем прототипе.',limits:'Стоимость земли 2+. Механика страхования будет добавлена позже.'},
-  {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная защита (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная защита',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Пожарная защита действует в своём и соседнем районе. Municipal site пока не проверяется.'},
+  {prestige:3,income:0,id:'firehouse',types:["Общественное"],risk:{earthquake:0,fire:-1},name:'Муниципальная пожарная часть',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Муниципальный участок',effect:'Пожарная служба: радиус 1 · П −1 только в своём районе · Стоимость земли +1',benefit:'Стоимость земли района +1 · Пожарная служба радиус 1',actionName:'Модернизация / инспекция',actionText:'Основное действие: модернизация одного своего здания за $2 ($1 с мастерскими) или инспекция одного района. Обе способности доступны в своём и соседних районах.',limits:'Одна общая ячейка действия за год. П −1 только в районе постройки; муниципальный участок пока не проверяется.'},
   {prestige:3,income:0,id:'police',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Городской полицейский участок',type:'Городская служба',open:3,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Обеспечивает общественный порядок в районе и соседних районах · Стоимость земли +1',benefit:'Стоимость земли района +1 · предотвращает события преступности в своём и соседних районах',actionName:'—',actionText:'Автоматическая защита от криминальных событий, без дополнительного действия.',limits:'Не суммируется с защитой другого участка, не защищает от землетрясения.'},
   {prestige:3,income:0,id:'clinic',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Районная клиника',type:'Городская служба',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Доступ к клинике (район + соседний район) · Стоимость земли +1',benefit:'Стоимость земли района +1 · Доступ к клинике',actionName:'—',actionText:'Отдельного действия пока нет.',limits:'Доступ к клинике действует в своём и соседнем районе.'},
   {prestige:2,income:0,id:'school',types:["Общественное"],risk:{earthquake:0,fire:0},name:'Муниципальная начальная школа',type:'Городская служба',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Нет дополнительных требований',effect:'Стоимость земли района +1 · до +2 дополнительных VP за завершённое жильё в этом и соседних районах',benefit:'До +2 дополнительных VP за жильё · Стоимость земли района +1',actionName:'Развитый жилой квартал',actionText:'При завершении школы получите +1 VP за каждое завершённое жилое здание в этом или соседних районах (любого владельца), максимум +2 VP.',limits:'Бонус школы единовременный, только при завершении; будущие жилые здания не дают VP задним числом.'},
@@ -384,7 +384,7 @@ export const PROJECTS = [
   {prestige:0,income:1,id:'sailorlodging',types:['Жилое','Бизнес'],risk:{earthquake:1,fire:2},name:'Матросская ночлежка',type:'Жильё',open:3,materials:['Lumber','Lumber','Lumber'],requires:'Только район с действующим снабженческим портом',effect:'Доход +$1/год · вербовка после портовой погрузки: законно +$2 или незаконно +$6 и +1 ★ подозрения',benefit:'После погрузки любого игрока в портовом узле района — комиссия за вербовку раз в год, выбор немедленно',actionName:'Вербовка экипажа',actionText:'Обычная +$2; незаконная +$6 и +1 ★. При ★★★ после выплаты — арест выбранного незаключённого сотрудника, подозрение → 0 и санкции C1.2.',limits:'Одна вербовка на ночлежку за год независимо от числа погрузок, не действует от Gas House Cove; незаконный вариант требует хотя бы одного неарестованного сотрудника.'},
   {prestige:3,income:4,id:'press_tower',types:['Бизнес','Промышленное'],risk:{earthquake:0,fire:1},name:'Газетный небоскрёб',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 3+; крупное здание, 5 материалов',landMin:3,effect:'Доход +$4/год · после годового газетного выпуска: +$2 ИЛИ −$2 и +1 Влияние',benefit:'Газетная кампания после каждого ежегодного выпуска · выбор без рабочего',actionName:'Газетная кампания',actionText:'После подведения итогов газеты автоматически выберите +$2 или уплатите $2, чтобы повысить Влияние на 1 шаг. Один раз за год на небоскрёб, включая 1905.',limits:'Выбор после газетных последствий, до годового дохода; платёж — из имеющихся денег, никаких авансов; без действия рабочего.'},
   {prestige:0,income:0,id:'workers_complex',types:['Жилое','Промышленное'],risk:{earthquake:1,fire:2},name:'Фабричный рабочий корпус с ночной сменой',type:'Промышленность',open:3,materials:['Lumber','Lumber','Masonry'],requires:'В районе есть собственная завершённая фабрика или завод, не привязанные к другому корпусу',effect:'Нет собственного дохода · удваивает ежегодный доход выбранной фабрики/завода и её выпуск строительных материалов',benefit:'Ночная смена ×2: доход одной фабрики/завода; Brickworks 2→4 Masonry/год, Foundry 1→2 Steel/год',actionName:'Ночная смена',actionText:'При завершении выбрать одну собственную завершённую фабрику или завод в том же районе. Удваиваются ежегодный доход предприятия и производственная мощность (если производит материалы). Привязка постоянна и не суммируется.',limits:'Подходят Крупная фабрика, Кирпичный завод, Деревообрабатывающая фабрика, Литейно-механический и Консервный завод. Две ночные смены на одно предприятие запрещены; разовая премия деревообработки не удваивается. Комплекс сам не приносит дохода.'},
-  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · пожарная часть рядом: ремонт $1 и инспекция соседних районов',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2, а инспекции — и в соседних районах.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
+  {prestige:2,income:1,id:'fireworkshop',types:['Промышленное','Общественное'],risk:{earthquake:0,fire:-1},name:'Пожарно-технические мастерские',type:'Городская служба',open:5,materials:['Lumber','Masonry','Steel'],requires:'Нет дополнительных требований',effect:'Доход +1 · П −1 · стоимость земли +1 · улучшает Пожарные части в своём и соседних районах',benefit:'Доход +1/год · пожарная часть рядом: модернизация $1',actionName:'Обслуживание пожарных частей',actionText:'Пассивно: части в своём или соседнем районе проводят добровольную модернизацию за $1 вместо $2. Радиус обслуживания не расширяется.',limits:'Действия проводятся представителем через Пожарную часть, один раз за год на станцию. Мастерские сами действий не дают.'},
 ]
 
 // Existing v0.44-L1 saves may contain a started/completed streetcar project.
@@ -762,12 +762,16 @@ export function districtRoadAccess(state,districtId){
   const d=districtById(districtId);
   return !!d&&d.buildable!==false;
 }
+// Shared service coverage: standard institutions cover their own district; market institutions also cover immediate neighbors. Numerical risk remains local.
+export function serviceCoverageDistricts(projectId,districtId){
+  if(!serviceFamilyForProject(projectId)||!districtById(districtId))return [];
+  return projectId.startsWith('std_')?[districtId]:[districtId,...districtNeighbors(districtId)];
+}
 export function serviceSources(state,districtId,serviceProjectId){
   const family=serviceFamilyForProject(serviceProjectId)||serviceProjectId;
   const ids=STANDARD_SERVICE_FAMILIES[family]||[serviceProjectId];
-  const eligible=new Set([districtId,...districtNeighbors(districtId)]);
   return (state.constructions||[]).filter(c=>c.status==='complete'&&ids.includes(c.projectId)
-    &&(c.projectId.startsWith('std_')?c.districtId===districtId:eligible.has(c.districtId)));
+    &&serviceCoverageDistricts(c.projectId,c.districtId).includes(districtId));
 }
 export function districtAccess(state,districtId){
   const d=districtById(districtId);
@@ -2588,11 +2592,11 @@ export function purchaseMaterialUnitPrice(state,source,resource){
   return base+extra;
 }
 
-export function deliveryMaterialCost(state,source,cargo,playerId=null){
+function deliveryMaterialQuote(state,source,cargo,playerId=null){
   if(source?.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'
       &&INDUSTRIAL_PRODUCTION[c.projectId]);
-    if(!plant)return {gross:0,discount:0,cost:0,procurementUsed:0};
+    if(!plant)return {gross:0,discount:0,cost:0,procurementPrices:[]};
     const output=INDUSTRIAL_PRODUCTION[plant.projectId];
     const units=(cargo||[]).filter(type=>type===output.resource).length;
     const gross=units*RESOURCE_PRICES[output.resource];
@@ -2604,21 +2608,35 @@ export function deliveryMaterialCost(state,source,cargo,playerId=null){
     // Brickworks: $1 PER PURCHASE, even when the rival takes 2 Masonry at once.
     // Foundry: $1 per Steel. Neither payment applies to the plant's owner buying.
     const ownerPayment=buyingOwn?0:plant.projectId==='brickworks'?(units>0?1:0):units;
-    return {gross,discount,cost:gross-discount,procurementUsed:0,
+    // Apply the existing factory discount before Procurement. The two-brick
+    // bundle includes one already-free unit; it cannot spend a Procurement credit.
+    const procurementPrices=Array(units).fill(RESOURCE_PRICES[output.resource]);
+    let remainingDiscount=discount;
+    for(let i=0;i<procurementPrices.length&&remainingDiscount>0;i++){
+      const reduction=Math.min(procurementPrices[i],remainingDiscount);
+      procurementPrices[i]-=reduction;remainingDiscount-=reduction;
+    }
+    return {gross,discount,cost:gross-discount,procurementPrices,
       ownerId:plant.playerId,ownerPayment};
   }
-  if(source?.kind==='supplier'){
-    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
-    if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
-    const gross=(cargo||[]).reduce((sum,type)=>sum+purchaseMaterialUnitPrice(state,source,type),0);
-    return {gross,discount:0,cost:gross,procurementUsed:0};
-  }
-  if(source?.kind!=='node')return {gross:0,discount:0,cost:0,procurementUsed:0};
-  const prices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
-  const gross=prices.reduce((a,b)=>a+b,0);
-  const procurementUsed=Math.min(state.procurementRemaining||0,prices.length);
-  const discount=[...prices].sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
-  return {gross,discount,cost:gross-discount,procurementUsed};
+  if(!['node','supplier'].includes(source?.kind))return {gross:0,discount:0,cost:0,procurementPrices:[]};
+  const procurementPrices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
+  const gross=procurementPrices.reduce((a,b)=>a+b,0);
+  return {gross,discount:0,cost:gross,procurementPrices};
+}
+
+// One allocation rule for single-source quotes and the full multi-source route.
+function procurementAllocation(state,prices){
+  const eligible=prices.filter(price=>price>0).sort((a,b)=>b-a);
+  const procurementUsed=Math.min(Math.max(0,state.procurementRemaining||0),eligible.length);
+  const procurementDiscount=eligible.slice(0,procurementUsed).reduce((sum,price)=>sum+price,0);
+  return {procurementUsed,procurementDiscount};
+}
+
+export function deliveryMaterialCost(state,source,cargo,playerId=null){
+  const {procurementPrices,...quote}=deliveryMaterialQuote(state,source,cargo,playerId);
+  const {procurementUsed,procurementDiscount}=procurementAllocation(state,procurementPrices);
+  return {...quote,discount:quote.discount+procurementDiscount,cost:quote.cost-procurementDiscount,procurementUsed};
 }
 
 // The original source remains the first visit at routeIndex 0. Additional
@@ -2634,15 +2652,12 @@ export function deliveryPlanCost(state,plan){
   if(!hauler)return null;
   const route=plan.route||[];
   const pickups=deliveryPickups(plan).filter(p=>p?.cargo?.length);
-  const costs=pickups.map(p=>deliveryMaterialCost({...state,procurementRemaining:0},p.source,p.cargo,plan.playerId));
+  const costs=pickups.map(p=>deliveryMaterialQuote(state,p.source,p.cargo,plan.playerId));
   const materialGross=costs.reduce((n,c)=>n+c.gross,0);
   const industryDiscount=costs.reduce((n,c)=>n+(c.ownerId!=null?c.discount:0),0);
   const industrySales=costs.filter(c=>c.ownerId!=null&&c.ownerPayment>0)
     .map(c=>({ownerId:c.ownerId,amount:c.ownerPayment}));
-  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'
-    ?(p.cargo||[]).map(t=>purchaseMaterialUnitPrice(state,p.source,t)):[]);
-  const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
-  const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
+  const {procurementUsed,procurementDiscount}=procurementAllocation(state,costs.flatMap(c=>c.procurementPrices));
   const materialCost=materialGross-procurementDiscount-industryDiscount;
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
@@ -3184,9 +3199,9 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
   state.procurementRemaining=2;
   state.procurementSource=shopsConstructionId;
   if(shops.playerId!==playerId){
-    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 материалов бесплатно в следующих Delivery этой активации.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 платных стройматериалов бесплатно из любых источников в этой активации; транспорт оплачивается.${workerMovementText(consumed)}`,'accent');
   }else{
-    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 материалов бесплатно в следующих Delivery этой активации.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 платных стройматериалов бесплатно из любых источников в этой активации; транспорт оплачивается.${workerMovementText(consumed)}`,'accent');
   }
   return {ok:true,materials:2,cost:1,worker:consumed.worker};
 }
@@ -3202,14 +3217,13 @@ export function firehouseHasWorkshop(state,firehouseId){
 export function firehouseInspectionDistricts(state,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return [];
-  return firehouseHasWorkshop(state,firehouseId)
-    ?[house.districtId,...districtNeighbors(house.districtId)].filter(id=>districtById(id)?.buildable!==false)
-    :[house.districtId];
+  return serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false);
 }
 export function firehouseUpgradeCandidates(state,playerId,firehouseId){
   const house=(state.constructions||[]).find(c=>c.id===firehouseId&&c.projectId==='firehouse'&&c.status==='complete');
   if(!house)return [];
-  return (state.constructions||[]).filter(c=>c.status==='complete'&&c.districtId===house.districtId
+  const eligible=new Set(serviceCoverageDistricts(house.projectId,house.districtId).filter(id=>districtById(id)?.buildable!==false));
+  return (state.constructions||[]).filter(c=>c.status==='complete'&&eligible.has(c.districtId)
     &&c.playerId===playerId&&!c.fireSafetyModernized&&constructionFireRisk(c)>0);
 }
 export function firehouseInspectionTargets(state,firehouseId,districtId){
@@ -3234,6 +3248,7 @@ export function useFirehouseAction(state,playerId,firehouseId,kind,targetId){
   if(kind==='upgrade'){
     targets=firehouseUpgradeCandidates(state,playerId,firehouseId).filter(c=>c.id===targetId);
     if(targets.length!==1)return {ok:false,reason:'no-upgrade-target'};
+    districtId=targets[0].districtId;
     fee=firehouseHasWorkshop(state,firehouseId)?1:2;
     if(state.players[playerId].capital<fee)return {ok:false,reason:'capital'};
   }else{

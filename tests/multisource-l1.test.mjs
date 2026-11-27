@@ -138,3 +138,50 @@ test('save/reload keeps inventories, route costs and legacy shape stable',()=>{
  assert.equal(restored.constructions[0].warehouseInventory.length,2);
  assert.equal(restored.version,'0.44');
 });
+
+
+test('Procurement allocates across neutral supplier and ordinary node by highest net price',()=>{
+ const s=state();s.procurementRemaining=2;
+ const road=route('mission','soma');
+ const plan=delivery({source:{kind:'supplier',id:'axford-iron'},cargo:['Steel'],route:road,
+   pickups:[{source:{kind:'node',id:'pacificmail'},routeIndex:road.length-1,cargo:['Steel','Masonry']}],
+   drops:[{kind:'warehouse',id:'SOMA',routeIndex:road.length-1,materials:['Steel','Steel','Masonry']}]});
+ const before=s.players[0].capital,c=G.deliveryPlanCost(s,plan);
+ assert.equal(c.materialGross,8);assert.equal(c.procurementDiscount,7);
+ assert.equal(c.materialCost,1);assert.equal(c.procurementUsed,2);
+ assert.equal(c.loadingCost,1);assert.equal(c.routeCost,road.length-1);
+ assert.equal(G.validateDeliveryPlan(s,plan).ok,true);
+ assert.equal(G.executeDelivery(s,plan).ok,true);
+ assert.equal(s.players[0].capital,before-c.total);
+ assert.equal(s.procurementRemaining,0);
+ assert.deepEqual(s.constructions.find(x=>x.id==='SOMA').warehouseInventory,['Steel','Steel','Masonry']);
+});
+test('Procurement uses net factory price and preserves rival seller commission',()=>{
+ const s=state();s.procurementRemaining=2;
+ s.constructions.push({id:'BR',playerId:1,projectId:'brickworks',districtId:'soma',status:'complete',industrialInventory:['Masonry','Masonry']});
+ const plan=delivery({source:{kind:'industry',id:'BR'},cargo:['Masonry','Masonry'],
+   drops:[{kind:'warehouse',id:'SOMA',materials:['Masonry','Masonry']}]});
+ const buyer=s.players[0].capital,seller=s.players[1].capital;
+ const c=G.deliveryPlanCost(s,plan);
+ assert.equal(c.materialGross,2);assert.equal(c.procurementDiscount,2);
+ assert.equal(c.materialCost,0);assert.equal(c.procurementUsed,2);
+ assert.deepEqual(c.industrySales,[{ownerId:1,amount:1}]);
+ assert.equal(G.executeDelivery(s,plan).ok,true);
+ assert.equal(s.players[0].capital,buyer-c.total);assert.equal(s.players[1].capital,seller+1);
+ assert.equal(s.procurementRemaining,0);
+ assert.deepEqual(s.constructions.find(x=>x.id==='BR').industrialInventory,[]);
+});
+test('Procurement never double discounts own brickworks bundle or paid warehouse stock',()=>{
+ const s=state();s.procurementRemaining=2;
+ s.constructions.push({id:'BR',playerId:0,projectId:'brickworks',districtId:'soma',status:'complete',industrialInventory:['Masonry','Masonry']});
+ s.constructions.find(x=>x.id==='NORTH').warehouseInventory=['Steel'];
+ const plan=delivery({source:{kind:'industry',id:'BR'},cargo:['Masonry','Masonry'],
+   drops:[{kind:'warehouse',id:'SOMA',materials:['Masonry','Masonry']}]});
+ const c=G.deliveryPlanCost(s,plan);
+ assert.equal(c.industryDiscount,1);assert.equal(c.procurementDiscount,1);
+ assert.equal(c.procurementUsed,1);assert.equal(c.materialCost,0);
+ assert.equal(G.deliveryMaterialCost(s,{kind:'warehouse',id:'NORTH'},['Steel'],0).procurementUsed,0);
+ assert.equal(G.executeDelivery(s,plan).ok,true);assert.equal(s.procurementRemaining,1);
+ const restored=JSON.parse(JSON.stringify(s));assert.equal(restored.procurementRemaining,1);
+ assert.equal(G.deliveryMaterialCost(restored,{kind:'stolen',id:'pacificmail'},['Steel'],0).procurementUsed,0);
+});

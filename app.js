@@ -977,7 +977,7 @@ function pickupSelectorHtml(){
       for(const t of CARGO_ORDER){
         const n=info.unlimited?'∞':Math.max(0,(stock[t]||0)-(used[t]||0));
         const loadHere=d.pickups.find(p=>p.routeIndex===d.route.length-1&&p.source.kind===src.kind&&p.source.id===src.id)?.cargo||[];
-        const price=src.kind==='industry'?deliveryMaterialCost(state,src,[...loadHere,t],d.playerId).cost-deliveryMaterialCost(state,src,loadHere,d.playerId).cost:
+        const price=src.kind==='industry'?deliveryMaterialCost({...state,procurementRemaining:0},src,[...loadHere,t],d.playerId).cost-deliveryMaterialCost({...state,procurementRemaining:0},src,loadHere,d.playerId).cost:
           ['node','supplier'].includes(src.kind)?purchaseMaterialUnitPrice(state,src,t):0;
         html+='<button data-extra-cargo="'+t+'" '+((n===0||free<=0||(t===CONTRABAND_CARGO&&deliveryAllCargo(d).includes(CONTRABAND_CARGO)))?'disabled':'')+'>'+materialLabel(t)+' · '+n+' · $'+price+'</button>';
       }
@@ -1276,7 +1276,7 @@ html+='</div>'+deliveryConstructionNeedsHtml(pid)+'<div class="load-resource-gri
 for(const t of CARGO_ORDER){
 const left=(have[t]||0)-(used[t]||0),disabled=deliveryDraft.source.kind==='stolen'||!sel||left<=0||deliveryDraft.cargo.length>=sel.capacity||(t===CONTRABAND_CARGO&&deliveryAllCargo(deliveryDraft).includes(CONTRABAND_CARGO));
 const srcKind=deliveryDraft.source.kind;
-const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost(state,deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost(state,deliveryDraft.source,deliveryDraft.cargo,pid).cost):
+const sourcePrice=srcKind==='industry'?'$'+(deliveryMaterialCost({...state,procurementRemaining:0},deliveryDraft.source,[...deliveryDraft.cargo,t],pid).cost-deliveryMaterialCost({...state,procurementRemaining:0},deliveryDraft.source,deliveryDraft.cargo,pid).cost):
   ['node','supplier'].includes(srcKind)?'$'+purchaseMaterialUnitPrice(state,deliveryDraft.source,t):['contraband','goods','stolen'].includes(srcKind)?'$0':'ОПЛАЧЕНО';
 const stockText=deliveryDraft.source.kind==='supplier'?'∞ доступно':left+' ост.';
 html+='<button class="load-resource '+materialClass(t)+'" data-load="'+t+'" '+(disabled?'disabled':'')+'><span>'+materialShort(t)+'</span><b>'+materialLabel(t)+'</b><strong>'+sourcePrice+'</strong><small>'+stockText+' · нужно '+(totalNeeds[t]||0)+'</small></button>';
@@ -3729,9 +3729,9 @@ ${mainUsed?'<button class="end-activation-btn" id="actionEndActivation">Заве
  <div class="city-action-card bank-card ${bankAvailable?'action-available':''}"><b>Банковский кредит</b><span>Нужно добраться до района Bank · 1 use / round</span><div class="action-space-list">${bankButtons}</div></div>
 <div class="city-action-card bureau-card ${bureauAvailable?'action-available':''}"><b>Строительное бюро</b><span>Нужно добраться до Bureau · 1 use / round</span><div class="action-space-list">${bureauButtons}</div></div>
 <div class="city-action-card ${advertisingAvailable?'action-available':''}"><b>Рекламное агентство</b><span>$2 → +2 Income</span><div class="action-space-list">${advertisingButtons}</div></div>
- <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 материалов бесплатно в следующей Delivery</span><div class="action-space-list">${shopsButtons}</div></div>
+ <div class="city-action-card shops-card ${shopsAvailable?'action-available':''}"><b>Торговый ряд · Закупка</b><span>$1 → до 2 стройматериалов по $0 из любых платных источников; перевозка оплачивается</span><div class="action-space-list">${shopsButtons}</div></div>
 <div class="city-action-card club-card ${clubAvailable?'action-available':''}"><b>Ресторан и клуб</b><span>Нужно добраться до клуба · −$1 → +1 Влияние</span><div class="action-space-list">${clubButtons}</div></div>
-<div class="city-action-card ${fireAvailable?'action-available':''}"><b>🚒 Пожарная служба</b><span>1 представитель · пожарная часть: модернизация своего здания или инспекция района</span><div class="action-space-list firehouse-list">${firehouseButtons}</div>${fireTargetPanel}</div>
+<div class="city-action-card ${fireAvailable?'action-available':''}"><b>🚒 Пожарная служба</b><span>1 представитель · модернизация своего здания или инспекция одного района · свой и соседние районы</span><div class="action-space-list firehouse-list">${firehouseButtons}</div>${fireTargetPanel}</div>
 <div class="city-action-card ${justiceAvailable?'action-available':''}"><b>⚖ Дворец правосудия</b><span>Выберите действие: право собственности или реорганизация стройки</span><div class="action-space-list firehouse-list">${justiceButtons}</div>${justiceTargetPanel}</div>
 <div class="city-action-card ${commissionAvailable?'action-available':''}"><b>Комиссионный торговый дом</b><span>Основное действие: перепродать неначатый проект за $4</span><button class="secondary-btn full" id="actionCommission" ${commissionAvailable?'':'disabled'}>${commissionHouses.length?'Выбрать проект в офисе':'Комиссионный дом ещё не построен'}</button></div>
 </div>`;
@@ -4246,7 +4246,7 @@ const wh=isWarehouseConstruction(con)?`<div class="warehouse-note">Склад ·
 let actionNote='';
 if(['bank','bureau','ad_agency','shops','club','commission_house','firehouse','hall_of_justice'].includes(con.projectId)){
 const occupant=actionSpaceOccupant(state,con.id);
-const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',ad_agency:'Рекламная кампания · $2 → +2 Income',shops:'Procurement: $1 → до 2 материалов бесплатно в следующей Delivery',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',hall_of_justice:'Право собственности ($1) / Реорганизация ($2)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
+const labels={bank:'Bank Loan',bureau:'Construction Contract −$2 land',ad_agency:'Рекламная кампания · $2 → +2 Income',shops:'Procurement: $1 → до 2 стройматериалов по $0 из любых платных источников; перевозка оплачивается',club:'Networking Dinner: −$1 → +1 Влияние',commission_house:'Перепродажа неначатого проекта за $4 (через карту в офисе)',hall_of_justice:'Право собственности ($1) / Реорганизация ($2)',firehouse:'Модернизация / пожарная инспекция (в действиях города)'};
 actionNote=`<div class="action-building-note ${occupant!=null?'used':''}">Ячейка действия: ${labels[con.projectId]} · ${occupant!=null?`ИСПОЛЬЗОВАНО В ЭТОМ РАУНДЕ · ${state.players[occupant].name}`:'доступно в этом раунде'}</div>`;
 }else if(['firehouse','clinic','police','publicworks','streetcar','std_fire','std_police','std_clinic'].includes(con.projectId)){
 actionNote=con.projectId==='streetcar'?'<div class="land-building-note">Архивный объект из прежнего сохранения. При завершении повысил стоимость земли на $1; дополнительных переходов не даёт.</div>':'<div class="land-building-note">После завершения этот объект повысил стоимость земли района на $1.</div>';
