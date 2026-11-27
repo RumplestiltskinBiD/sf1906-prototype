@@ -270,7 +270,7 @@ test('historical supplier markers sit inside their gameplay districts',async({pa
   }
 });
 
-test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Delivery',async({page})=>{
+test('Gray Brothers Quarry supplies unlimited Masonry at $3 with Procurement and paid transport',async({page})=>{
   const s=makeDevState();
   s.selectedDistrictId='mission';
   s.procurementRemaining=2;
@@ -292,18 +292,18 @@ test('Gray Brothers Quarry supplies unlimited Masonry at $3 through normal Deliv
   await page.locator('#deliveryBeginRoute').click();
   await page.locator('[data-route-next="mission"]').click();
   await page.locator('[data-drop-id="SUP1"][data-drop-type="Masonry"]').click();
-  await expect(page.locator('.delivery-total')).toContainText('Материалы $3');
+  await expect(page.locator('.delivery-total')).toContainText('Материалы $0');
   await expect(page.locator('.delivery-total')).toContainText('Границы $1');
   await expect(page.locator('#deliveryConfirm')).toBeEnabled();
   await page.locator('#deliveryConfirm').click();
 
   const saved=await stored(page);
   expect(saved.constructions.find(c=>c.id==='SUP1').materialsDelivered).toEqual(['Masonry']);
-  expect(saved.procurementRemaining).toBe(2);
-  expect(saved.players[0].capital).toBe(46);
+  expect(saved.procurementRemaining).toBe(1);
+  expect(saved.players[0].capital).toBe(49);
 
   await expect(page.locator('#actionDelivery')).toBeDisabled();
-  saved.developmentSlotsUsed[0]=1; // next activation, keep supplier accessible
+  saved.developmentSlotsUsed[0]=1; saved.procurementRemaining=0; // next activation, keep supplier accessible
   await page.evaluate(([key,value])=>localStorage.setItem(key,JSON.stringify(value)),[STORAGE_KEY,saved]);
   await page.reload();
   await page.locator('#actionDelivery').click();
