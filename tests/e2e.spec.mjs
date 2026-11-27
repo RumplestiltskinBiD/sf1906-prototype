@@ -1522,3 +1522,30 @@ test('mobile Risk view stays usable in landscape without horizontal page overflo
   expect(result.panel.right).toBeLessThanOrEqual(result.viewport.w+1);
   expect(result.panel.bottom).toBeLessThanOrEqual(result.viewport.h+1);
 });
+
+
+for(const viewport of [{width:390,height:844},{width:932,height:430}]){
+ test('mobile Procurement covers premium supplier and saves the actual discounted delivery '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);
+  const s=makeDevState();s.selectedDistrictId='mission';s.procurementRemaining=2;
+  s.constructions=[con('SUPM',0,'insurance','mission')];
+  await seed(page,s);await page.goto('/');
+  await page.locator('#actionDelivery').click();
+  await page.locator('[data-delivery-supplier="axford-iron"]').click();
+  await page.locator('[data-hauler="dray2a"]').click();
+  await page.locator('[data-load="Steel"]').click();
+  await page.locator('#deliveryBeginRoute').click();
+  await page.locator('#deliveryLockRoute').click();
+  await page.locator('[data-construction-token="SUPM"]').click();
+  await page.locator('[data-drop-id="SUPM"][data-drop-type="Steel"]').click();
+  await expect(page.locator('#deliveryConfirm')).toBeEnabled();
+  await page.locator('#deliveryConfirm').click();
+  let saved=await stored(page);
+  expect(saved.players[0].capital).toBe(50);
+  expect(saved.procurementRemaining).toBe(1);
+  expect(saved.constructions.find(c=>c.id==='SUPM').materialsDelivered).toEqual(['Steel']);
+  await page.reload();saved=await stored(page);
+  expect(saved.players[0].capital).toBe(50);
+  expect(saved.procurementRemaining).toBe(1);
+ });
+}
