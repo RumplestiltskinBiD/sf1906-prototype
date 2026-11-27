@@ -357,7 +357,7 @@ export const PROJECTS = [
   {prestige:3,income:3,id:'luxury',types:["Жилое"],risk:{earthquake:0,fire:0},name:'Роскошные апартаменты',type:'Жильё',open:5,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита',accessAll:['fire'],effect:'Доход +3',landMin:3,benefit:'Доход +3 / раунд',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ и Пожарная защита.'},
   {prestige:2,income:1,id:'cottages',types:["Жилое"],risk:{earthquake:0,fire:1},name:'Пригородные викторианские коттеджи',type:'Жильё',open:3,materials:['Lumber','Lumber','Masonry'],requires:'Нет дополнительных требований',effect:'Доход +$1 / год · при завершении первым в районе +$2',benefit:'Доход +$1 / год · освоение нового района +$2',actionName:'Освоение территории',actionText:'При завершении в районе без других завершённых зданий любых игроков получите +$2 один раз.',limits:'Бонус проверяется в момент завершения; незавершённые стройки не учитываются, премия не повторяется.'},
   {prestige:2,income:4,id:'brickapartments',types:["Жилое"],risk:{earthquake:2,fire:0},name:'Кирпичный многоквартирный дом',type:'Жильё',open:4,materials:['Lumber','Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',landMin:2,effect:'Доход +$4 / год · уязвимость района У +2',benefit:'Доход +$4 / год · капитальная застройка с высоким риском У',actionName:'—',actionText:'Отдельного действия нет. Материалы (5) требуют склада в том же районе для завершения.',limits:'Стоимость земли 2+. У +2 и П 0 изменяют риск всего района. 5 материалов: стандартное ограничение стройплощадки 3.'},
-  {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Принимает розовый товар: 1/год',landMin:1,benefit:'Доход +2 / раунд · Принимает розовый товар: 1/год',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 материалов по $0 в следующих Доставка этой активации. Принимает 1 любой розовый кубик в год: +$1 владельцу.',limits:'Для «Закупки» нужна незавершённая стройка; 1 раз за год; чужой платёж $1 владельцу. Приём любого розового товара без рабочего: 1 кубик за год.'},
+  {prestige:1,income:2,id:'shops',types:["Торговое"],risk:{earthquake:0,fire:1},name:'Торговый ряд',type:'Коммерция',open:3,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 1+',effect:'Доход +2 · Действие «Закупка» · Принимает розовый товар: 1/год',landMin:1,benefit:'Доход +2 / раунд · Принимает розовый товар: 1/год',actionName:'Закупка',actionText:'1 представитель + $1 → до 2 платных стройматериалов из любых источников по $0 при доставке в этой активации; транспорт оплачивается. Принимает 1 любой розовый кубик в год: +$1 владельцу.',limits:'Для «Закупки» нужна незавершённая стройка; 1 раз за год; чужой платёж $1 владельцу. Приём любого розового товара без рабочего: 1 кубик за год.'},
   {prestige:3,income:4,id:'hotel',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Гранд-отель',type:'Коммерция',open:6,materials:['Lumber','Masonry','Masonry','Steel'],requires:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике',accessAll:['fire','clinic'],effect:'Доход +4',landMin:3,benefit:'Доход +4 / раунд',actionName:'—',actionText:'Отдельного действия нет.',limits:'Стоимость земли 3+ · Пожарная защита · Доступ к клинике.'},
   {prestige:1,income:2,id:'bank',types:["Бизнес"],risk:{earthquake:0,fire:0},name:'Частный банк',type:'Коммерция',open:6,materials:['Masonry','Masonry','Steel','Steel'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Банковский кредит»',landMin:2,benefit:'Доход +2 / раунд',actionName:'Банковский кредит',actionText:'1 представитель → 1-й активный кредит +$6; 2-й +$5. Каждый кредит: долг $6 и −$1 к Доход.',limits:'Макс. 2 активных кредита · 1 использование / банк / раунд · чужое использование даёт владельцу +1 Влияние максимум 1×/round.'},
   {prestige:2,income:2,id:'club',types:["Бизнес","Торговое"],risk:{earthquake:0,fire:1},name:'Ресторан и клуб',type:'Коммерция',open:4,materials:['Lumber','Masonry','Masonry'],requires:'Стоимость земли 2+',effect:'Доход +2 · Действие «Ужин и связи» · Принимает розовый товар: 2/год',landMin:2,benefit:'Доход +2 / раунд · Принимает розовые товары: 2/год',actionName:'Ужин и связи',actionText:'1 представитель + $1 → +1 Влияние. Принимает любые розовые товары, до 2 кубиков за год суммарно: +$1 владельцу за доставленный кубик.',limits:'«Ужин и связи» 1 раз за год; $1 соперника получает владелец. Приём любых розовых товаров без рабочего: общий лимит 2 кубика за год.'},
@@ -2592,11 +2592,11 @@ export function purchaseMaterialUnitPrice(state,source,resource){
   return base+extra;
 }
 
-export function deliveryMaterialCost(state,source,cargo,playerId=null){
+function deliveryMaterialQuote(state,source,cargo,playerId=null){
   if(source?.kind==='industry'){
     const plant=(state.constructions||[]).find(c=>c.id===source.id&&c.status==='complete'
       &&INDUSTRIAL_PRODUCTION[c.projectId]);
-    if(!plant)return {gross:0,discount:0,cost:0,procurementUsed:0};
+    if(!plant)return {gross:0,discount:0,cost:0,procurementPrices:[]};
     const output=INDUSTRIAL_PRODUCTION[plant.projectId];
     const units=(cargo||[]).filter(type=>type===output.resource).length;
     const gross=units*RESOURCE_PRICES[output.resource];
@@ -2608,21 +2608,35 @@ export function deliveryMaterialCost(state,source,cargo,playerId=null){
     // Brickworks: $1 PER PURCHASE, even when the rival takes 2 Masonry at once.
     // Foundry: $1 per Steel. Neither payment applies to the plant's owner buying.
     const ownerPayment=buyingOwn?0:plant.projectId==='brickworks'?(units>0?1:0):units;
-    return {gross,discount,cost:gross-discount,procurementUsed:0,
+    // Apply the existing factory discount before Procurement. The two-brick
+    // bundle includes one already-free unit; it cannot spend a Procurement credit.
+    const procurementPrices=Array(units).fill(RESOURCE_PRICES[output.resource]);
+    let remainingDiscount=discount;
+    for(let i=0;i<procurementPrices.length&&remainingDiscount>0;i++){
+      const reduction=Math.min(procurementPrices[i],remainingDiscount);
+      procurementPrices[i]-=reduction;remainingDiscount-=reduction;
+    }
+    return {gross,discount,cost:gross-discount,procurementPrices,
       ownerId:plant.playerId,ownerPayment};
   }
-  if(source?.kind==='supplier'){
-    const supplier=NEUTRAL_MATERIAL_SUPPLIERS.find(x=>x.id===source.id);
-    if(!supplier)return {gross:0,discount:0,cost:0,procurementUsed:0};
-    const gross=(cargo||[]).reduce((sum,type)=>sum+purchaseMaterialUnitPrice(state,source,type),0);
-    return {gross,discount:0,cost:gross,procurementUsed:0};
-  }
-  if(source?.kind!=='node')return {gross:0,discount:0,cost:0,procurementUsed:0};
-  const prices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
-  const gross=prices.reduce((a,b)=>a+b,0);
-  const procurementUsed=Math.min(state.procurementRemaining||0,prices.length);
-  const discount=[...prices].sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
-  return {gross,discount,cost:gross-discount,procurementUsed};
+  if(!['node','supplier'].includes(source?.kind))return {gross:0,discount:0,cost:0,procurementPrices:[]};
+  const procurementPrices=(cargo||[]).map(type=>purchaseMaterialUnitPrice(state,source,type));
+  const gross=procurementPrices.reduce((a,b)=>a+b,0);
+  return {gross,discount:0,cost:gross,procurementPrices};
+}
+
+// One allocation rule for single-source quotes and the full multi-source route.
+function procurementAllocation(state,prices){
+  const eligible=prices.filter(price=>price>0).sort((a,b)=>b-a);
+  const procurementUsed=Math.min(Math.max(0,state.procurementRemaining||0),eligible.length);
+  const procurementDiscount=eligible.slice(0,procurementUsed).reduce((sum,price)=>sum+price,0);
+  return {procurementUsed,procurementDiscount};
+}
+
+export function deliveryMaterialCost(state,source,cargo,playerId=null){
+  const {procurementPrices,...quote}=deliveryMaterialQuote(state,source,cargo,playerId);
+  const {procurementUsed,procurementDiscount}=procurementAllocation(state,procurementPrices);
+  return {...quote,discount:quote.discount+procurementDiscount,cost:quote.cost-procurementDiscount,procurementUsed};
 }
 
 // The original source remains the first visit at routeIndex 0. Additional
@@ -2638,15 +2652,12 @@ export function deliveryPlanCost(state,plan){
   if(!hauler)return null;
   const route=plan.route||[];
   const pickups=deliveryPickups(plan).filter(p=>p?.cargo?.length);
-  const costs=pickups.map(p=>deliveryMaterialCost({...state,procurementRemaining:0},p.source,p.cargo,plan.playerId));
+  const costs=pickups.map(p=>deliveryMaterialQuote(state,p.source,p.cargo,plan.playerId));
   const materialGross=costs.reduce((n,c)=>n+c.gross,0);
   const industryDiscount=costs.reduce((n,c)=>n+(c.ownerId!=null?c.discount:0),0);
   const industrySales=costs.filter(c=>c.ownerId!=null&&c.ownerPayment>0)
     .map(c=>({ownerId:c.ownerId,amount:c.ownerPayment}));
-  const procurementPrices=pickups.flatMap(p=>p.source?.kind==='node'
-    ?(p.cargo||[]).map(t=>purchaseMaterialUnitPrice(state,p.source,t)):[]);
-  const procurementUsed=Math.min(state.procurementRemaining||0,procurementPrices.length);
-  const procurementDiscount=procurementPrices.sort((a,b)=>b-a).slice(0,procurementUsed).reduce((a,b)=>a+b,0);
+  const {procurementUsed,procurementDiscount}=procurementAllocation(state,costs.flatMap(c=>c.procurementPrices));
   const materialCost=materialGross-procurementDiscount-industryDiscount;
   const loadingCost=Math.max(0,pickups.length-1)*DELIVERY_EXTRA_LOADING_COST;
   const routeCost=Math.max(0,route.length-1)*paidRoadEdgeCost(state);
@@ -3188,9 +3199,9 @@ export function useShoppingProcurement(state,playerId,shopsConstructionId){
   state.procurementRemaining=2;
   state.procurementSource=shopsConstructionId;
   if(shops.playerId!==playerId){
-    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 материалов бесплатно в следующих Delivery этой активации.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} платит $1 Торговому ряду игрока ${owner.name} и получает Procurement: до 2 платных стройматериалов бесплатно из любых источников в этой активации; транспорт оплачивается.${workerMovementText(consumed)}`,'accent');
   }else{
-    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 материалов бесплатно в следующих Delivery этой активации.${workerMovementText(consumed)}`,'accent');
+    logEvent(state,`${player.name} тратит $1 на Procurement через собственный Торговый ряд: до 2 платных стройматериалов бесплатно из любых источников в этой активации; транспорт оплачивается.${workerMovementText(consumed)}`,'accent');
   }
   return {ok:true,materials:2,cost:1,worker:consumed.worker};
 }
