@@ -76,10 +76,16 @@ export function measureTileBlocks(root){
   // Keep the actual SVG, inherited styles and nested viewBoxes. No clone,
   // duplicate IDs or alternate layout. The synchronous resize is restored
   // before paint, including if an SVG measurement throws.
+  // Build the temporary CSS on a detached element. Mutating the live SVG
+  // CSSOM leaves Chromium's lazy style-attribute synchronization dirty;
+  // removeAttribute then recreates style="" when hasAttribute is queried.
+  const temporary=viewport.ownerDocument.createElement('div').style;
+  temporary.cssText=original??'';
   for(const [dimension,value] of [['width',vb.width],['height',vb.height]]){
    const px=value*AUDIT_PX_PER_UNIT+'px';
-   for(const property of [dimension,'min-'+dimension,'max-'+dimension])viewport.style.setProperty(property,px,'important');
+   for(const property of [dimension,'min-'+dimension,'max-'+dimension])temporary.setProperty(property,px,'important');
   }
+  viewport.setAttribute('style',temporary.cssText);
   return measureAtCurrentViewport(root);
  }finally{
   if(original===null)viewport.removeAttribute('style');

@@ -63,9 +63,18 @@ test('reference viewport preserves glyph and nested stroke bounds and restores t
    samples.push({blocks,restored:svg.getAttribute('style')===before&&rectBefore.width===rectAfter.width&&rectBefore.height===rectAfter.height});
   }
   svg.removeAttribute('style');measureTileBlocks(root);
-  return {samples,absentStyleRestored:!svg.hasAttribute('style')};
+  const absentStyleRestored=!svg.hasAttribute('style')&&svg.getAttribute('style')===null&&svg.getBoundingClientRect().width===200;
+  svg.setAttribute('style','');measureTileBlocks(root);
+  const emptyStyleRestored=svg.hasAttribute('style')&&svg.getAttribute('style')===''&&svg.getBoundingClientRect().width===200;
+  svg.setAttribute('style','width: 170px !important; height: 180px; color: red; --test-flag: 7;');
+  const customBefore=svg.getAttribute('style'),customRect=svg.getBoundingClientRect();
+  measureTileBlocks(root);
+  const customStyleRestored=svg.getAttribute('style')===customBefore&&svg.getBoundingClientRect().width===customRect.width&&svg.getBoundingClientRect().height===customRect.height;
+  return {samples,absentStyleRestored,emptyStyleRestored,customStyleRestored};
  });
  expect(result.absentStyleRestored).toBe(true);
+ expect(result.emptyStyleRestored).toBe(true);
+ expect(result.customStyleRestored).toBe(true);
  const baseline=result.samples[0].blocks;
  expect(baseline.every(b=>b.box&&b.box.w>0&&b.box.h>0)).toBe(true);
  expect(baseline.find(b=>b.id==='risk').box.w).toBeCloseTo(6,6);
