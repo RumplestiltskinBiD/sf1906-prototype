@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SF1906 · Лаборатория тайлов</title>
+<link rel="stylesheet" href="physical-tile.css"><style>
+:root{color-scheme:light;font:15px/1.45 Arial,sans-serif;color:#24312e;background:#f3f1eb}*{box-sizing:border-box}body{margin:0}header,main{max-width:1320px;margin:auto;padding:20px}h1{font-size:24px;margin:0 0 8px}h2{font-size:17px;margin:8px 0}p{margin:5px 0 12px}a{color:#375a61}button,select,input{font:inherit}button,select{padding:7px 10px;border:1px solid #8f978d;border-radius:5px;background:white;color:inherit}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #3c607c;outline-offset:3px}button:disabled{opacity:.4}input[type=range]{max-width:100%;vertical-align:middle}.controls{display:flex;flex-wrap:wrap;gap:10px 24px;padding:14px;background:#fff;border:1px solid #d4d2c9;border-radius:8px;align-items:center}.field{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.field label{font-weight:700}.field output{min-width:48px;text-align:center}.hint{font-size:13px;color:#535e54}.scale{overflow:auto;margin:12px 0;padding:8px;background:white;max-width:100%}.ruler{display:block;max-width:none}#catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:16px;margin-top:16px}.building{min-width:0;padding:12px;background:white;border:1px solid #d4d2c9;border-radius:8px;break-inside:avoid}.faces{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;justify-content:center}.face{margin:0;text-align:center;max-width:100%;overflow:auto}.face svg{display:block;max-width:none;flex:none}.face figcaption{font-size:12px;color:#4f5c53}.meta{font-size:12px;color:#59665c;text-align:center}.warning{color:#8a4223}#legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}#legend figure{margin:0;padding:8px;text-align:center;border-radius:5px;background:#fff}#legend .swatch{display:flex;align-items:center;justify-content:center;height:48px;background:#a58b43}#legend figcaption{font-size:12px}#legend svg{display:block}.physical-tile .slot-hole{stroke-width:.12;fill:#d6cdbb}.physical-tile .slot-guide{stroke-width:.12;stroke-dasharray:none;fill:#d6cdbb}.physical-tile .corner-face .tile{stroke:#786639;stroke-width:.15}.physical-tile .physical-icon text{pointer-events:none}.physical-tile .tile-title{font-weight:bold}
+@page{size:A4;margin:8mm}@media print{html,body{background:white!important;margin:0}header,main{padding:0;max-width:none}.controls,.no-print,#legendDetails{display:none!important}#catalog{display:block;margin:0}.building{padding:2mm 0;border:0;margin:0;break-inside:avoid}.building h2{font-size:9pt;margin:0 0 1mm}.faces{gap:2mm;justify-content:flex-start;flex-wrap:wrap}.face{overflow:visible;max-width:none}.face svg{width:var(--print-size)!important;height:var(--print-size)!important;max-width:none!important}.face figcaption,.meta{font-size:7pt}.physical-tile .slot-hole,.physical-tile .slot-guide,.physical-tile .owner-seat,.physical-tile .owner-symbol{display:none}.scale{margin:0;padding:0;overflow:visible}.ruler{width:50mm!important;height:10mm!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><header><h1>San Francisco 1906 · Лаборатория тайлов</h1><p class="no-print">Согласованные векторные макеты, не финальный арт. <a href="physical-map-lab.html">Лаборатория карты</a></p></header>
+<main><div class="controls no-print">
+<div class="field"><label for="diameter">Диаметр</label><button id="minus" aria-label="Уменьшить диаметр">−</button><output id="diameterLabel">50 мм</output><button id="plus" aria-label="Увеличить диаметр">+</button><input id="diameter" type="range" min="40" max="65" step="1" value="50"></div>
+<div class="field"><label for="zoom">Масштаб</label><select id="zoom"><option value="1">1:1</option><option value="1.5">150%</option><option value="2" selected>200%</option></select></div>
+<div class="field"><label for="calibration">Калибровка экрана</label><input id="calibration" type="range" min="65" max="145" step="1" value="100"><output id="calLabel">100%</output></div>
+<div class="field"><label for="side">Стороны</label><select id="side"><option value="both">Обе</option><option value="front">Стройка</option><option value="back">Готовые</option></select></div>
+<div class="field"><label for="category">Категория</label><select id="category"><option value="all">Все согласованные</option><option value="Торговое">Торговые</option></select></div>
+<div class="field"><label for="building">Здание</label><select id="building"><option value="all">Все</option></select></div>
+<label><input id="filled" type="checkbox"> Занятые места</label><label><input id="compare" type="checkbox"> Фиксированные 40 / 45 / 50 / 55 мм</label>
+<button id="print">Печать 1:1</button>
+</div>
+<p class="hint no-print">Подстройте экранную линейку под настоящие 50 мм и выберите 1:1. Печать использует миллиметры независимо от экранных настроек: масштаб принтера 100%, без подгонки. Срез 8 мм вдоль граней (глубина 4 мм), кубик 8 мм, основание 14×9 мм — рабочие параметры.</p>
+<div class="scale"><svg id="ruler" class="ruler" viewBox="0 0 50 10" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Линейка 50 мм"></svg></div>
+<p id="dimensions" class="meta" aria-live="polite"></p><div id="catalog"></div>
+<details id="legendDetails" class="no-print"><summary>Общая библиотека утверждённых SVG и рабочие кандидаты</summary><div id="legend"></div></details>
+</main>
+<script type="module">
+import {PROJECTS,STANDARD_PROJECTS,GOODS_BUYER_CAPACITIES,LAND_VALUE_COMPLETION_CHANGE} from './game-core.js';
+import {createTileView} from './physical-tile-view.js';
+import {renderPhysicalTile,svgElement} from './physical-tile-renderer.js';
+import {shapeVertices,holeDiameterMm} from './physical-map-geometry.js';
+import {REVIEWED_TILE_LAYOUTS,REVIEW_DIMENSIONS,reviewedSlotMargins} from './physical-tile-layouts.js';
+import {TILE_ICONS,renderTileIcon,TILE_INK} from './physical-tile-icons.js';
+import {BUILDING_TYPE_COLORS} from './building-type-palette.js';
+const $=id=>document.getElementById(id),pxPerMm=96/25.4;
+const projects=[...PROJECTS,...STANDARD_PROJECTS].filter(p=>Object.hasOwn(REVIEWED_TILE_LAYOUTS,p.id));
+const e=(tag,a={},text)=>svgElement(document,tag,a,text);
+for(const p of projects){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;$('building').append(o);}
+function render(){
+ const d=+$('diameter').value,zoom=+$('zoom').value,cal=+$('calibration').value/100,filled=$('filled').checked;
+ const ds=$('compare').checked?[40,45,50,55]:[d],sides=$('side').value==='both'?['front','back']:[$('side').value];
+ $('diameterLabel').value=d+' мм';$('calLabel').value=Math.round(cal*100)+'%';$('minus').disabled=d<=40;$('plus').disabled=d>=65;
+ $('dimensions').textContent='Ширина '+(d*Math.sqrt(3)/2).toFixed(1)+' мм · высота после среза '+(d-4)+' мм · диаметр '+d+' мм';
+ const ruler=$('ruler');ruler.replaceChildren(e('path',{d:'M0 8H50',stroke:'#24312e','stroke-width':.22}));
+ ruler.style.width=50*pxPerMm*cal+'px';ruler.style.height=10*pxPerMm*cal+'px';
+ for(let i=0;i<=50;i++){ruler.append(e('path',{d:'M'+i+' 8V'+(i%10===0?3:i%5===0?4.7:6),stroke:'#24312e','stroke-width':.22}));if(i%10===0)ruler.append(e('text',{x:i===0?.4:i===50?49.6:i,y:2.3,'font-size':2.5,'text-anchor':i===0?'start':i===50?'end':'middle',fill:'#24312e'},i));}
+ const catalog=$('catalog');catalog.replaceChildren();
+ for(const p of projects.filter(p=>($('building').value==='all'||$('building').value===p.id)&&($('category').value==='all'||p.types.includes($('category').value)))){
+  const article=document.createElement('article');article.className='building';article.dataset.projectId=p.id;
+  const title=document.createElement('h2');title.textContent=p.name;article.append(title);
+  const faces=document.createElement('div');faces.className='faces';article.append(faces);
+  for(const size of ds)for(const side of sides){
+   const slot={id:p.id+'-'+side+'-'+size,districtId:'preview',n:1};
+   const view=createTileView({slot,building:{status:side==='front'?'under':'complete',owner:0,projectId:p.id,delivered:[]},project:p,facts:{capacity:GOODS_BUYER_CAPACITIES[p.id]??0,landChange:LAND_VALUE_COMPLETION_CHANGE[p.id]??0}});
+   const center={x:size/2,y:size/2};
+   const geometry={center,hole:shapeVertices('hex',holeDiameterMm('hex',size,.5),center)};
+   const svg=e('svg',{viewBox:'0 0 '+size+' '+size,width:size*pxPerMm*zoom*cal,height:size*pxPerMm*zoom*cal,role:'img','aria-label':p.name+' · '+side+' · '+size+' мм','data-preview-side':side,'data-size-mm':size});
+   svg.style.setProperty('--print-size',size+'mm');
+   svg.append(renderPhysicalTile(document,{view,geometry,shape:'hex',sizeMm:size,unitsPerMm:1,cut:'corner',cutMm:REVIEW_DIMENSIONS.cut,namespace:'catalog',filled}));
+   const figure=document.createElement('figure');figure.className='face';figure.append(svg);
+   const cap=document.createElement('figcaption');cap.textContent=(side==='front'?'Стройка':'Готовое здание')+' · '+size+' мм';
+   if(reviewedSlotMargins(view,size).some(m=>m<.2)){cap.className='warning';cap.textContent+=' · недостаточный зазор';}
+   figure.append(cap);faces.append(figure);
+  }
+  catalog.append(article);
+ }
+}
+for(const id of ['diameter','zoom','calibration','side','category','building','filled','compare'])$(id).addEventListener('input',render);
+$('minus').onclick=()=>{$('diameter').value=Math.max(40,+$('diameter').value-1);render()};
+$('plus').onclick=()=>{$('diameter').value=Math.min(65,+$('diameter').value+1);render()};
+$('print').onclick=()=>window.print();
+for(const def of TILE_ICONS.filter(i=>i.designStatus!=='legacy')){
+ const fig=document.createElement('figure'),swatch=document.createElement('div'),cap=document.createElement('figcaption');
+ swatch.className='swatch';swatch.style.background=BUILDING_TYPE_COLORS['Торговое'];swatch.append(renderTileIcon(document,def.id,{size:32,ink:TILE_INK,surface:BUILDING_TYPE_COLORS['Торговое']}));cap.textContent=def.label+(def.designStatus==='candidate'?' (кандидат)':'');fig.append(swatch,cap);$('legend').append(fig);
+}
+let wasFilled=false;window.addEventListener('beforeprint',()=>{wasFilled=$('filled').checked;$('filled').checked=false;render()});window.addEventListener('afterprint',()=>{$('filled').checked=wasFilled;render()});
+render();
+</script></body></html>
