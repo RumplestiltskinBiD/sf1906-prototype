@@ -60,7 +60,33 @@ const LEAF='path,rect,circle,ellipse,polygon,polyline,line,text';
 // Measure painted leaf bounds BEFORE ancestor clipping, in the reviewed root's
 // local millimetres. Rectangular bounds are deliberately conservative for art.
 // Stroke padding includes square/round caps and miter joins.
+// Chromium rounds SVG glyph metrics at the current rendered pixel size, so
+// cancelling the screen CTM does not by itself make getBBox zoom invariant.
+// Use one reference viewport for measurement, regardless of display zoom,
+// calibration or print CSS. Eight CSS pixels per viewBox unit is a diagnostic
+// sampling scale, not a physical print scale or an extra safety tolerance.
+const AUDIT_PX_PER_UNIT=8;
 export function measureTileBlocks(root){
+ let viewport=root.ownerSVGElement;
+ while(viewport?.ownerSVGElement)viewport=viewport.ownerSVGElement;
+ const vb=viewport?.viewBox?.baseVal;
+ if(!vb||!(vb.width>0&&vb.height>0))return measureAtCurrentViewport(root);
+ const original=viewport.getAttribute('style');
+ try{
+  // Keep the actual SVG, inherited styles and nested viewBoxes. No clone,
+  // duplicate IDs or alternate layout. The synchronous resize is restored
+  // before paint, including if an SVG measurement throws.
+  for(const [dimension,value] of [['width',vb.width],['height',vb.height]]){
+   const px=value*AUDIT_PX_PER_UNIT+'px';
+   for(const property of [dimension,'min-'+dimension,'max-'+dimension])viewport.style.setProperty(property,px,'important');
+  }
+  return measureAtCurrentViewport(root);
+ }finally{
+  if(original===null)viewport.removeAttribute('style');
+  else viewport.setAttribute('style',original);
+ }
+}
+function measureAtCurrentViewport(root){
  const inv=root.getScreenCTM()?.inverse();
  const measured=Array.from(root.querySelectorAll('[data-layout-block]'),group=>{
   const id=group.dataset.layoutBlock,zone=group.dataset.zone;
