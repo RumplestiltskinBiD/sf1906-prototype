@@ -40,7 +40,7 @@ const legacyIcons=[
  icon('trade','types','Торговое','Категория здания Торговое',['M3 3h18l1 7H2z M4 10v11h16V10 M8 21v-7h8v7 M8 3l-1 7 M16 3l1 7']),
  icon('unknown','actions','Неизвестно','Нет зарегистрированного обозначения; не подменять другим ресурсом',['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M8 8a4 4 0 1 1 5 4l-1 2 M12 18h.1'])
 ];
-const addedIcons=[["construction","actions","Строительство"],["project","actions","Проект"],["newspaper","actions","Газета"],["production","actions","Производство"],["delivery","actions","Доставка"],["movement","actions","Перемещение"],["disaster","risks","Катастрофа 1906"],["credit","economy","Кредит"],["goal","actions","Городская цель"],["warehouse","actions","Склад"],["partnership","actions","Партнёрство"],["inspection","actions","Инспекция"],["port","actions","Порт"],["rail","actions","Железная дорога"],["upgrade","actions","Модернизация"],["firehouse","risks","Пожарная служба"],["medical","risks","Медицина"],["police","risks","Полиция"],["suspicion","risks","Подозрение"],["material","materials","Любой строительный материал"]].map(([id,group,label])=>icon(id,group,label,id==='material'?'РС1 — рабочий кандидат, один строительный материал':label,[]));
+const addedIcons=[["construction","actions","Строительство"],["project","actions","Проект"],["newspaper","actions","Газета"],["production","actions","Производство"],["delivery","actions","Доставка"],["movement","actions","Перемещение"],["disaster","risks","Катастрофа 1906"],["credit","economy","Кредит"],["goal","actions","Городская цель"],["warehouse","actions","Склад"],["partnership","actions","Партнёрство"],["inspection","actions","Инспекция"],["port","actions","Порт"],["rail","actions","Железная дорога"],["upgrade","actions","Модернизация"],["firehouse","risks","Пожарная служба"],["medical","risks","Медицина"],["police","risks","Полиция"],["suspicion","risks","Подозрение"],["material","materials","Любой строительный материал"],["contraband-receive","materials","Приём контрабанды"]].map(([id,group,label])=>icon(id,group,label,id==='material'?'РС1 — рабочий кандидат, один строительный материал':id==='contraband-receive'?'КП2 — приём контрабанды, не запас и не физическая ячейка':label,[]));
 const pathsOf=nodes=>nodes.flatMap(n=>[...(n.tag==='path'?[n.attrs.d]:[]),...pathsOf(n.children)]);
 export const TILE_ICONS=Object.freeze([...legacyIcons,...addedIcons].map(def=>{
  const artwork=APPROVED_ARTWORK[def.id];
@@ -64,4 +64,18 @@ export function renderTileIcon(doc,id,{x=0,y=0,size=24,ink='#202b32',surface='#f
  const group=node(doc,'g',{fill:'none',stroke:ink,'stroke-width':1.9,'stroke-linecap':'round','stroke-linejoin':'round'});
  for(const d of def.paths)group.append(node(doc,'path',{d}));svg.append(group);
  return svg;
+}
+
+// Shared visual grammar; no rule inference.
+export function formatTileGain(value,kind){
+ if(!Number.isFinite(value))throw Error('Invalid tile gain');
+ if(kind==='money')return (value<0?'-':value>0?'+':'')+'$'+Math.abs(value);
+ return (value===1?'+':value>0?'+'+value:String(value))+' '+kind;
+}
+export const TILE_REQUIREMENT_SURFACE='#843E38';
+export function renderTileRequirement(doc,id,{x=0,y=0,size=24,value,label}={}){
+ const g=node(doc,'g',{'data-requirement':'TR3','data-design-status':'candidate'});
+ g.append(node(doc,'rect',{x,y,width:size,height:size,rx:size*.15,fill:TILE_REQUIREMENT_SURFACE}));
+ g.append(renderTileIcon(doc,id,{x:x+size*.09,y:y+size*.09,size:size*.82,ink:'#FFF4DB',surface:TILE_REQUIREMENT_SURFACE,value,label}));
+ return g;
 }

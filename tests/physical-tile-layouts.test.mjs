@@ -23,9 +23,23 @@ test('reviewed faces retain live catalog values, action separation, and do not d
    const v=view(p,side),g=doc.createElementNS('svg','g'),before=JSON.stringify(v);
    assert.equal(drawReviewedTileArtwork(g,v,50,{surface:'#A58B43',filled:true}),true);
    const n=flat(g);assert.equal(JSON.stringify(v),before);
-   if(side==='front'){assert.ok(n.some(x=>x.textContent==='$'+p.open));assert.ok(n.some(x=>x.textContent==='+1 VP'));}
-   else{assert.ok(n.some(x=>x.attrs['data-icon']==='fire'));assert.ok(!n.some(x=>/за товар/.test(x.textContent)));assert.equal(n.filter(x=>x.attrs['data-action-frame']).length,['shops','commission_house'].includes(p.id)?1:0);if(p.id==='wholesale_market'){assert.ok(n.some(x=>x.textContent==='Новый тип'));assert.ok(n.some(x=>x.attrs['data-icon']==='completion'));assert.ok(n.some(x=>x.textContent==='+3$'));}}
+   if(side==='front'){assert.ok(n.some(x=>x.textContent==='$'+p.open));assert.ok(n.some(x=>x.textContent==='+ VP'));}
+   else{assert.ok(n.some(x=>x.attrs['data-icon']==='fire'));assert.ok(n.some(x=>x.textContent==='+$'+p.income));assert.ok(!n.some(x=>/за товар/.test(x.textContent)));assert.equal(n.filter(x=>x.attrs['data-action-frame']).length,['shops','commission_house'].includes(p.id)?1:0);if(p.id==='wholesale_market'){assert.ok(n.some(x=>x.textContent==='Новый тип'));assert.ok(n.some(x=>x.attrs['data-icon']==='completion'));assert.ok(n.some(x=>x.textContent==='+3$'));}}
    assert.equal(n.filter(x=>x.attrs['data-placed']).length,reviewedTileSlots(v,50).length);
   }
+ }
+});
+
+test('first four retain requirement, procurement limit and distinct receive semantics',()=>{
+ const doc=docStub();
+ for(const p of PROJECTS.filter(p=>REVIEWED_TILE_LAYOUTS[p.id]))for(const side of ['front','back']){
+  const v=view(p,side),g=doc.createElementNS('svg','g');drawReviewedTileArtwork(g,v,50,{surface:'#A58B43'});const n=flat(g);
+  assert.equal(n.filter(x=>x.attrs['data-requirement']==='TR3').length,p.id==='shops'&&side==='front'?1:0);
+  assert.equal(n.filter(x=>x.attrs['data-icon']==='contraband-receive').length,0);
+  if(side==='back'&&p.id==='shops'){
+   assert.ok(n.some(x=>x.textContent==='≤2'));assert.ok(n.some(x=>x.textContent==='$1'));assert.ok(n.some(x=>x.textContent==='$0'));
+   assert.equal(n.filter(x=>x.attrs['data-icon']==='material').length,1);
+  }
+  if(side==='back'&&p.id==='wholesale_market')assert.ok(reviewedTileSlots(v,50).every(s=>s.y+s.h/2<32.5));
  }
 });
