@@ -69,3 +69,11 @@ test('approved SVG geometry, variable values, foreground and surface are preserv
  assert.equal(tileIcon('delivery').artwork.children[2].attrs.d,'M57 39H76V25L99 50L76 75V61H57Z');
  assert.equal(tileIcon('material').designStatus,'candidate');
 });
+
+test('TR3, KP2 and gain notation preserve separate meanings',async()=>{
+ const {formatTileGain,renderTileRequirement,TILE_REQUIREMENT_SURFACE}=await import('../physical-tile-icons.js');
+ assert.equal(formatTileGain(1,'VP'),'+ VP');assert.equal(formatTileGain(1,'Influence'),'+ Influence');assert.equal(formatTileGain(2,'VP'),'+2 VP');assert.equal(formatTileGain(-1,'VP'),'-1 VP');assert.equal(formatTileGain(1,'money'),'+$1');
+ assert.equal(materialIconId('Contraband'),'contraband');
+ const kp=tileIcon('contraband-receive');assert.equal(kp.artwork.children[0].attrs.d,'M43 3H57V18H68L50 34L32 18H43Z');assert.equal(kp.artwork.children[1].attrs.transform,'translate(19 32) scale(1.05)');
+ const g=renderTileRequirement(docStub(),'land',{size:6,value:'≥1'});assert.equal(g.attrs['data-requirement'],'TR3');assert.equal(g.children[0].attrs.fill,TILE_REQUIREMENT_SURFACE);assert.equal(TILE_REQUIREMENT_SURFACE,'#843E38');
+});

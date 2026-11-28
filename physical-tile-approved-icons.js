@@ -958,6 +958,11 @@ const cube=(color)=>({viewBox:'0 0 60 60',children:[
  {tag:'path',attrs:{d:'M30 28L55 15V43L30 56Z',fill:'#000000',opacity:'.18'},children:[]}
 ]});
 for(const [id,resource] of Object.entries({lumber:'Lumber',masonry:'Masonry',steel:'Steel',beer:'Beer',bread:'Bread',contraband:'Contraband'}))drawings[id]=cube(RESOURCE_COLORS[resource]);
+// KP2 receiving is distinct from a physical Contraband stock cube.
+drawings['contraband-receive']={viewBox:'0 0 100 100',children:[
+ {tag:'path',attrs:{d:'M43 3H57V18H68L50 34L32 18H43Z',fill:'#FFF4DB'},children:[]},
+ {tag:'g',attrs:{transform:'translate(19 32) scale(1.05)'},children:cube(RESOURCE_COLORS.Contraband).children}
+]};
 // RS1 is the review candidate, not a new resource or a new rules symbol.
 drawings.material={viewBox:'0 0 100 100',children:[
  ['M6 26L50 4L94 26L50 49Z',RESOURCE_COLORS.Lumber],

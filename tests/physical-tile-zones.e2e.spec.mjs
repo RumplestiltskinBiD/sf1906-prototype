@@ -84,3 +84,25 @@ test('reference viewport preserves glyph and nested stroke bounds and restores t
   for(let i=0;i<baseline.length;i++)for(const k of ['x','y','w','h'])expect(sample.blocks[i].box[k]).toBeCloseTo(baseline[i].box[k],6);
  }
 });
+
+for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:932,height:430}]){
+ test('stage 2 all eight faces fit 50 mm safe polygon with and without pieces '+viewport.width+'x'+viewport.height,async({page})=>{
+  await page.setViewportSize(viewport);await page.goto('/physical-tile-lab.html');
+  await expect(page.locator('[data-preview-side]')).toHaveCount(8);
+  for(const filled of [false,true]){
+   await page.locator('#filled').setChecked(filled);
+   const data=await page.locator('[data-preview-side]').evaluateAll(es=>es.map(e=>({side:e.getAttribute('aria-label'),issues:e.dataset.auditIssues,details:e.parentElement.querySelector('.audit-details')?.textContent})));
+   expect(data.every(x=>x.issues==='0'),JSON.stringify(data)).toBe(true);
+  }
+ });
+}
+test('stage 2 audits all 40–65 mm sizes without shrinking physical components',async({page})=>{
+ test.setTimeout(120000);await page.goto('/physical-tile-lab.html');
+ for(let diameter=40;diameter<=65;diameter++){
+  await page.locator('#diameter').evaluate((el,d)=>{el.value=String(d);el.dispatchEvent(new Event('input',{bubbles:true}));},diameter);
+  const data=await page.locator('[data-preview-side]').evaluateAll(es=>es.map(e=>({issues:e.dataset.auditIssues,unmeasured:e.dataset.auditUnmeasured,side:e.getAttribute('aria-label'),details:e.parentElement.querySelector('.audit-details')?.textContent,slots:[...e.querySelectorAll('[data-component-slot]')].map(s=>[s.dataset.componentSlot,s.dataset.widthMm,s.dataset.heightMm])})));
+  expect(data.length).toBe(8);expect(data.every(x=>x.unmeasured==='0'),JSON.stringify(data)).toBe(true);
+  expect(data.every(x=>x.slots.every(([kind,w,h])=>kind==='worker'?w==='14'&&h==='9':w==='8.8'&&h==='8.8'))).toBe(true);
+  if(diameter>=50)expect(data.every(x=>x.issues==='0'),diameter+' mm '+JSON.stringify(data)).toBe(true);
+ }
+});
